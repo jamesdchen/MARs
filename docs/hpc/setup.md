@@ -65,7 +65,9 @@ directly via Bash. If you want them for interactive use outside MARs, run
    ```
    Add this to your shell profile so MARs inherits it. Do **not** commit
    your edited `clusters.yaml` to MARs — it contains your username and
-   site-specific paths.
+   site-specific paths. MARs's `.gitignore` excludes `clusters.yaml`
+   anywhere in the tree (the `.example` template is exempted) but the
+   safest practice is to keep the edited file outside the repo.
 
 ## Enable HPC in MARs config
 
