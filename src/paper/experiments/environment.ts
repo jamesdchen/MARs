@@ -66,7 +66,13 @@ export class ExperimentEnvironment {
     // Generate pyproject.toml
     const name = basename(experimentDir)
     const tier1Deps = ['numpy', 'pandas', 'scipy']
-    const tier2Deps = [...tier1Deps, 'matplotlib', 'pytest', 'ruff']
+    const tier2Deps = [
+      ...tier1Deps,
+      'matplotlib',
+      'pytest',
+      'ruff',
+      'claude-hpc @ git+https://github.com/jamesdchen/claude-hpc.git@ec041c6399adc17c0f96d2fd10c5478aea30d7f2',
+    ]
     const deps = tier === 1 ? tier1Deps : tier2Deps
     const depsStr = deps.map(d => `    "${d}",`).join('\n')
 
@@ -131,7 +137,27 @@ ${depsStr}
       cwd: experimentDir,
       stdout: 'pipe',
       stderr: 'pipe',
-      env: { ...process.env, PYTHONHASHSEED: '42' },
+      env: {
+        ...process.env,
+        PYTHONHASHSEED: '42',
+        // Explicit forwards for hpc-agent. Missing SSH_AUTH_SOCK is the most
+        // common cluster-call failure (every call hangs on auth). Telemetry
+        // sink defaults to "none" upstream; sending to stderr lets MARs's
+        // log capture pick up claude-hpc's structured events.
+        SSH_AUTH_SOCK: process.env.SSH_AUTH_SOCK ?? '',
+        SSH_AGENT_PID: process.env.SSH_AGENT_PID ?? '',
+        HPC_JOURNAL_DIR:
+          process.env.HPC_JOURNAL_DIR ??
+          join(
+            process.env.HOME ?? '.',
+            '.mars',
+            'hpc',
+            basename(experimentDir),
+          ),
+        HPC_SSH_TIMEOUT_SEC: process.env.HPC_SSH_TIMEOUT_SEC ?? '120',
+        HPC_TELEMETRY_SINK:
+          process.env.HPC_TELEMETRY_SINK ?? 'stderr-jsonl',
+      },
     })
 
     let timedOut = false

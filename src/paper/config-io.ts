@@ -66,6 +66,12 @@ export function getDefaultConfig(): Record<string, any> {
       auto_retry_on_error: true,
       max_retries: 3,
       prefer_docker: false,
+      hpc: {
+        enabled: false,
+        default_cluster: '',
+        delegate_when_tasks_over: 8,
+        delegate_when_walltime_minutes_over: 30,
+      },
     },
     orchestrator: {
       rigor_level: 2,

@@ -25,6 +25,12 @@ CLAUDE.md
 CLAUDE_API
 OPENAI_API
 
+# HPC: never commit an edited clusters.yaml — it carries usernames and
+# site-specific paths. The `.example` template is allowed.
+clusters.yaml
+**/clusters.yaml
+!docs/hpc/clusters.yaml.example
+
 # Internal / private documents
 ISSUE.md
 PROGRESS.md

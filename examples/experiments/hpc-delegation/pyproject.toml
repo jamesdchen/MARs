@@ -1,0 +1,13 @@
+[project]
+name = "run-007-bootstrap-coverage"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+    "numpy",
+    "pandas",
+    "scipy",
+    "matplotlib",
+    "pytest",
+    "ruff",
+    "claude-hpc @ git+https://github.com/jamesdchen/claude-hpc.git@ec041c6399adc17c0f96d2fd10c5478aea30d7f2",
+]
