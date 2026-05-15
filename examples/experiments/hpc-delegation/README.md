@@ -6,7 +6,7 @@ experiment whose grid is large enough to delegate to a cluster.
 
 **Status:** illustrative. Shapes here match the contract in
 [`docs/hpc/integration-reference.md`](../../../docs/hpc/integration-reference.md)
-at the pinned upstream commit (`ec041c6`). Re-sync if the pin moves.
+at the pinned upstream commit (`9c0e184`). Re-sync if the pin moves.
 
 ## The hypothesis
 
@@ -87,17 +87,17 @@ section of [`agents/experiment-runner.md`](../../../agents/experiment-runner.md)
    If `data.run_id` is returned, skip submit and resume monitoring on that
    run_id.
 
-4. **Build the submit spec** (`spec.json`) — note `run_id` is **omitted**;
-   claude-hpc generates it and returns it in the submit response:
-   ```json
+4. **Build the submit spec** (`spec.json`) — `run_id` is **omitted** (claude-hpc emits it), and `profile`/`job_name` are overlaid from `meta.json::experiment_id` via the `.hpc/mars_spec.py` adapter (replaces the cleaved-out `hpc-agent submit --from-meta`):
+   ```bash
+   cat > base-spec.json <<'JSON'
    {
-     "profile": "run-007-bootstrap-coverage",
      "cluster": "hoffman2",
      "ssh_target": "user@hoffman2.idre.ucla.edu",
      "remote_path": "/u/scratch/user/run-007-bootstrap-coverage",
-     "job_name": "run-007-bootstrap-coverage",
      "total_tasks": 450
    }
+   JSON
+   uv run python .hpc/mars_spec.py build-spec "$PWD" base-spec.json > spec.json
    ```
 
 5. **Canary the first task** before launching the full array (recommended for
