@@ -18,8 +18,11 @@ document is the human-readable reference behind it.
 
 The maintainer needs three changes:
 
-1. **Add dependency**: `claude-hpc>=0.1,<1.0` is included in the tier-2
-   `pyproject.toml` written by `src/paper/experiments/environment.ts`.
+1. **Add dependency**: `claude-hpc` is included in the tier-2 `pyproject.toml`
+   written by `src/paper/experiments/environment.ts`. It's installed from a
+   pinned git+ URL (commit `ec041c6`) because claude-hpc is not on PyPI yet —
+   when it publishes, switch the pin in environment.ts to `claude-hpc>=X,<Y`
+   and re-sync this document.
 2. **Update agent prompt**: the cluster-execution section from upstream
    `docs/workflows/mars/experiment-runner.snippet.md` is appended verbatim
    to `agents/experiment-runner.md`.

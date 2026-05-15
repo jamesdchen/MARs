@@ -124,7 +124,7 @@ describe('ExperimentEnvironment.create tier 2', () => {
     expect(content).toContain('"matplotlib"')
     expect(content).toContain('"pytest"')
     expect(content).toContain('"ruff"')
-    expect(content).toContain('"claude-hpc>=0.1,<1.0"')
+    expect(content).toMatch(/"claude-hpc @ git\+https:\/\/github\.com\/jamesdchen\/claude-hpc\.git@[0-9a-f]{40}"/)
     expect(content).toContain('requires-python = ">=3.11"')
   })
 })

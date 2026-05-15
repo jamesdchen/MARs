@@ -71,7 +71,7 @@ export class ExperimentEnvironment {
       'matplotlib',
       'pytest',
       'ruff',
-      'claude-hpc>=0.1,<1.0',
+      'claude-hpc @ git+https://github.com/jamesdchen/claude-hpc.git@ec041c6399adc17c0f96d2fd10c5478aea30d7f2',
     ]
     const deps = tier === 1 ? tier1Deps : tier2Deps
     const depsStr = deps.map(d => `    "${d}",`).join('\n')

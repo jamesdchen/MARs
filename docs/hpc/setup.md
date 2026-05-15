@@ -27,8 +27,11 @@ the agent follows is vendored at
 ## Install `claude-hpc`
 
 Each Tier 2 experiment auto-installs `claude-hpc` into its own `uv`
-environment (pinned to `>=0.1,<1.0` in `src/paper/experiments/environment.ts`).
-You don't need a global install for the experiment-runner agent to work.
+environment, pinned to a specific upstream commit via a git+ URL in
+`src/paper/experiments/environment.ts` (claude-hpc isn't on PyPI yet). You
+don't need a global install for the experiment-runner agent to work, but
+the cluster scaffolding will hit GitHub at first `uv sync` for each
+experiment.
 
 For interactive use of the upstream Claude Code slash commands
 (`/preflight`, `/submit-hpc`, `/monitor-hpc`, `/aggregate-hpc`,

@@ -54,6 +54,7 @@ import {
 import { MathReasoningController } from './math-reasoning-controller'
 import type { ProofContext } from './math-reasoning-controller'
 import { ResourceEstimator } from './experiment/resource-estimator'
+import { loadConfig, getNestedValue } from './config-io'
 import { DataAcquisition } from './experiment/data-acquisition'
 import { BudgetTracker, type BudgetCategory } from './budget-tracker'
 import { addArtifact } from './research-state'
@@ -2865,6 +2866,21 @@ Respond with ONLY valid JSON (no markdown fences):
       '- Set seed = 42',
       '- Output results to results/metrics.json',
       '- Shared data in experiments/shared/data/',
+    )
+
+    // HPC settings — surface the real config values so the gates documented in
+    // the agent prompt (Cluster Execution section) are enforceable. Without
+    // this block the agent has no way to read experiment.hpc.* at runtime.
+    const hpcConfig = getNestedValue(loadConfig(), 'experiment.hpc') ?? {}
+    sections.push(
+      '## HPC Settings',
+      `- experiment.hpc.enabled: ${hpcConfig.enabled === true}`,
+      `- experiment.hpc.default_cluster: ${hpcConfig.default_cluster || '(unset)'}`,
+      `- experiment.hpc.delegate_when_tasks_over: ${hpcConfig.delegate_when_tasks_over ?? 8}`,
+      `- experiment.hpc.delegate_when_walltime_minutes_over: ${hpcConfig.delegate_when_walltime_minutes_over ?? 30}`,
+      hpcConfig.enabled === true
+        ? '- HPC delegation is enabled. Apply the decision rule under "Cluster Execution (Optional)" before running tier-2 locally.'
+        : '- HPC delegation is disabled. Run all experiments locally; do NOT invoke hpc-agent.',
     )
 
     // Available shared libraries
