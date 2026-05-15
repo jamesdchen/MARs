@@ -1,7 +1,7 @@
 # claude-hpc Integration Reference (Vendored)
 
 > **Vendored from** <https://github.com/jamesdchen/claude-hpc>
-> **Source:** `docs/workflows/mars-integration.md` @ `ec041c6399adc17c0f96d2fd10c5478aea30d7f2`
+> **Source:** integration contract @ commit `9c0e184` on branch `claude/post-mars-cleanup-iRQMr`
 > **Synced:** 2026-05-15
 > **Re-sync** when upgrading the pinned `claude-hpc` range in
 > `src/paper/experiments/environment.ts`.
@@ -13,6 +13,34 @@ is the "Cluster Execution (Optional)" section in
 document is the human-readable reference behind it.
 
 ---
+
+## What changed at `9c0e184` (the cleavage)
+
+claude-hpc was previously a more MARs-aware tool. At this commit it stopped
+knowing about MARs's experiment shape. The following surfaces **moved out of
+claude-hpc and into MARs** (specifically into the `mars_hpc.py` adapter that
+the scaffolder writes into each tier-2 experiment dir):
+
+| Removed from claude-hpc | Owned by MARs (in `mars_hpc.py`) |
+|---|---|
+| `claude_hpc.state.discover.detect_mars_tier(...)` (auto-detected probe/run from path layout) | `detect_experiment_tier(experiment_dir)` |
+| `claude_hpc.state.discover.read_meta_json(...)` | `read_meta_json(experiment_dir)` |
+| `hpc-agent discover` envelope's `data.meta` block (experiment_id/seed/purpose/tier) | `discover_with_meta(experiment_dir)` wraps the CLI and re-adds it |
+| `hpc-agent submit --from-meta` (overlay experiment_id onto profile/job_name) | `build_submit_spec(experiment_dir, base_spec)` |
+| Auto-narrowing the executor scan to `scripts/` when meta.json was present | `discover_with_meta` passes `search_dirs=["scripts"]` to the Python API for tier-2 |
+
+Why the split: claude-hpc parallelizes whatever the caller hands it. It has
+no business knowing about probe-vs-run tiers, `experiment_id` semantics, or
+the src-is-modules convention — those are MARs's contracts. The two halves
+still interlock cleanly through `hpc-agent`'s JSON envelope and the per-run
+sidecar; that contract is unchanged.
+
+**Known upstream gap (file as feature request):** the
+`hpc-agent discover` CLI does **not** expose `--search-dirs` at `9c0e184`,
+even though `claude_hpc.state.discover.discover_executors(root, search_dirs=...)`
+accepts the override. `mars_hpc.discover_with_meta` imports the Python API
+directly to apply the override; once the CLI flag ships upstream, switch the
+adapter to the CLI for fewer cross-package imports.
 
 ## Setup Steps
 

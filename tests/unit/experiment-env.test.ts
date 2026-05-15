@@ -124,8 +124,26 @@ describe('ExperimentEnvironment.create tier 2', () => {
     expect(content).toContain('"matplotlib"')
     expect(content).toContain('"pytest"')
     expect(content).toContain('"ruff"')
-    expect(content).toMatch(/"claude-hpc @ git\+https:\/\/github\.com\/jamesdchen\/claude-hpc\.git@[0-9a-f]{40}"/)
+    expect(content).toMatch(/"claude-hpc @ git\+https:\/\/github\.com\/jamesdchen\/claude-hpc\.git@[0-9a-f]+"/)
     expect(content).toContain('requires-python = ">=3.11"')
+  })
+
+  it('writes mars_hpc.py adapter for tier-2 only', async () => {
+    const tmp = makeTmpDir()
+    const tier2Dir = join(tmp, 'run-003')
+    const tier1Dir = join(tmp, 'probe-003')
+    const env = new ExperimentEnvironment(tmp)
+    await env.create(tier2Dir, 2)
+    await env.create(tier1Dir, 1)
+
+    expect(existsSync(join(tier2Dir, 'mars_hpc.py'))).toBe(true)
+    expect(existsSync(join(tier1Dir, 'mars_hpc.py'))).toBe(false)
+
+    const adapter = readFileSync(join(tier2Dir, 'mars_hpc.py'), 'utf-8')
+    expect(adapter).toContain('def detect_experiment_tier(')
+    expect(adapter).toContain('def read_meta_json(')
+    expect(adapter).toContain('def discover_with_meta(')
+    expect(adapter).toContain('def build_submit_spec(')
   })
 })
 

@@ -36,10 +36,125 @@ async function runCmdSafe(
 }
 
 /**
+ * Adapter helpers MARs owns now that claude-hpc no longer reads meta.json,
+ * auto-detects probe-vs-run tier, or enriches envelopes with experiment
+ * context (cleaved at claude-hpc commit 9c0e184). Written into each tier-2
+ * experiment dir at scaffold time.
+ *
+ * Keep in sync with docs/hpc/integration-reference.md ("What changed at
+ * 9c0e184").
+ */
+const MARS_HPC_HELPER_PY = `"""mars_hpc — adapter between MARs's experiment conventions and claude-hpc.
+
+Replaces logic cleaved out of claude-hpc at commit 9c0e184. The meta.json
+schema, the probe/run tier convention, and the "src is modules, not
+entrypoints" convention are all MARs's contracts; claude-hpc has no business
+reaching into them. This module is written into each tier-2 experiment dir
+by MARs's scaffolder and invoked by the experiment-runner agent.
+
+CLI:
+    python -m mars_hpc tier <experiment-dir>
+    python -m mars_hpc meta <experiment-dir>
+    python -m mars_hpc discover <experiment-dir>
+    python -m mars_hpc build-spec <experiment-dir> <base-spec.json>
+"""
+
+from __future__ import annotations
+
+import json
+import pathlib
+import sys
+from typing import Any
+
+
+def detect_experiment_tier(experiment_dir):
+    """1 for /probes/probe-*/probe.py, 2 for /runs/run-*/scripts/, else None."""
+    exp = pathlib.Path(experiment_dir).resolve()
+    parent = exp.parent.name
+    if parent == "probes" and exp.name.startswith("probe-") and (exp / "probe.py").exists():
+        return 1
+    if parent == "runs" and exp.name.startswith("run-") and (exp / "scripts").is_dir():
+        return 2
+    return None
+
+
+def read_meta_json(experiment_dir):
+    """Parsed meta.json or None on missing/unreadable/invalid/non-dict. Never raises."""
+    path = pathlib.Path(experiment_dir) / "meta.json"
+    try:
+        with path.open("r") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
+def discover_with_meta(experiment_dir):
+    """Discover executors and re-add data.meta client-side.
+
+    For tier-2, narrows the scan to scripts/ via the Python API (the upstream
+    CLI does not yet expose --search-dirs; the Python API does). Replaces the
+    data.meta block claude-hpc no longer emits.
+    """
+    from claude_hpc.state.discover import discover_executors
+
+    exp = pathlib.Path(experiment_dir).resolve()
+    tier = detect_experiment_tier(exp)
+    if tier == 2:
+        executors = discover_executors(exp, search_dirs=["scripts"])
+    else:
+        executors = discover_executors(exp)
+    envelope = {"ok": True, "data": {"executors": executors}}
+    meta = read_meta_json(exp)
+    if meta is not None:
+        envelope["data"]["meta"] = {
+            "experiment_id": meta.get("experiment_id"),
+            "seed": meta.get("seed"),
+            "purpose": meta.get("purpose"),
+            "tier": tier,
+        }
+    return envelope
+
+
+def build_submit_spec(experiment_dir, base_spec):
+    """Overlay meta.json's experiment_id onto profile/job_name. Replaces --from-meta."""
+    spec = dict(base_spec)
+    meta = read_meta_json(experiment_dir)
+    if meta is not None:
+        exp_id = meta.get("experiment_id")
+        if exp_id:
+            spec.setdefault("profile", exp_id)
+            spec.setdefault("job_name", exp_id)
+    return spec
+
+
+def _main(argv):
+    cmd, exp_dir, *rest = argv[1:]
+    if cmd == "tier":
+        tier = detect_experiment_tier(exp_dir)
+        print("none" if tier is None else tier)
+    elif cmd == "meta":
+        print(json.dumps(read_meta_json(exp_dir)))
+    elif cmd == "discover":
+        print(json.dumps(discover_with_meta(exp_dir)))
+    elif cmd == "build-spec":
+        base = json.loads(pathlib.Path(rest[0]).read_text())
+        print(json.dumps(build_submit_spec(exp_dir, base), indent=2))
+    else:
+        print(f"unknown: {cmd}", file=sys.stderr)
+        return 2
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(_main(sys.argv))
+`
+
+/**
  * Manages tiered experiment directory structures and uv-based Python environments.
  *
- * This is the NEW experiments module (plural `experiments/`).
- * The OLD `experiment/environment.ts` (singular) handles Docker/venv isolation detection.
+ * This is the NEW experiments module (plural \`experiments/\`).
+ * The OLD \`experiment/environment.ts\` (singular) handles Docker/venv isolation detection.
  */
 export class ExperimentEnvironment {
   constructor(private projectDir: string) {}
@@ -71,7 +186,7 @@ export class ExperimentEnvironment {
       'matplotlib',
       'pytest',
       'ruff',
-      'claude-hpc @ git+https://github.com/jamesdchen/claude-hpc.git@ec041c6399adc17c0f96d2fd10c5478aea30d7f2',
+      'claude-hpc @ git+https://github.com/jamesdchen/claude-hpc.git@9c0e184',
     ]
     const deps = tier === 1 ? tier1Deps : tier2Deps
     const depsStr = deps.map(d => `    "${d}",`).join('\n')
@@ -85,6 +200,19 @@ ${depsStr}
 ]
 `
     await Bun.write(join(experimentDir, 'pyproject.toml'), pyproject)
+
+    // Tier 2 only: ship the MARs↔claude-hpc adapter helpers alongside the
+    // experiment. claude-hpc was cleaved of MARs-shaped surface at commit
+    // 9c0e184; this module owns what got cleaved (tier detection from path
+    // layout, meta.json reading, data.meta re-enrichment, --from-meta spec
+    // overlay, --search-dirs scripts narrowing for the modules-not-
+    // entrypoints convention).
+    if (tier === 2) {
+      await Bun.write(
+        join(experimentDir, 'mars_hpc.py'),
+        MARS_HPC_HELPER_PY,
+      )
+    }
 
     // Run uv sync (best-effort)
     try {
