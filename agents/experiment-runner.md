@@ -136,9 +136,9 @@ Claude (you) writes this file once per experiment proposal, translating `meta.js
    ```
    Skip to "Build the run spec" below.
 
-2. Otherwise, read the canonical reference (the only `tasks.py` example the framework ships):
+2. Otherwise, read the canonical reference (the only `tasks.py` example the framework ships). Locate it without depending on private claude-hpc paths:
    ```bash
-   uv run python -c 'from claude_hpc import _PACKAGE_ROOT; print(_PACKAGE_ROOT / "mapreduce" / "templates" / "tasks_example.py")'
+   uv run python -c 'import claude_hpc, pathlib; print(next(p for root in claude_hpc.__path__ for p in pathlib.Path(root).rglob("tasks_example.py")))'
    ```
    It demonstrates three patterns inline (Cartesian product, chunking, date-window backtests). Pick the one that matches what `meta.json` describes; delete the rest.
 
