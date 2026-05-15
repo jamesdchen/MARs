@@ -4,12 +4,9 @@ This directory walks through how the `experiment-runner` agent integrates with
 [`claude-hpc`](https://github.com/jamesdchen/claude-hpc) for a Tier 2
 experiment whose grid is large enough to delegate to a cluster.
 
-**Status:** illustrative. The shapes of `meta.json`, `.hpc/tasks.py`,
-`pyproject.toml`, and the `hpc-agent` JSON envelopes are faithful to what's
-documented in [`docs/hpc/integration-reference.md`](../../../docs/hpc/integration-reference.md).
-The exact CLI invocation of the executor (`scripts/run.py`) follows the
-convention documented upstream — if claude-hpc's wire format changes,
-re-sync the integration reference and re-check this example.
+**Status:** illustrative. Shapes here match the contract in
+[`docs/hpc/integration-reference.md`](../../../docs/hpc/integration-reference.md)
+at the pinned upstream commit (`ec041c6`). Re-sync if the pin moves.
 
 ## The hypothesis
 
@@ -26,10 +23,10 @@ distribution combination), so it parallelizes trivially.
 - `seed ∈ range(50)` (50)
 - **Total: 3 × 3 × 50 = 450 tasks**
 
-At ~30 seconds per task on a single CPU (500 bootstrap iterations of 1000
-resamples), running locally would take ~3.75 hours serial. The MARs decision
-rule (delegate when grid > `experiment.hpc.delegate_when_tasks_over`,
-default 8) tells the agent to delegate.
+At ~30 seconds per task (500 bootstrap iterations of ~1000 resamples), serial
+local execution would take ~3.75 hours. The MARs decision rule (delegate when
+grid > `experiment.hpc.delegate_when_tasks_over`, default 8) tells the agent
+to delegate.
 
 ## Files
 
@@ -46,28 +43,52 @@ hpc-delegation/
 
 `results/` and `_aggregated/` are created at runtime; not committed here.
 
+## Per-task contract (read first)
+
+The cluster dispatcher invokes `scripts/run.py` once per task. For each task it
+sets:
+
+- `RESULT_DIR` — where this task's `metrics.json` must land. The executor calls
+  `write_metrics(dict)` (no arguments needed) and `metrics_io` reads
+  `RESULT_DIR` from env. **Do not pass `result_dir=` from MARs.**
+- `HPC_KW_DISTRIBUTION`, `HPC_KW_SAMPLE_SIZE`, `HPC_KW_SEED` — one env var per
+  key in the dict that `.hpc/tasks.py:resolve(i)` returned. `read_kw_env()`
+  strips the prefix and lowercases.
+
+These are dispatcher-controlled — MARs's spawn env must NOT pre-set them.
+
+Inside the executor, only `claude_hpc.mapreduce.metrics_io` and
+`claude_hpc.executor_cli` are stable imports from the upstream package.
+
 ## Expected agent workflow
 
 With `experiment.hpc.enabled = true` and `default_cluster = hoffman2`, the
-`experiment-runner` agent walks the steps documented in
-[`agents/experiment-runner.md`](../../../agents/experiment-runner.md)
-("Cluster Execution (Optional)"):
+`experiment-runner` agent walks the steps documented in the Cluster Execution
+section of [`agents/experiment-runner.md`](../../../agents/experiment-runner.md):
 
 1. **Preflight** the cluster:
    ```bash
    uv run hpc-agent preflight --cluster hoffman2
    ```
    Expect `{"ok": true, "data": {"all_ok": true, ...}}`. If `ssh_auth_sock` is
-   false, the operator hasn't set `SSH_AUTH_SOCK` in their shell — re-run
-   after `ssh-add -l` confirms a key is loaded.
+   false, re-load your key into ssh-agent and rerun.
 
 2. **Verify the tasks module** loads cleanly and the grid size matches the
-   hypothesis (3 × 3 × 50 = 450):
+   hypothesis:
    ```bash
-   uv run python -c 'from claude_hpc import load_tasks_module, tasks_path, compute_cmd_sha; m = load_tasks_module(tasks_path(".")); print("total=", m.total(), "cmd_sha=", compute_cmd_sha(m)[:8])'
+   uv run python -c 'from claude_hpc import load_tasks_module, tasks_path, compute_cmd_sha; m = load_tasks_module(tasks_path(".")); print("total=", m.total(), "cmd_sha=", compute_cmd_sha(m))'
    ```
+   Expect `total= 450` and a 64-char hex `cmd_sha`.
 
-3. **Build the submit spec** (`spec.json`):
+3. **Dedup pre-check** — has this exact `tasks.py` already been submitted?
+   ```bash
+   uv run hpc-agent find-prior-run --cmd-sha <sha>
+   ```
+   If `data.run_id` is returned, skip submit and resume monitoring on that
+   run_id.
+
+4. **Build the submit spec** (`spec.json`) — note `run_id` is **omitted**;
+   claude-hpc generates it and returns it in the submit response:
    ```json
    {
      "profile": "run-007-bootstrap-coverage",
@@ -75,40 +96,50 @@ With `experiment.hpc.enabled = true` and `default_cluster = hoffman2`, the
      "ssh_target": "user@hoffman2.idre.ucla.edu",
      "remote_path": "/u/scratch/user/run-007-bootstrap-coverage",
      "job_name": "run-007-bootstrap-coverage",
-     "run_id": "run-007-bootstrap-coverage-20260515T140000Z-a1b2c3d4",
-     "job_ids": [],
      "total_tasks": 450
    }
    ```
-   `run_id` is `{experiment_id}-{utc_ts}-{cmd_sha[:8]}` — same `.hpc/tasks.py`
-   re-submit produces the same `cmd_sha`, and `submit` dedupes on the full
-   `run_id`.
 
-4. **Submit**:
+5. **Canary the first task** before launching the full array (recommended for
+   any new experiment shape):
+   ```bash
+   uv run hpc-agent verify-canary --canary-run-id <id> --wait-budget-sec 600
+   ```
+   Block-poll one task end-to-end. If it succeeds, fan out the rest; if it
+   fails, fix the executor and re-canary.
+
+6. **Submit**:
    ```bash
    uv run hpc-agent submit --spec spec.json
    ```
-   Returns either `data.deduped: true` (existing run; skip to polling) or
-   `data.deduped: false` with fresh `data.job_ids`.
+   Record `data.run_id` (claude-hpc emits it; typical shape is
+   `<profile>-<utc_ts>-<cmd_sha8>`). Also record `data.deduped` — if true, a
+   prior run with the same submit identity exists.
 
-5. **Poll status** with backoff 30s → 60s → 120s:
+7. **Monitor** (use `monitor-summary` for the human-readable view; `status`
+   for the raw envelope):
    ```bash
-   uv run hpc-agent status --run-id <run_id>
+   uv run hpc-agent monitor-summary --run-id <run_id>
    ```
-   Watch for `data.lifecycle_state ∈ {in_flight, complete, failed,
-   timeout, abandoned}` and `data.preempted_count`. If non-zero
-   `preempted_count`, selectively resubmit just those task ids:
+   Backoff 30s → 60s → 120s while `lifecycle_state == in_flight`. On
+   `data.preempted_count > 0`, selectively resubmit:
    ```bash
    uv run hpc-agent resubmit --run-id <run_id> --task-ids <ids> --category preempted
    ```
+   On `lifecycle_state == failed`, get the clustered failure fingerprints:
+   ```bash
+   uv run hpc-agent failures --run-id <run_id>
+   ```
 
-6. **Aggregate** per wave:
+8. **Aggregate** per wave, then verify completeness:
    ```bash
    uv run hpc-agent aggregate --run-id <run_id> --wave 0
+   uv run hpc-agent verify-aggregation-complete --run-id <run_id> --combiner-dir _aggregated/<run_id>/
    ```
-   Per-task outputs land at `_aggregated/<run_id>/`.
+   Only after `verify-aggregation-complete` returns `ok: true` should the
+   agent declare the experiment done.
 
-7. **Assemble `results/metrics.json`** in MARs's canonical schema — see the
+9. **Assemble `results/metrics.json`** in MARs's canonical schema — see the
    example below.
 
 ## Expected `results/metrics.json` after aggregation
@@ -138,12 +169,12 @@ With `experiment.hpc.enabled = true` and `default_cluster = hoffman2`, the
 
 ## Disabling HPC delegation
 
-Toggle `experiment.hpc.enabled` to `false` (or leave it default) and the same
-agent runs `uv run python scripts/run.py` for each task locally, with the
-task-axis loop materialized in-process. Same `.hpc/tasks.py`, same executor —
-the cluster path is opt-in.
+Toggle `experiment.hpc.enabled` to `false` (the default) and the same agent
+runs `uv run python scripts/run.py` for each task locally, materializing the
+HPC_KW_* env vars in-process. Same `.hpc/tasks.py`, same executor — the
+cluster path is opt-in.
 
-## When NOT to delegate
+## Why both thresholds matter
 
 The decision rule has both a task-count threshold AND a walltime threshold
 because a small but slow grid still benefits from the cluster:
@@ -152,5 +183,28 @@ because a small but slow grid still benefits from the cluster:
 - 200 tasks × 5 seconds each → run locally (cluster scheduling overhead
   dominates).
 
-Adjust `experiment.hpc.delegate_when_tasks_over` and
-`experiment.hpc.delegate_when_walltime_minutes_over` per project.
+Tune via `experiment.hpc.delegate_when_tasks_over` and
+`experiment.hpc.delegate_when_walltime_minutes_over`.
+
+## Alternative kwarg-passing pattern (`FLAGS` + argparse)
+
+This example uses `read_kw_env()` because it works without declaring a flag
+schema. The other supported pattern declares each axis as a CLI flag in
+`tasks.py`:
+
+```python
+from claude_hpc.executor_cli import flag, generic_args
+
+FLAGS = {
+    "scripts.run": [
+        *generic_args(),
+        flag("distribution", type=str),
+        flag("sample-size", type=int),
+        flag("seed", type=int),
+    ],
+}
+```
+
+The executor then uses
+`claude_hpc.executor_cli.build_parser_from_flags(FLAGS["scripts.run"])`
+instead of `read_kw_env()`. Pick whichever style fits the executor.

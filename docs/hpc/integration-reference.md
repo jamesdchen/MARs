@@ -31,34 +31,57 @@ The maintainer needs three changes:
 
 ## Critical Environment Variables
 
-When spawning `hpc-agent`, pass these explicitly — the default environment is
-empty:
+### MARs-controlled (forwarded by `runInEnv` in `src/paper/experiments/environment.ts`)
 
-```typescript
-import { spawn } from "bun";
+| Variable               | Default                                                | Why |
+|------------------------|--------------------------------------------------------|-----|
+| `SSH_AUTH_SOCK`        | parent env                                             | Without it, every cluster call hangs on auth — single most common spawn failure. |
+| `SSH_AGENT_PID`        | parent env                                             | Pair with `SSH_AUTH_SOCK`. |
+| `HPC_JOURNAL_DIR`      | `~/.mars/hpc/<experiment-name>/`                       | Per-experiment journal so concurrent MARs runs don't share state. |
+| `HPC_CLUSTERS_CONFIG`  | parent env (operator sets it)                          | Path to `clusters.yaml`. |
+| `HPC_SSH_TIMEOUT_SEC`  | parent env, claude-hpc default 60                      | Raise to ~120 for flaky login nodes. |
+| `HPC_TELEMETRY_SINK`   | parent env, claude-hpc default `none`                  | Set to `stderr-jsonl` to capture telemetry into MARs's log stream. |
 
-const proc = spawn({
-  cmd: ["uv", "run", "hpc-agent", "preflight", "--cluster", "hoffman2"],
-  cwd: experimentDir,
-  env: {
-    ...process.env,                    // critical: forward parent env
-    SSH_AUTH_SOCK: process.env.SSH_AUTH_SOCK ?? "",
-    SSH_AGENT_PID: process.env.SSH_AGENT_PID ?? "",
-    HPC_JOURNAL_DIR: `${process.env.HOME}/.mars/hpc`,
-    HPC_CLUSTERS_CONFIG: "/path/to/your/clusters.yaml",
-    PATH: process.env.PATH ?? "",
-  },
-  stdout: "pipe",
-  stderr: "pipe",
-});
+### Dispatcher-controlled (DO NOT set in MARs's spawn env)
+
+The cluster-side job dispatcher sets these per-task before invoking the
+executor. Setting them in the parent env that MARs forwards will confuse
+the dispatcher's per-task scope.
+
+| Variable        | Set by                                  | Read by                                |
+|-----------------|------------------------------------------|----------------------------------------|
+| `RESULT_DIR`    | dispatcher                               | `metrics_io.write_metrics()` (default arg) |
+| `HPC_KW_*`      | dispatcher (from `tasks.resolve(i)`)     | `metrics_io.read_kw_env()`             |
+| `LOCAL_DATA_DIR`| dispatcher (when `nfs_data_dir` is set)  | executor (optional)                    |
+
+### Executor import boundary
+
+Inside any executor that ships to the cluster, only these claude-hpc names
+are stable imports:
+
+- `claude_hpc.mapreduce.metrics_io.write_metrics`
+- `claude_hpc.mapreduce.metrics_io.read_kw_env`
+- `claude_hpc.executor_cli.flag`
+- `claude_hpc.executor_cli.generic_args`
+- `claude_hpc.executor_cli.gpu_args`
+- `claude_hpc.executor_cli.build_parser_from_flags`
+
+Anything else (e.g., `claude_hpc.runner.*`, `claude_hpc.mapreduce.reduce.*`)
+is internal and may break across releases.
+
+### `write_metrics` — actual signature
+
+```python
+def write_metrics(metrics: dict, *, result_dir: str | None = None) -> str
 ```
 
-**Why this matters**: without `SSH_AUTH_SOCK`, every cluster call hangs on
-auth — this is the single most common spawn failure.
+- `metrics` is a positional `dict`.
+- `result_dir` is keyword-only; defaults to reading the `RESULT_DIR` env var.
+- Include `"n_samples"` in the dict for weighted aggregation (defaults to 1).
+- Atomic write (tempfile + fsync + rename).
 
-MARs implements this in `src/paper/experiments/environment.ts:runInEnv`,
-defaulting `HPC_JOURNAL_DIR` to `~/.mars/hpc/<experiment-name>/` so concurrent
-runs don't share state.
+The dispatcher sets `RESULT_DIR` per task — executors call
+`write_metrics(d)` with no `result_dir` argument and it just works.
 
 ## Error Code → Retry Policy
 

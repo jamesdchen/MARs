@@ -1,27 +1,29 @@
 """Per-task executor for the bootstrap-coverage sweep.
 
-Run as:
-    uv run python scripts/run.py --task-id <i> --out <result_dir>
+When run under claude-hpc, the cluster dispatcher sets per-task env vars:
+- RESULT_DIR             : output directory (read by write_metrics; do NOT pass)
+- HPC_KW_DISTRIBUTION    : "normal" | "exponential" | "lognormal"
+- HPC_KW_SAMPLE_SIZE     : "30" | "100" | "300"
+- HPC_KW_SEED            : "0".."49"
 
-Local mode (no HPC): the agent loops over i in [0, total()) sequentially.
-Cluster mode: claude-hpc dispatches one process per task across the cluster.
-Each process writes its metrics via claude_hpc.mapreduce.metrics_io.write_metrics
-so that idempotent skip-on-resubmit and aggregation work without extra glue.
+The HPC_KW_* prefix + uppercasing is how claude-hpc surfaces the dict that
+.hpc/tasks.py's `resolve(i)` returns. `read_kw_env()` strips the prefix and
+lowercases.
+
+To test locally without HPC, set the env vars by hand:
+    RESULT_DIR=./_local HPC_KW_DISTRIBUTION=normal HPC_KW_SAMPLE_SIZE=30 \\
+        HPC_KW_SEED=0 uv run python scripts/run.py
+
+Import boundary: inside an executor that ships to the cluster, only
+`claude_hpc.mapreduce.metrics_io` and `claude_hpc.executor_cli` are stable
+imports from the claude_hpc package.
 """
 
 from __future__ import annotations
 
-import argparse
-import sys
-from pathlib import Path
-
 import numpy as np
 
-# Make .hpc/tasks.py importable without packaging it.
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent / ".hpc"))
-import tasks  # noqa: E402
-
-from claude_hpc.mapreduce.metrics_io import write_metrics  # type: ignore
+from claude_hpc.mapreduce.metrics_io import read_kw_env, write_metrics
 
 
 N_BOOTSTRAP_ITERS = 500
@@ -29,11 +31,13 @@ CI_LEVEL = 0.95
 BASE_SEED = 42
 
 
-def draw_sample(distribution: str, n: int, rng: np.random.Generator) -> np.ndarray:
+def draw_zero_mean_sample(
+    distribution: str, n: int, rng: np.random.Generator
+) -> np.ndarray:
     if distribution == "normal":
         return rng.standard_normal(n)
     if distribution == "exponential":
-        return rng.exponential(scale=1.0, size=n) - 1.0  # zero-mean
+        return rng.exponential(scale=1.0, size=n) - 1.0
     if distribution == "lognormal":
         sigma = 1.0
         return rng.lognormal(mean=0.0, sigma=sigma, size=n) - np.exp(sigma**2 / 2)
@@ -49,38 +53,35 @@ def percentile_bootstrap_ci(
         idx = rng.integers(0, n, size=n)
         boot_means[b] = sample[idx].mean()
     alpha = (1.0 - level) / 2.0
-    return float(np.quantile(boot_means, alpha)), float(np.quantile(boot_means, 1.0 - alpha))
+    return (
+        float(np.quantile(boot_means, alpha)),
+        float(np.quantile(boot_means, 1.0 - alpha)),
+    )
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--task-id", type=int, required=True)
-    parser.add_argument("--out", type=Path, required=True)
-    args = parser.parse_args()
-
-    kwargs = tasks.resolve(args.task_id)
-    distribution: str = kwargs["distribution"]
-    sample_size: int = kwargs["sample_size"]
-    seed: int = kwargs["seed"]
+    kw = read_kw_env()
+    distribution = kw["distribution"]
+    sample_size = int(kw["sample_size"])
+    seed = int(kw["seed"])
 
     rng = np.random.default_rng(BASE_SEED + seed)
-    sample = draw_sample(distribution, sample_size, rng)
+    sample = draw_zero_mean_sample(distribution, sample_size, rng)
     lo, hi = percentile_bootstrap_ci(sample, N_BOOTSTRAP_ITERS, CI_LEVEL, rng)
-    true_mean = 0.0  # all distributions above are centered at zero
-    covered = lo <= true_mean <= hi
+    covered = lo <= 0.0 <= hi
 
-    args.out.mkdir(parents=True, exist_ok=True)
     write_metrics(
-        args.out,
-        task_id=args.task_id,
-        kwargs=kwargs,
-        metrics={
+        {
             "covered": int(covered),
             "ci_lo": lo,
             "ci_hi": hi,
             "ci_width": hi - lo,
             "sample_mean": float(sample.mean()),
-        },
+            "distribution": distribution,
+            "sample_size": sample_size,
+            "seed": seed,
+            "n_samples": 1,
+        }
     )
     return 0
 

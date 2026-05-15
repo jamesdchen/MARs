@@ -8,35 +8,82 @@
 # Do NOT commit your edited copy back to MARs — it carries your username and
 # site-specific paths.
 #
-# Each top-level key is a cluster name you'll pass to `hpc-agent --cluster`
-# and to `experiment.hpc.default_cluster` in ~/.claude-paper/config.json.
+# Each top-level key is a cluster name you pass to `hpc-agent --cluster` and
+# to `experiment.hpc.default_cluster` in ~/.claude-paper/config.json.
+#
+# Only `scheduler` is strictly required; every other field has a default. The
+# upstream Pydantic model uses `extra="ignore"`, so misspelled field names
+# are silently dropped — double-check spelling.
+#
+# Full canonical template (with comments) is at
+# src/claude_hpc/config/clusters.yaml in the claude-hpc repo at the pinned
+# commit. The list below covers the fields most likely to need tuning.
 
 hoffman2:
+  # Required
+  scheduler: sge                    # "sge" or "slurm"
+
+  # SSH
   host: hoffman2.idre.ucla.edu
   user: <your_user>
-  scheduler: sge                  # 'sge' or 'slurm'
   scratch: /u/scratch/<your_user>
+
+  # Environment bootstrap
   modules:
     - python/3.11.9
   conda_source: /u/local/apps/anaconda3/2024.06/etc/profile.d/conda.sh
   conda_envs:
     - <your_env_name>
-  gpu_types:
+
+  # GPU
+  gpu_types:                        # informational; appears in plan output
     - a100
     - h200
     - a6000
+  # gpu_constraint: "a100|h200"     # Slurm --constraint expression
+  # gpu_queues:                     # SGE only: queue → {name, perf}
+  #   gpu.q:
+  #     name: gpu.q
+  #     perf: 1.0
+  # excluded_gpu_queue_prefixes:    # SGE only: skip queues by name prefix
+  #   - debug.
+
+  # Scheduler hints (all optional)
+  # default_partition: gpu          # Slurm partition name
+  # account: <slurm_account>        # Slurm --account
+  # max_walltime_sec: 86400         # cluster hard ceiling
+  # max_node_mem_mb: 256000         # largest single-node mem request
+
+  # Throughput / capacity limits
+  # constraints:
+  #   max_array_size: 1000
+  #   max_walltime: 86400
+  #   max_concurrent_jobs: 200
+  #   est_spin_up: 30               # seconds; used by the planner
+
+  # Performance toggles
+  # cold_start_mem_buffer: 0.15     # fractional headroom on cold-start runs
+  # walltime_arbitrage: true        # trim walltime asks once runtime priors mature
+  # auto_daisy_chain: null          # null = detect; true/false to force
+
+  # Data path
+  # nfs_data_dir: /u/project/data   # rsynced to node-local SSD; sets LOCAL_DATA_DIR
 
 # Example SLURM site — uncomment and adapt:
 #
 # discovery:
+#   scheduler: slurm
 #   host: discovery.example.edu
 #   user: <your_user>
-#   scheduler: slurm
 #   scratch: /scratch/<your_user>
 #   modules:
 #     - python/3.11
 #   conda_source: /sw/anaconda3/etc/profile.d/conda.sh
 #   conda_envs:
 #     - <your_env_name>
+#   default_partition: gpu
+#   account: <slurm_account>
+#   gpu_constraint: "a100|a40"
 #   gpu_types:
 #     - a100
+#     - a40

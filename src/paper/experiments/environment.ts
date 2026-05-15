@@ -140,8 +140,10 @@ ${depsStr}
       env: {
         ...process.env,
         PYTHONHASHSEED: '42',
-        // Explicit forwards for hpc-agent: missing SSH_AUTH_SOCK is the most
-        // common cluster-call failure (every call hangs on auth).
+        // Explicit forwards for hpc-agent. Missing SSH_AUTH_SOCK is the most
+        // common cluster-call failure (every call hangs on auth). Telemetry
+        // sink defaults to "none" upstream; sending to stderr lets MARs's
+        // log capture pick up claude-hpc's structured events.
         SSH_AUTH_SOCK: process.env.SSH_AUTH_SOCK ?? '',
         SSH_AGENT_PID: process.env.SSH_AGENT_PID ?? '',
         HPC_JOURNAL_DIR:
@@ -152,6 +154,9 @@ ${depsStr}
             'hpc',
             basename(experimentDir),
           ),
+        HPC_SSH_TIMEOUT_SEC: process.env.HPC_SSH_TIMEOUT_SEC ?? '120',
+        HPC_TELEMETRY_SINK:
+          process.env.HPC_TELEMETRY_SINK ?? 'stderr-jsonl',
       },
     })
 
