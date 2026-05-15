@@ -202,15 +202,18 @@ If `data.run_id` is returned, **skip submit** and resume monitoring on that run_
 
 The submit-spec is the JSON envelope passed to `hpc-agent submit`. **Do not include `run_id`** — claude-hpc generates it at submit time and returns it in the response (typical shape: `<profile>-<utc_ts>-<cmd_sha8>`, which is informational, not caller-controlled).
 
-```json
+Start with the cluster routing only — MARs's `.hpc/mars_spec.py` adapter overlays `profile` and `job_name` from `meta.json::experiment_id` (this replaces the `hpc-agent submit --from-meta` flag that claude-hpc dropped at `9c0e184`):
+
+```bash
+cat > base-spec.json <<'JSON'
 {
-  "profile": "<experiment_id>",
   "cluster": "hoffman2",
   "ssh_target": "user@hoffman2.idre.ucla.edu",
   "remote_path": "/u/scratch/<user>/<experiment_id>",
-  "job_name": "<experiment_id>",
   "total_tasks": <tasks.total()>
 }
+JSON
+uv run python .hpc/mars_spec.py build-spec "$PWD" base-spec.json > spec.json
 ```
 
 Validate before submitting:

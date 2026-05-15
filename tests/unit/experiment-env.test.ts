@@ -124,8 +124,43 @@ describe('ExperimentEnvironment.create tier 2', () => {
     expect(content).toContain('"matplotlib"')
     expect(content).toContain('"pytest"')
     expect(content).toContain('"ruff"')
-    expect(content).toMatch(/"claude-hpc @ git\+https:\/\/github\.com\/jamesdchen\/claude-hpc\.git@[0-9a-f]{40}"/)
+    expect(content).toMatch(/"claude-hpc @ git\+https:\/\/github\.com\/jamesdchen\/claude-hpc\.git@[0-9a-f]+"/)
     expect(content).toContain('requires-python = ">=3.11"')
+  })
+
+  it('scaffolds the split adapter helpers for tier-2 only', async () => {
+    const tmp = makeTmpDir()
+    const tier2Dir = join(tmp, 'run-003')
+    const tier1Dir = join(tmp, 'probe-003')
+    const env = new ExperimentEnvironment(tmp)
+    await env.create(tier2Dir, 2)
+    await env.create(tier1Dir, 1)
+
+    // Tier 2: meta_utils.py at root, mars_spec.py inside .hpc/
+    expect(existsSync(join(tier2Dir, 'meta_utils.py'))).toBe(true)
+    expect(existsSync(join(tier2Dir, '.hpc', 'mars_spec.py'))).toBe(true)
+
+    // Tier 1: neither
+    expect(existsSync(join(tier1Dir, 'meta_utils.py'))).toBe(false)
+    expect(existsSync(join(tier1Dir, '.hpc'))).toBe(false)
+
+    // meta_utils.py: pure MARs helpers, no HPC names
+    const metaUtils = readFileSync(join(tier2Dir, 'meta_utils.py'), 'utf-8')
+    expect(metaUtils).toContain('def detect_experiment_tier(')
+    expect(metaUtils).toContain('def read_meta_json(')
+    expect(metaUtils).not.toContain('claude_hpc')
+    expect(metaUtils).not.toContain('hpc-agent')
+
+    // mars_spec.py: HPC adapters; imports from meta_utils
+    const marsSpec = readFileSync(
+      join(tier2Dir, '.hpc', 'mars_spec.py'),
+      'utf-8',
+    )
+    expect(marsSpec).toContain('from meta_utils import')
+    expect(marsSpec).toContain('def discover_with_meta(')
+    expect(marsSpec).toContain('def build_submit_spec(')
+    expect(marsSpec).not.toContain('def read_meta_json(')
+    expect(marsSpec).not.toContain('def detect_experiment_tier(')
   })
 })
 

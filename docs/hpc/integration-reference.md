@@ -1,7 +1,7 @@
 # claude-hpc Integration Reference (Vendored)
 
 > **Vendored from** <https://github.com/jamesdchen/claude-hpc>
-> **Source:** `docs/workflows/mars-integration.md` @ `ec041c6399adc17c0f96d2fd10c5478aea30d7f2`
+> **Source:** integration contract @ commit `9c0e184` on branch `claude/post-mars-cleanup-iRQMr`
 > **Synced:** 2026-05-15
 > **Re-sync** when upgrading the pinned `claude-hpc` range in
 > `src/paper/experiments/environment.ts`.
@@ -14,13 +14,52 @@ document is the human-readable reference behind it.
 
 ---
 
+## What changed at `9c0e184` (the cleavage)
+
+claude-hpc was previously a more MARs-aware tool. At this commit it stopped
+knowing about MARs's experiment shape. The following surfaces **moved out of
+claude-hpc and into MARs**, split by concern (so `.hpc/` only holds
+HPC-shaped code):
+
+| Removed from claude-hpc | Owned by MARs |
+|---|---|
+| `claude_hpc.state.discover.detect_mars_tier(...)` (auto-detected probe/run from path layout) | `meta_utils.detect_experiment_tier(experiment_dir)` at the experiment root |
+| `claude_hpc.state.discover.read_meta_json(...)` | `meta_utils.read_meta_json(experiment_dir)` at the experiment root |
+| `hpc-agent discover` envelope's `data.meta` block (experiment_id/seed/purpose/tier) | `.hpc/mars_spec.discover_with_meta(experiment_dir)` wraps the CLI and re-adds it |
+| `hpc-agent submit --from-meta` (overlay experiment_id onto profile/job_name) | `.hpc/mars_spec.build_submit_spec(experiment_dir, base_spec)` |
+| Auto-narrowing the executor scan to `scripts/` when meta.json was present | `mars_spec.discover_with_meta` passes `search_dirs=["scripts"]` to the Python API for tier-2 |
+
+Why the split is by concern: `read_meta_json` and `detect_experiment_tier`
+are pure MARs utilities (the JSON schema is MARs's; the probe/run path
+convention is MARs's). They live at the experiment root in `meta_utils.py`.
+`build_submit_spec` and `discover_with_meta` are HPC adapters — they
+bridge MARs's metadata into HPC tool calls — so they live in `.hpc/` next
+to the agent-written `tasks.py`. The HPC adapter imports from `meta_utils`
+via a `sys.path.insert(0, parent_dir)` shim at the top of `mars_spec.py`.
+
+Why the directional split overall: claude-hpc parallelizes whatever the
+caller hands it. It has no business knowing about probe-vs-run tiers,
+`experiment_id` semantics, or the src-is-modules convention — those are
+MARs's contracts. The two halves still interlock cleanly through
+`hpc-agent`'s JSON envelope and the per-run sidecar; that contract is
+unchanged.
+
+**Known upstream gap (filed as feature request):** the
+`hpc-agent discover` CLI does **not** expose `--search-dirs` at `9c0e184`,
+even though `claude_hpc.state.discover.discover_executors(root, search_dirs=...)`
+accepts the override. `mars_spec.discover_with_meta` imports the Python API
+directly to apply the override; once the CLI flag ships upstream, switch
+the adapter to the CLI for fewer cross-package imports.
+
+---
+
 ## Setup Steps
 
 The maintainer needs three changes:
 
 1. **Add dependency**: `claude-hpc` is included in the tier-2 `pyproject.toml`
    written by `src/paper/experiments/environment.ts`. It's installed from a
-   pinned git+ URL (commit `ec041c6`) because claude-hpc is not on PyPI yet —
+   pinned git+ URL (commit `9c0e184`) because claude-hpc is not on PyPI yet —
    when it publishes, switch the pin in environment.ts to `claude-hpc>=X,<Y`
    and re-sync this document.
 2. **Update agent prompt**: the cluster-execution section from upstream
