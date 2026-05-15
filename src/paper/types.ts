@@ -105,6 +105,12 @@ export interface ProjectConfig {
     max_runtime_hours: number
     auto_retry_on_error: boolean
     max_retries: number
+    hpc?: {
+      enabled: boolean
+      default_cluster: string
+      delegate_when_tasks_over: number
+      delegate_when_walltime_minutes_over: number
+    }
   }
   proposals: {
     count: number

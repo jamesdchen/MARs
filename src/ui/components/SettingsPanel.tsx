@@ -223,6 +223,30 @@ const SECTIONS: SectionDef[] = [
         type: 'boolean',
         description: 'Prefer Docker for experiment isolation',
       },
+      {
+        key: 'experiment.hpc.enabled',
+        label: 'hpc.enabled',
+        type: 'boolean',
+        description: 'Allow tier-2 runs to delegate to an HPC cluster via claude-hpc',
+      },
+      {
+        key: 'experiment.hpc.default_cluster',
+        label: 'hpc.default_cluster',
+        type: 'string',
+        description: 'Cluster name from clusters.yaml (e.g., hoffman2)',
+      },
+      {
+        key: 'experiment.hpc.delegate_when_tasks_over',
+        label: 'hpc.delegate_when_tasks_over',
+        type: 'number',
+        description: 'Delegate to HPC when grid size exceeds this many tasks',
+      },
+      {
+        key: 'experiment.hpc.delegate_when_walltime_minutes_over',
+        label: 'hpc.delegate_when_walltime_minutes_over',
+        type: 'number',
+        description: 'Delegate to HPC when estimated walltime exceeds this many minutes',
+      },
     ],
   },
 ]

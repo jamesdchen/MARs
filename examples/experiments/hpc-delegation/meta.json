@@ -1,0 +1,17 @@
+{
+  "id": "run-007-bootstrap-coverage",
+  "tier": 2,
+  "purpose": "Test whether percentile bootstrap 95% CI achieves nominal coverage for skewed distributions at small sample sizes.",
+  "targets_claim": "claim-bootstrap-coverage-skew",
+  "created_at": "2026-05-15T14:00:00Z",
+  "created_by": "orchestrator",
+  "status": "created",
+  "seed": 42,
+  "parameter_axes": {
+    "distribution": ["normal", "exponential", "lognormal"],
+    "sample_size": [30, 100, 300],
+    "seed": "range(50)"
+  },
+  "expected_grid_size": 450,
+  "bootstrap_iters_per_task": 500
+}
