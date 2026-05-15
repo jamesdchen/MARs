@@ -1,0 +1,42 @@
+# clusters.yaml — claude-hpc cluster definitions, used by hpc-agent
+#
+# Copy this file (e.g., to ~/.claude-hpc/clusters.yaml), edit values for your
+# site, then point claude-hpc at it:
+#
+#   export HPC_CLUSTERS_CONFIG=$HOME/.claude-hpc/clusters.yaml
+#
+# Do NOT commit your edited copy back to MARs — it carries your username and
+# site-specific paths.
+#
+# Each top-level key is a cluster name you'll pass to `hpc-agent --cluster`
+# and to `experiment.hpc.default_cluster` in ~/.claude-paper/config.json.
+
+hoffman2:
+  host: hoffman2.idre.ucla.edu
+  user: <your_user>
+  scheduler: sge                  # 'sge' or 'slurm'
+  scratch: /u/scratch/<your_user>
+  modules:
+    - python/3.11.9
+  conda_source: /u/local/apps/anaconda3/2024.06/etc/profile.d/conda.sh
+  conda_envs:
+    - <your_env_name>
+  gpu_types:
+    - a100
+    - h200
+    - a6000
+
+# Example SLURM site — uncomment and adapt:
+#
+# discovery:
+#   host: discovery.example.edu
+#   user: <your_user>
+#   scheduler: slurm
+#   scratch: /scratch/<your_user>
+#   modules:
+#     - python/3.11
+#   conda_source: /sw/anaconda3/etc/profile.d/conda.sh
+#   conda_envs:
+#     - <your_env_name>
+#   gpu_types:
+#     - a100

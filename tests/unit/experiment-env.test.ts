@@ -76,6 +76,7 @@ describe('ExperimentEnvironment.create tier 1', () => {
     expect(content).not.toContain('"matplotlib"')
     expect(content).not.toContain('"pytest"')
     expect(content).not.toContain('"ruff"')
+    expect(content).not.toContain('claude-hpc')
   })
 
   it('writes env_snapshot.json', async () => {
@@ -123,6 +124,7 @@ describe('ExperimentEnvironment.create tier 2', () => {
     expect(content).toContain('"matplotlib"')
     expect(content).toContain('"pytest"')
     expect(content).toContain('"ruff"')
+    expect(content).toContain('"claude-hpc>=0.1,<1.0"')
     expect(content).toContain('requires-python = ">=3.11"')
   })
 })

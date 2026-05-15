@@ -66,7 +66,13 @@ export class ExperimentEnvironment {
     // Generate pyproject.toml
     const name = basename(experimentDir)
     const tier1Deps = ['numpy', 'pandas', 'scipy']
-    const tier2Deps = [...tier1Deps, 'matplotlib', 'pytest', 'ruff']
+    const tier2Deps = [
+      ...tier1Deps,
+      'matplotlib',
+      'pytest',
+      'ruff',
+      'claude-hpc>=0.1,<1.0',
+    ]
     const deps = tier === 1 ? tier1Deps : tier2Deps
     const depsStr = deps.map(d => `    "${d}",`).join('\n')
 
@@ -131,7 +137,22 @@ ${depsStr}
       cwd: experimentDir,
       stdout: 'pipe',
       stderr: 'pipe',
-      env: { ...process.env, PYTHONHASHSEED: '42' },
+      env: {
+        ...process.env,
+        PYTHONHASHSEED: '42',
+        // Explicit forwards for hpc-agent: missing SSH_AUTH_SOCK is the most
+        // common cluster-call failure (every call hangs on auth).
+        SSH_AUTH_SOCK: process.env.SSH_AUTH_SOCK ?? '',
+        SSH_AGENT_PID: process.env.SSH_AGENT_PID ?? '',
+        HPC_JOURNAL_DIR:
+          process.env.HPC_JOURNAL_DIR ??
+          join(
+            process.env.HOME ?? '.',
+            '.mars',
+            'hpc',
+            basename(experimentDir),
+          ),
+      },
     })
 
     let timedOut = false
