@@ -281,7 +281,7 @@ Every experiment auto-generates a structured notebook (**NOTE.md**): why it was 
 
 Resource estimation runs before execution — GPU, memory, disk, and runtime requirements are checked against available hardware. OOM errors trigger automatic batch size reduction and retry.
 
-For cluster (SGE/SLURM) execution of Tier 2 runs that exceed local capacity, MARs integrates with [`claude-hpc`](https://github.com/jamesdchen/claude-hpc) — see [`docs/hpc/setup.md`](docs/hpc/setup.md).
+For cluster (SGE/SLURM) execution of Tier 2 runs that exceed local capacity, MARs integrates with [`hpc-agent`](https://github.com/jamesdchen/hpc-agent) — see [`docs/hpc/setup.md`](docs/hpc/setup.md).
 
 ## Writing Pipeline
 

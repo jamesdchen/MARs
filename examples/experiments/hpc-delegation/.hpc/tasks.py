@@ -1,6 +1,6 @@
 """Task fan-out for the bootstrap-coverage sweep.
 
-claude-hpc imports this module and calls `total()` to size the array job,
+hpc-agent imports this module and calls `total()` to size the array job,
 then `resolve(i)` per task to recover the kwargs for task #i. The agent
 writes this file from meta.json's parameter axes; do NOT edit by hand
 unless meta.json changes.

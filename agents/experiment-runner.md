@@ -109,7 +109,7 @@ Use `experiment.hpc.default_cluster` as the cluster name unless `meta.json` over
 
 **Dispatcher-controlled env vars.** Never set `RESULT_DIR`, `HPC_KW_*`, or `LOCAL_DATA_DIR` in commands you run — the cluster-side job dispatcher sets these per-task before invoking the executor.
 
-See `docs/hpc/integration-reference.md` (vendored from claude-hpc) for the full env-var contract, error_code table, and design constraints behind everything below.
+See `docs/hpc/integration-reference.md` (vendored from hpc-agent) for the full env-var contract, error_code table, and design constraints behind everything below.
 
 ### Pre-flight (run once per session)
 
@@ -119,7 +119,7 @@ uv run hpc-agent preflight --cluster <name>
 
 Parse the JSON envelope. If `data.all_ok` is false, surface `data.checks[]` to the user and stop. Common failure: `ssh_auth_sock` is false → the spawn env is missing `SSH_AUTH_SOCK`. This is the operator's problem, not a code bug.
 
-### Scaffold `.hpc/tasks.py` (you write this; claude-hpc imports it)
+### Scaffold `.hpc/tasks.py` (you write this; hpc-agent imports it)
 
 This is the central agent-driven moment. The framework's task fan-out is defined by **`<experiment-dir>/.hpc/tasks.py`** — a small Python module with two callables:
 
@@ -128,17 +128,17 @@ def total() -> int: ...               # number of tasks
 def resolve(i: int) -> dict: ...      # kwargs for task #i
 ```
 
-Claude (you) writes this file once per experiment proposal, translating `meta.json`'s parameter axes into a materialized `_TASKS` list. The framework never auto-generates it — keeping the experiment definition in user code (committed to git) is what makes claude-hpc reusable across experiments.
+Claude (you) writes this file once per experiment proposal, translating `meta.json`'s parameter axes into a materialized `_TASKS` list. The framework never auto-generates it — keeping the experiment definition in user code (committed to git) is what makes hpc-agent reusable across experiments.
 
 1. If `.hpc/tasks.py` already exists, **do not regenerate**. Verify it imports cleanly and `total()` returns the cardinality you expect:
    ```bash
-   uv run python -c 'from claude_hpc import load_tasks_module, tasks_path; m = load_tasks_module(tasks_path(".")); print("total=", m.total(), "sample=", m.resolve(0))'
+   uv run python -c 'from hpc_agent import load_tasks_module, tasks_path; m = load_tasks_module(tasks_path(".")); print("total=", m.total(), "sample=", m.resolve(0))'
    ```
    Skip to "Build the run spec" below.
 
-2. Otherwise, read the canonical reference (the only `tasks.py` example the framework ships). Locate it without depending on private claude-hpc paths:
+2. Otherwise, read the canonical reference (the only `tasks.py` example the framework ships). Locate it without depending on private hpc-agent paths:
    ```bash
-   uv run python -c 'import claude_hpc, pathlib; print(next(p for root in claude_hpc.__path__ for p in pathlib.Path(root).rglob("tasks_example.py")))'
+   uv run python -c 'import hpc_agent, pathlib; print(next(p for root in hpc_agent.__path__ for p in pathlib.Path(root).rglob("tasks_example.py")))'
    ```
    It demonstrates three patterns inline (Cartesian product, chunking, date-window backtests). Pick the one that matches what `meta.json` describes; delete the rest.
 
@@ -157,18 +157,18 @@ Claude (you) writes this file once per experiment proposal, translating `meta.js
 4. **Write the executor** (`scripts/<executor>.py`) so it can read its per-task kwargs from env. The cluster dispatcher exports each key of `resolve(i)` as `HPC_KW_<UPPER>` and sets `RESULT_DIR` per task. Two patterns work:
    - **`read_kw_env()`** — simplest:
      ```python
-     from claude_hpc.mapreduce.metrics_io import read_kw_env, write_metrics
+     from hpc_agent.mapreduce.metrics_io import read_kw_env, write_metrics
      kw = read_kw_env()  # {"lr": "0.01", "seed": "42"} — all str, cast as needed
      ...
      write_metrics({"loss": 0.123, "n_samples": 1024})  # RESULT_DIR auto-read
      ```
    - **`executor_cli` (typed flags)** — declare `FLAGS = {"scripts.run": [*generic_args(), flag("lr", type=float), ...]}` in `.hpc/tasks.py` and parse via `build_parser_from_flags` in the executor. Use this when you want strict types or `--output-file` semantics.
 
-   Import boundary: in any executor that ships to the cluster, only `claude_hpc.mapreduce.metrics_io` and `claude_hpc.executor_cli` are stable imports from the `claude_hpc` package. Everything else may break across releases.
+   Import boundary: in any executor that ships to the cluster, only `hpc_agent.mapreduce.metrics_io` and `hpc_agent.executor_cli` are stable imports from the `hpc_agent` package. Everything else may break across releases.
 
 5. Verify locally before submitting:
    ```bash
-   uv run python -c 'from claude_hpc import load_tasks_module, tasks_path, compute_cmd_sha; m = load_tasks_module(tasks_path(".")); print("total=", m.total(), "cmd_sha=", compute_cmd_sha(m))'
+   uv run python -c 'from hpc_agent import load_tasks_module, tasks_path, compute_cmd_sha; m = load_tasks_module(tasks_path(".")); print("total=", m.total(), "cmd_sha=", compute_cmd_sha(m))'
    ```
    Record the full 64-char `cmd_sha` — it's the dedup key for `find-prior-run` below.
 
@@ -200,9 +200,9 @@ If `data.run_id` is returned, **skip submit** and resume monitoring on that run_
 
 ### Build the run spec
 
-The submit-spec is the JSON envelope passed to `hpc-agent submit`. **Do not include `run_id`** — claude-hpc generates it at submit time and returns it in the response (typical shape: `<profile>-<utc_ts>-<cmd_sha8>`, which is informational, not caller-controlled).
+The submit-spec is the JSON envelope passed to `hpc-agent submit`. **Do not include `run_id`** — hpc-agent generates it at submit time and returns it in the response (typical shape: `<profile>-<utc_ts>-<cmd_sha8>`, which is informational, not caller-controlled).
 
-Start with the cluster routing only — MARs's `.hpc/mars_spec.py` adapter overlays `profile` and `job_name` from `meta.json::experiment_id` (this replaces the `hpc-agent submit --from-meta` flag that claude-hpc dropped at `9c0e184`):
+Start with the cluster routing only — MARs's `.hpc/mars_spec.py` adapter overlays `profile` and `job_name` from `meta.json::experiment_id` (this replaces the `hpc-agent submit --from-meta` flag that hpc-agent dropped at `9c0e184`):
 
 ```bash
 cat > base-spec.json <<'JSON'
@@ -308,18 +308,18 @@ This is the only place these facts get recorded — neither `meta.json` (its sch
 | `config_invalid`        | Surface; clusters.yaml is malformed.                         |
 | `outputs_missing`       | Surface; the executor produced no per-task outputs.          |
 | `journal_corrupt`       | Surface; investigate `$HPC_JOURNAL_DIR`.                     |
-| `schema_incompat`       | Surface; pin claude-hpc and the cluster runtime to compatible versions. |
+| `schema_incompat`       | Surface; pin hpc-agent and the cluster runtime to compatible versions. |
 
 Exit codes: 0 ok, 1 user error (fix and retry), 2 cluster/network (per `retry_safe`), 3 internal (bug report).
 
-### Constraints (from claude-hpc)
+### Constraints (from hpc-agent)
 
-- **No cancel/abort.** Once submitted, jobs run to walltime; claude-hpc cannot kill them. If the user clicks "abort" in MARs or you decide a run is bad, stop polling — but the cluster jobs continue until their walltime expires (which may incur charges on metered clusters). Surface this to the user when they request an abort.
-- **Dedup is on `cmd_sha`, not on `run_id`.** Use `find-prior-run --cmd-sha <sha>` before submit. `run_id` is generated by claude-hpc and opaque to the caller.
+- **No cancel/abort.** Once submitted, jobs run to walltime; hpc-agent cannot kill them. If the user clicks "abort" in MARs or you decide a run is bad, stop polling — but the cluster jobs continue until their walltime expires (which may incur charges on metered clusters). Surface this to the user when they request an abort.
+- **Dedup is on `cmd_sha`, not on `run_id`.** Use `find-prior-run --cmd-sha <sha>` before submit. `run_id` is generated by hpc-agent and opaque to the caller.
 - **Resubmit is idempotent on `request_id`.** A second call with the same spec returns `deduped: true` without incrementing per-task retry counters. When the caller does not supply a `request_id`, one is derived from `(failed_task_ids, category, overrides)`. Use `list-in-flight` to inspect retry counters.
-- **Idempotency-skip on resubmit.** If a task's `result_dir/metrics.json` exists with non-zero size, the cluster-side dispatcher exits 0 without re-running the executor. Convention: executors that don't call `claude_hpc.mapreduce.metrics_io.write_metrics(dict)` won't get free skip-on-resubmit.
+- **Idempotency-skip on resubmit.** If a task's `result_dir/metrics.json` exists with non-zero size, the cluster-side dispatcher exits 0 without re-running the executor. Convention: executors that don't call `hpc_agent.mapreduce.metrics_io.write_metrics(dict)` won't get free skip-on-resubmit.
 - **Scheduler rate limits.** Serialize submissions to a single cluster.
-- **`HPC_JOURNAL_DIR` is per-MARs-run.** MARs's `runInEnv` sets it to `~/.mars/hpc/<experiment-name>/` automatically so concurrent runs don't share state. claude-hpc internally namespaces by `<repo_hash>` under that path; moving an experiment dir orphans its journal.
+- **`HPC_JOURNAL_DIR` is per-MARs-run.** MARs's `runInEnv` sets it to `~/.mars/hpc/<experiment-name>/` automatically so concurrent runs don't share state. hpc-agent internally namespaces by `<repo_hash>` under that path; moving an experiment dir orphans its journal.
 - **`clusters.yaml` typos are silent.** The Pydantic loader uses `extra="ignore"`. Double-check spelling when authoring or editing.
-- **Python ≥3.10** required by claude-hpc; MARs scaffolds tier-2 with 3.11.
-- **Forecasting extra is optional.** `best-submit-window` and `predict-queue-wait --backend des` degrade to a diurnal-MA baseline without `claude-hpc[forecasting]` (which pulls in `lightgbm`). Calls still succeed; predictions are coarser.
+- **Python ≥3.10** required by hpc-agent; MARs scaffolds tier-2 with 3.11.
+- **Forecasting extra is optional.** `best-submit-window` and `predict-queue-wait --backend des` degrade to a diurnal-MA baseline without `hpc-agent[forecasting]` (which pulls in `lightgbm`). Calls still succeed; predictions are coarser.

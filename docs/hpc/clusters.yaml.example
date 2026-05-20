@@ -1,9 +1,9 @@
-# clusters.yaml — claude-hpc cluster definitions, used by hpc-agent
+# clusters.yaml — hpc-agent cluster definitions, used by hpc-agent
 #
-# Copy this file (e.g., to ~/.claude-hpc/clusters.yaml), edit values for your
-# site, then point claude-hpc at it:
+# Copy this file (e.g., to ~/.hpc-agent/clusters.yaml), edit values for your
+# site, then point hpc-agent at it:
 #
-#   export HPC_CLUSTERS_CONFIG=$HOME/.claude-hpc/clusters.yaml
+#   export HPC_CLUSTERS_CONFIG=$HOME/.hpc-agent/clusters.yaml
 #
 # Do NOT commit your edited copy back to MARs — it carries your username and
 # site-specific paths.
@@ -16,7 +16,7 @@
 # are silently dropped — double-check spelling.
 #
 # Full canonical template (with comments) is at
-# src/claude_hpc/config/clusters.yaml in the claude-hpc repo at the pinned
+# src/hpc_agent/config/clusters.yaml in the hpc-agent repo at the pinned
 # commit. The list below covers the fields most likely to need tuning.
 
 hoffman2:

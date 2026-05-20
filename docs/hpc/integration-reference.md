@@ -1,9 +1,9 @@
-# claude-hpc Integration Reference (Vendored)
+# hpc-agent Integration Reference (Vendored)
 
-> **Vendored from** <https://github.com/jamesdchen/claude-hpc>
+> **Vendored from** <https://github.com/jamesdchen/hpc-agent>
 > **Source:** integration contract @ commit `9c0e184` on branch `claude/post-mars-cleanup-iRQMr`
 > **Synced:** 2026-05-15
-> **Re-sync** when upgrading the pinned `claude-hpc` range in
+> **Re-sync** when upgrading the pinned `hpc-agent` range in
 > `src/paper/experiments/environment.ts`.
 
 This file is the contract MARs's `experiment-runner` agent and tier-2
@@ -16,15 +16,15 @@ document is the human-readable reference behind it.
 
 ## What changed at `9c0e184` (the cleavage)
 
-claude-hpc was previously a more MARs-aware tool. At this commit it stopped
+hpc-agent was previously a more MARs-aware tool. At this commit it stopped
 knowing about MARs's experiment shape. The following surfaces **moved out of
-claude-hpc and into MARs**, split by concern (so `.hpc/` only holds
+hpc-agent and into MARs**, split by concern (so `.hpc/` only holds
 HPC-shaped code):
 
-| Removed from claude-hpc | Owned by MARs |
+| Removed from hpc-agent | Owned by MARs |
 |---|---|
-| `claude_hpc.state.discover.detect_mars_tier(...)` (auto-detected probe/run from path layout) | `meta_utils.detect_experiment_tier(experiment_dir)` at the experiment root |
-| `claude_hpc.state.discover.read_meta_json(...)` | `meta_utils.read_meta_json(experiment_dir)` at the experiment root |
+| `hpc_agent.state.discover.detect_mars_tier(...)` (auto-detected probe/run from path layout) | `meta_utils.detect_experiment_tier(experiment_dir)` at the experiment root |
+| `hpc_agent.state.discover.read_meta_json(...)` | `meta_utils.read_meta_json(experiment_dir)` at the experiment root |
 | `hpc-agent discover` envelope's `data.meta` block (experiment_id/seed/purpose/tier) | `.hpc/mars_spec.discover_with_meta(experiment_dir)` wraps the CLI and re-adds it |
 | `hpc-agent submit --from-meta` (overlay experiment_id onto profile/job_name) | `.hpc/mars_spec.build_submit_spec(experiment_dir, base_spec)` |
 | Auto-narrowing the executor scan to `scripts/` when meta.json was present | `mars_spec.discover_with_meta` passes `search_dirs=["scripts"]` to the Python API for tier-2 |
@@ -37,7 +37,7 @@ bridge MARs's metadata into HPC tool calls — so they live in `.hpc/` next
 to the agent-written `tasks.py`. The HPC adapter imports from `meta_utils`
 via a `sys.path.insert(0, parent_dir)` shim at the top of `mars_spec.py`.
 
-Why the directional split overall: claude-hpc parallelizes whatever the
+Why the directional split overall: hpc-agent parallelizes whatever the
 caller hands it. It has no business knowing about probe-vs-run tiers,
 `experiment_id` semantics, or the src-is-modules convention — those are
 MARs's contracts. The two halves still interlock cleanly through
@@ -46,7 +46,7 @@ unchanged.
 
 **Known upstream gap (filed as feature request):** the
 `hpc-agent discover` CLI does **not** expose `--search-dirs` at `9c0e184`,
-even though `claude_hpc.state.discover.discover_executors(root, search_dirs=...)`
+even though `hpc_agent.state.discover.discover_executors(root, search_dirs=...)`
 accepts the override. `mars_spec.discover_with_meta` imports the Python API
 directly to apply the override; once the CLI flag ships upstream, switch
 the adapter to the CLI for fewer cross-package imports.
@@ -57,10 +57,10 @@ the adapter to the CLI for fewer cross-package imports.
 
 The maintainer needs three changes:
 
-1. **Add dependency**: `claude-hpc` is included in the tier-2 `pyproject.toml`
+1. **Add dependency**: `hpc-agent` is included in the tier-2 `pyproject.toml`
    written by `src/paper/experiments/environment.ts`. It's installed from a
-   pinned git+ URL (commit `9c0e184`) because claude-hpc is not on PyPI yet —
-   when it publishes, switch the pin in environment.ts to `claude-hpc>=X,<Y`
+   pinned git+ URL (commit `9c0e184`) because hpc-agent is not on PyPI yet —
+   when it publishes, switch the pin in environment.ts to `hpc-agent>=X,<Y`
    and re-sync this document.
 2. **Update agent prompt**: the cluster-execution section from upstream
    `docs/workflows/mars/experiment-runner.snippet.md` is appended verbatim
@@ -78,8 +78,8 @@ The maintainer needs three changes:
 | `SSH_AGENT_PID`        | parent env                                             | Pair with `SSH_AUTH_SOCK`. |
 | `HPC_JOURNAL_DIR`      | `~/.mars/hpc/<experiment-name>/`                       | Per-experiment journal so concurrent MARs runs don't share state. |
 | `HPC_CLUSTERS_CONFIG`  | parent env (operator sets it)                          | Path to `clusters.yaml`. |
-| `HPC_SSH_TIMEOUT_SEC`  | parent env, claude-hpc default 60                      | Raise to ~120 for flaky login nodes. |
-| `HPC_TELEMETRY_SINK`   | parent env, claude-hpc default `none`                  | Set to `stderr-jsonl` to capture telemetry into MARs's log stream. |
+| `HPC_SSH_TIMEOUT_SEC`  | parent env, hpc-agent default 60                      | Raise to ~120 for flaky login nodes. |
+| `HPC_TELEMETRY_SINK`   | parent env, hpc-agent default `none`                  | Set to `stderr-jsonl` to capture telemetry into MARs's log stream. |
 
 ### Dispatcher-controlled (DO NOT set in MARs's spawn env)
 
@@ -95,17 +95,17 @@ the dispatcher's per-task scope.
 
 ### Executor import boundary
 
-Inside any executor that ships to the cluster, only these claude-hpc names
+Inside any executor that ships to the cluster, only these hpc-agent names
 are stable imports:
 
-- `claude_hpc.mapreduce.metrics_io.write_metrics`
-- `claude_hpc.mapreduce.metrics_io.read_kw_env`
-- `claude_hpc.executor_cli.flag`
-- `claude_hpc.executor_cli.generic_args`
-- `claude_hpc.executor_cli.gpu_args`
-- `claude_hpc.executor_cli.build_parser_from_flags`
+- `hpc_agent.mapreduce.metrics_io.write_metrics`
+- `hpc_agent.mapreduce.metrics_io.read_kw_env`
+- `hpc_agent.executor_cli.flag`
+- `hpc_agent.executor_cli.generic_args`
+- `hpc_agent.executor_cli.gpu_args`
+- `hpc_agent.executor_cli.build_parser_from_flags`
 
-Anything else (e.g., `claude_hpc.runner.*`, `claude_hpc.mapreduce.reduce.*`)
+Anything else (e.g., `hpc_agent.runner.*`, `hpc_agent.mapreduce.reduce.*`)
 is internal and may break across releases.
 
 ### `write_metrics` — actual signature
@@ -146,7 +146,7 @@ The dispatcher sets `RESULT_DIR` per task — executors call
 
 ## The `.hpc/tasks.py` Boundary
 
-MARs writes this file; claude-hpc imports it. It must expose two callables:
+MARs writes this file; hpc-agent imports it. It must expose two callables:
 
 ```python
 def total() -> int:
@@ -173,7 +173,7 @@ def resolve(i: int) -> dict:
 Verify locally with:
 
 ```bash
-python -c 'from claude_hpc import load_tasks_module, tasks_path; m = load_tasks_module(tasks_path(".")); print("total=", m.total(), "sample=", m.resolve(0))'
+python -c 'from hpc_agent import load_tasks_module, tasks_path; m = load_tasks_module(tasks_path(".")); print("total=", m.total(), "sample=", m.resolve(0))'
 ```
 
 ## Troubleshooting Silent Hangs
@@ -195,9 +195,9 @@ Defense-in-depth: the `status`, `aggregate`, and `reconcile` subcommands fail
 fast with `error_code: "ssh_unreachable"` (exit 2) when `SSH_AUTH_SOCK` is
 unset.
 
-## MARs's Dependency Surface on claude-hpc
+## MARs's Dependency Surface on hpc-agent
 
-Anyone refactoring claude-hpc should check this list before deleting, renaming,
+Anyone refactoring hpc-agent should check this list before deleting, renaming,
 or restructuring. These are the contract surfaces MARs actively depends on at
 the pinned commit; breaking any of them breaks MARs.
 
@@ -240,25 +240,25 @@ Exit codes: `0` success, `1` user error, `2` cluster/network, `3` internal.
 ### Submit-spec JSON fields MARs writes
 
 `profile`, `cluster`, `ssh_target`, `remote_path`, `job_name`, `total_tasks`.
-MARs does NOT supply `run_id` — claude-hpc emits it in the response.
+MARs does NOT supply `run_id` — hpc-agent emits it in the response.
 
 ### Python imports MARs uses
 
 Public package surface (must remain in `__all__` or equivalent):
-- `claude_hpc.load_tasks_module`
-- `claude_hpc.tasks_path`
-- `claude_hpc.compute_cmd_sha`
+- `hpc_agent.load_tasks_module`
+- `hpc_agent.tasks_path`
+- `hpc_agent.compute_cmd_sha`
 
 Executor-side stable imports (the documented import boundary):
-- `claude_hpc.mapreduce.metrics_io.write_metrics`
-- `claude_hpc.mapreduce.metrics_io.read_kw_env`
-- `claude_hpc.executor_cli.flag`
-- `claude_hpc.executor_cli.generic_args`
-- `claude_hpc.executor_cli.gpu_args`
-- `claude_hpc.executor_cli.build_parser_from_flags`
+- `hpc_agent.mapreduce.metrics_io.write_metrics`
+- `hpc_agent.mapreduce.metrics_io.read_kw_env`
+- `hpc_agent.executor_cli.flag`
+- `hpc_agent.executor_cli.generic_args`
+- `hpc_agent.executor_cli.gpu_args`
+- `hpc_agent.executor_cli.build_parser_from_flags`
 
 MARs does NOT import `_PACKAGE_ROOT` or any other leading-underscore name —
-the canonical `tasks_example.py` is located via `claude_hpc.__path__` + rglob.
+the canonical `tasks_example.py` is located via `hpc_agent.__path__` + rglob.
 
 ### Env vars MARs forwards (caller-side contract)
 
@@ -295,5 +295,5 @@ the canonical `tasks_example.py` is located via `claude_hpc.__path__` + rglob.
   `experiment.hpc.enabled`).
 - No directory restructuring, no changes to `meta.json`, no changes to
   `results/metrics.json` schema.
-- claude-hpc cannot kill cluster jobs by design (`scancel` / `qdel` are
+- hpc-agent cannot kill cluster jobs by design (`scancel` / `qdel` are
   denied). If MARs decides a run is bad, stop polling and let it expire.
