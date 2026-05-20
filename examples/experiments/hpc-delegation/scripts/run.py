@@ -1,12 +1,12 @@
 """Per-task executor for the bootstrap-coverage sweep.
 
-When run under claude-hpc, the cluster dispatcher sets per-task env vars:
+When run under hpc-agent, the cluster dispatcher sets per-task env vars:
 - RESULT_DIR             : output directory (read by write_metrics; do NOT pass)
 - HPC_KW_DISTRIBUTION    : "normal" | "exponential" | "lognormal"
 - HPC_KW_SAMPLE_SIZE     : "30" | "100" | "300"
 - HPC_KW_SEED            : "0".."49"
 
-The HPC_KW_* prefix + uppercasing is how claude-hpc surfaces the dict that
+The HPC_KW_* prefix + uppercasing is how hpc-agent surfaces the dict that
 .hpc/tasks.py's `resolve(i)` returns. `read_kw_env()` strips the prefix and
 lowercases.
 
@@ -15,15 +15,15 @@ To test locally without HPC, set the env vars by hand:
         HPC_KW_SEED=0 uv run python scripts/run.py
 
 Import boundary: inside an executor that ships to the cluster, only
-`claude_hpc.mapreduce.metrics_io` and `claude_hpc.executor_cli` are stable
-imports from the claude_hpc package.
+`hpc_agent.mapreduce.metrics_io` and `hpc_agent.executor_cli` are stable
+imports from the hpc_agent package.
 """
 
 from __future__ import annotations
 
 import numpy as np
 
-from claude_hpc.mapreduce.metrics_io import read_kw_env, write_metrics
+from hpc_agent.mapreduce.metrics_io import read_kw_env, write_metrics
 
 
 N_BOOTSTRAP_ITERS = 500

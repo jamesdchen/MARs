@@ -1,7 +1,7 @@
 # Worked Example: HPC Delegation for a Tier 2 Sweep
 
 This directory walks through how the `experiment-runner` agent integrates with
-[`claude-hpc`](https://github.com/jamesdchen/claude-hpc) for a Tier 2
+[`hpc-agent`](https://github.com/jamesdchen/hpc-agent) for a Tier 2
 experiment whose grid is large enough to delegate to a cluster.
 
 **Status:** illustrative. Shapes here match the contract in
@@ -36,7 +36,7 @@ hpc-delegation/
 ├── meta.json          # MARs experiment metadata
 ├── pyproject.toml     # what ExperimentEnvironment.create scaffolds for tier-2
 ├── .hpc/
-│   └── tasks.py       # claude-hpc reads this for fan-out (total + resolve)
+│   └── tasks.py       # hpc-agent reads this for fan-out (total + resolve)
 └── scripts/
     └── run.py         # per-task executor (the cluster dispatches this)
 ```
@@ -57,8 +57,8 @@ sets:
 
 These are dispatcher-controlled — MARs's spawn env must NOT pre-set them.
 
-Inside the executor, only `claude_hpc.mapreduce.metrics_io` and
-`claude_hpc.executor_cli` are stable imports from the upstream package.
+Inside the executor, only `hpc_agent.mapreduce.metrics_io` and
+`hpc_agent.executor_cli` are stable imports from the upstream package.
 
 ## Expected agent workflow
 
@@ -76,7 +76,7 @@ section of [`agents/experiment-runner.md`](../../../agents/experiment-runner.md)
 2. **Verify the tasks module** loads cleanly and the grid size matches the
    hypothesis:
    ```bash
-   uv run python -c 'from claude_hpc import load_tasks_module, tasks_path, compute_cmd_sha; m = load_tasks_module(tasks_path(".")); print("total=", m.total(), "cmd_sha=", compute_cmd_sha(m))'
+   uv run python -c 'from hpc_agent import load_tasks_module, tasks_path, compute_cmd_sha; m = load_tasks_module(tasks_path(".")); print("total=", m.total(), "cmd_sha=", compute_cmd_sha(m))'
    ```
    Expect `total= 450` and a 64-char hex `cmd_sha`.
 
@@ -87,7 +87,7 @@ section of [`agents/experiment-runner.md`](../../../agents/experiment-runner.md)
    If `data.run_id` is returned, skip submit and resume monitoring on that
    run_id.
 
-4. **Build the submit spec** (`spec.json`) — `run_id` is **omitted** (claude-hpc emits it), and `profile`/`job_name` are overlaid from `meta.json::experiment_id` via the `.hpc/mars_spec.py` adapter (replaces the cleaved-out `hpc-agent submit --from-meta`):
+4. **Build the submit spec** (`spec.json`) — `run_id` is **omitted** (hpc-agent emits it), and `profile`/`job_name` are overlaid from `meta.json::experiment_id` via the `.hpc/mars_spec.py` adapter (replaces the cleaved-out `hpc-agent submit --from-meta`):
    ```bash
    cat > base-spec.json <<'JSON'
    {
@@ -112,7 +112,7 @@ section of [`agents/experiment-runner.md`](../../../agents/experiment-runner.md)
    ```bash
    uv run hpc-agent submit --spec spec.json
    ```
-   Record `data.run_id` (claude-hpc emits it; typical shape is
+   Record `data.run_id` (hpc-agent emits it; typical shape is
    `<profile>-<utc_ts>-<cmd_sha8>`). Also record `data.deduped` — if true, a
    prior run with the same submit identity exists.
 
@@ -193,7 +193,7 @@ schema. The other supported pattern declares each axis as a CLI flag in
 `tasks.py`:
 
 ```python
-from claude_hpc.executor_cli import flag, generic_args
+from hpc_agent.executor_cli import flag, generic_args
 
 FLAGS = {
     "scripts.run": [
@@ -206,5 +206,5 @@ FLAGS = {
 ```
 
 The executor then uses
-`claude_hpc.executor_cli.build_parser_from_flags(FLAGS["scripts.run"])`
+`hpc_agent.executor_cli.build_parser_from_flags(FLAGS["scripts.run"])`
 instead of `read_kw_env()`. Pick whichever style fits the executor.

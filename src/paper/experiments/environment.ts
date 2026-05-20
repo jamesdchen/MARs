@@ -40,8 +40,8 @@ async function runCmdSafe(
  *
  * Split by concern (so .hpc/ only holds HPC-shaped code):
  *   - meta_utils.py at the experiment root: pure MARs helpers (tier
- *     detection from path layout, meta.json reading). No claude-hpc dep.
- *   - .hpc/mars_spec.py: HPC adapters that bridge to claude-hpc post-
+ *     detection from path layout, meta.json reading). No hpc-agent dep.
+ *   - .hpc/mars_spec.py: HPC adapters that bridge to hpc-agent post-
  *     cleavage at commit 9c0e184. Imports from meta_utils.
  *
  * Keep both in sync with docs/hpc/integration-reference.md
@@ -49,7 +49,7 @@ async function runCmdSafe(
  */
 const META_UTILS_PY = `"""meta_utils — read MARs's meta.json and detect tier from path layout.
 
-Pure MARs-side helpers; no claude-hpc dependency. Used by .hpc/mars_spec.py
+Pure MARs-side helpers; no external HPC orchestrator dependency. Used by .hpc/mars_spec.py
 and (potentially) other MARs-side scaffolding.
 """
 
@@ -81,9 +81,9 @@ def read_meta_json(experiment_dir):
     return data if isinstance(data, dict) else None
 `
 
-const MARS_SPEC_PY = `"""mars_spec — MARs-side adapters that bridge to claude-hpc.
+const MARS_SPEC_PY = `"""mars_spec — MARs-side adapters that bridge to hpc-agent.
 
-Replaces logic cleaved out of claude-hpc at commit 9c0e184:
+Replaces logic cleaved out of hpc-agent at commit 9c0e184:
 - the data.meta enrichment on \`hpc-agent discover\`
 - the \`--from-meta\` overlay for \`hpc-agent submit\`
 - the auto search_dirs=["scripts"] narrowing for tier-2 runs
@@ -113,7 +113,7 @@ def discover_with_meta(experiment_dir):
     For tier-2, narrows the scan to scripts/ via the Python API (the upstream
     CLI does not yet expose --search-dirs; the Python API does).
     """
-    from claude_hpc.state.discover import discover_executors
+    from hpc_agent.state.discover import discover_executors
 
     exp = pathlib.Path(experiment_dir).resolve()
     tier = detect_experiment_tier(exp)
@@ -198,7 +198,7 @@ export class ExperimentEnvironment {
       'matplotlib',
       'pytest',
       'ruff',
-      'claude-hpc @ git+https://github.com/jamesdchen/claude-hpc.git@9c0e184',
+      'hpc-agent @ git+https://github.com/jamesdchen/hpc-agent.git@9c0e184',
     ]
     const deps = tier === 1 ? tier1Deps : tier2Deps
     const depsStr = deps.map(d => `    "${d}",`).join('\n')
@@ -213,12 +213,12 @@ ${depsStr}
 `
     await Bun.write(join(experimentDir, 'pyproject.toml'), pyproject)
 
-    // Tier 2 only: ship the MARs-side helpers that bridge to claude-hpc.
+    // Tier 2 only: ship the MARs-side helpers that bridge to hpc-agent.
     // Split by concern (so .hpc/ only holds HPC-shaped code):
     //   meta_utils.py at the experiment root — pure MARs (tier detection,
     //     meta.json reading); imported by mars_spec.py.
     //   .hpc/mars_spec.py — HPC adapters (build_submit_spec,
-    //     discover_with_meta) replacing logic cleaved out of claude-hpc
+    //     discover_with_meta) replacing logic cleaved out of hpc-agent
     //     at commit 9c0e184.
     if (tier === 2) {
       await Bun.write(join(experimentDir, 'meta_utils.py'), META_UTILS_PY)
@@ -286,7 +286,7 @@ ${depsStr}
         // Explicit forwards for hpc-agent. Missing SSH_AUTH_SOCK is the most
         // common cluster-call failure (every call hangs on auth). Telemetry
         // sink defaults to "none" upstream; sending to stderr lets MARs's
-        // log capture pick up claude-hpc's structured events.
+        // log capture pick up hpc-agent's structured events.
         SSH_AUTH_SOCK: process.env.SSH_AUTH_SOCK ?? '',
         SSH_AGENT_PID: process.env.SSH_AGENT_PID ?? '',
         HPC_JOURNAL_DIR:

@@ -227,7 +227,7 @@ const SECTIONS: SectionDef[] = [
         key: 'experiment.hpc.enabled',
         label: 'hpc.enabled',
         type: 'boolean',
-        description: 'Allow tier-2 runs to delegate to an HPC cluster via claude-hpc',
+        description: 'Allow tier-2 runs to delegate to an HPC cluster via hpc-agent',
       },
       {
         key: 'experiment.hpc.default_cluster',

@@ -76,7 +76,7 @@ describe('ExperimentEnvironment.create tier 1', () => {
     expect(content).not.toContain('"matplotlib"')
     expect(content).not.toContain('"pytest"')
     expect(content).not.toContain('"ruff"')
-    expect(content).not.toContain('claude-hpc')
+    expect(content).not.toContain('hpc-agent')
   })
 
   it('writes env_snapshot.json', async () => {
@@ -124,7 +124,7 @@ describe('ExperimentEnvironment.create tier 2', () => {
     expect(content).toContain('"matplotlib"')
     expect(content).toContain('"pytest"')
     expect(content).toContain('"ruff"')
-    expect(content).toMatch(/"claude-hpc @ git\+https:\/\/github\.com\/jamesdchen\/claude-hpc\.git@[0-9a-f]+"/)
+    expect(content).toMatch(/"hpc-agent @ git\+https:\/\/github\.com\/jamesdchen\/hpc-agent\.git@[0-9a-f]+"/)
     expect(content).toContain('requires-python = ">=3.11"')
   })
 
@@ -148,7 +148,7 @@ describe('ExperimentEnvironment.create tier 2', () => {
     const metaUtils = readFileSync(join(tier2Dir, 'meta_utils.py'), 'utf-8')
     expect(metaUtils).toContain('def detect_experiment_tier(')
     expect(metaUtils).toContain('def read_meta_json(')
-    expect(metaUtils).not.toContain('claude_hpc')
+    expect(metaUtils).not.toContain('hpc_agent')
     expect(metaUtils).not.toContain('hpc-agent')
 
     // mars_spec.py: HPC adapters; imports from meta_utils

@@ -9,5 +9,5 @@ dependencies = [
     "matplotlib",
     "pytest",
     "ruff",
-    "claude-hpc @ git+https://github.com/jamesdchen/claude-hpc.git@ec041c6399adc17c0f96d2fd10c5478aea30d7f2",
+    "hpc-agent @ git+https://github.com/jamesdchen/hpc-agent.git@ec041c6399adc17c0f96d2fd10c5478aea30d7f2",
 ]
