@@ -8,6 +8,8 @@
 // step calls forward_puffernet, which zeroes the state of terminal rows and
 // runs the net. out.f32 receives the decoder outputs (T, B, num_actions + 1),
 // whose last column is the value, then the actions (T, B, num_actions).
+// Prints the offset of each tensor in the file (encoder, decoder, logstd,
+// MinGRU layers), the file length and the length make_puffernet reads.
 //
 // Build: cc -O2 -I<PufferLib>/src puffernet_harness.c -o puffernet_harness -lm
 #include "puffercpu.c"
@@ -31,6 +33,10 @@ int main(int argc, char** argv) {
     }
     int B = atoi(argv[5]), T = atoi(argv[6]), obs_size = atoi(argv[7]);
     int hidden = atoi(argv[8]), layers = atoi(argv[9]), A = atoi(argv[10]);
+    if (A < 1 || A > 32) {
+        fprintf(stderr, "num_actions must be in 1..32\n");
+        return 2;
+    }
 
     Weights* weights = load_weights(argv[1]);
     if (!weights) {
@@ -38,13 +44,19 @@ int main(int argc, char** argv) {
         return 1;
     }
     int file_floats = weights->size - 7;
-    int act_sizes[64];
+    int act_sizes[32];
     for (int i = 0; i < A; i++) {
         act_sizes[i] = 1;
     }
     PufferNet* net = make_puffernet(weights, B, obs_size, hidden, layers, act_sizes, A);
     int need = weights->idx;
-    printf("file_floats=%d need=%d\n", file_floats, need);
+    float* base = weights->data;
+    printf("offsets=%td,%td,%td", net->encoder->weights - base,
+        net->decoder->weights - base, net->log_std - base);
+    for (int l = 0; l < layers; l++) {
+        printf(",%td", net->mingru->proj[l]->weights - base);
+    }
+    printf(" file_floats=%d need=%d\n", file_floats, need);
     // Same check as the PUFFERCPU_EVAL_MAIN loader (puffernet_weight_count).
     if (!(need - file_floats <= 7 && file_floats <= need)) {
         fprintf(stderr, "weight count mismatch\n");
