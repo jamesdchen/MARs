@@ -14,6 +14,18 @@ harder.
   - the stock, with transient price impact, proportional cost and a fixed fee;
   - a variance swap on daily log-returns, traded at its model value, with a
     cost for each contract and the fee.
+- **Crowd:** other traders' orders feed the same transient impact as ours,
+  as in the jointly aggregated impact of Neuman & Voss (2023). Two kinds:
+  - 8 dealers, short 3 copies of our book between them. Each re-hedges to
+    the book's BS delta when the price after our trade leaves its no-trade
+    band (half-widths from 0.02 to 0.3 shares for each book).
+  - random orders: a Poisson number of 0.3-share orders, with mean
+    0.5 + |r|, where r is the last return in daily standard deviations.
+    Each goes the way of r with probability 0.7.
+
+  The crowd reacts through thresholds and counts, so on a single path the
+  loss jumps when our trade moves a dealer out of its band or changes the
+  order count. The last return is added to the observation (13 features).
 - **Decisions:** 4 actions, a target and a trade signal for each instrument.
   An instrument trades to its target only when its signal is positive.
 - **Objective:** CVaR at 95% of the loss, written in its
@@ -23,8 +35,9 @@ harder.
 - **Two wrappers:** PufferLib 3.0's native binding (`binding.c`, CPU) and
   PufferLib 5.0's env API (`puffer5/deep_hedging.h`, CUDA trainer).
 - **`test_c.py`:**
-  - the core matches `market.py` on identical noise and actions: losses to
-    4e-13, observations to 6e-8, rewards to float32;
+  - the core matches `market.py` on identical noise and actions, with the
+    crowd off, at its default and strong: losses to 4e-13, observations to
+    6e-8, rewards to float32;
   - its own generator reproduces the Fourier option prices and the variance
     swap strike within 1.5 standard errors;
   - the 3.0 binding steps bit-for-bit like the core.
@@ -50,45 +63,93 @@ decision sequences on a 2-date book. Its error stays within Monte Carlo
 error; without the score term the error is 33 times larger
 (`test_pathwise.py`).
 
-## Results on CPU
+## Results on CPU, with the crowd
 
 Training ran on 4 CPU threads in this container. PPO is PufferLib 3.0 with
-the C env, untuned (Adam, 200M steps).
+the C env, untuned apart from an entropy bonus of 0.01 (Adam, 200M steps).
 
 | strategy | val CVaR95 | test mean | std | VaR95 | **test CVaR95** | stock trades | swap trades | train time (s) | sim steps |
 |---|---|---|---|---|---|---|---|---|---|
-| no hedge | 10.57 | 0.00 | 3.89 | 7.12 | 10.65 | 0 | 0 | – | – |
-| BS delta | 13.09 | 1.74 | 3.20 | 6.84 | 13.16 | 30 | 0 | – | – |
-| Bates delta | 13.58 | 1.72 | 3.34 | 7.14 | 13.66 | 30 | 0 | – | – |
-| Bates min-variance delta | 12.48 | 1.69 | 3.02 | 6.32 | 12.51 | 30 | 0 | – | – |
-| Bates delta-vega | 6.08 | 2.50 | 2.04 | 3.45 | 5.99 | 30 | 30 | – | – |
-| band, theory constants | 5.30 | 0.81 | 2.13 | 4.16 | 5.27 | 3.2 | 1.6 | – | – |
-| **tuned no-trade band** | 3.05 | 1.10 | 2.06 | 2.56 | **3.04** | 7.4 | 1.0 | 93 (tuning) | 96M |
-| PPO, PufferLib 3.0 + C env | 8.36 | 0.26 | 5.25 | 6.46 | 8.34 | 1.0 | 1.0 | 2429 | 200M |
-| pathwise, straight-through | 2.93 | 1.51 | 2.12 | 2.71 | 2.93 | 26.9 | 1.7 | 347 | 246M |
-| **pathwise, hybrid** | 2.76 | 1.57 | 1.90 | 2.59 | **2.76** | 28.0 | 2.7 | 339 | 246M |
+| no hedge | 10.63 | 0.06 | 3.89 | 7.17 | 10.71 | 0 | 0 | – | – |
+| BS delta | 13.16 | 1.83 | 3.21 | 6.98 | 13.22 | 30 | 0 | – | – |
+| Bates delta | 13.62 | 1.80 | 3.35 | 7.29 | 13.70 | 30 | 0 | – | – |
+| Bates min-variance delta | 12.54 | 1.77 | 3.02 | 6.44 | 12.56 | 30 | 0 | – | – |
+| Bates delta-vega | 6.43 | 2.58 | 2.06 | 3.80 | 6.34 | 30 | 30 | – | – |
+| band, theory constants | 5.51 | 0.95 | 2.14 | 4.32 | 5.47 | 3.3 | 1.6 | – | – |
+| **tuned no-trade band** | 3.45 | 1.01 | 1.94 | 2.97 | **3.45** | 6.6 | 1.0 | 170 (tuning) | 96M |
+| PPO, PufferLib 3.0 + C env, entropy 0.01 | 4.01 | 1.32 | 4.58 | 3.66 | 4.02 | 18.0 | 1.0 | 1684 | 200M |
+| pathwise, straight-through | 2.88 | 1.47 | 1.99 | 2.67 | 2.87 | 23.6 | 1.0 | 582 | 246M |
+| **pathwise, hybrid** | 2.82 | 1.58 | 1.99 | 2.64 | **2.81** | 27.4 | 1.0 | 565 | 246M |
 
-What we see:
+Without the crowd (`results/no_crowd/cpu/summary.md`, run before the crowd
+was added, 12 observations):
+
+| strategy | test CVaR95 |
+|---|---|
+| Bates delta-vega | 5.99 |
+| tuned no-trade band | 3.04 |
+| PPO, no entropy bonus, rewards unscaled | 8.34 |
+| pathwise, straight-through | 2.93 |
+| pathwise, hybrid | 2.76 |
+
+### Does the crowd break the pathwise gradient?
+
+On a path the loss is discontinuous in our actions, but its expectation
+over paths is smooth: the noise has a density, so the chance that a dealer
+crosses its band or that the order count steps changes smoothly with our
+trades. Autograd sees only the slope between the jumps and misses what the
+jumps add to the gradient of the expectation (the pathwise method needs the
+loss to be continuous in the parameters; Glasserman 2004, §7.2).
+`crowd_gradient.py` measures how much it misses. Policy: θ × the BS book
+delta, rebalanced every date (no trade decisions), derivative at θ = 1.
+It compares autograd with central finite differences on the same 200k
+paths, which do see the jumps; the gap is paired on the paths.
+
+| crowd | derivative | autograd | finite diff, h = 0.02 | gap |
+|---|---|---|---|---|
+| none | dCVaR/dθ | 8.771 | 8.770 | −0.001 ± 0.005 |
+| default | dE[L]/dθ | 1.532 | 1.533 | 0.002 ± 0.000 |
+| default | dCVaR/dθ | 8.894 | 8.900 | 0.006 ± 0.007 |
+| strong (12 books, 16 dealers, bands from 0.001, 3 + 2\|r\| orders, follow 0.9) | dE[L]/dθ | 2.936 | 2.954 | 0.018 ± 0.002 |
+| strong | dCVaR/dθ | 11.441 | 11.475 | 0.034 ± 0.017 |
+
+Full table: `results/crowd_gradient.md`. The gap is real but below 1%. A
+hedger's trades are small: they move the price by about a tenth of a daily
+standard deviation, so they rarely decide whether the crowd trades. Raising
+impact until they do makes the crowd's own feedback unstable (with 4 times
+the impact and the strong crowd, the dealers' gamma times impact exceeds 1
+and prices run away).
+
+### What we see
 
 1. **Delta hedging alone is worse than not hedging.** The book is short a
    put, so its delta hedge is long stock. A crash jump hits the put and the
    hedge together. Only the variance swap, whose realized variance jumps in
    a crash, offsets that risk: daily delta-vega roughly halves CVaR.
 2. **Costs matter as much as the model.** The tuned band holds a static
-   variance swap position (about 1.3 × y*) and rebalances stock 7 times in
-   an episode. That cuts CVaR from 6.0 to 3.0, and tuning alone takes the
-   theory constants from 5.3 to 3.0.
-3. **Pathwise deep hedging beats the tuned band** (2.76 vs 3.04) in about 6
-   minutes of CPU training. Exact gradients for the targets plus a
-   score-function term for the trade decisions work better than the
-   straight-through approximation (2.93). Both trade the stock almost every
-   date in small amounts, and hold the swap.
-4. **Untuned PPO fails here** (8.34). It learns to trade each instrument
-   about once, i.e. a near-static hedge, and stays there (`results/cpu/training.png`).
-   Exploration is the likely culprit. A Gaussian trade signal makes random
-   trades costly early on (a fee each time), so PPO pushes the signal down
-   and rarely explores rebalancing again. PufferLib 5.0 on a GPU with a
-   hyperparameter sweep (`puffer5/colab.ipynb`) is the next test.
+   variance swap position and rebalances stock about 7 times. That cuts
+   CVaR from 6.3 to 3.4.
+3. **The crowd hurts the hand-built strategies** (the band 3.04 → 3.45,
+   delta-vega 5.99 → 6.34) **and barely moves pathwise deep hedging**
+   (hybrid 2.76 → 2.81, straight-through 2.93 → 2.87). Its gradient misses
+   under 1% (above), so it still trains well and still beats the tuned
+   band. Both pathwise variants trade the stock on most dates in small
+   amounts and hold the swap.
+4. **PPO needs an entropy bonus.** Without one, PPO stops trading after
+   date 0, with rewards scaled (point 5) or not (`results/no_crowd` logs).
+   The trade signal is Gaussian and random trades pay the fee, so PPO
+   pushes the signal down until it never explores rebalancing again (8.34;
+   entropy fell to −3.3). An entropy bonus of 0.01
+   keeps it rebalancing on about half the dates, and it reaches 4.02, behind
+   the tuned band. It holds 3 variance swaps on every path, the position
+   limit, where the band and pathwise hold about 1.7. Its training
+   objective stopped improving after about 8 minutes
+   (`results/cpu/training.png`).
+5. **Rewards are scaled by 0.1.** PufferLib 3.0 clips rewards to [−1, 1].
+   Unscaled, 12% of the reward signal's total size sat beyond the clip
+   (crash days), so PPO saw crash losses flattened. Scaling leaves the
+   optimal policy unchanged. PufferLib 5.0 does not clip; it gets the same
+   scale.
 
 ![positions](results/cpu/positions.png)
 ![losses](results/cpu/loss_hist.png)
@@ -106,22 +167,26 @@ Colab GPU:
 - tunes the band and sweeps hybrid pathwise with the same number of trials;
 - scores everything with `evaluate.py`.
 
-The 5.0 env uses 12 observations and 4 actions, so no PufferNet tensor
-needs padding. That sidesteps the misalignment in PufferLib 5.0's Muon step
+The 5.0 config (`puffer5/make_ini.py`) sets the entropy bonus to 0.01; the
+sweep searches 1e-5 to 0.03. The 5.0 env uses 13 observations and 4
+actions, so no PufferNet tensor needs padding. That sidesteps the misalignment in PufferLib 5.0's Muon step
 documented in part 2.
 
 ## Reproduce (CPU)
 
 ```bash
-source ../.venv/bin/activate && pip install optuna
+source ../.venv/bin/activate && pip install optuna   # ../setup.sh makes the venv
 python setup.py build_ext --inplace     # C env for PufferLib 3.0
 python test_c.py                        # core vs market.py, binding vs core
 python test_greeks.py && python test_pathwise.py
-python train_ppo.py                     # results/ppo.pt
+python crowd_gradient.py > results/crowd_gradient.md
+python train_ppo.py --ent-coef 0.01     # results/ppo.pt
 python tune_baselines.py --trials 32 --device cpu --out results/baselines.json
-for g in ste hybrid; do python train_pathwise.py --gate $g --iters 1000 --batch 8192; done
+for g in ste hybrid; do python train_pathwise.py --gate $g --iters 1000 --batch 8192 \
+  --out results/pathwise_$g.pt; done
 python evaluate.py --device cpu --out results/cpu --runs "baselines|baselines|results/baselines.json" \
-  "ppo3|PPO, PufferLib 3.0 + C env|results/ppo.pt" "pathwise|pathwise, ste gate|results/pathwise_ste.pt" \
+  "ppo3|PPO, PufferLib 3.0 + C env, entropy 0.01|results/ppo.pt" \
+  "pathwise|pathwise, ste gate|results/pathwise_ste.pt" \
   "pathwise|pathwise, hybrid gate|results/pathwise_hybrid.pt"
 ```
 
@@ -139,6 +204,8 @@ python evaluate.py --device cpu --out results/cpu --runs "baselines|baselines|re
   pricing with transaction costs*, Math. Finance 7, 1997.
 - A. Altarovici, J. Muhle-Karbe, H. M. Soner, *Asymptotics for fixed
   transaction costs*, Finance and Stochastics 19, 2015.
+- E. Neuman, M. Voss, *Trading with the crowd*, Math. Finance 33, 2023.
+- P. Glasserman, *Monte Carlo Methods in Financial Engineering*, Springer, 2004.
 - N. Gârleanu, L. Pedersen, *Dynamic trading with predictable returns and
   transaction costs*, J. Finance 68, 2013.
 - J. Schulman, N. Heess, T. Weber, P. Abbeel, *Gradient estimation using
