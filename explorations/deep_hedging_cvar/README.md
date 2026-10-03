@@ -100,10 +100,15 @@ What we see:
    over `w` (e.g. a few runs, or updating `w` from the empirical VaR of
    the current losses).
 3. **Pathwise is still the best and far more sample efficient**. It uses exact
-   gradients through a differentiable simulator, which PPO does not.
+   gradients of the P&L with respect to the hedge, which PPO does not.
    Pathwise saw about 33M paths, i.e. 1B simulated steps, in ~10 min on 2
-   threads. PPO took 120M steps (3.9M episodes) in 10–15 min. PPO's advantage
-   is that it needs no differentiable market model.
+   threads. PPO took 120M steps (3.9M episodes) in 10–15 min. Pathwise needs
+   the P&L to be differentiable in the hedge positions, not in the market
+   model: prices here do not react to the hedger, so paths from any generator,
+   or from historical data, work. PPO earns its place when that fails. Examples
+   are price impact from a black-box simulator, fixed costs on every trade
+   (zero gradient almost everywhere), discrete decisions such as order fills
+   or lot sizes, and long horizons where backpropagated gradients explode.
 4. Every CVaR hedger gives up mean loss to cut the tail. The learned hedges
    hold more stock than BS delta when the option is out of the money, and
    they stay below 1 deep in the money. At a given spot they spread
