@@ -19,7 +19,7 @@ EPISODE = 32
 
 class BatesEnv(pufferlib.PufferEnv):
     def __init__(self, cfg=None, num_agents=4096, shaping=True, w_init=0.3, w_eta=0.01,
-                 seed=0, buf=None):
+                 reward_scale=0.1, seed=0, buf=None):
         self.cfg = cfg or BatesConfig()
         c = self.cfg
         self.single_observation_space = gymnasium.spaces.Box(
@@ -30,7 +30,8 @@ class BatesEnv(pufferlib.PufferEnv):
             shape=(ACT_DIM,), dtype=np.float32)
         self.num_agents = num_agents
         super().__init__(buf)
-        kwargs = {**c.c_kwargs(), 'w_init': w_init, 'w_eta': w_eta, 'shaping': float(shaping)}
+        kwargs = {**c.c_kwargs(), 'w_init': w_init, 'w_eta': w_eta, 'shaping': float(shaping),
+                  'reward_scale': reward_scale}
         self.c_envs = binding.vec_init(self.observations, self.actions, self.rewards,
                                        self.terminals, self.truncations, num_agents, seed,
                                        **{k: float(v) for k, v in kwargs.items()})

@@ -12,5 +12,5 @@ from setuptools import setup, Extension
 OCEAN = os.path.join(os.path.dirname(pufferlib.__file__), 'ocean')
 
 setup(name='bates_binding', ext_modules=[Extension(
-    'binding', ['binding.c'], include_dirs=[numpy.get_include(), OCEAN],
+    'binding', ['binding.c'], depends=['hedge.h'], include_dirs=[numpy.get_include(), OCEAN],
     extra_compile_args=['-O3', '-march=native', '-Wno-unused-function'])])

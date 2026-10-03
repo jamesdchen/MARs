@@ -18,7 +18,11 @@
  * Reward: with shaping, Phi(s_{k+1}) - Phi(s_k) on every hedging date, with
  * Phi = -(Lhat - w)^+ / scale (Ng, Harada & Russell 1999); Phi at expiry is
  * the true terminal reward -(L - w)^+ / scale, so the rewards telescope to
- * it. Without shaping, only the terminal reward. w is the
+ * it. Without shaping, only the terminal reward. Every reward is multiplied
+ * by reward_scale (0.1 in the configs): PufferLib 3.0 clips rewards to
+ * [-1, 1], and unscaled crash-day rewards reach about 8, which would cut off
+ * the tail that CVaR is about. A positive constant factor leaves the optimal
+ * policy unchanged. w is the
  * Rockafellar-Uryasev threshold; each agent moves it toward VaR_alpha(L)
  * after every episode by the Robbins-Monro step of Bardou, Frikha & Pages
  * (2009). The Log's score is -(w + (L - w)^+ / (1 - alpha)), an average
@@ -60,7 +64,7 @@ typedef struct {
     double v0, kappa_v, theta, xi, rho, lam, mu_j, sig_j;
     double cost, fixed_cost, kappa, half_life, vs_cost, alpha;
     double delta_low, delta_high, vs_low, vs_high;
-    double premium, n_vs, k_var, w_init, w_eta, shaping;
+    double premium, n_vs, k_var, w_init, w_eta, shaping, reward_scale;
     // Derived by hedge_params_finish.
     double dt_sub, sigma0, scale, decay, jump_mean, jump_var, rho_bar;
     int subs;
@@ -72,7 +76,7 @@ static const char* HEDGE_PARAM_NAMES[] = {
     "v0", "kappa_v", "theta", "xi", "rho", "lam", "mu_j", "sig_j",
     "cost", "fixed_cost", "kappa", "half_life", "vs_cost", "alpha",
     "delta_low", "delta_high", "vs_low", "vs_high",
-    "premium", "n_vs", "k_var", "w_init", "w_eta", "shaping",
+    "premium", "n_vs", "k_var", "w_init", "w_eta", "shaping", "reward_scale",
 };
 #define HEDGE_NUM_PARAMS (int)(sizeof(HEDGE_PARAM_NAMES) / sizeof(HEDGE_PARAM_NAMES[0]))
 
@@ -309,6 +313,7 @@ static inline void hedge_step(Hedge* h, const HedgeParams* p, const float* act,
         double excess = h->loss - h->w;
         rew = excess > 0.0 ? -excess / p->scale : 0.0;
     }
+    rew *= p->reward_scale;
     *reward = rew;
     h->ep_return += rew;
     hedge_write_obs(h, p, obs);

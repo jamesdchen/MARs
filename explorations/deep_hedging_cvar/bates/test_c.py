@@ -42,8 +42,9 @@ def build(tmp):
     return ctypes.CDLL(lib)
 
 
-def c_values(cfg, w_init=0.3, w_eta=0.01, shaping=1):
-    kw = {**cfg.c_kwargs(), 'w_init': w_init, 'w_eta': w_eta, 'shaping': shaping}
+def c_values(cfg, w_init=0.3, w_eta=0.01, shaping=1, reward_scale=1.0):
+    kw = {**cfg.c_kwargs(), 'w_init': w_init, 'w_eta': w_eta, 'shaping': shaping,
+          'reward_scale': reward_scale}
     return np.array([float(kw[k]) for k in PARAM_NAMES])
 
 
@@ -108,7 +109,7 @@ def rel(a, b):
     return np.max(np.abs(a - b) / (1 + np.abs(b)))
 
 
-def equivalence(lib, checks, cfg, shaping, w_init, n=2000, seed=0):
+def equivalence(lib, checks, cfg, shaping, w_init, n=2000, seed=0, reward_scale=1.0):
     rng = np.random.default_rng(seed)
     T = 2 * EPISODE
     actions = np.stack([rng.uniform(-1.8, 1.8, (T, n)), rng.normal(0, 1, (T, n)),
@@ -116,8 +117,10 @@ def equivalence(lib, checks, cfg, shaping, w_init, n=2000, seed=0):
                        -1).astype(np.float32)
     noise = market_noise(2 * n, cfg, torch.Generator().manual_seed(seed)).double().numpy()
     noise = noise.reshape(2, n, DATES, cfg.n_sub, 4).transpose(1, 0, 2, 3, 4)
-    obs, rewards, terminals, state, log = run_c(lib, c_values(cfg, w_init, 0.01, shaping),
-                                                actions, noise)
+    obs, rewards, terminals, state, log = run_c(
+        lib, c_values(cfg, w_init, 0.01, shaping, reward_scale), actions, noise)
+    rewards = rewards / np.float32(reward_scale)
+    log['episode_return'] = log['episode_return'] / np.float32(reward_scale)
     flags = np.zeros(T)
     flags[[DATES - 1, EPISODE - 1, EPISODE + DATES - 1, 2 * EPISODE - 1]] = 1
     checks.add('terminal flags on expiry and reset steps only',
@@ -198,8 +201,9 @@ def binding_matches_core(lib, checks, cfg, n=512, T=3 * EPISODE):
     actions = np.stack([rng.uniform(-1.8, 1.8, (T, n)), rng.normal(0, 1, (T, n)),
                         rng.uniform(-3.5, 3.5, (T, n)), rng.normal(0, 1, (T, n))],
                        -1).astype(np.float32)
-    obs, rewards, terminals, _, log = run_c(lib, c_values(cfg), actions, None, seed=0)
-    env = BatesEnv(cfg, num_agents=n, seed=0)
+    obs, rewards, terminals, _, log = run_c(lib, c_values(cfg, reward_scale=0.1), actions, None,
+                                            seed=0)
+    env = BatesEnv(cfg, num_agents=n, reward_scale=0.1, seed=0)
     env.reset(0)
     err = np.abs(env.observations - obs[0]).max()
     for t in range(T):
@@ -221,6 +225,7 @@ def main():
         lib = build(tmp)
         for i, (cfg, shaping, w_init) in enumerate(configs):
             equivalence(lib, checks, cfg, shaping, w_init, seed=i)
+        equivalence(lib, checks, base, 1, 0.3, seed=7, reward_scale=0.1)
         generator(lib, checks, base)
         binding_matches_core(lib, checks, base)
     checks.report()

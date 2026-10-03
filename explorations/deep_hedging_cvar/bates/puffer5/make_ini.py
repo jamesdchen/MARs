@@ -12,7 +12,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, '..'))
 from market import BatesConfig  # noqa: E402
 
-ENV = {'w_init': 0.3, 'w_eta': 0.01, 'shaping': 1, 'seed': 0}
+ENV = {'w_init': 0.3, 'w_eta': 0.01, 'shaping': 1, 'reward_scale': 0.1, 'seed': 0}
 
 
 def main():
