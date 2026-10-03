@@ -5,8 +5,8 @@ Loads the flat fp32 .bin checkpoints written by the 5.0 trainer
 C reference in src/puffercpu.c (make_puffernet, forward_puffernet);
 test_puffernet.py checks the two against each other.
 
-Architecture, with no biases anywhere (the env appends a constant 1.0 to
-the observation instead):
+Architecture, with no biases anywhere (the observation carries a constant
+1.0 instead, as its last feature):
 
     x = W_enc obs                                   encoder (H, obs_size)
     for each MinGRU layer l, with state s_l:
@@ -33,16 +33,11 @@ master copy of that buffer, cut at the unpadded element count. 16 bytes
 are 8 values in the default bfloat16 build, the layout src/puffercpu.c reads
 (get_weights_aligned), but 4 in a build with `./build.sh --float`, which
 the Colab notebook uses. The file length is the same for both, so `align`
-must match the build; the default is the --float layout. For obs_size 8,
-2 actions and H a multiple of 8 only logstd is padded; with H 64 and 2
-layers:
-
-    align   offsets                       padded   in the file
-    4       0, 512, 704, 708, 12996        25284   25282
-    8       0, 512, 704, 712, 13000        25288   25282
-
-The last 2 (or 6) floats of the last MinGRU projection are therefore not
-in the file. load_bin reads them as zeros, as src/puffercpu.c does.
+must match the build; the default is the --float layout. With 2 actions
+logstd would be padded and the last floats of the last MinGRU projection
+cut from the file (load_bin reads them as zeros, as src/puffercpu.c does).
+The hedging env has 12 observations and 4 actions, so in the --float build
+every tensor is a multiple of 4 floats and nothing is padded or cut.
 """
 
 import numpy as np
@@ -56,7 +51,7 @@ BF16_ALIGN = 8   # default bfloat16 build; src/puffercpu.c
 class PufferNet(nn.Module):
     """Encoder, MinGRU layers and decoder with a fused value, continuous actions."""
 
-    def __init__(self, obs_size=8, hidden=64, layers=2, num_actions=2):
+    def __init__(self, obs_size=12, hidden=64, layers=2, num_actions=4):
         super().__init__()
         self.obs_size, self.hidden = obs_size, hidden
         self.layers, self.num_actions = layers, num_actions
@@ -154,27 +149,26 @@ class PufferNet(nn.Module):
         return self.step(obs, state, terminals)
 
 
-# The hedging env's action count (puffer5/deep_hedging.h): target, signal and
-# two ignored outputs that keep PufferLib 5.0's parameter buffers unpadded.
-ENV_ACTIONS = 4
+# The hedging env (../hedge.h): stock target, stock signal, swap target, swap
+# signal, after 12 observations whose last one is the constant 1.
+ENV_OBS, ENV_ACTIONS = 12, 4
 
 
 class PufferNetPolicy:
     """policy_fn for market.simulate: the deterministic actions of a 5.0 checkpoint.
 
-    Appends the constant feature 1.0 to the 7 market features and runs the
-    net in float32, the precision of the env's observations and of the C
+    Takes market.make_obs observations (12 features, the last one constant)
+    and runs the net in float32, the precision of the env's observations and of the C
     forward, on the device of the observations. Carries the MinGRU state
     from one call to the next and zeroes it on date 0 (obs[:, 0] == 0),
     where the 5.0 env raises its terminal flag, so consecutive simulate
-    calls are independent. Returns the means of the two actions the env
-    reads (target, signal) in the observations' dtype. `align` is that of the build that wrote the file (see above).
+    calls are independent. Returns the action means in the observations'
+    dtype. `align` is that of the build that wrote the file (see above).
     """
 
     def __init__(self, path, hidden=64, layers=2, device='cpu', align=FLOAT_ALIGN,
                  num_actions=ENV_ACTIONS):
-        self.net = PufferNet(hidden=hidden, layers=layers,
-                             num_actions=num_actions).load_bin(path, align)
+        self.net = PufferNet(ENV_OBS, hidden, layers, num_actions).load_bin(path, align)
         self.net.requires_grad_(False).to(device)
         self.state = None
 
@@ -183,8 +177,8 @@ class PufferNetPolicy:
 
     def __call__(self, obs):
         net = self.net
-        if obs.shape[-1] != net.obs_size - 1:
-            raise ValueError(f'expected {net.obs_size - 1} features, got {obs.shape[-1]}')
+        if obs.shape[-1] != net.obs_size:
+            raise ValueError(f'expected {net.obs_size} features, got {obs.shape[-1]}')
         if net.encoder.weight.device != obs.device:
             net.to(obs.device)
             self.state = None
@@ -194,7 +188,6 @@ class PufferNetPolicy:
             if not bool(first.all()):
                 raise ValueError('batch size changed in the middle of an episode')
             self.state = None
-        x = torch.cat([obs.float(), obs.new_ones(n, 1, dtype=torch.float32)], dim=-1)
         with torch.no_grad():
-            mean, _, self.state = net.step(x, self.state, first)
-        return mean[:, :2].to(obs.dtype)
+            mean, _, self.state = net.step(obs.float(), self.state, first)
+        return mean.to(obs.dtype)

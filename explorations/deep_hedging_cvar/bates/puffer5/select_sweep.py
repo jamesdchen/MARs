@@ -26,7 +26,7 @@ import torch
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, '..'))
-from market import ImpactConfig, fundamental_noise, simulate, cvar  # noqa: E402
+from market import BatesConfig, market_noise, simulate, cvar  # noqa: E402
 from evaluate import w_search  # noqa: E402
 from puffer5.puffernet import PufferNetPolicy  # noqa: E402
 
@@ -71,8 +71,8 @@ def main():
 
     runs = sweep_runs(args.pufferlib, args.sweep_log)
     assert runs, 'no finished sweep runs with a checkpoint'
-    cfg = ImpactConfig()
-    val = fundamental_noise(args.n_val, cfg, torch.Generator().manual_seed(999), args.device)
+    cfg = BatesConfig()
+    val = market_noise(args.n_val, cfg, torch.Generator().manual_seed(999), args.device)
     w_grid = np.linspace(0, 0.8, 33) * cfg.scale
     top = sorted(runs, key=lambda r: -r['score'])[:args.top_k]
     for r in top:

@@ -33,11 +33,11 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.dirname(HERE))
 from puffernet import BF16_ALIGN, ENV_ACTIONS, FLOAT_ALIGN, PufferNet, PufferNetPolicy  # noqa: E402
-from market import ImpactConfig, simulate, fundamental_noise  # noqa: E402
+from market import BatesConfig, simulate, market_noise  # noqa: E402
 
 torch.set_num_threads(1)
 PUFFERLIB_DIR = os.environ.get('PUFFERLIB_DIR', '/tmp/claude-0/pl5')
-OBS, ACTIONS = 8, 2
+OBS, ACTIONS = 12, 4
 CONFIGS = [(64, 2), (32, 1), (128, 3)]
 B, T = 96, 48
 
@@ -155,7 +155,10 @@ def test_layout(tmp, hidden, layers):
         loaded = PufferNet(OBS, hidden, layers, ACTIONS).load_bin(path, align=align)
         cut = need - file_len
         last, ref = loaded.mingru[-1].weight.flatten(), net.mingru[-1].weight.flatten()
-        assert torch.equal(last[-cut:], torch.zeros(cut)) and torch.equal(last[:-cut], ref[:-cut])
+        if cut:
+            assert torch.equal(last[-cut:], torch.zeros(cut)) and torch.equal(last[:-cut], ref[:-cut])
+        else:
+            assert torch.equal(last, ref)
         assert all(torch.equal(a, b) for a, b in zip(net.tensors()[:-1], loaded.tensors()[:-1]))
         desc.append(f'{name} offsets {offsets} padded {need}, last {cut} floats read as 0')
     print(f'layout, hidden={hidden} layers={layers}: {file_len} floats in a trainer file '
@@ -214,12 +217,12 @@ def recorded(fn):
 
 
 def test_policy(tmp):
-    cfg, n, hidden, layers = ImpactConfig(), 300, 64, 2
+    cfg, n, hidden, layers = BatesConfig(), 300, 64, 2
     w = 0.3 * cfg.scale
     path = os.path.join(tmp, 'policy.bin')
     random_net(hidden, layers, 4, dec=0.3, actions=ENV_ACTIONS).save_bin(path, truncate=True)
     ref_net = PufferNet(OBS, hidden, layers, ENV_ACTIONS).load_bin(path)
-    z32 = fundamental_noise(n, cfg, generator=torch.Generator().manual_seed(1))
+    z32 = market_noise(n, cfg, generator=torch.Generator().manual_seed(1))
     out = {}
 
     def reference(state):
@@ -227,9 +230,8 @@ def test_policy(tmp):
         box = [state]
 
         def fn(obs):
-            x = torch.cat([obs.float(), torch.ones(obs.shape[0], 1)], dim=-1)
-            m, _, box[0] = ref_net.step(x, box[0])
-            return m[:, :2].to(obs.dtype)
+            m, _, box[0] = ref_net.step(obs.float(), box[0])
+            return m.to(obs.dtype)
         return fn
 
     def run(z, fn, record=False):
@@ -248,7 +250,7 @@ def test_policy(tmp):
         loss_sub, _ = run(z[:200], policy)
         out[z.dtype] = loss, acts
 
-        trade = rec['trade'].double().mean().item()
+        trade = rec['trade_s'].double().mean().item()
         carry_diff = (acts_carry[0] - acts[0]).abs().max().item()
         assert loss.shape == (n,) and loss.dtype == z.dtype and torch.isfinite(loss).all()
         assert acts.shape == (cfg.n_steps, n, ACTIONS) and acts.dtype == z.dtype
@@ -270,7 +272,7 @@ def test_policy(tmp):
 
     if torch.cuda.is_available():
         with torch.no_grad():
-            obs0 = torch.zeros(n, 7)
+            obs0 = torch.zeros(n, OBS)
             cpu = PufferNetPolicy(path, hidden=hidden, layers=layers)(obs0)
             gpu = PufferNetPolicy(path, hidden=hidden, layers=layers, device='cuda')(obs0.cuda())
             follow = PufferNetPolicy(path, hidden=hidden, layers=layers)

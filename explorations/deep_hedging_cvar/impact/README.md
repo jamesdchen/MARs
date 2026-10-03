@@ -1,5 +1,13 @@
 # Part 2: price impact and fixed costs
 
+> **Superseded by part 3 (`../bates/`).** Part 3 has a richer market (Bates
+> stochastic volatility with jumps, an option book, a variance swap as a
+> second instrument), one C env shared by PufferLib 3.0 and 5.0, and
+> stronger, model-based baselines. Part 2's Cython env, its benchmark and
+> its PufferLib 5.0 port were removed; the results below were produced at
+> commit `8e834f7`, where that code still exists. The PyTorch reference
+> model (`market.py`), pathwise training and evaluation here still run.
+
 Part 1 (`../README.md`) hedged a short call with proportional costs only.
 There, pathwise deep hedging won clearly, because the P&L is differentiable
 in the hedge. This part adds two frictions that break that advantage:
