@@ -40,6 +40,8 @@ num_layers = 2
 horizon = 32
 gamma = 1.0
 gae_lambda = 0.95
+# Without enough entropy bonus PPO stops trading after date 0 (README).
+ent_coef = 0.01
 minibatch_size = 8192
 total_timesteps = 120_000_000
 """
