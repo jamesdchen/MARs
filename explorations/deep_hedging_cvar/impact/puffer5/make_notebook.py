@@ -61,14 +61,15 @@ md("""
 ## Build PufferLib 5.0 with the hedging env
 
 `build.sh` links LLVM OpenMP as `-lomp5`; Ubuntu ships it as `libomp.so.5`,
-so we add the `libomp5.so` name. NCCL comes from the `nvidia-nccl-cu12` wheel
+so we add the `libomp5.so` name. It also links `-lGL` (raylib), hence the GL
+development package. NCCL comes from the `nvidia-nccl-cu12` wheel
 that Colab's PyTorch already installs. `--float` builds in float32: the
 observations carry wealth and hedge positions that need more precision than
 bfloat16.
 """)
 
 code("""
-!apt-get -qq install -y ccache clang libomp-dev > /dev/null
+!apt-get -qq install -y ccache clang libomp-dev libgl1-mesa-dev > /dev/null
 !pip -q install optuna
 !ln -sf $(ls /usr/lib/x86_64-linux-gnu/libomp.so.5) /usr/lib/x86_64-linux-gnu/libomp5.so
 !pip -q install nvidia-nccl-cu12
