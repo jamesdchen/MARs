@@ -12,8 +12,9 @@
    decision sequences, and autograd differentiates it. The hybrid surrogate's
    gradient, averaged over many sampled decisions on the same noise (common
    random numbers), must match it within Monte Carlo error, for every
-   network weight and for w. Dropping the score term must not (a check that
-   the test can detect bias).
+   network weight and for w, with either baseline (K = 1: the other paths of
+   the batch; K = 4: the other decision samples on the same market path).
+   Dropping the score term must not (a check that the test can detect bias).
 
     python test_pathwise.py
 """
@@ -51,7 +52,7 @@ def test_train_and_reload():
     cfg = BatesConfig()
     a = f'CVaR{cfg.alpha:g}'
     for gate in ['hard', 'ste', 'sigmoid', 'hybrid']:
-        ckpt = train(gate, iters=3, batch=128, hidden=16, seed=3, log=None)
+        ckpt = train(gate, iters=3, batch=128, lr=0.1, hidden=16, seed=3, log=None)
         assert set(ckpt) == {'actor', 'w', 'cfg', 'gate', 'history', 'wall_time', 'device',
                              'steps', 'hidden', 'args'}
         last = ckpt['history'][-1]
@@ -121,29 +122,33 @@ def test_hybrid_unbiased(n_paths=16, reps=4096, groups=40, temp=0.5):
     noise = market_noise(n_paths, cfg, gen)
     exact = flat_grad(exact_expected_objective(noise, policy, w, cfg, temp), params)
 
+    # Path r * n_paths + m uses market path m, so the K blocks of
+    # hybrid_surrogate(samples=K) are K decision samples on the same paths.
     rep = noise.repeat(reps, 1, 1, 1)
-    hybrid, pathwise = [], []
+    grads = {1: [], 4: [], 'pathwise': []}
     for _ in range(groups):
         gates = SampledGates(torch.rand(rep.shape[0], cfg.n_steps, 2, generator=gen), temp)
         loss = simulate(rep, policy.mean_action, w, cfg, gates=gates)
-        surrogate, obj = hybrid_surrogate(loss, gates.logp, w, cfg.alpha)
-        hybrid.append(flat_grad(surrogate, params, retain_graph=True))
-        pathwise.append(flat_grad(obj, params))
-    hybrid, pathwise = torch.stack(hybrid), torch.stack(pathwise)
+        for k in (1, 4):
+            surrogate, obj = hybrid_surrogate(loss, gates.logp, w, cfg.alpha, samples=k)
+            grads[k].append(flat_grad(surrogate, params, retain_graph=True))
+        grads['pathwise'].append(flat_grad(obj, params))
+    grads = {k: torch.stack(v) for k, v in grads.items()}
 
-    est, se = hybrid.mean(0), hybrid.std(0) / math.sqrt(groups)
-    z = (est - exact) / se
-    rel = ((est - exact).norm() / exact.norm()).item()
-    rel_pw = ((pathwise.mean(0) - exact).norm() / exact.norm()).item()
-    rel_se = (se.norm() / exact.norm()).item()
-    print(f'hybrid vs exact gradient ({exact.numel()} components, '
-          f'{groups} x {rep.shape[0]} sampled paths): relative error {rel:.4f} '
-          f'(Monte Carlo error {rel_se:.4f}), mean z^2 {z.pow(2).mean():.2f}, '
-          f'max |z| {z.abs().max():.2f}, dw exact {exact[-1]:.4f} est {est[-1]:.4f}')
+    rel_pw = ((grads['pathwise'].mean(0) - exact).norm() / exact.norm()).item()
+    for k in (1, 4):
+        est, se = grads[k].mean(0), grads[k].std(0) / math.sqrt(groups)
+        z = (est - exact) / se
+        rel = ((est - exact).norm() / exact.norm()).item()
+        rel_se = (se.norm() / exact.norm()).item()
+        print(f'hybrid, K = {k}, vs exact gradient ({exact.numel()} components, '
+              f'{groups} x {rep.shape[0]} sampled paths): relative error {rel:.4f} '
+              f'(Monte Carlo error {rel_se:.4f}), mean z^2 {z.pow(2).mean():.2f}, '
+              f'max |z| {z.abs().max():.2f}; dJ/dw exact {exact[-1]:.4f}, est {est[-1]:.4f}')
+        assert (se > 0).all()
+        assert z.pow(2).mean() < 1.5 and z.abs().max() < 5 and rel < 3 * rel_se
+        assert rel_pw > 10 * rel_se
     print(f'pathwise term alone: relative error {rel_pw:.4f}')
-    assert (se > 0).all()
-    assert z.pow(2).mean() < 1.5 and z.abs().max() < 5 and rel < 3 * rel_se
-    assert rel_pw > 10 * rel_se
 
 
 if __name__ == '__main__':

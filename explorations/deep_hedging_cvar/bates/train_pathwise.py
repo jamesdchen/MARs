@@ -29,9 +29,10 @@ observes, which earlier targets moved. The surrogate
 
     S = mean_i c_i + mean_i (stop_grad(c_i) - b_i) l_i
 
-satisfies E[grad S] = grad E[c], for the network and for w. The first term
-is the pathwise derivative with the sampled decisions held fixed, the second
-is the score-function (likelihood-ratio) term for the decisions: Schulman,
+satisfies E[grad S] = grad E[c_i], the gradient of the RU objective of the
+stochastic policy, for the network and for w. The first term is the
+pathwise derivative with the sampled decisions held fixed, the second is
+the score-function (likelihood-ratio) term for the decisions: Schulman,
 Heess, Weber & Abbeel (2015), Gradient estimation using stochastic
 computation graphs; Williams (1992). The only cost is terminal, so c_i is
 also the cost downstream of every decision.
@@ -39,22 +40,28 @@ also the cost downstream of every decision.
 Baseline. Most of the spread of c_i comes from the market path, not from
 the decisions, so a constant baseline leaves the score term very noisy (at
 initialization, temp 0.1 and batch 2048, the standard deviation of the
-gradient for the signal biases is about ten times its mean). The batch of B
-paths is therefore K = --samples
-independent decision samples on each of B / K market paths, and b_i is the
-leave-one-out mean of c over the other K - 1 samples on path i's market
-path (Kool, van Hoof & Welling 2019). It depends on the market noise and on
-other samples' decisions, never on path i's, so it adds no bias; with K = 4
-that standard deviation falls about fiftyfold. With K = 1, b_i is the
-mean of c over the other paths of the batch. test_pathwise.py checks
-unbiasedness against exact enumeration of the decisions on a 2-date book.
+gradient for the signal biases is about ten times its mean). The batch of
+B paths is therefore K = --samples independent decision samples on each of
+B / K market paths, and b_i is the leave-one-out mean of c over the other
+K - 1 samples on path i's market path (Kool, van Hoof & Welling 2019). It
+depends on the market noise and on other samples' decisions, never on path
+i's, so it adds no bias; with K = 4 that standard deviation falls about
+fiftyfold. With K = 1, b_i is the mean of c over the other paths of the
+batch. test_pathwise.py checks unbiasedness against exact enumeration of
+the decisions on a 2-date book.
 
-The stochastic policy is only a device for training: temp is annealed
-geometrically from --temp to --temp-end, so the decisions become nearly
-deterministic, and the reported policy is the deterministic one (trade iff
-signal > 0, i.e. the mode of each Bernoulli). Every variant is logged,
-validated and scored on the exact model (hard gate). The log uses a fixed
-monitoring set of 4096 paths, drawn first from the training generator.
+The stochastic policy is only a device for training. temp is annealed
+geometrically from --temp to --temp-end so the decisions become nearly
+deterministic, and the reported policy is the deterministic one: trade iff
+signal > 0, the mode of each Bernoulli. The two agree once the network has
+sharpened its signals as temp falls; in short runs many signals can stay
+within a few temp of 0, leaving the deterministic policy worse than the
+stochastic one it was trained as. Every variant is logged, validated and
+scored on the exact model (hard gate), so the sweep picks schedules for
+which the deterministic policy is good. The log uses a fixed monitoring set
+of 4096 paths, drawn first from the training generator; for the hybrid gate
+it also reports the stochastic policy at the current temp on those paths
+(sampled_*), which keeps that gap visible.
 
 train() is importable, so sweep_pathwise.py can tune it with the same code.
 """
@@ -137,6 +144,8 @@ def train(gate, iters=2000, batch=16384, lr=1e-3, temp=0.1, temp_end=0.01, hidde
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, iters)
     gen = torch.Generator().manual_seed(seed)
     monitor = market_noise(MONITOR_PATHS, cfg, gen, device)
+    if gate == 'hybrid':
+        monitor_u = torch.rand(MONITOR_PATHS, cfg.n_steps, 2, generator=gen).to(device)
 
     history, t0 = [], time.time()
     for it in range(iters):
@@ -162,12 +171,17 @@ def train(gate, iters=2000, batch=16384, lr=1e-3, temp=0.1, temp_end=0.01, hidde
             with torch.no_grad():
                 exact, rec = simulate(monitor, policy.mean_action, w * cfg.scale, cfg,
                                       record=True)
+                if gate == 'hybrid':
+                    sampled = simulate(monitor, policy.mean_action, w * cfg.scale, cfg,
+                                       gates=SampledGates(monitor_u, t))
             row = {'iter': it, 'objective': obj.item(), 'w': w.item() * cfg.scale,
                    'temp': t, 'time': time.time() - t0,
                    'trades_stock': rec['trade_s'].float().sum(1).mean().item(),
                    'trades_swap': rec['trade_y'].float().sum(1).mean().item(),
                    **{f'train_{k}': v for k, v in summarize(loss.detach(), cfg.alpha).items()},
                    **summarize(exact, cfg.alpha)}
+            if gate == 'hybrid':
+                row.update({f'sampled_{k}': v for k, v in summarize(sampled, cfg.alpha).items()})
             history.append(row)
             if log is not None:
                 log(json.dumps({k: round(v, 4) for k, v in row.items()}))

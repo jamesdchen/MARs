@@ -3,9 +3,11 @@
 PPO is tuned by a sweep, so the pathwise baseline gets the same treatment,
 as in ../impact/sweep_pathwise.py: a fixed number of trials proposed by
 Optuna's TPE sampler (Bergstra et al. 2011) over the learning rate, the
-gate temperature (the start of the annealing schedule for the hybrid and
-sigmoid gates), the batch size, the hidden width and the number of
-iterations. The default gate is the hybrid estimator. Each trial trains with
+gate temperature, the batch size, the hidden width and the number of
+iterations. The default gate is the hybrid estimator, for which the sampled
+temperature is the start of the annealing schedule; it ends at
+min(--temp-end, temp), and --samples sets its decision samples on each
+market path (train_pathwise.py explains both). Each trial trains with
 its own seed (--seed + trial number) and is scored like every method:
 CVaR_alpha of the exact model (hard gate, deterministic actions) on the
 validation paths (seed 999), with the trial's learned w. The test paths
@@ -50,6 +52,8 @@ def main():
     p.add_argument('--gate', choices=['hard', 'ste', 'sigmoid', 'hybrid'], default='hybrid')
     p.add_argument('--temp-end', type=float, default=0.01,
                    help='end temperature of the hybrid and sigmoid gates (capped at temp)')
+    p.add_argument('--samples', type=int, default=4,
+                   help='hybrid: decision samples on each market path')
     p.add_argument('--device', default='cuda' if torch.cuda.is_available() else 'cpu')
     p.add_argument('--out-dir', default=None,
                    help='default: results/gpu/pathwise_sweep_<gate>')
@@ -82,7 +86,8 @@ def main():
             hp['batch'] = min(hp['batch'], args.max_batch)
         hp['temp_end'] = min(args.temp_end, hp['temp'])
         seed = args.seed + trial.number
-        ckpt = train(args.gate, seed=seed, device=args.device, log=None, cfg=cfg, **hp)
+        ckpt = train(args.gate, seed=seed, device=args.device, log=None, cfg=cfg,
+                     samples=args.samples, **hp)
         path = f'{out_dir}/trial_{trial.number:03d}.pt'
         torch.save(ckpt, path)
         value = val_cvar(ckpt, val, cfg)
@@ -103,7 +108,8 @@ def main():
                              val_cvar=best['val_cvar'])
             torch.save(best_ckpt, f'{out_dir}/best.pt')
         with open(f'{out_dir}/trials.json', 'w') as f:
-            json.dump({'gate': args.gate, 'sampler': 'TPE', 'sampler_seed': args.seed,
+            json.dump({'gate': args.gate, 'samples': args.samples, 'sampler': 'TPE',
+                       'sampler_seed': args.seed,
                        'n_val': args.n_val, 'val_seed': VAL_SEED, 'alpha': cfg.alpha,
                        'device': args.device, 'tune_wall_time': tune_wall_time,
                        'tune_steps': tune_steps, 'best': best, 'trials': records}, f, indent=2)
