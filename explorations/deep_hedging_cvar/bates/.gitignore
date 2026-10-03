@@ -2,5 +2,5 @@ build/
 *.so
 __pycache__/
 resources
-results/ppo_ckpt/
+results/ppo_ckpt*/
 results/*_log.txt

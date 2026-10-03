@@ -35,7 +35,7 @@ def ppo_config(args, num_agents):
         minibatch_size=batch // args.minibatches, max_minibatch_size=batch,
         update_epochs=args.update_epochs,
         gamma=1.0, gae_lambda=args.gae_lambda,
-        clip_coef=0.2, vf_coef=0.5, vf_clip_coef=10.0, ent_coef=0.0,
+        clip_coef=0.2, vf_coef=0.5, vf_clip_coef=10.0, ent_coef=args.ent_coef,
         max_grad_norm=0.5,
         vtrace_rho_clip=1.0, vtrace_c_clip=1.0, prio_alpha=0.0, prio_beta0=1.0,
         data_dir=args.ckpt_dir, checkpoint_interval=10**9,
@@ -50,6 +50,7 @@ def main():
     p.add_argument('--update-epochs', type=int, default=4)
     p.add_argument('--minibatches', type=int, default=8)
     p.add_argument('--gae-lambda', type=float, default=0.95)
+    p.add_argument('--ent-coef', type=float, default=0.0)
     p.add_argument('--hidden', type=int, default=64)
     p.add_argument('--no-shaping', action='store_true')
     p.add_argument('--w-eta', type=float, default=0.01)
