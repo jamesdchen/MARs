@@ -34,6 +34,7 @@ def main():
     p.add_argument('--temp', type=float, default=0.1, help='STE temperature / sigmoid start')
     p.add_argument('--temp-end', type=float, default=0.01, help='sigmoid end temperature')
     p.add_argument('--seed', type=int, default=0)
+    p.add_argument('--device', default='cpu')
     p.add_argument('--out', default=None)
     args = p.parse_args()
     out = args.out or f'results/pathwise_{args.gate}.pt'
@@ -41,8 +42,8 @@ def main():
     torch.manual_seed(args.seed)
     torch.set_num_threads(int(os.environ.get('OMP_NUM_THREADS', os.cpu_count())))
     cfg = ImpactConfig()
-    policy = ImpactHedgePolicy()
-    w = torch.nn.Parameter(torch.tensor(0.3))  # in units of cfg.scale
+    policy = ImpactHedgePolicy().to(args.device)
+    w = torch.nn.Parameter(torch.tensor(0.3, device=args.device))  # in units of cfg.scale
     opt = torch.optim.Adam(list(policy.actor.parameters()) + [w], lr=args.lr)
     sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, args.iters)
     gen = torch.Generator().manual_seed(args.seed)
@@ -52,7 +53,7 @@ def main():
         temp = args.temp
         if args.gate == 'sigmoid':
             temp = args.temp * (args.temp_end / args.temp) ** (it / max(1, args.iters - 1))
-        z = fundamental_noise(args.batch, cfg, gen)
+        z = fundamental_noise(args.batch, cfg, gen, args.device)
         loss = simulate(z, policy.mean_action, w * cfg.scale, cfg, gate_mode=args.gate, temp=temp)
         obj = ru_objective(loss, w * cfg.scale, cfg.alpha)
         opt.zero_grad()
@@ -72,9 +73,9 @@ def main():
             print(json.dumps({k: round(v, 4) for k, v in row.items()}), flush=True)
 
     os.makedirs(os.path.dirname(out), exist_ok=True)
-    torch.save({'actor': policy.actor.state_dict(), 'w': w.item() * cfg.scale,
+    torch.save({'actor': policy.actor.cpu().state_dict(), 'w': w.item() * cfg.scale,
                 'cfg': cfg.to_dict(), 'gate': args.gate, 'history': history,
-                'wall_time': time.time() - t0,
+                'wall_time': time.time() - t0, 'device': args.device,
                 'steps': args.iters * args.batch * cfg.n_steps}, out)
 
 

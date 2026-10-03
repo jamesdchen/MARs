@@ -72,8 +72,10 @@ OBS_DIM = 7
 ACT_DIM = 2
 
 
-def fundamental_noise(n_paths, cfg, generator=None):
-    return torch.randn(n_paths, cfg.n_steps, generator=generator)
+def fundamental_noise(n_paths, cfg, generator=None, device='cpu'):
+    """Standard normals for the fundamental price, drawn on the CPU so a seed
+    gives the same paths on every device."""
+    return torch.randn(n_paths, cfg.n_steps, generator=generator).to(device)
 
 
 def make_obs(k, s, delta, wealth, w, impact, cfg):
@@ -117,18 +119,20 @@ def gate(signal, mode, temp):
 def simulate(z, policy_fn, w, cfg, gate_mode='hard', temp=0.1, record=False):
     """Run a hedging policy on fundamental noise z (B, n_steps).
 
+    Runs on z's device and dtype.
+
     policy_fn maps observations (B, OBS_DIM) to actions (B, 2) =
     (target position, trade signal). Returns the loss L (B,) and, with
     record=True, a dict of positions, trade flags and quoted prices.
     """
     n = z.shape[0]
-    w = torch.as_tensor(w, dtype=torch.get_default_dtype()).expand(n)
+    w = torch.as_tensor(w, dtype=z.dtype, device=z.device).expand(n)
     drift = (cfg.mu - 0.5 * cfg.sigma**2) * cfg.dt
     vol = cfg.sigma * math.sqrt(cfg.dt)
-    f = torch.full((n,), cfg.s0)
-    impact = torch.zeros(n)
-    cash = torch.full((n,), cfg.premium)
-    delta = torch.zeros(n)
+    f = z.new_full((n,), cfg.s0)
+    impact = z.new_zeros(n)
+    cash = z.new_full((n,), cfg.premium)
+    delta = z.new_zeros(n)
     rec = {'delta': [], 'trade': [], 's': []}
     for k in range(cfg.n_steps):
         s = f + impact
@@ -178,4 +182,4 @@ def bs_delta_band(cfg, width=0.0, to_edge=0.0):
 
 
 def no_hedge(obs):
-    return torch.stack([torch.zeros(obs.shape[0]), -torch.ones(obs.shape[0])], dim=-1)
+    return torch.stack([obs.new_zeros(obs.shape[0]), -obs.new_ones(obs.shape[0])], dim=-1)
