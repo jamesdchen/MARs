@@ -40,6 +40,7 @@ code("""
 # Settings
 PPO_TIMESTEPS = 120_000_000      # same budget as the CPU PufferLib 3.0 run
 LONG_TIMESTEPS = 1_000_000_000   # a second, longer 5.0 run; set to 0 to skip
+SWEEP_RUNS = 32                  # trials in each hyperparameter sweep; 0 to skip
 SEED = 0
 """)
 
@@ -68,6 +69,7 @@ bfloat16.
 
 code("""
 !apt-get -qq install -y ccache clang libomp-dev > /dev/null
+!pip -q install optuna
 !ln -sf $(ls /usr/lib/x86_64-linux-gnu/libomp.so.5) /usr/lib/x86_64-linux-gnu/libomp5.so
 !pip -q install nvidia-nccl-cu12
 import os
@@ -137,6 +139,37 @@ if LONG_TIMESTEPS:
 """)
 
 md("""
+## Hyperparameter sweep with PufferLib's tuner (Protein)
+
+The search space is `puffer5/sweep.ini`. PufferLib's `default.ini` also
+sweeps `train.horizon` and `vec.total_agents`, which this env must keep fixed
+(32-step episodes), so we drop its generic `[sweep.*]` blocks from our clone
+first. Protein ranks runs by the env's score, minus the Rockafellar-Uryasev
+objective; `select_sweep.py` then re-scores the top 5 on validation paths
+with deterministic actions and keeps the best. The test paths are not used.
+""")
+
+code("""
+if SWEEP_RUNS:
+    path = '/content/PufferLib/config/default.ini'
+    text = open(path).read()
+    blocks = re.split(r'(?m)^(?=\\[)', text)
+    open(path, 'w').write(''.join(b for b in blocks if not b.startswith('[sweep.')))
+    with open('/content/PufferLib/config/deep_hedging.ini', 'a') as f:
+        f.write('\\n' + open(f'{SRC}/puffer5/sweep.ini').read())
+    t0 = time.time()
+    with open(f'{OUT}/puffer5_sweep.log', 'w') as log:
+        subprocess.run(['./puffer', 'sweep', '--headless', f'--sweep.max_runs={SWEEP_RUNS}',
+                        f'--vec.num_threads={os.cpu_count()}'],
+                       cwd='/content/PufferLib', stdout=log, stderr=subprocess.STDOUT, check=True)
+    SWEEP_WALL = time.time() - t0
+    print(f'sweep: {SWEEP_RUNS} runs in {SWEEP_WALL / 60:.0f} min')
+    subprocess.run(['python', 'puffer5/select_sweep.py', '--pufferlib', '/content/PufferLib',
+                    '--sweep-log', f'{OUT}/puffer5_sweep.log', '--sweep-wall', str(SWEEP_WALL),
+                    '--out', 'results/gpu'], cwd=SRC, check=True)
+""")
+
+md("""
 ## Pathwise baselines on the same GPU
 
 The same script as the CPU runs, with `--device cuda`, so the wall-clock
@@ -158,6 +191,23 @@ for gate, temp in PATHWISE:
 """)
 
 md("""
+### Pathwise sweep with the same number of trials
+
+Optuna's TPE (also a Bayesian tuner) over learning rate, straight-through
+temperature, batch size, network size and iterations, scored on the same
+validation paths (`sweep_pathwise.py`).
+""")
+
+code("""
+if SWEEP_RUNS:
+    with open(f'{OUT}/pathwise_sweep_log.jsonl', 'w') as log:
+        subprocess.run(['python', 'sweep_pathwise.py', '--trials', str(SWEEP_RUNS),
+                        '--device', 'cuda', '--out-dir', 'results/gpu/pathwise_sweep'],
+                       cwd=SRC, stdout=log, stderr=subprocess.STDOUT, check=True)
+    print(open(f'{OUT}/pathwise_sweep_log.jsonl').read()[-2000:])
+""")
+
+md("""
 ## Score everything on the same held-out paths
 
 CPU runs from the repo (PufferLib 3.0 + Cython env, pathwise on CPU) and the
@@ -173,7 +223,10 @@ runs = [
     f'pathwise|pathwise, {g} gate ({w})|results/pathwise_{g}.pt'
     for g in ['ste', 'sigmoid', 'hard'] for w in ['CPU']] + [
     f'pathwise|pathwise, {g} gate, temp {t:g} (GPU)|results/gpu/pathwise_{g}_t{t:g}.pt'
-    for g, t in PATHWISE]
+    for g, t in PATHWISE] + ([
+    'ppo5|PPO, PufferLib 5.0, tuned (GPU)|results/gpu/puffer5_sweep_best.bin',
+    'pathwise|pathwise, ste gate, tuned (GPU)|results/gpu/pathwise_sweep/best.pt',
+] if SWEEP_RUNS else [])
 subprocess.run(['python', 'evaluate.py', '--out', 'results/combined', '--runs', *runs],
                cwd=SRC, check=True)
 print(open(f'{SRC}/results/combined/summary.md').read())

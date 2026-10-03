@@ -4,5 +4,5 @@ cy_hedging.c
 *.so
 __pycache__/
 resources
-# Runs still in progress; results are committed once evaluated.
-results/
+results/ppo_ckpt/
+results/evaluate_log.txt

@@ -82,9 +82,12 @@ Frikha & Pagès (2009):
 
 ## Log (`struct Log`, floats only, `n` last)
 
-Sum over finished episodes: `score` (= -L), `perf` (= -L / scale),
-`loss` (L), `excess` ((L - w)^+), `w`, `trades` (trades in the episode),
-`episode_return`, `episode_length` (32), then `n`.
+Sum over finished episodes: `score` (= -ru), `perf` (= -ru / scale), `ru`
+(the Rockafellar–Uryasev objective `w + (L - w)^+ / (1 - alpha)` at the w
+the episode used), `loss` (L), `excess` ((L - w)^+), `w`, `trades` (trades in
+the episode), `episode_return`, `episode_length` (32), then `n`. CVaR is not
+an average, so the trainer cannot log it; `ru` is, and it bounds CVaR from
+above, so `score` is the sweep metric.
 
 ## `[env]` kwargs (`dict_get` returns double)
 

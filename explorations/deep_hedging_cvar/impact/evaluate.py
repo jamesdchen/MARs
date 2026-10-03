@@ -30,7 +30,7 @@ from policy import ImpactHedgePolicy
 
 def load_torch(path, device):
     ckpt = torch.load(path, weights_only=False, map_location='cpu')
-    pol = ImpactHedgePolicy()
+    pol = ImpactHedgePolicy(hidden=ckpt.get('hidden', 64))
     if 'actor' in ckpt:
         pol.actor.load_state_dict(ckpt['actor'])
     else:
@@ -115,7 +115,7 @@ def main():
             ru_curves[label] = (w_grid, j)
             st = dict(fn=fn, w=w)
         st.update(wall_time=ck.get('wall_time', float('nan')), steps=ck.get('steps', float('nan')),
-                  device=ck.get('device', 'cpu'))
+                  device=ck.get('device', 'cpu'), tune_time=ck.get('tune_wall_time', float('nan')))
         strategies[label] = st
 
     rows, losses, recs = {}, {}, {}
@@ -127,7 +127,8 @@ def main():
                       'trades': rec['trade'].float().sum(1).mean().item(),
                       'w': st['w'], 'device': st.get('device', '–'),
                       'train wall time (s)': st.get('wall_time', float('nan')),
-                      'train sim steps': st.get('steps', float('nan'))}
+                      'train sim steps': st.get('steps', float('nan')),
+                      'tuning wall time (s)': st.get('tune_time', float('nan'))}
 
     os.makedirs(out, exist_ok=True)
     with open(f'{out}/summary.json', 'w') as f:
@@ -136,11 +137,12 @@ def main():
                    'band_val_cvar': {f'{h},{e}': v for (h, e), v in band_val.items()}},
                   f, indent=2)
     cols = [f'val CVaR{a:g}', 'mean', 'std', f'VaR{a:g}', f'CVaR{a:g}', 'trades', 'device',
-            'train wall time (s)', 'train sim steps']
+            'train wall time (s)', 'train sim steps', 'tuning wall time (s)']
     num = lambda v: f'{v:.3f}'
     fmt = {'device': str,
            'train sim steps': lambda v: '–' if np.isnan(v) else f'{v / 1e6:.0f}M',
-           'train wall time (s)': lambda v: '–' if np.isnan(v) else f'{v:.0f}'}
+           'train wall time (s)': lambda v: '–' if np.isnan(v) else f'{v:.0f}',
+           'tuning wall time (s)': lambda v: '–' if np.isnan(v) else f'{v:.0f}'}
     lines = ['| strategy | ' + ' | '.join(cols) + ' |', '|' + '---|' * (len(cols) + 1)]
     for name, r in rows.items():
         lines.append(f'| {name} | ' + ' | '.join(fmt.get(c, num)(r[c]) for c in cols) + ' |')
