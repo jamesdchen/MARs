@@ -1,0 +1,8 @@
+# Cython build output
+build/
+cy_hedging.c
+*.so
+__pycache__/
+resources
+# Runs still in progress; results are committed once evaluated.
+results/
