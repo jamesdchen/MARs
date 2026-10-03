@@ -46,21 +46,17 @@ def load_torch_policy(path, device):
 
 
 def baseline_strategies(path, cfg, device):
+    """The fixed classical hedgers and the tuned band (baselines.py)."""
     import baselines as B
     from greeks import BookGreeks
     with open(path) as f:
         res = json.load(f)
     greeks = BookGreeks(cfg)
-    meta = dict(device=res.get('device', device), wall_time=res.get('tune_wall_time', float('nan')),
-                tune_time=res.get('tune_wall_time', float('nan')), steps=float('nan'))
-    return {
-        'no hedge': dict(fn=B.no_hedge(cfg), w=0.0),
-        'BS delta, daily': dict(fn=B.bs_delta(cfg), w=0.0),
-        'Bates delta, daily': dict(fn=B.bates_delta(cfg, greeks), w=0.0),
-        'Bates delta-vega, daily': dict(fn=B.bates_delta_vega(cfg, greeks), w=0.0),
-        'tuned no-trade band (Bates delta-vega)': dict(
-            fn=B.band(cfg, greeks, res['best_params']), w=0.0, **meta),
-    }
+    out = {name: dict(fn=fn, w=0.0) for name, fn in B.untuned(cfg, greeks).items()}
+    out['tuned no-trade band'] = dict(
+        fn=B.tuned_band(cfg, greeks, path), w=0.0, device=res.get('device', device),
+        tune_time=res.get('tune_wall_time', float('nan')), steps=res.get('tune_steps', float('nan')))
+    return out
 
 
 @torch.no_grad()

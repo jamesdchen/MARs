@@ -265,10 +265,12 @@ class BookGreeks:
         wv = _bspline(fr - j)
         k = torch.as_tensor(k, device=x.device).long().expand_as(i)
         corner = (k * nx + i.long()) * nv + j.long()   # coefficient of node (i - 1, j - 1)
+        # rows r..r+3 (the four v-neighbours) as one window, so 4 gathers, not 16
+        win = tab.as_strided((tab.shape[0] - 3, 4, tab.shape[1]), (tab.shape[1], tab.shape[1], 1))
+        wv = torch.stack(wv, -1)[:, :, None]
         out = 0
         for a in range(4):
-            for b in range(4):
-                out = out + (wx[a] * wv[b])[:, None] * tab[corner + a * nv + b]
+            out = out + wx[a][:, None] * (wv * win[corner + a * nv]).sum(1)
         # beyond the x range: constant greeks, value continued by intrinsic value
         intr = lambda z: torch.expm1(z).clamp_min(0)
         out[:, 0] = out[:, 0] + intr(x) - intr(xc)

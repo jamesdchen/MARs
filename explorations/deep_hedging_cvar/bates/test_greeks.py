@@ -15,7 +15,8 @@
    expected_variance(v, tau) + eps^2.
 5. Monte Carlo: the t = 0 delta and value against market.evolve paths, by
    the pathwise estimator (with S_T / S_0 as control variate) and by
-   central bump-and-revalue with common random numbers.
+   central bump-and-revalue with common random numbers; the grid value
+   against cfg.premium (unsmoothed Fourier).
 
     python test_greeks.py
 """
@@ -121,7 +122,7 @@ def bs_book(tau, s, v, cfg, eps):
 
 
 def test_bs_limit():
-    cfg = BatesConfig(xi=1e-4, lam=0.0)
+    cfg = BatesConfig(xi=1e-5, lam=0.0)   # the gap to BS is O(rho xi)
     with tempfile.TemporaryDirectory() as tmp:
         g = BookGreeks(cfg, cache_dir=tmp)
     rng = np.random.default_rng(1)
@@ -134,7 +135,7 @@ def test_bs_limit():
         out = g(k, torch.tensor(s), torch.tensor(v))
         for f in err:
             err[f] = max(err[f], np.abs(out[f].numpy() - ref[f]).max())
-    print('BS limit (xi = 1e-4, lam = 0), max abs difference: '
+    print('BS limit (xi = 1e-5, lam = 0), max abs difference: '
           + ', '.join(f'{f} {e:.1e}' for f, e in err.items()))
     assert err['delta'] < 1e-4 and err['gamma'] < 1e-4 and err['vega_v'] < 1e-3
 
@@ -158,7 +159,8 @@ def test_mc_delta(n=400_000, chunk=100_000, h=1.0):
         slope = (st > cfg.strike_call).double() - (st < cfg.strike_put).double()
         est['pathwise'].append(slope * st / cfg.s0)
         est['cv'].append(st / cfg.s0 - 1)
-        est['bump'].append((payoff(torch.exp(xs[h]), cfg) - payoff(torch.exp(xs[-h]), cfg)) / (2 * h))
+        up, down = payoff(torch.exp(xs[h]), cfg), payoff(torch.exp(xs[-h]), cfg)
+        est['bump'].append((up - down) / (2 * h))
         est['value'].append(payoff(st, cfg))
     e = {k: torch.cat(val) for k, val in est.items()}
     cv = e['cv']
@@ -175,7 +177,9 @@ def test_mc_delta(n=400_000, chunk=100_000, h=1.0):
         ref = b0 if name == 'value' else d0
         print(f'  {name:26s} {m:.5f} +- {se:.5f}  (grid - MC = {ref - m:+.5f})')
         assert abs(ref - m) < 4 * se + 2e-3
-    assert abs(b0 - cfg.premium) < 1e-6
+    # the smoothing adds eps^2 = 1e-6 to the total variance (about 3e-4 here)
+    print(f'  grid value - cfg.premium (Fourier, no smoothing) = {b0 - cfg.premium:+.1e}')
+    assert abs(b0 - cfg.premium) < 1e-3
 
 
 if __name__ == '__main__':

@@ -3,10 +3,11 @@
 The learned hedgers get a sweep of --trials trials, so the band gets the
 same budget: Optuna's TPE sampler (Bergstra et al. 2011) over eight of its
 parameters (SEARCH; eta_s stays at 1, see baselines.band). The first trial
-is the theory point BAND_DEFAULTS (risk aversion 1 / scale). Each trial is scored the way every method
-is scored: CVaR_alpha of market.simulate with the hard gate and
-deterministic actions on the validation paths (seed 999); the classical
-policies ignore w. The test paths (seed 12345) are never touched here.
+is the theory point BAND_DEFAULTS (risk aversion 1 / scale). Each trial is
+scored the way every method is scored: CVaR_alpha of market.simulate with
+the hard gate and deterministic actions on the validation paths (seed
+999); the classical policies ignore w. The test paths (seed 12345) are
+never touched here.
 
 Also scores the untuned baselines (baselines.untuned) on the same paths.
 Writes --out (rewritten after every trial, so an interrupted run still
@@ -15,6 +16,11 @@ baselines, every trial (params, val CVaR, mean loss, trades, time), the
 best parameters (all nine, ready for baselines.band or tuned_band) and the
 tuning wall time. Prints one JSON line for each untuned baseline and each
 trial.
+
+In CPU pilots on 20k validation paths the best bands held a static swap
+position (about 1.3 y* bought at inception, y_min near the position limit)
+and a stock band of roughly constant width 0.1 around delta (a_p, a_f near
+their lower bound), at CVaR about 3.0 against 6.1 for daily delta-vega.
 
     python tune_baselines.py --trials 32 --device cuda
 """
@@ -36,7 +42,7 @@ VAL_SEED, TEST_SEED = 999, 12345
 # name: (low, high, log scale). The width multipliers scale with a power of
 # the risk aversion, a scale parameter, so they get log-uniform priors.
 SEARCH = {'a_p': (0.01, 3.0, True), 'a_f': (0.01, 3.0, True), 'h_min': (0.0, 0.2, False),
-          'a_y': (0.01, 3.0, True), 'y_min': (0.0, 1.0, False), 'eta_y': (0.0, 1.0, False),
+          'a_y': (0.01, 3.0, True), 'y_min': (0.0, 3.0, False), 'eta_y': (0.0, 1.0, False),
           'm_delta': (0.5, 1.5, False), 'm_vega': (0.5, 2.0, False)}
 
 

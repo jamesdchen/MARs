@@ -18,13 +18,20 @@ N_vs tau / T, y* also roughly matches the book's dollar gamma.
 - no_hedge: never trades.
 - bs_delta: Black-Scholes delta of the book at sigma0 = sqrt(v0), every date
   (Black & Scholes 1973).
-- bates_delta: Bates delta dB/dS, every date. With min_var=True it uses the
-  minimum-variance delta dB/dS + rho xi (dB/dv) / S, which also hedges the
-  part of the variance risk that is correlated with S (Bakshi, Cao & Chen
-  1997; Hull & White 2017).
-- bates_delta_vega: dB/dS shares and y* swaps, both every date.
+- bates_delta: Bates (1996) model delta dB/dS, every date. With
+  min_var=True it uses the minimum-variance delta dB/dS + rho xi (dB/dv) / S,
+  which also hedges the part of the variance risk that is correlated with S
+  (Bakshi, Cao & Chen 1997; Hull & White 2017).
+- bates_delta_vega: dB/dS shares and y* swaps, both every date (delta-vega
+  hedging as in Bakshi, Cao & Chen 1997, with a variance swap as the
+  second instrument, Demeterfi, Derman, Kamal & Zou 1999).
 - band: no-trade bands around the delta-vega targets, the strong classical
   baseline; see band().
+
+With these jumps the CVaR tail is mostly jump paths, which a delta hedge
+does not protect: daily delta hedges end with a higher CVaR than no hedge
+(the costs add to the tail). The swap, which accrues the squared jump,
+is what cuts the tail.
 
 Targets are clamped to the position limits of market.simulate before the
 band test, since a trade signal pays the fixed fee even when the clamped
