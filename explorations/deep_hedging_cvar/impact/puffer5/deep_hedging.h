@@ -27,9 +27,14 @@
 typedef float obs_t;
 #include "pufferenv.h"
 
-#define ACT_SIZES {1, 1}
+// The env reads actions 0 (target) and 1 (trade signal) and ignores 2 and 3.
+// Four continuous actions make every policy tensor a multiple of 4 floats, so
+// PufferLib 5.0's allocator adds no padding: its muon_step walks the gradient
+// buffer with unpadded offsets (algo.cu), which shifts every matrix after a
+// padded logstd. With 2 actions the MinGRU updates would be misaligned.
+#define ACT_SIZES {1, 1, 1, 1}
 #define OBS_SIZE 8
-#define NUM_ATNS 2
+#define NUM_ATNS 4
 #define N_STEPS 30
 #define EPISODE_STEPS 32
 

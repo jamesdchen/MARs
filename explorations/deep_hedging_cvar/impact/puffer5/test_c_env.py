@@ -40,6 +40,7 @@ torch.set_default_dtype(torch.float64)
 torch.set_num_threads(1)
 PUFFERLIB_DIR = os.environ.get('PUFFERLIB_DIR', '/tmp/claude-0/pl5')
 N_STEPS, EPISODE = 30, 32
+NUM_ATNS = int(re.search(r'#define NUM_ATNS (\d+)', open(os.path.join(HERE, 'deep_hedging.h')).read())[1])
 LOG_FIELDS = ['score', 'perf', 'ru', 'loss', 'excess', 'w', 'trades',
               'episode_return', 'episode_length', 'n']
 
@@ -104,7 +105,10 @@ def run_env(exe, tmp, kwargs, actions, z=None):
     phi, loss, premium, each (T + 1, N), rewards and terminals (T, N) and
     the Log of each env as a dict of (N,) arrays."""
     T, n = actions.shape[:2]
-    actions.astype(np.float32).tofile(os.path.join(tmp, 'actions.bin'))
+    # Actions 2 and 3 exist only to keep PufferLib 5.0's buffers unpadded;
+    # large random values check that the env ignores them.
+    junk = np.random.default_rng(99).normal(0, 10, (T, n, NUM_ATNS - 2))
+    np.concatenate([actions, junk], -1).astype(np.float32).tofile(os.path.join(tmp, 'actions.bin'))
     if z is not None:
         z.astype(np.float64).tofile(os.path.join(tmp, 'z.bin'))
     subprocess.run([exe, tmp, str(n), str(T), str(int(z is not None))]

@@ -154,6 +154,11 @@ class PufferNet(nn.Module):
         return self.step(obs, state, terminals)
 
 
+# The hedging env's action count (puffer5/deep_hedging.h): target, signal and
+# two ignored outputs that keep PufferLib 5.0's parameter buffers unpadded.
+ENV_ACTIONS = 4
+
+
 class PufferNetPolicy:
     """policy_fn for market.simulate: the deterministic actions of a 5.0 checkpoint.
 
@@ -162,12 +167,14 @@ class PufferNetPolicy:
     forward, on the device of the observations. Carries the MinGRU state
     from one call to the next and zeroes it on date 0 (obs[:, 0] == 0),
     where the 5.0 env raises its terminal flag, so consecutive simulate
-    calls are independent. Returns the action means in the observations'
-    dtype. `align` is that of the build that wrote the file (see above).
+    calls are independent. Returns the means of the two actions the env
+    reads (target, signal) in the observations' dtype. `align` is that of the build that wrote the file (see above).
     """
 
-    def __init__(self, path, hidden=64, layers=2, device='cpu', align=FLOAT_ALIGN):
-        self.net = PufferNet(hidden=hidden, layers=layers).load_bin(path, align)
+    def __init__(self, path, hidden=64, layers=2, device='cpu', align=FLOAT_ALIGN,
+                 num_actions=ENV_ACTIONS):
+        self.net = PufferNet(hidden=hidden, layers=layers,
+                             num_actions=num_actions).load_bin(path, align)
         self.net.requires_grad_(False).to(device)
         self.state = None
 
@@ -190,4 +197,4 @@ class PufferNetPolicy:
         x = torch.cat([obs.float(), obs.new_ones(n, 1, dtype=torch.float32)], dim=-1)
         with torch.no_grad():
             mean, _, self.state = net.step(x, self.state, first)
-        return mean.to(obs.dtype)
+        return mean[:, :2].to(obs.dtype)

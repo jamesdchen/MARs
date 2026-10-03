@@ -102,11 +102,21 @@ What we see:
 
 PufferLib 3.0's trainer is PyTorch. On this CPU box the env takes about 2%
 of training time; the PPO update (backward pass and Adam, then minibatch
-forward passes) takes about 75%. A compiled env therefore makes the env
-step much faster but leaves end-to-end time almost unchanged
-(`bench.py`, `results/bench.json`). The training loop itself only gets
-faster on a GPU, and PufferLib 5.0's trainer is a from-scratch CUDA
-implementation of PPO with the env compiled in.
+forward passes) takes about 75%. `bench.py` (4 threads, `results/bench.json`)
+compares the Cython env with a vectorized PyTorch twin of the same dynamics:
+
+| | Cython | PyTorch twin |
+|---|---|---|
+| env only, 4096 agents | 13.9M steps/s | 6.8M steps/s |
+| env only, 65536 agents | 11.4M steps/s | 15.2M steps/s |
+| PPO end to end, 4096 agents | 229k steps/s | 247k steps/s |
+
+The Cython step is twice as fast at the training batch size. It runs on one
+thread, so the 4-thread PyTorch twin overtakes it on large batches. End to
+end the two are within run-to-run noise, because the env was never the
+bottleneck. The training loop itself only gets faster on a GPU: PufferLib
+5.0's trainer is a from-scratch CUDA implementation of PPO with the env
+compiled in.
 
 ## PufferLib 5.0 on a GPU, and hyperparameter sweeps
 
@@ -127,7 +137,12 @@ part on Google Colab:
 
 The 5.0 env uses 32-step episodes with the done flag on the expiry step,
 because 5.0's advantage kernel works within 32-step segments
-(`puffer5/SPEC.md`). PufferLib 5.0's policy is recurrent (MinGRU), and
+(`puffer5/SPEC.md`). It also has 4 action outputs, of which it reads 2. At
+commit `6ffa5b1`, PufferLib 5.0's Muon step walks the gradient buffer with
+unpadded offsets, while the allocator pads every tensor to 16 bytes. A
+2-action logstd is followed by padding, so every MinGRU update after it
+would be misaligned. With 4 actions no tensor needs padding, the bug never
+fires, and PufferLib stays unpatched. PufferLib 5.0's policy is recurrent (MinGRU), and
 `puffer5/puffernet.py` loads its checkpoints into PyTorch so they are scored
 on the same paths as everything else.
 

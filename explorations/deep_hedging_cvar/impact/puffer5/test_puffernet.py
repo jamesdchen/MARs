@@ -32,7 +32,7 @@ import torch  # noqa: E402
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.dirname(HERE))
-from puffernet import BF16_ALIGN, FLOAT_ALIGN, PufferNet, PufferNetPolicy  # noqa: E402
+from puffernet import BF16_ALIGN, ENV_ACTIONS, FLOAT_ALIGN, PufferNet, PufferNetPolicy  # noqa: E402
 from market import ImpactConfig, simulate, fundamental_noise  # noqa: E402
 
 torch.set_num_threads(1)
@@ -42,11 +42,12 @@ CONFIGS = [(64, 2), (32, 1), (128, 3)]
 B, T = 96, 48
 
 
-def random_net(hidden, layers, seed, enc=2 ** 0.5, dec=1.0, logstd=1.0, mingru=2.0):
+def random_net(hidden, layers, seed, enc=2 ** 0.5, dec=1.0, logstd=1.0, mingru=2.0,
+               actions=ACTIONS):
     """Gaussian weights with std gain / sqrt(fan_in) (logstd: std 1), large
     enough that the gates move and both branches of h_tilde are taken."""
     g = torch.Generator().manual_seed(seed)
-    net = PufferNet(OBS, hidden, layers, ACTIONS)
+    net = PufferNet(OBS, hidden, layers, actions)
     gains = [enc, dec, None] + [mingru] * layers
     with torch.no_grad():
         for t, gain in zip(net.tensors(), gains):
@@ -216,8 +217,8 @@ def test_policy(tmp):
     cfg, n, hidden, layers = ImpactConfig(), 300, 64, 2
     w = 0.3 * cfg.scale
     path = os.path.join(tmp, 'policy.bin')
-    random_net(hidden, layers, 3, dec=0.3).save_bin(path, truncate=True)
-    ref_net = PufferNet(OBS, hidden, layers, ACTIONS).load_bin(path)
+    random_net(hidden, layers, 4, dec=0.3, actions=ENV_ACTIONS).save_bin(path, truncate=True)
+    ref_net = PufferNet(OBS, hidden, layers, ENV_ACTIONS).load_bin(path)
     z32 = fundamental_noise(n, cfg, generator=torch.Generator().manual_seed(1))
     out = {}
 
@@ -228,7 +229,7 @@ def test_policy(tmp):
         def fn(obs):
             x = torch.cat([obs.float(), torch.ones(obs.shape[0], 1)], dim=-1)
             m, _, box[0] = ref_net.step(x, box[0])
-            return m.to(obs.dtype)
+            return m[:, :2].to(obs.dtype)
         return fn
 
     def run(z, fn, record=False):

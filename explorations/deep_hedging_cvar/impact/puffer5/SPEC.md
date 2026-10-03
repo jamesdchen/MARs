@@ -26,11 +26,21 @@ Index 0–6 are exactly `market.make_obs(k, s, delta, wealth, w, impact, cfg)`:
 `wealth = cash + delta * S` and `S = F + impact`. Index 7 is the constant
 `1.0` (PufferNet has no biases).
 
-## Action (`NUM_ATNS 2`, `ACT_SIZES {1, 1}`, continuous)
+## Action (`NUM_ATNS 4`, `ACT_SIZES {1, 1, 1, 1}`, continuous)
 
-`[target, signal]`. Trade iff `signal > 0`; then `target` is clamped to
-`[target_low, target_high] = [-0.5, 1.5]` and the position moves to it.
-The trainer does not clip continuous actions; the env must.
+`[target, signal, unused, unused]`. Trade iff `signal > 0`; then `target` is
+clamped to `[target_low, target_high] = [-0.5, 1.5]` and the position moves
+to it. The trainer does not clip continuous actions; the env must.
+
+Why four. PufferLib 5.0 places every parameter tensor at a 16-byte boundary
+(`alloc_create`, `src/pufferl.cu`), but `muon_step` (`src/algo.cu`) walks
+the gradient buffer with unpadded offsets. With 2 actions the logstd `(1, 2)`
+is followed by 2 floats of padding in a `--float` build, which shifts every
+MinGRU matrix after it, so Muon orthogonalizes a misaligned reshape of each
+gradient. With 4 actions every tensor is a multiple of 4 floats for any
+hidden size divisible by 4, so there is no padding and the bug never fires.
+The two extra outputs cost a little PPO variance (their log-probabilities
+enter the ratio) and nothing else.
 
 ## Dynamics
 
@@ -98,7 +108,10 @@ target_low target_high w_init w_eta shaping seed`, defaults equal to
 
 ## Policy weights (`.bin`, flat fp32)
 
-As documented in `src/puffercpu.c` (`make_puffernet`, `forward_puffernet`):
-encoder `(H, 8)`, decoder `(2 + 1, H)` (last row is the value), logstd
-`(2,)`, then `L` MinGRU projections `(3H, H)`; each block padded to a
-multiple of 8 floats; no biases. Deterministic action = decoder output 0–1.
+As in `src/puffercpu.c` (`make_puffernet`, `forward_puffernet`): encoder
+`(H, 8)`, decoder `(4 + 1, H)` (last row is the value), logstd `(4,)`, then
+`L` MinGRU projections `(3H, H)`; no biases. Each tensor starts at a 16-byte
+boundary: 4 floats in the `--float` build the notebook uses, 8 values in the
+default bf16 build (`puffercpu.c` assumes 8). With 4 actions nothing needs
+padding in the `--float` build. Deterministic action = decoder outputs 0–1.
+`puffernet.py` reads this format and is checked against `puffercpu.c`.

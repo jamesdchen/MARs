@@ -32,6 +32,12 @@ on the same held-out paths as the CPU runs in the repo.
 3. At the end, download `deep_hedging_gpu_results.zip` and send it back
    (upload it to the Claude session or attach it to the pull request).
 
+Run time: the build and the single PufferLib 5.0 runs take minutes; each
+sweep of 32 trials can take an hour or more on a T4. Results are zipped after
+every stage, and with `SAVE_TO_DRIVE = True` the zip is also copied to your
+Google Drive (Colab asks for access once), so a disconnect loses at most one
+stage. Lower `SWEEP_RUNS` for a quicker pass.
+
 Code: `explorations/deep_hedging_cvar/impact` on branch `{BRANCH}` of
 github.com/jamesdchen/MARs. PufferLib 5.0 is pinned to commit `{PUFFER_COMMIT}`.
 """)
@@ -41,6 +47,7 @@ code("""
 PPO_TIMESTEPS = 120_000_000      # same budget as the CPU PufferLib 3.0 run
 LONG_TIMESTEPS = 1_000_000_000   # a second, longer 5.0 run; set to 0 to skip
 SWEEP_RUNS = 32                  # trials in each hyperparameter sweep; 0 to skip
+SAVE_TO_DRIVE = False            # also copy the results zip to Google Drive after each stage
 SEED = 0
 """)
 
@@ -71,7 +78,7 @@ bfloat16.
 code("""
 !apt-get -qq install -y ccache clang libomp-dev libgl1-mesa-dev > /dev/null
 !pip -q install optuna
-!ln -sf $(ls /usr/lib/x86_64-linux-gnu/libomp.so.5) /usr/lib/x86_64-linux-gnu/libomp5.so
+!ln -sf $(ls /usr/lib/x86_64-linux-gnu/libomp.so.5 /usr/lib/llvm-*/lib/libomp.so.5 2>/dev/null | head -1) /usr/lib/x86_64-linux-gnu/libomp5.so
 !pip -q install nvidia-nccl-cu12
 import os
 os.environ['LIBRARY_PATH'] = ':'.join(filter(None, [
@@ -85,14 +92,17 @@ assert os.path.exists('/content/PufferLib/puffer'), 'build failed: see the outpu
 """)
 
 md("""
-## Check the C env against the reference model
+## Check the C env and the checkpoint loader
 
-Same noise and actions through the C env and through `market.simulate`;
-observations, losses and rewards must match (see `puffer5/test_c_env.py`).
+`test_c_env.py` runs the same noise and actions through the C env and
+`market.simulate`; observations, losses and rewards must match.
+`test_puffernet.py` checks the PyTorch loader for 5.0 checkpoints against
+PufferLib's own C forward pass, here also on the GPU.
 """)
 
 code("""
-!cd {SRC}/puffer5 && PUFFERLIB_DIR=/content/PufferLib python test_c_env.py
+!cd {SRC}/puffer5 && PUFFERLIB_DIR=/content/PufferLib python test_c_env.py 2>&1 | tail -5
+!cd {SRC}/puffer5 && PUFFERLIB_DIR=/content/PufferLib python test_puffernet.py 2>&1 | tail -5
 """)
 
 md("""
@@ -113,6 +123,17 @@ ini.read('/content/PufferLib/config/deep_hedging.ini')
 HIDDEN = int(ini['policy']['hidden_size'])
 LAYERS = int(ini['policy']['num_layers'])
 GPU = torch.cuda.get_device_name(0)
+if SAVE_TO_DRIVE:
+    from google.colab import drive
+    drive.mount('/content/drive')
+
+def save(stage):
+    zip_path = '/content/deep_hedging_gpu_results.zip'
+    subprocess.run(f'rm -f {zip_path} && cd {SRC} && zip -qr {zip_path} results/gpu '
+                   '$(ls -d results/combined 2>/dev/null)', shell=True, check=True)
+    if SAVE_TO_DRIVE:
+        shutil.copy(zip_path, '/content/drive/MyDrive/deep_hedging_gpu_results.zip')
+    print(f'results saved after: {stage}')
 
 def train_puffer5(name, steps):
     before = set(glob.glob('/content/PufferLib/checkpoints/deep_hedging/*/*.bin'))
@@ -137,6 +158,7 @@ def train_puffer5(name, steps):
 train_puffer5('puffer5', PPO_TIMESTEPS)
 if LONG_TIMESTEPS:
     train_puffer5('puffer5_long', LONG_TIMESTEPS)
+save('PufferLib 5.0 runs')
 """)
 
 md("""
@@ -168,6 +190,7 @@ if SWEEP_RUNS:
     subprocess.run(['python', 'puffer5/select_sweep.py', '--pufferlib', '/content/PufferLib',
                     '--sweep-log', f'{OUT}/puffer5_sweep.log', '--sweep-wall', str(SWEEP_WALL),
                     '--out', 'results/gpu'], cwd=SRC, check=True)
+    save('PPO sweep')
 """)
 
 md("""
@@ -189,6 +212,7 @@ for gate, temp in PATHWISE:
                         '--device', 'cuda', '--out', f'results/gpu/{name}.pt'],
                        cwd=SRC, stdout=log, stderr=subprocess.STDOUT, check=True)
     print(name, open(f'{OUT}/{name}_log.jsonl').read().splitlines()[-1])
+save('pathwise baselines')
 """)
 
 md("""
@@ -206,6 +230,7 @@ if SWEEP_RUNS:
                         '--device', 'cuda', '--out-dir', 'results/gpu/pathwise_sweep'],
                        cwd=SRC, stdout=log, stderr=subprocess.STDOUT, check=True)
     print(open(f'{OUT}/pathwise_sweep_log.jsonl').read()[-2000:])
+    save('pathwise sweep')
 """)
 
 md("""
@@ -240,8 +265,7 @@ for name in ['loss_hist', 'positions', 'training', 'ru_objective']:
 """)
 
 code("""
-%cd {SRC}
-!zip -qr /content/deep_hedging_gpu_results.zip results/gpu results/combined
+save('evaluation')
 from google.colab import files
 files.download('/content/deep_hedging_gpu_results.zip')
 """)
