@@ -32,6 +32,25 @@ S_n, premium = Bates value at inception (Lewis 2001 Fourier formula). At
 expiry the stock is liquidated with costs and the swap settles at V_n.
 The loss is L = payoff - final cash; the objective is CVaR_alpha(L).
 
+Crowd. Other traders' orders hit the same transient impact state as ours
+(jointly aggregated transient price impact, as in Neuman & Voss, "Trading
+with the crowd", Math. Finance 2023). Two kinds of order flow, both
+reacting to the quoted price, so the crowd's trades depend on ours through
+thresholds and counts and the impact is not a differentiable function of
+our actions:
+- dealers, short crowd_books copies of the same book in total, split evenly
+  over `dealers` dealers; each keeps its stock hedge within a no-trade band
+  around the book's BS delta (at the expected average remaining variance)
+  and, when the quoted price after our trade pushes it outside, trades back
+  to that delta. Band half-widths are log-spaced over
+  [dealer_band_low, dealer_band_high] shares for each book.
+- random orders: a Poisson count with mean arrival_base + arrival_move |r|,
+  where r is the last quoted log-return in standard deviations, of
+  arrival_size shares each, each following the direction of r with
+  probability arrival_follow (at most ARRIVAL_MAX orders on a date).
+On each hedging date: we trade, the dealers react to the new quoted price,
+the random orders arrive, then the market moves and impact decays.
+
 Policy. At each date it outputs (stock target, stock signal, swap target,
 swap signal); it trades an instrument to its clamped target iff the signal
 is positive.
@@ -70,6 +89,14 @@ class BatesConfig:
     delta_high: float = 1.5
     vs_low: float = -3.0
     vs_high: float = 3.0
+    crowd_books: float = 3.0       # dealers' total short book, in units of ours
+    dealers: int = 8
+    dealer_band_low: float = 0.02  # dealer band half-widths, shares for each book
+    dealer_band_high: float = 0.3
+    arrival_base: float = 0.5      # random orders: mean count on a date with no move
+    arrival_move: float = 1.0      # extra mean count for each standard deviation of |r|
+    arrival_size: float = 0.3      # shares in each order
+    arrival_follow: float = 0.7    # probability an order follows the direction of r
 
     @property
     def dt(self):
@@ -110,6 +137,12 @@ class BatesConfig:
             * math.sqrt(self.maturity) / (2 * self.sigma0)
 
     @property
+    def dealer_bands(self):
+        n = self.dealers
+        return [self.dealer_band_low * (self.dealer_band_high / self.dealer_band_low)
+                ** (i / max(n - 1, 1)) for i in range(n)]
+
+    @property
     def k_var(self):
         return expected_variance(self.v0, self.maturity, self) / self.maturity
 
@@ -129,8 +162,10 @@ class BatesConfig:
                 'k_var': self.k_var}
 
 
-OBS_DIM = 12
+OBS_DIM = 13
 ACT_DIM = 4
+ARRIVAL_MAX = 8
+CROWD_ROWS = 3   # rows of 4 uniforms for the crowd on each date: count + up to 8 signs
 
 
 def expected_variance(v, tau, cfg):
@@ -196,17 +231,67 @@ def bs_book(s, var_avg, tau, cfg):
     return out
 
 
+def bs_book_delta(s, var_avg, tau, cfg):
+    """Delta of the book at BS with average variance var_avg over tau."""
+    sd = torch.sqrt(var_avg.clamp_min(1e-12) * tau)
+    d_call = _norm_cdf(torch.log(s / cfg.strike_call) / sd + 0.5 * sd)
+    d_put = _norm_cdf(torch.log(s / cfg.strike_put) / sd + 0.5 * sd)
+    return d_call + d_put - 1
+
+
 def payoff(s, cfg):
     return (s - cfg.strike_call).clamp_min(0) + (cfg.strike_put - s).clamp_min(0)
 
 
 def market_noise(n_paths, cfg, generator=None, device='cpu'):
-    """(B, n_steps, n_sub, 4): z1, z2 standard normal, u uniform on [0, 1),
-    zj standard normal. Drawn on the CPU so a seed gives the same paths on
-    every device."""
+    """(B, n_steps, n_sub + CROWD_ROWS, 4). Rows 0..n_sub-1 drive the market:
+    z1, z2 standard normal, u uniform on [0, 1), zj standard normal. The
+    last CROWD_ROWS rows are uniforms on [0, 1) for the crowd's random
+    orders, read in order: the count, then one sign for each order. Drawn on
+    the CPU so a seed gives the same paths on every device."""
     z = torch.randn(n_paths, cfg.n_steps, cfg.n_sub, 4, generator=generator)
     z[..., 2] = torch.rand(n_paths, cfg.n_steps, cfg.n_sub, generator=generator)
-    return z.to(device)
+    crowd = torch.rand(n_paths, cfg.n_steps, CROWD_ROWS, 4, generator=generator)
+    return torch.cat([z, crowd], dim=2).to(device)
+
+
+def poisson_count(u, mean):
+    """Poisson(mean) by inversion of the uniform u, capped at ARRIVAL_MAX."""
+    p = torch.exp(-mean)
+    cdf = p
+    count = torch.zeros_like(mean)
+    for j in range(1, ARRIVAL_MAX + 1):
+        count = count + (u > cdf).to(mean.dtype)
+        p = p * mean / j
+        cdf = cdf + p
+    return count
+
+
+def crowd_flow(k, s_after, s, s_prev, v, dealer_pos, crowd_u, cfg):
+    """Shares the crowd trades on date k after our trade: the dealers whose
+    band the quoted price s_after leaves, then the random orders. Returns the
+    flow and the dealers' new positions (B, dealers)."""
+    tau = cfg.maturity * (1 - k / cfg.n_steps)
+    target = bs_book_delta(s_after, expected_variance(v, tau, cfg) / tau, tau, cfg)[:, None]
+    bands = torch.tensor(cfg.dealer_bands, dtype=s.dtype, device=s.device)
+    out = ((dealer_pos - target).abs() > bands).to(s.dtype)
+    each = cfg.crowd_books / cfg.dealers
+    flow = each * (out * (target - dealer_pos)).sum(-1)
+    dealer_pos = dealer_pos + out * (target - dealer_pos)
+    r = observed_return(s, s_prev, cfg)
+    count = poisson_count(crowd_u[:, 0], cfg.arrival_base + cfg.arrival_move * r.abs())
+    up = torch.where(r != 0, torch.sign(r), torch.ones_like(r))
+    signs = crowd_u[:, 1:1 + ARRIVAL_MAX]
+    j = torch.arange(1, ARRIVAL_MAX + 1, device=s.device, dtype=s.dtype)
+    follow = torch.where(r[:, None] != 0, signs < cfg.arrival_follow, signs < 0.5).to(s.dtype)
+    orders = (j <= count[:, None]).to(s.dtype) * (2 * follow - 1)
+    flow = flow + cfg.arrival_size * up * orders.sum(-1)
+    return flow, dealer_pos
+
+
+def observed_return(s, s_prev, cfg):
+    """Last quoted log-return in standard deviations of a hedging interval."""
+    return torch.log(s / s_prev) / (cfg.sigma0 * math.sqrt(cfg.dt))
 
 
 def evolve(x, v, noise, cfg):
@@ -232,11 +317,12 @@ def swap_value(realized, v, k, cfg):
     return cfg.n_vs * ((realized + rest) / cfg.maturity - cfg.k_var)
 
 
-def make_obs(k, s, v, delta, y, wealth, w, impact, swap, realized, cfg):
+def make_obs(k, s, v, delta, y, wealth, w, impact, swap, realized, ret, cfg):
     """[time fraction, log(S/K_call) / (sigma0 sqrt T), sqrt(v+) / sigma0,
     stock position, swap position, wealth / scale, w / scale,
     (w + wealth) / scale, impact / kappa, swap value / scale,
-    realized / (theta T), 1]; wealth = cash + delta S + y V. The constant
+    realized / (theta T), last quoted return in standard deviations, 1];
+    wealth = cash + delta S + y V; impact includes the crowd's. The constant
     feature lets bias-free networks (PufferLib 5.0's) represent offsets."""
     c = cfg
     tau = torch.full_like(s, k / c.n_steps)
@@ -244,7 +330,7 @@ def make_obs(k, s, v, delta, y, wealth, w, impact, swap, realized, cfg):
     imp = impact / c.kappa if c.kappa > 0 else torch.zeros_like(impact)
     return torch.stack([tau, m, torch.sqrt(v.clamp_min(0)) / c.sigma0, delta, y,
                         wealth / c.scale, w / c.scale, (w + wealth) / c.scale, imp,
-                        swap / c.scale, realized / (c.theta * c.maturity),
+                        swap / c.scale, realized / (c.theta * c.maturity), ret,
                         torch.ones_like(s)], dim=-1)
 
 
@@ -269,7 +355,7 @@ def gate(signal, mode, temp):
 
 def simulate(noise, policy_fn, w, cfg, gate_mode='hard', temp=0.1, gates=None,
              record=False):
-    """Run a hedging policy on market noise (B, n_steps, n_sub, 4).
+    """Run a hedging policy on market noise (B, n_steps, n_sub + CROWD_ROWS, 4).
 
     policy_fn maps observations (B, OBS_DIM) to actions (B, 4). gates, if
     given, is a function (actions, k) -> (stock gate, swap gate) that
@@ -287,11 +373,15 @@ def simulate(noise, policy_fn, w, cfg, gate_mode='hard', temp=0.1, gates=None,
     y = noise.new_zeros(n)
     realized = noise.new_zeros(n)
     swap = noise.new_zeros(n)
-    rec = {'delta': [], 'y': [], 'trade_s': [], 'trade_y': [], 's': [], 'v': []}
+    s_prev = torch.exp(x) + impact   # so the first observed return is exactly 0
+    v_t = noise.new_full((n,), cfg.v0)
+    dealer_pos = bs_book_delta(s_prev, expected_variance(v_t, cfg.maturity, cfg) / cfg.maturity,
+                               cfg.maturity, cfg)[:, None].expand(n, cfg.dealers)
+    rec = {'delta': [], 'y': [], 'trade_s': [], 'trade_y': [], 's': [], 'v': [], 'crowd': []}
     for k in range(cfg.n_steps):
         s = torch.exp(x) + impact
         obs = make_obs(k, s, v, delta, y, cash + delta * s + y * swap, w, impact, swap,
-                       realized, cfg)
+                       realized, observed_return(s, s_prev, cfg), cfg)
         act = policy_fn(obs)
         if gates is not None:
             gs, gy = gates(act, k)
@@ -304,14 +394,20 @@ def simulate(noise, policy_fn, w, cfg, gate_mode='hard', temp=0.1, gates=None,
         impact = impact + cfg.kappa * q
         delta = delta + q
         y = y + p
+        crowd_u = noise[:, k, cfg.n_sub:].reshape(n, -1)
+        flow, dealer_pos = crowd_flow(k, torch.exp(x) + impact, s, s_prev, v, dealer_pos,
+                                      crowd_u, cfg)
+        impact = impact + cfg.kappa * flow
+        s_prev = s
         if record:
+            rec['crowd'].append(flow.detach())
             rec['delta'].append(delta.detach())
             rec['y'].append(y.detach())
             rec['trade_s'].append((act[:, 1] > 0).detach())
             rec['trade_y'].append((act[:, 3] > 0).detach())
             rec['s'].append(s.detach())
             rec['v'].append(v.detach())
-        x, v, r = evolve(x, v, noise[:, k], cfg)
+        x, v, r = evolve(x, v, noise[:, k, :cfg.n_sub], cfg)
         realized = realized + r**2
         impact = impact * cfg.decay
         swap = swap_value(realized, v, k + 1, cfg)

@@ -24,7 +24,7 @@ import numpy as np
 import torch
 
 from market import (BatesConfig, market_noise, simulate, potential, bates_call, OBS_DIM,
-                    ACT_DIM)
+                    ACT_DIM, CROWD_ROWS)
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 DATES, EPISODE = 30, 32
@@ -49,7 +49,7 @@ def c_values(cfg, w_init=0.3, w_eta=0.01, shaping=1, reward_scale=1.0):
 
 
 def run_c(lib, values, actions, noise=None, seed=0):
-    """actions (T, N, 4); noise (N, episodes, 30, n_sub, 4) or None."""
+    """actions (T, N, 4); noise (N, episodes, 30, n_sub + CROWD_ROWS, 4) or None."""
     T, n = actions.shape[:2]
     obs = np.zeros((T + 1, n, OBS_DIM), np.float32)
     rewards = np.zeros((T, n), np.float32)
@@ -116,7 +116,7 @@ def equivalence(lib, checks, cfg, shaping, w_init, n=2000, seed=0, reward_scale=
                         rng.uniform(-3.5, 3.5, (T, n)), rng.normal(0, 1, (T, n))],
                        -1).astype(np.float32)
     noise = market_noise(2 * n, cfg, torch.Generator().manual_seed(seed)).double().numpy()
-    noise = noise.reshape(2, n, DATES, cfg.n_sub, 4).transpose(1, 0, 2, 3, 4)
+    noise = noise.reshape(2, n, DATES, cfg.n_sub + CROWD_ROWS, 4).transpose(1, 0, 2, 3, 4)
     obs, rewards, terminals, state, log = run_c(
         lib, c_values(cfg, w_init, 0.01, shaping, reward_scale), actions, noise)
     rewards = rewards / np.float32(reward_scale)
@@ -125,7 +125,7 @@ def equivalence(lib, checks, cfg, shaping, w_init, n=2000, seed=0, reward_scale=
     flags[[DATES - 1, EPISODE - 1, EPISODE + DATES - 1, 2 * EPISODE - 1]] = 1
     checks.add('terminal flags on expiry and reset steps only',
                np.abs(terminals - flags[:, None]).max(), 0)
-    checks.add('observation 11 == 1', np.abs(obs[..., 11] - 1).max(), 0)
+    checks.add('observation 12 == 1', np.abs(obs[..., 12] - 1).max(), 0)
     sums = {f: 0.0 for f in LOG_FIELDS}
     for e in range(2):
         t0 = e * EPISODE
@@ -167,7 +167,9 @@ def equivalence(lib, checks, cfg, shaping, w_init, n=2000, seed=0, reward_scale=
 
 
 def generator(lib, checks, cfg, n=20000, episodes=8):
-    """Own generator, no trades: S_T and realized variance against the model."""
+    """Own generator, no trades and no crowd: S_T and realized variance
+    against the model."""
+    cfg = replace(cfg, crowd_books=0.0, arrival_base=0.0, arrival_move=0.0)
     T = episodes * EPISODE
     actions = np.zeros((T, n, ACT_DIM), np.float32)
     actions[..., 1] = actions[..., 3] = -1
@@ -220,12 +222,15 @@ def main():
     base = BatesConfig()
     configs = [(base, 1, 0.3), (base, 0, 0.3),
                (replace(base, kappa=0.0, fixed_cost=0.0, vs_cost=0.0, lam=0.0), 1, -0.2),
-               (replace(base, kappa=2.0, fixed_cost=0.1, half_life=3.0, n_sub=2, lam=8.0), 1, 0.5)]
+               (replace(base, kappa=2.0, fixed_cost=0.1, half_life=3.0, n_sub=2, lam=8.0), 1, 0.5),
+               (replace(base, crowd_books=0.0, arrival_base=0.0, arrival_move=0.0), 1, 0.3),
+               (replace(base, crowd_books=12.0, dealers=16, dealer_band_low=0.001,
+                        arrival_base=3.0, arrival_move=2.0, arrival_follow=0.9), 1, 0.3)]
     with tempfile.TemporaryDirectory() as tmp:
         lib = build(tmp)
         for i, (cfg, shaping, w_init) in enumerate(configs):
             equivalence(lib, checks, cfg, shaping, w_init, seed=i)
-        equivalence(lib, checks, base, 1, 0.3, seed=7, reward_scale=0.1)
+        equivalence(lib, checks, base, 1, 0.3, seed=9, reward_scale=0.1)
         generator(lib, checks, base)
         binding_matches_core(lib, checks, base)
     checks.report()

@@ -37,7 +37,7 @@ from market import BatesConfig, simulate, market_noise  # noqa: E402
 
 torch.set_num_threads(1)
 PUFFERLIB_DIR = os.environ.get('PUFFERLIB_DIR', '/tmp/claude-0/pl5')
-OBS, ACTIONS = 12, 4
+OBS, ACTIONS = 13, 4
 CONFIGS = [(64, 2), (32, 1), (128, 3)]
 B, T = 96, 48
 
@@ -220,7 +220,7 @@ def test_policy(tmp):
     cfg, n, hidden, layers = BatesConfig(), 300, 64, 2
     w = 0.3 * cfg.scale
     path = os.path.join(tmp, 'policy.bin')
-    random_net(hidden, layers, 4, dec=0.3, actions=ENV_ACTIONS).save_bin(path, truncate=True)
+    random_net(hidden, layers, 7, dec=0.3, actions=ENV_ACTIONS).save_bin(path, truncate=True)
     ref_net = PufferNet(OBS, hidden, layers, ENV_ACTIONS).load_bin(path)
     z32 = market_noise(n, cfg, generator=torch.Generator().manual_seed(1))
     out = {}

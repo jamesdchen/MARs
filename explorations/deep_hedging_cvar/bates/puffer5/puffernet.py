@@ -36,7 +36,7 @@ the Colab notebook uses. The file length is the same for both, so `align`
 must match the build; the default is the --float layout. With 2 actions
 logstd would be padded and the last floats of the last MinGRU projection
 cut from the file (load_bin reads them as zeros, as src/puffercpu.c does).
-The hedging env has 12 observations and 4 actions, so in the --float build
+The hedging env has 13 observations and 4 actions, so in the --float build
 every tensor is a multiple of 4 floats and nothing is padded or cut.
 """
 
@@ -51,7 +51,7 @@ BF16_ALIGN = 8   # default bfloat16 build; src/puffercpu.c
 class PufferNet(nn.Module):
     """Encoder, MinGRU layers and decoder with a fused value, continuous actions."""
 
-    def __init__(self, obs_size=12, hidden=64, layers=2, num_actions=4):
+    def __init__(self, obs_size=13, hidden=64, layers=2, num_actions=4):
         super().__init__()
         self.obs_size, self.hidden = obs_size, hidden
         self.layers, self.num_actions = layers, num_actions
@@ -150,14 +150,14 @@ class PufferNet(nn.Module):
 
 
 # The hedging env (../hedge.h): stock target, stock signal, swap target, swap
-# signal, after 12 observations whose last one is the constant 1.
-ENV_OBS, ENV_ACTIONS = 12, 4
+# signal, after 13 observations whose last one is the constant 1.
+ENV_OBS, ENV_ACTIONS = 13, 4
 
 
 class PufferNetPolicy:
     """policy_fn for market.simulate: the deterministic actions of a 5.0 checkpoint.
 
-    Takes market.make_obs observations (12 features, the last one constant)
+    Takes market.make_obs observations (13 features, the last one constant)
     and runs the net in float32, the precision of the env's observations and of the C
     forward, on the device of the observations. Carries the MinGRU state
     from one call to the next and zeroes it on date 0 (obs[:, 0] == 0),

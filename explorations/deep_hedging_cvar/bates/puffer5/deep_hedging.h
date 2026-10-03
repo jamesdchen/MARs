@@ -3,7 +3,7 @@
  * Copy this file and ../hedge.h to PufferLib/ocean/deep_hedging/ and
  * deep_hedging.ini to PufferLib/config/. All dynamics, the 32-step episode
  * layout (train.horizon = 32), shaping, w and the Log live in hedge.h.
- * Four continuous actions and 12 observations make every PufferNet tensor a
+ * Four continuous actions and 13 observations make every PufferNet tensor a
  * multiple of 4 floats, so 5.0's allocator adds no padding (its muon_step
  * walks the gradient buffer with unpadded offsets).
  */

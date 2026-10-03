@@ -1,7 +1,7 @@
 /* ctypes harness for test_c.py: runs N agents for T env steps of hedge.h
  * on given actions (T x N x 4 float32) and, if noise is not NULL, on
- * injected noise (N x episodes x 30 x n_sub x 4 float64); otherwise on the
- * agents' own generator. Records obs ((T + 1) x N x 12), rewards and
+ * injected noise (N x episodes x 30 x (n_sub + 3) x 4 float64); otherwise on the
+ * agents' own generator. Records obs ((T + 1) x N x 13), rewards and
  * terminals (T x N), the state [k, w, phi, loss] ((T + 1) x N x 4) and the
  * Log of each agent (N x 11 floats). */
 
@@ -27,7 +27,8 @@ int hedge_run(const double* values, int n, int T, const float* actions, const do
         return 1;
     }
     int episodes = (T + HEDGE_EPISODE - 1) / HEDGE_EPISODE;
-    size_t block = (size_t)HEDGE_DATES * p.subs * 4;
+    size_t row = (size_t)(p.subs + HEDGE_CROWD_ROWS) * 4;
+    size_t block = HEDGE_DATES * row;
     Hedge* hs = calloc(n, sizeof(Hedge));
     Log* lg = calloc(n, sizeof(Log));
     double buf[HEDGE_NOISE];
@@ -43,7 +44,7 @@ int hedge_run(const double* values, int n, int T, const float* actions, const do
             if (h->k < HEDGE_DATES) {
                 if (noise) {
                     z = noise + ((size_t)i * episodes + t / HEDGE_EPISODE) * block
-                        + (size_t)h->k * p.subs * 4;
+                        + (size_t)h->k * row;
                 } else {
                     hedge_draw_noise(h, &p, buf);
                 }

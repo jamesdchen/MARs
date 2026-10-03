@@ -38,10 +38,14 @@
 
 #define HEDGE_DATES 30
 #define HEDGE_EPISODE 32
-#define HEDGE_OBS 12
+#define HEDGE_OBS 13
 #define HEDGE_ACT 4
 #define HEDGE_MAX_SUB 16
-#define HEDGE_NOISE (HEDGE_MAX_SUB * 4)
+#define HEDGE_MAX_DEALERS 16
+#define HEDGE_ARRIVAL_MAX 8
+#define HEDGE_CROWD_ROWS 3
+// Draws for one hedging interval: 4 for each substep, then the crowd's rows.
+#define HEDGE_NOISE ((HEDGE_MAX_SUB + HEDGE_CROWD_ROWS) * 4)
 
 // Floats only, n last: PufferLib sums these over agents and divides by n.
 typedef struct Log Log;
@@ -65,9 +69,12 @@ typedef struct {
     double cost, fixed_cost, kappa, half_life, vs_cost, alpha;
     double delta_low, delta_high, vs_low, vs_high;
     double premium, n_vs, k_var, w_init, w_eta, shaping, reward_scale;
+    double crowd_books, dealers, dealer_band_low, dealer_band_high;
+    double arrival_base, arrival_move, arrival_size, arrival_follow;
     // Derived by hedge_params_finish.
-    double dt_sub, sigma0, scale, decay, jump_mean, jump_var, rho_bar;
-    int subs;
+    double dt_sub, sigma0, scale, decay, jump_mean, jump_var, rho_bar, ret_sd;
+    double bands[HEDGE_MAX_DEALERS];
+    int subs, n_dealers;
 } HedgeParams;
 
 // Keyword names in the order of the fields above (before the derived ones).
@@ -77,6 +84,8 @@ static const char* HEDGE_PARAM_NAMES[] = {
     "cost", "fixed_cost", "kappa", "half_life", "vs_cost", "alpha",
     "delta_low", "delta_high", "vs_low", "vs_high",
     "premium", "n_vs", "k_var", "w_init", "w_eta", "shaping", "reward_scale",
+    "crowd_books", "dealers", "dealer_band_low", "dealer_band_high",
+    "arrival_base", "arrival_move", "arrival_size", "arrival_follow",
 };
 #define HEDGE_NUM_PARAMS (int)(sizeof(HEDGE_PARAM_NAMES) / sizeof(HEDGE_PARAM_NAMES[0]))
 
@@ -89,12 +98,21 @@ static inline void hedge_params_finish(HedgeParams* p) {
     p->jump_mean = exp(p->mu_j + 0.5 * p->sig_j * p->sig_j) - 1.0;
     p->jump_var = p->mu_j * p->mu_j + p->sig_j * p->sig_j;
     p->rho_bar = sqrt(1.0 - p->rho * p->rho);
+    p->ret_sd = p->sigma0 * sqrt(p->maturity / HEDGE_DATES);
+    p->n_dealers = (int)p->dealers;
+    int last = p->n_dealers > 1 ? p->n_dealers - 1 : 1;
+    for (int i = 0; i < p->n_dealers; i++) {
+        p->bands[i] = p->dealer_band_low
+            * pow(p->dealer_band_high / p->dealer_band_low, (double)i / last);
+    }
 }
 
 typedef struct {
     uint64_t rng[4];
     int k;
     double x, v, impact, cash, delta, y, realized, swap, w, phi, loss, ep_return;
+    double s_prev;                          // quoted price before trading, last date
+    double dealer_pos[HEDGE_MAX_DEALERS];   // each dealer's stock hedge, for each book
     int trades_stock, trades_swap;
 } Hedge;
 
@@ -124,7 +142,8 @@ static inline double hedge_uniform(Hedge* h) {
 }
 
 // Noise for one hedging interval, laid out like market_noise: for each
-// substep z1, z2 (normal), u (uniform), zj (normal). Box-Muller pairs.
+// substep z1, z2 (normal), u (uniform), zj (normal), Box-Muller pairs; then
+// HEDGE_CROWD_ROWS rows of uniforms on [0, 1) for the crowd's orders.
 static inline void hedge_draw_noise(Hedge* h, const HedgeParams* p, double* noise) {
     for (int j = 0; j < p->subs; j++) {
         double r = sqrt(-2.0 * log(hedge_uniform(h)));
@@ -134,6 +153,9 @@ static inline void hedge_draw_noise(Hedge* h, const HedgeParams* p, double* nois
         noise[4 * j + 1] = r * sin(a);
         noise[4 * j + 2] = 1.0 - hedge_uniform(h);
         noise[4 * j + 3] = r2 * cos(6.283185307179586 * hedge_uniform(h));
+    }
+    for (int j = 4 * p->subs; j < 4 * (p->subs + HEDGE_CROWD_ROWS); j++) {
+        noise[j] = 1.0 - hedge_uniform(h);
     }
 }
 
@@ -172,6 +194,51 @@ static inline double hedge_bs_book(const HedgeParams* p, double s, double var_av
     return call + put;
 }
 
+// Delta of the book at BS with average variance var_avg over tau.
+static inline double hedge_bs_book_delta(const HedgeParams* p, double s, double var_avg,
+        double tau) {
+    double sd = sqrt((var_avg > 1e-12 ? var_avg : 1e-12) * tau);
+    double d_call = hedge_cdf(log(s / p->strike_call) / sd + 0.5 * sd);
+    double d_put = hedge_cdf(log(s / p->strike_put) / sd + 0.5 * sd);
+    return d_call + d_put - 1.0;
+}
+
+// The crowd's shares on the current date after our trade (market.crowd_flow):
+// dealers whose band the quoted price s_after leaves trade back to the book
+// delta; then a Poisson number of random orders, mostly following the last
+// quoted return. u holds the date's crowd uniforms.
+static inline double hedge_crowd_flow(Hedge* h, const HedgeParams* p, double s_after,
+        double s, const double* u) {
+    double tau = hedge_tau(h->k, p);
+    double target = hedge_bs_book_delta(p, s_after,
+        hedge_expected_variance(p, h->v, tau) / tau, tau);
+    double each = p->crowd_books / p->dealers;
+    double sum = 0.0;
+    for (int i = 0; i < p->n_dealers; i++) {
+        double out = fabs(h->dealer_pos[i] - target) > p->bands[i] ? 1.0 : 0.0;
+        sum += out * (target - h->dealer_pos[i]);
+        h->dealer_pos[i] = h->dealer_pos[i] + out * (target - h->dealer_pos[i]);
+    }
+    double flow = each * sum;
+    double r = log(s / h->s_prev) / p->ret_sd;
+    double mean = p->arrival_base + p->arrival_move * fabs(r);
+    double pk = exp(-mean);
+    double cdf = pk;
+    int count = 0;
+    for (int j = 1; j <= HEDGE_ARRIVAL_MAX; j++) {
+        count += u[0] > cdf;
+        pk = pk * mean / j;
+        cdf = cdf + pk;
+    }
+    double up = r > 0.0 ? 1.0 : (r < 0.0 ? -1.0 : 1.0);
+    double orders = 0.0;
+    for (int j = 1; j <= count; j++) {
+        int follow = r != 0.0 ? u[j] < p->arrival_follow : u[j] < 0.5;
+        orders += 2.0 * follow - 1.0;
+    }
+    return flow + p->arrival_size * up * orders;
+}
+
 // Cash after selling the stock position at quoted price s.
 static inline double hedge_close_out(const HedgeParams* p, double cash, double d, double s) {
     double fee = d != 0.0 ? p->fixed_cost : 0.0;
@@ -208,7 +275,8 @@ static inline void hedge_write_obs(const Hedge* h, const HedgeParams* p, float* 
     obs[8] = p->kappa > 0.0 ? h->impact / p->kappa : 0.0;
     obs[9] = h->swap / p->scale;
     obs[10] = h->realized / (p->theta * p->maturity);
-    obs[11] = 1.0f;
+    obs[11] = log(s / h->s_prev) / p->ret_sd;
+    obs[12] = 1.0f;
 }
 
 static inline void hedge_start(Hedge* h, const HedgeParams* p) {
@@ -224,6 +292,12 @@ static inline void hedge_start(Hedge* h, const HedgeParams* p) {
     h->trades_stock = 0;
     h->trades_swap = 0;
     h->ep_return = 0.0;
+    h->s_prev = exp(h->x) + h->impact;
+    double start = hedge_bs_book_delta(p, h->s_prev,
+        hedge_expected_variance(p, h->v, p->maturity) / p->maturity, p->maturity);
+    for (int i = 0; i < p->n_dealers; i++) {
+        h->dealer_pos[i] = start;
+    }
     h->phi = hedge_potential(h, p);
 }
 
@@ -281,6 +355,9 @@ static inline void hedge_step(Hedge* h, const HedgeParams* p, const float* act,
     h->y += pv;
     h->trades_stock += (int)gs;
     h->trades_swap += (int)gy;
+    h->impact += p->kappa * hedge_crowd_flow(h, p, exp(h->x) + h->impact, s,
+        noise + 4 * p->subs);
+    h->s_prev = s;
 
     double x0 = h->x;
     double dt = p->dt_sub;
