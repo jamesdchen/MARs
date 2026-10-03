@@ -15,6 +15,10 @@
    network weight and for w, with either baseline (K = 1: the other paths of
    the batch; K = 4: the other decision samples on the same market path).
    Dropping the score term must not (a check that the test can detect bias).
+   With the crowd, the objective given the noise is only piecewise smooth in
+   the weights; autograd gives its derivative between the jumps, which is
+   the one this check needs. What the jumps add to the gradient of the
+   expectation over the noise is measured by crowd_gradient.py.
 
     python test_pathwise.py
 """

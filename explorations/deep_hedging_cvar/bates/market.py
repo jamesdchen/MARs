@@ -36,8 +36,9 @@ Crowd. Other traders' orders hit the same transient impact state as ours
 (jointly aggregated transient price impact, as in Neuman & Voss, "Trading
 with the crowd", Math. Finance 2023). Two kinds of order flow, both
 reacting to the quoted price, so the crowd's trades depend on ours through
-thresholds and counts and the impact is not a differentiable function of
-our actions:
+thresholds and counts. On a path, the loss is then a discontinuous function
+of our actions; its expectation over paths stays smooth, and
+crowd_gradient.py measures how much of its gradient autograd misses:
 - dealers, short crowd_books copies of the same book in total, split evenly
   over `dealers` dealers; each keeps its stock hedge within a no-trade band
   around the book's BS delta (at the expected average remaining variance)
