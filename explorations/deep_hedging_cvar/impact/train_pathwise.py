@@ -12,6 +12,7 @@ its gradient is zero almost everywhere. Three ways to handle it:
                     fraction of the fee; temp is annealed geometrically
 
 Every variant is scored on the exact model (hard gate) in evaluate.py.
+train() is importable, so sweep_pathwise.py can tune it with the same code.
 """
 
 import argparse
@@ -25,6 +26,56 @@ from market import ImpactConfig, fundamental_noise, simulate, ru_objective, summ
 from policy import ImpactHedgePolicy
 
 
+def train(gate, iters=2000, batch=16384, lr=1e-3, temp=0.1, temp_end=0.01, hidden=64,
+          seed=0, device='cpu', log=print):
+    """Train one pathwise hedger and return its checkpoint dict.
+
+    The dict holds the actor's state_dict (on the CPU), w in price units, the
+    logged history, wall time and simulated steps, and the arguments, so
+    main() and sweep_pathwise.py save the same keys. log receives one JSON
+    line every 100 iterations; pass None to train silently.
+    """
+    args = dict(gate=gate, iters=iters, batch=batch, lr=lr, temp=temp, temp_end=temp_end,
+                hidden=hidden, seed=seed, device=device)
+    torch.manual_seed(seed)
+    cfg = ImpactConfig()
+    policy = ImpactHedgePolicy(hidden=hidden).to(device)
+    w = torch.nn.Parameter(torch.tensor(0.3, device=device))  # in units of cfg.scale
+    opt = torch.optim.Adam(list(policy.actor.parameters()) + [w], lr=lr)
+    sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, iters)
+    gen = torch.Generator().manual_seed(seed)
+
+    history, t0 = [], time.time()
+    for it in range(iters):
+        t = temp
+        if gate == 'sigmoid':
+            t = temp * (temp_end / temp) ** (it / max(1, iters - 1))
+        z = fundamental_noise(batch, cfg, gen, device)
+        loss = simulate(z, policy.mean_action, w * cfg.scale, cfg, gate_mode=gate, temp=t)
+        obj = ru_objective(loss, w * cfg.scale, cfg.alpha)
+        opt.zero_grad()
+        obj.backward()
+        opt.step()
+        sched.step()
+        if it % 100 == 0 or it == iters - 1:
+            with torch.no_grad():
+                exact, rec = simulate(z[:4096], policy.mean_action, w * cfg.scale, cfg,
+                                      record=True)
+            row = {'iter': it, 'objective': obj.item(), 'w': w.item() * cfg.scale,
+                   'temp': t, 'time': time.time() - t0,
+                   'trades': rec['trade'].float().sum(1).mean().item(),
+                   **{f'train_{k}': v for k, v in summarize(loss.detach(), cfg.alpha).items()},
+                   **summarize(exact, cfg.alpha)}
+            history.append(row)
+            if log is not None:
+                log(json.dumps({k: round(v, 4) for k, v in row.items()}))
+
+    return {'actor': policy.actor.cpu().state_dict(), 'w': w.item() * cfg.scale,
+            'cfg': cfg.to_dict(), 'gate': gate, 'history': history,
+            'wall_time': time.time() - t0, 'device': device,
+            'steps': iters * batch * cfg.n_steps, 'hidden': hidden, 'args': args}
+
+
 def main():
     p = argparse.ArgumentParser()
     p.add_argument('--gate', choices=['hard', 'ste', 'sigmoid'], required=True)
@@ -33,50 +84,19 @@ def main():
     p.add_argument('--lr', type=float, default=1e-3)
     p.add_argument('--temp', type=float, default=0.1, help='STE temperature / sigmoid start')
     p.add_argument('--temp-end', type=float, default=0.01, help='sigmoid end temperature')
+    p.add_argument('--hidden', type=int, default=64, help='actor hidden width')
     p.add_argument('--seed', type=int, default=0)
     p.add_argument('--device', default='cpu')
     p.add_argument('--out', default=None)
     args = p.parse_args()
     out = args.out or f'results/pathwise_{args.gate}.pt'
 
-    torch.manual_seed(args.seed)
     torch.set_num_threads(int(os.environ.get('OMP_NUM_THREADS', os.cpu_count())))
-    cfg = ImpactConfig()
-    policy = ImpactHedgePolicy().to(args.device)
-    w = torch.nn.Parameter(torch.tensor(0.3, device=args.device))  # in units of cfg.scale
-    opt = torch.optim.Adam(list(policy.actor.parameters()) + [w], lr=args.lr)
-    sched = torch.optim.lr_scheduler.CosineAnnealingLR(opt, args.iters)
-    gen = torch.Generator().manual_seed(args.seed)
-
-    history, t0 = [], time.time()
-    for it in range(args.iters):
-        temp = args.temp
-        if args.gate == 'sigmoid':
-            temp = args.temp * (args.temp_end / args.temp) ** (it / max(1, args.iters - 1))
-        z = fundamental_noise(args.batch, cfg, gen, args.device)
-        loss = simulate(z, policy.mean_action, w * cfg.scale, cfg, gate_mode=args.gate, temp=temp)
-        obj = ru_objective(loss, w * cfg.scale, cfg.alpha)
-        opt.zero_grad()
-        obj.backward()
-        opt.step()
-        sched.step()
-        if it % 100 == 0 or it == args.iters - 1:
-            with torch.no_grad():
-                exact, rec = simulate(z[:4096], policy.mean_action, w * cfg.scale, cfg,
-                                      record=True)
-            row = {'iter': it, 'objective': obj.item(), 'w': w.item() * cfg.scale,
-                   'temp': temp, 'time': time.time() - t0,
-                   'trades': rec['trade'].float().sum(1).mean().item(),
-                   **{f'train_{k}': v for k, v in summarize(loss.detach(), cfg.alpha).items()},
-                   **summarize(exact, cfg.alpha)}
-            history.append(row)
-            print(json.dumps({k: round(v, 4) for k, v in row.items()}), flush=True)
-
-    os.makedirs(os.path.dirname(out), exist_ok=True)
-    torch.save({'actor': policy.actor.cpu().state_dict(), 'w': w.item() * cfg.scale,
-                'cfg': cfg.to_dict(), 'gate': args.gate, 'history': history,
-                'wall_time': time.time() - t0, 'device': args.device,
-                'steps': args.iters * args.batch * cfg.n_steps}, out)
+    ckpt = train(args.gate, iters=args.iters, batch=args.batch, lr=args.lr, temp=args.temp,
+                 temp_end=args.temp_end, hidden=args.hidden, seed=args.seed,
+                 device=args.device, log=lambda line: print(line, flush=True))
+    os.makedirs(os.path.dirname(out) or '.', exist_ok=True)
+    torch.save(ckpt, out)
 
 
 if __name__ == '__main__':
