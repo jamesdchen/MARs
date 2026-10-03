@@ -44,7 +44,8 @@ r-grid, dense near v = 0. Interpolation is the tensor-product cubic
 B-spline interpolant in (s, r) (de Boor 1978), with natural end conditions
 except the even reflection f(-sqrt(v)) = f(sqrt(v)) at v = 0; a query
 reads 16 coefficients for each strike. Tables are cached in an .npz named
-by a hash of the pricing parameters and the grid.
+by a hash of the pricing parameters and the grid, in $BATES_GREEKS_CACHE
+or ~/.cache/deep_hedging_bates (about 50 MB, 20 s to build on 2 threads).
 """
 
 import hashlib
