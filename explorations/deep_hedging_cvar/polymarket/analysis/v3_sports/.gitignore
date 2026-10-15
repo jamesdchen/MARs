@@ -7,3 +7,8 @@ cache/
 env_sports/resources
 env_sports/build/
 !rec_daily/**/*.parquet
+kickoff/*.jsonl
+kickoff/*.log
+kickoff/*.pid
+kickoff/*.tmp
+kickoff/detect_cache.json
