@@ -20,21 +20,23 @@ import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+from period import DAYS, LEGS, OUT, PAY
+
 import duckdb
 import pandas as pd
 import requests
 
 HERE = Path(__file__).resolve().parent
-OUT = HERE / "out"
 KEY = """CASE WHEN category = 'sports_game' THEN (CASE WHEN inplay THEN 'sports_inplay' ELSE 'sports_pregame' END)
               ELSE category END"""
-P_START, P_END = 1791504000, 1792044000          # 2026-10-09 00:00 .. 2026-10-15 06:00 UTC
+P_START, P_END = PAY                             # default 2026-10-09 00:00 .. 2026-10-15 06:00 UTC
+RW = f"rw_{P_START}_{P_END}"
 UA = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) Chrome/126.0"}
 
 
 def rewards(w: str, db_path: Path) -> tuple[str, float, int]:
     db = sqlite3.connect(db_path)
-    r = db.execute("select usd, n from rw where wallet=?", (w,)).fetchone()
+    r = db.execute(f"select usd, n from {RW} where wallet=?", (w,)).fetchone()
     if r:
         return w, r[0], r[1]
     s = requests.Session()
@@ -57,7 +59,7 @@ def rewards(w: str, db_path: Path) -> tuple[str, float, int]:
         if len(rows) < 500 or off >= 3000:
             break
         off += 500
-    db.execute("insert or replace into rw values(?,?,?)", (w, tot, n))
+    db.execute(f"insert or replace into {RW} values(?,?,?)", (w, tot, n))
     db.commit()
     return w, tot, n
 
@@ -65,11 +67,11 @@ def rewards(w: str, db_path: Path) -> tuple[str, float, int]:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--n", type=int, default=20)
-    ap.add_argument("--days", type=float, default=7.0)
+    ap.add_argument("--days", type=float, default=DAYS)
     a = ap.parse_args()
     con = duckdb.connect()
     con.execute("SET threads=2; SET memory_limit='9GB'")
-    con.execute(f"CREATE VIEW legs AS SELECT *, {KEY} AS ckey FROM 'cache/legs.parquet'")
+    con.execute(f"CREATE VIEW legs AS SELECT *, {KEY} AS ckey FROM {LEGS}")
     w = con.execute(f"""
       SELECT ckey, wallet, count(*) fills, sum(q*size) usd, count(DISTINCT cond) n_mkts,
              sum(s*(mid_pre-q)*size) FILTER (WHERE mid_pre IS NOT NULL) spread,
@@ -84,7 +86,7 @@ def main():
     wall = con.execute("SELECT wallet, sum(q*size) usd_all FROM legs GROUP BY 1").df()
     top = top.merge(wall, on="wallet")
     dbp = HERE / "cache" / "rewards_wallet.sqlite"
-    sqlite3.connect(dbp).execute("create table if not exists rw(wallet text primary key, usd real, n int)")
+    sqlite3.connect(dbp).execute(f"create table if not exists {RW}(wallet text primary key, usd real, n int)")
     with ThreadPoolExecutor(4) as ex:
         rw = pd.DataFrame(list(ex.map(lambda x: rewards(x, dbp), top.wallet.unique())),
                           columns=["wallet", "reward_wallet", "n_reward_rows"])
