@@ -31,7 +31,9 @@ def smarkets(path):
         d = json.loads(line)
         if d.get("meta"):
             names.update(d["contracts"]); continue
-        for cid, q in d["quotes"].items():
+        for cid, q in (d["quotes"].items() if isinstance(d["quotes"], dict) else []):
+            if not isinstance(q, dict):
+                continue
             b = q.get("bids") or []; o = q.get("offers") or []
             if b and o:
                 rows.append((d["t"], names.get(cid), b[0]["price"] / 1e4, o[0]["price"] / 1e4))
