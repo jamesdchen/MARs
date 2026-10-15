@@ -54,7 +54,7 @@ def summarise(x):
     for ph, y in x.groupby("phase"):
         if len(y) < 30:
             continue
-        ok = y.spread.notna() & (y.spread > 0) & (y.spread < 50)
+        ok = y.spread.notna() & (y.spread > 0) & (y.spread < 50) & y.mid.between(0.03, 0.97)  # drop decided/resolved books
         y = y[ok]
         mins = len(y) / 60
         out[ph] = dict(minutes=round(mins, 1), spread_med=y.spread.median(), spread_mean=y.spread.mean(),
@@ -67,7 +67,7 @@ def summarise(x):
 
 def at_start(x, gs):
     r = {}
-    for off in (-60, -5, 5, 60, 300, 900):
+    for off in (-60, -5, -1, 0, 1, 2, 5, 10, 30, 60, 300, 900):
         tt = gs + off
         if x.index.min() <= tt <= x.index.max():
             row = x.loc[tt]
