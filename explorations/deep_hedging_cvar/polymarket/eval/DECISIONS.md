@@ -419,3 +419,35 @@ It changes no data, env or evaluation code. The test split has not been touched.
 6. **Cosmetic, not fixed.** `make_plan.py` writes `test_split.dates = "2026-08-24 UTC"`, which is
    hard-coded. The v2 plan's data block (`data/build_jun15`, its file and test-row hashes, and the
    288 market slugs) is what defines the test.
+
+## D14. Track S window refined by the out-of-sample census (recorded 2026-10-15 ~21:40 UTC, before any v3 model is tuned or any v3 split is fixed)
+
+**Evidence.**
+- w7's census replication (`analysis/census/REPORT.md` §6, out-of-sample Sep 17–Oct 7) does not reproduce the
+  headline pre-game sports edge: +13 bps [−35, 55], against +64 [1, 130] on Oct 8–14.
+- w2 (`analysis/v3_sports_rules/REPORT.md`) finds the same on Sep 24–Oct 7: −26 bps [−43, −11] at the touch,
+  measured at 30 minutes.
+- What replicates in both periods is the time-to-kickoff structure. The ex-rewards maker edge at +30 min:
+
+  | Time before kickoff | Oct 8–14 | Out-of-sample |
+  |---|---:|---:|
+  | more than 24 h | +330 [73, 665] | +81 [55, 114] |
+  | 6–24 h | +41 [7, 75] | +43 [17, 64] |
+  | 1–6 h | +30 [−9, 62] | +53 [31, 74] |
+  | last hour | about 0, CI ±90 | about 0, CI ±90 |
+
+  The last hour holds 44% of pre-game volume.
+
+**Refinement of D11 Track S:**
+- **Quote window:** from listing (or the start of data) until kickoff − 1 h.
+- **Last hour:** quotes are off and inventory is flattened or marked at T−1 h. In-play stays out of scope.
+- **Time to kickoff** is an observation, and results are reported per time bucket (>24 h, 6–24 h, 1–6 h) and per
+  league.
+- **Recording and backfill** must cover the windows longer than 1 h, not just the final hours.
+
+**Status of the evidence.** The per-league cells and w2's last-5-minute pocket (+35 bps) are exploratory leads and
+not rules; the last-5-minute pocket is negative once realistic size and flatten cost are applied. Track S is still
+unconfirmed until it is tested on unseen L2 data.
+
+**Track E** is confirmed out of sample: +101 bps [63, 130] with rewards, and ex-rewards about 0 to slightly
+positive. It is unchanged.

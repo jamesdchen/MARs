@@ -36,9 +36,14 @@ def main():
     ap.add_argument("--start", default="2026-10-08")
     ap.add_argument("--end", default="2026-10-14", help="inclusive")
     ap.add_argument("--threads", type=int, default=2)
+    ap.add_argument("--tag", default="", help="writes cache/legs_<tag>.parquet, cache/taker_<tag>.parquet")
+    ap.add_argument("--pad-days", type=float, default=1.0,
+                    help="later fills loaded for the marks (legs themselves stay inside [start, end])")
     a = ap.parse_args()
     t_lo = int(pd.Timestamp(a.start, tz="UTC").timestamp())
     t_hi = int((pd.Timestamp(a.end, tz="UTC") + pd.Timedelta(days=1)).timestamp())
+    t_pad = int(t_hi + a.pad_days * 86400)
+    sfx = f"_{a.tag}" if a.tag else ""
     t0 = time.time()
 
     m = pd.read_parquet(HERE / "cache" / "markets.parquet")
@@ -71,8 +76,10 @@ def main():
       SELECT f.block, f.block_time AS t, f.log_index AS li, f.role, f.maker AS wallet, f.side, f.price, f.size,
              f.fee / 1e6 AS fee, mk.condition_id AS cond, mk.outcome_idx AS oi
       FROM read_parquet('{a.fills}/*/*.parquet', hive_partitioning=1) f JOIN mk USING (token_id)
-      WHERE f.block_time >= {t_lo} AND f.block_time < {t_hi} AND f.size > 0""")
+      WHERE f.block_time >= {t_lo} AND f.block_time < {t_pad} AND f.size > 0""")
     print("fills", con.execute("select count(*) from f").fetchone(), f"{time.time()-t0:.0f}s", flush=True)
+    # marks only where later data exist: cap at the last loaded fill (the pad may run past the extracted days)
+    t_mark = min(t_pad, int(con.execute("select max(t) from f").fetchone()[0]) + 1)
 
     # taker prints in the outcome-0 frame; dir0 = +1 when the taker buys outcome 0 (lifts the ask)
     con.execute("""
@@ -80,11 +87,11 @@ def main():
       SELECT cond, block, li, t, CASE WHEN oi = 0 THEN price ELSE 1 - price END AS p0,
              CASE WHEN (side = 'BUY') = (oi = 0) THEN 1 ELSE -1 END AS dir0, size, price * size AS usd, fee
       FROM f WHERE role = 'taker'""")
-    con.execute("""
+    con.execute(f"""
       CREATE TABLE taker AS
       SELECT cond, count(*) n_taker, sum(usd) taker_usd, sum(fee) taker_fee, sum(size) taker_sh,
-             count(DISTINCT CAST(t // 86400 AS INT)) n_days FROM tp GROUP BY 1""")
-    con.execute(f"COPY taker TO '{HERE / 'cache' / 'taker.parquet'}' (FORMAT parquet)")
+             count(DISTINCT CAST(t // 86400 AS INT)) n_days FROM tp WHERE t < {t_hi} GROUP BY 1""")
+    con.execute(f"COPY taker TO '{HERE / 'cache' / f'taker{sfx}.parquet'}' (FORMAT parquet)")
     con.execute("""
       CREATE TABLE mid AS
       WITH x AS (
@@ -101,11 +108,11 @@ def main():
     con.execute("DROP TABLE mid; DROP TABLE tp")
     print("mid series", con.execute("select count(*) from midb").fetchone(), f"{time.time()-t0:.0f}s", flush=True)
 
-    con.execute("""
+    con.execute(f"""
       CREATE TABLE ml AS
       SELECT f.block, f.t, f.li, f.wallet, f.cond, f.oi, f.price AS q, f.size,
              CASE WHEN f.side = 'BUY' THEN 1 ELSE -1 END AS s, f.fee AS maker_fee
-      FROM f WHERE role = 'maker'""")
+      FROM f WHERE role = 'maker' AND t < {t_hi}""")
     con.execute("DROP TABLE f")
     # pre-fill micro-price: last block strictly before the fill's block
     con.execute("""
@@ -123,11 +130,11 @@ def main():
         cur = f"ml_{k}"
         print("  horizon", k, f"{time.time()-t0:.0f}s", flush=True)
     con.execute(f"""
-      CREATE TABLE lastmid AS SELECT cond, arg_max(mid, block) AS mid_end0 FROM midb GROUP BY 1""")
+      CREATE TABLE lastmid AS SELECT cond, arg_max(mid, block) AS mid_end0 FROM midb WHERE t < {t_hi} GROUP BY 1""")
     own = lambda c: f"CASE WHEN x.oi = 0 THEN {c} ELSE 1 - {c} END"
     # after the market closed (closedTime <= t+h) its value is the settlement price
     hz = ",\n".join(f"CASE WHEN mk.resolved AND mk.close_ts <= x.t + {h} THEN {own('mk.final0')} "
-                     f"WHEN x.t + {h} < {t_hi} THEN {own('x.mid_' + k + '0')} END AS mid_{k}"
+                     f"WHEN x.t + {h} < {t_mark} THEN {own('x.mid_' + k + '0')} END AS mid_{k}"
                     for k, h in HORIZONS.items())
     con.execute(f"""
       COPY (
@@ -139,12 +146,13 @@ def main():
                mk.rebate_rate * mk.fee_rate * x.q * (1 - x.q) AS rebate_ps,
                mk.fee_rate,
                (mk.res_ts - x.t) / 3600.0 AS ttr_h,
-               CASE WHEN mk.category = 'sports_game' THEN (x.t >= mk.game_ts) END AS inplay
+               CASE WHEN mk.category = 'sports_game' THEN (x.t >= mk.game_ts) END AS inplay,
+               (mk.game_ts - x.t) / 3600.0 AS to_game_h
         FROM {cur} x JOIN (SELECT DISTINCT ON (condition_id) *,
                      CASE WHEN outcome_idx = 0 THEN final_price ELSE 1 - final_price END AS final0
                      FROM mk) mk ON x.cond = mk.condition_id
         LEFT JOIN lastmid lm ON x.cond = lm.cond
-      ) TO '{HERE / 'cache' / 'legs.parquet'}' (FORMAT parquet)""")
+      ) TO '{HERE / 'cache' / f'legs{sfx}.parquet'}' (FORMAT parquet)""")
     print("legs written", f"{time.time()-t0:.0f}s", flush=True)
 
 
