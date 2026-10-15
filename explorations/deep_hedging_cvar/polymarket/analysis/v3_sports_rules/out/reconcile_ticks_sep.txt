@@ -1,0 +1,16 @@
+Sep 24 - Oct 7 pre-game maker legs, own price, 30 min capped at kickoff; ticks = distance beyond the micro-price touch
+           share_notional  spread_bps  edge30_bps
+bucket                                           
+inside              0.063    -198.644     -39.001
+0 (touch)           0.759      94.298      29.204
++1                  0.135     276.297      69.320
++2                  0.028     501.274     115.895
++3..5               0.012     838.187     220.668
+>5                  0.004    4379.846    1310.385
+       share_notional  spread_bps  edge30_bps
+age_b                                        
+<=5s            0.234     115.294      27.650
+5-60s           0.327     137.645      28.093
+1-10m           0.275     138.465      52.502
+>10m            0.165     158.916      58.203
+micro-price: median |last buy - last sell| proxy unavailable; median pre_age s: 81.0

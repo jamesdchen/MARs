@@ -137,8 +137,11 @@ def tune(a):
     elif len(study.trials) == 0:
         study.enqueue_trial(dict(thr=0.0, edge_min=0.0, k_inv=0.02, cap=0.6, max_size=2, mode=0))
     left = a.trials - len([t for t in study.trials if t.state.is_finished()])
-    if left > 0:
-        study.optimize(objective, n_trials=left)
+    if left > 0:   # the cap is shared by parallel workers (may overshoot by the trials in flight)
+        from optuna.study import MaxTrialsCallback
+        from optuna.trial import TrialState
+        study.optimize(objective, n_trials=left,
+                       callbacks=[MaxTrialsCallback(a.trials, states=(TrialState.COMPLETE,))])
     best = study.best_trial
     bp = dict(best.params)
     if a.per_length:

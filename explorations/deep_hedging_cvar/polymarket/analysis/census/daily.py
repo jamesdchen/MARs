@@ -3,6 +3,8 @@
 import duckdb
 import pandas as pd
 
+from period import LEGS, OUT
+
 KEY = """CASE WHEN category = 'sports_game' THEN (CASE WHEN inplay THEN 'sports_inplay' ELSE 'sports_pregame' END)
               ELSE category END"""
 f = lambda h: f"WHERE mid_{h} IS NOT NULL AND mid_pre IS NOT NULL"
@@ -14,8 +16,8 @@ d = duckdb.sql(f"""
        / sum(q*size) FILTER ({f('2h')}) xr_2h_bps,
     1e4*(sum(s*(final-q)*size) FILTER (WHERE final IS NOT NULL) + sum(rebate_ps*size) FILTER (WHERE final IS NOT NULL))
        / sum(q*size) FILTER (WHERE final IS NOT NULL) xr_res_bps
-  FROM 'cache/legs.parquet' GROUP BY 1, 2 ORDER BY 1, 2""").df()
-d.to_csv("out/daily_edge.csv", index=False, float_format="%.4g")
+  FROM {LEGS} GROUP BY 1, 2 ORDER BY 1, 2""").df()
+d.to_csv(OUT / "daily_edge.csv", index=False, float_format="%.4g")
 p = d.pivot(index="ckey", columns="day", values="xr_2h_bps").round(0)
 p["pos_days"] = (p > 0).sum(axis=1)
 pd.set_option("display.width", 250)

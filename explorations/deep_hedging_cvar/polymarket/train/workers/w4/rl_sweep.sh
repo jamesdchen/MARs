@@ -3,6 +3,7 @@
 # with a decaying KL to the BC student. 8 configs x 3 seeds, 3 runs in parallel, 1 thread each.
 #   bash rl_sweep.sh bc        # 3 BC students (ckpt/bc_m{0,1,2}.pt)
 #   bash rl_sweep.sh rl        # the 24 PPO runs (skips finished ones)
+#   bash rl_sweep.sh long      # c2 and c8 again at 100M steps, 3 seeds
 set -u
 W4="$(cd "$(dirname "$0")" && pwd)"
 TRAIN="$(cd "$W4/../.." && pwd)"
@@ -37,6 +38,11 @@ CONFIGS=(
   "c8_h60_kl0.1_d0.5_inv1e-3|--env-kw data_dir=$V2 reward_mode=2 markout_h=60 mark_mode=1 --kl-coef 0.1 --kl-decay 0.5 --inv-penalty 1e-3"
 )
 [ -n "${ONLY:-}" ] && CONFIGS=("${CONFIGS[@]:0:$ONLY}")
+# round 2 (bash rl_sweep.sh long): the two best central-1s configs at 100M steps
+if [ "$1" = long ]; then
+  STEPS=100e6
+  CONFIGS=("${CONFIGS[1]/c2_h120_kl0.1_d0.5|/c2_h120_kl0.1_d0.5_100M|}" "${CONFIGS[7]/c8_h60_kl0.1_d0.5_inv1e-3|/c8_h60_kl0.1_d0.5_inv1e-3_100M|}")
+fi
 
 run_one() {
   local name="$1" extra="$2" s="$3"
