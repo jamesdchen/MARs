@@ -1,0 +1,37 @@
+{
+ "env": {
+  "backend": "real",
+  "kw": {
+   "inv_penalty": 5.203196400420489e-05,
+   "mark_mode": 1,
+   "markout_h": 120,
+   "reward_mode": 2
+  }
+ },
+ "policy": {
+  "act": "tanh",
+  "hidden": 64,
+  "kind": "mlp",
+  "layers": 2,
+  "off_prior": 0.5,
+  "shared": true
+ },
+ "ppo": {
+  "adam_eps": 1e-08,
+  "anneal_lr": true,
+  "bptt_horizon": 64,
+  "clip_coef": 0.2,
+  "ent_coef": 0.00039747456923718835,
+  "gae_lambda": 0.9794307540969474,
+  "gamma": 0.9988214282795336,
+  "learning_rate": 0.0006776573310250399,
+  "max_grad_norm": 0.5,
+  "minibatch_size": 8192,
+  "optimizer": "adam",
+  "update_epochs": 1,
+  "vf_clip_coef": 10.0,
+  "vf_coef": 0.5
+ },
+ "num_envs": 4096,
+ "total_timesteps": 25000000
+}
