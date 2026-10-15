@@ -228,3 +228,10 @@ making markets.
 
 **Stopping and freezing:** the v2 plan is frozen and hashed before the Jun 15 evaluation, in the
 same way as v1. The test runs once, and every result is reported.
+
+**D7 stopping rule.** v2 improvement stops at whichever comes first:
+- two consecutive v2 steps whose best seed-mean val-v2 P&L, among D1.3-passing methods, does not
+  beat the previous best by more than its seed SE;
+- 2026-10-16 03:00 UTC.
+
+The v2 plan is then frozen and Jun 15 is evaluated once.
