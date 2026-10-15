@@ -11,7 +11,8 @@ This runs on its own, alongside the polyrec recorder (it only reads rec_out/cove
 2. gamma /markets?slug=a&slug=b..., in batches of 20. The moneyline market embeds its event, which
    carries live/ended/score/period/elapsed/gameId. Each recorded game is polled every 30 s from its
    scheduled kickoff -20 min to +40 min. The window is also opened around gamma endDate, the
-   recorder's book cutoff, when that differs from gameStartTime (esports). Polls go to
+   recorder's book cutoff, when that differs from gameStartTime (esports), and is kept open up to +3 h
+   while gamma has not shown the game live (late starts; esports often start 10-60 min late). Polls go to
    kickoff/gamma_<UTC day>.jsonl.
 
 The recorded slugs come from rec_out/coverage/coverage_*.jsonl ("live" events), read incrementally.
@@ -43,6 +44,7 @@ KDIR = HERE / "kickoff"
 WS_URL = "wss://sports-api.polymarket.com/ws"
 GAMMA = "https://gamma-api.polymarket.com/markets"
 PRE_S, POST_S = 20 * 60, 40 * 60
+LATE_S = 3 * 3600                    # keep polling past +40 min, up to +3 h, while gamma has not shown the game live
 POLL_S = 30
 BATCH = 20
 META_REFRESH_S = 1800
@@ -159,6 +161,7 @@ class Watch:
         self.gm_out = DailyJsonl("gamma", kdir)
         self.stop = asyncio.Event()
         self.n_ws = 0
+        self.g_live: set[str] = set()     # slugs gamma has shown live/ended
         self.n_poll = 0
         self.ws_connects = 0
 
@@ -229,7 +232,8 @@ class Watch:
         for t in {md.get("scheduled"), md.get("game_start"), md.get("end")}:
             if t and t - PRE_S <= now <= t + POST_S:
                 return True
-        return False
+        t = md.get("scheduled")
+        return bool(t and t + POST_S < now <= t + LATE_S and md.get("slug") not in self.g_live)
 
     async def poll_loop(self, sess):
         while not self.stop.is_set():
@@ -240,7 +244,10 @@ class Watch:
                     ms = await self.fetch(sess, act)
                     tr = time.time()
                     for m in ms:
-                        self.gm_out.write(tr, poll_record(tr, m))
+                        rec = poll_record(tr, m)
+                        self.gm_out.write(tr, rec)
+                        if _is_live(rec["live"], rec["ended"], None, rec["elapsed"]):
+                            self.g_live.add(rec["slug"])
                     self.gm_out.flush()
                     self.n_poll += len(ms)
             except Exception:  # noqa: BLE001
@@ -343,6 +350,19 @@ def _is_live(live, ended, status=None, elapsed=None) -> bool | None:
     return None
 
 
+def _ws_up(conn: list[tuple[float, str]], lo: float, hi: float) -> bool:
+    """True if the ws was connected throughout [lo, hi] according to the connect/disconnect markers."""
+    state = None
+    for t, ev in conn:
+        if t <= lo:
+            state = ev
+        elif t <= hi:
+            return False
+        else:
+            break
+    return state == "connect"
+
+
 def _iter_jsonl(pattern: str):
     for f in sorted(glob.glob(pattern)):
         with open(f, "rb") as fh:
@@ -356,7 +376,8 @@ def _iter_jsonl(pattern: str):
 def derive(kdir: Path = KDIR, write: bool = True) -> list[dict]:
     """Per recorded game: first live observation from ws and gamma, bracketed by the last not-live
     observation before it. actual_kickoff = the earliest live observation (ws is push, gamma 30 s polls).
-    confidence: high (bracket <= 60 s), medium (<= 600 s), low (wider), upper_bound (never seen
+    confidence: high (bracket <= 60 s, or a ws transition with the socket up over the whole bracket),
+    medium (<= 600 s), low (wider), upper_bound (never seen
     before the start: the game was already running when first observed)."""
     kdir = Path(kdir)
     try:
@@ -371,7 +392,11 @@ def derive(kdir: Path = KDIR, write: bool = True) -> list[dict]:
     ws_first: dict[str, tuple[float, dict]] = {}
     ws_notlive: dict[str, list[float]] = {}
     ws_first_seen: dict[str, float] = {}
+    conn: list[tuple[float, str]] = []          # ws connect / disconnect markers
     for r in _iter_jsonl(str(kdir / "ws_*.jsonl")):
+        if r.get("_ev"):
+            conn.append((r["t"], r["_ev"]))
+            continue
         m = r.get("m")
         if not isinstance(m, dict) or "gameId" not in m:
             continue
@@ -426,6 +451,10 @@ def derive(kdir: Path = KDIR, write: bool = True) -> list[dict]:
         else:
             w = actual - lo
             conf = "high" if w <= 60 else "medium" if w <= 600 else "low"
+            # the ws pushes every game update: with the socket up over the whole bracket, the first
+            # live message IS the transition (to within push latency), however wide the bracket
+            if src == "ws" and _ws_up(conn, lo, actual):
+                conf = "high"
         rows.append(dict(
             slug=s, event_slug=md.get("event_slug") or "", game_id=gid,
             scheduled_kickoff=iso(sched), scheduled_unix=sched or "",
