@@ -1,0 +1,88 @@
+# polyrec configuration. Every key is optional; the values below are the built-in defaults
+# (polyrec/config.py). CLI flags (--out, --coins, --lengths, --slug-regex, --pre-open, ...) override.
+
+out_dir = "/var/lib/polyrec"
+log_level = "INFO"
+log_file = ""                    # optional rotating file; stderr goes to journald / docker logs anyway
+discovery_interval_s = 60
+http_timeout_s = 20
+
+# ---------------------------------------------------------------------------- discovery sources
+# Each [[source]] is one gamma GET /events/keyset query (any of its parameters in `params`) plus a
+# slug regex. Named groups `coin` and `len` fill the coin / contract_length columns.
+[[source]]
+name = "crypto-updown"
+params = { tag_slug = "up-or-down" }
+slug_regex = '^(?P<coin>[a-z0-9]+)-updown-(?P<len>5m|15m|4h)-(?P<ts>\d+)$'   # all coins, 5m/15m/4h
+exclude_regex = ""
+window = "start_time"            # event start in [now - max_duration_s, now + lookahead_s]
+max_duration_s = 15300           # 4 h 15 min: catches running 4h markets after a restart
+lookahead_s = 900
+pre_open_s = 120                 # subscribe 2 min before eventStartTime (opening book + pre-open rows)
+post_close_s = 0                 # rows after end (0 keeps seconds_to_close >= 0 like data/raw)
+linger_s = 60                    # stay subscribed after end (late events, market_resolved)
+max_pages = 20
+
+# Example: also record another category later (generic markets have no coin / length; rows still
+# use the same schema with those columns null).
+# [[source]]
+# name = "politics"
+# params = { tag_slug = "politics" }
+# slug_regex = '^.*$'
+# window = "end_date"            # open markets ending within horizon_s
+# horizon_s = 2592000
+# pre_open_s = 0
+
+# ---------------------------------------------------------------------------- websocket
+[ws]
+url = "wss://ws-subscriptions-clob.polymarket.com/ws/market"
+markets_per_conn = 2             # small shards: busy connections get closed with 1013 "slow consumer"
+ping_interval_s = 10             # text PING every 10 s (docs); server replies PONG
+stale_timeout_s = 30             # dead-man per connection
+custom_features = true           # best_bid_ask / new_market / market_resolved events
+max_queue = 4096
+backoff_min_s = 1
+backoff_max_s = 60
+open_timeout_s = 15
+
+# ---------------------------------------------------------------------------- REST reconcile
+[reconcile]
+interval_s = 60                  # re-read every book from REST this often (staggered per token)
+grace_s = 1.5                    # let in-flight WS deltas land before comparing
+mode = "book"                    # "book" = GET /book per token, "books" = POST /books batches
+batch = 40
+concurrency = 4
+prune_on_bba = true              # drop levels beyond the exchange-reported best bid/ask (stale after trades)
+on_bba_mismatch = true           # early reconcile when a level the exchange reports as best is missing
+min_gap_s = 10
+size_tol = 1e-6
+
+# ---------------------------------------------------------------------------- trades (data-api)
+[trades]
+enabled = true
+poll_interval_s = 30             # incremental polls while a market is recorded (both takerOnly modes)
+page = 500
+overlap_s = 180
+settle_delay_s = 300             # full sweep + gamma metadata this long after end
+concurrency = 3
+finalize_lookback_s = 21600
+
+# ---------------------------------------------------------------------------- output
+[output]
+flush_interval_s = 60            # book rows -> parquet part (a crash loses at most this much)
+max_buffer_rows = 50000
+compression_level = 9            # zstd level of the hourly parquet files
+raw_enabled = true
+raw_zstd_level = 6
+raw_keep_order_hashes = false    # per-order hashes in price_change are ~70% of the compressed log
+raw_flush_interval_s = 10
+raw_retention_days = 0           # >0 deletes raw/<day> directories older than N days
+
+# ---------------------------------------------------------------------------- health
+[health]
+status_interval_s = 10
+summary_interval_s = 60
+loop_stall_exit_s = 120
+no_data_exit_s = 600
+max_rss_mb = 1500
+min_free_disk_mb = 2000
