@@ -694,6 +694,9 @@ class Recorder:
                          status["markets"]["subscribed"], r["frames"], r["bytes"] / 1e6, r["rows"],
                          q["reconcile_checks"], 100 * q["reconcile_mismatch_rate"], 100 * q["bba_mismatch_rate"],
                          status["process"]["rss_mb"], self.loop_lag_ms)
+            if self.cfg.output.raw_retention_days > 0 and int(now) // 3600 != getattr(self, "_ret_hour", None):
+                self._ret_hour = int(now) // 3600
+                await asyncio.to_thread(self._prune_raw, now)
             # guards
             free_mb = status.get("disk", {}).get("free_mb", 1e9) if status else 1e9
             if free_mb < hc.min_free_disk_mb and not self.raw.paused:
@@ -709,6 +712,14 @@ class Recorder:
                 log.critical("no market data for %.0fs with %d subscribed tokens: restarting",
                              now - self.last_data, len(self.tokens))
                 self.request_stop(EXIT_NO_DATA)
+
+    def _prune_raw(self, now: float):
+        cut = time.strftime("%Y-%m-%d", time.gmtime(now - 86400 * self.cfg.output.raw_retention_days))
+        base = self.cfg.out / "raw"
+        for d in sorted(base.iterdir()) if base.exists() else []:
+            if d.is_dir() and d.name < cut:
+                shutil.rmtree(d, ignore_errors=True)
+                log.info("raw retention: removed %s", d)
 
     def _update_rates(self, now):
         t0, prev = self._rate_prev

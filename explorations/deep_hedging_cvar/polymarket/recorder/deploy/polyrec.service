@@ -1,0 +1,40 @@
+# /etc/systemd/system/polyrec.service  (see README.md "Deploy on a VPS with systemd")
+[Unit]
+Description=Polymarket CLOB order book recorder (polyrec)
+Wants=network-online.target time-sync.target
+After=network-online.target time-sync.target
+
+[Service]
+Type=notify
+NotifyAccess=main
+User=polyrec
+Group=polyrec
+WorkingDirectory=/opt/polyrec
+ExecStart=/opt/polyrec/.venv/bin/python -m polyrec record --config /etc/polyrec/config.toml
+# polyrec sends READY=1 after start-up and WATCHDOG=1 every 10 s from its event loop; a hung loop
+# is killed by systemd after WatchdogSec (the in-process watchdog thread exits after 120 s too).
+WatchdogSec=180
+Restart=always
+RestartSec=5
+# graceful stop flushes buffered rows to parquet parts and closes the zstd frame of the raw log
+KillSignal=SIGTERM
+TimeoutStopSec=90
+# exits 70 (loop stall), 75 (no data), 76 (RSS limit) are deliberate: restart them too
+RestartPreventExitStatus=
+StartLimitIntervalSec=0
+
+MemoryMax=2G
+CPUQuota=150%
+Nice=5
+LimitNOFILE=65536
+
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+ReadWritePaths=/var/lib/polyrec
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

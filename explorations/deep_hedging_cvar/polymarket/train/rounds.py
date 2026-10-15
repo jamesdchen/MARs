@@ -520,7 +520,16 @@ def busy():
     me = {os.getpid(), os.getppid()}
     out = subprocess.run(['pgrep', '-f', r'run_all\.py|sweep\.py|seeds\.py|rounds\.py (run|auto|finalize)'],
                          capture_output=True, text=True).stdout.split()
-    return [int(x) for x in out if int(x) not in me]
+    pids = []
+    for x in out:
+        try:
+            argv = open(f'/proc/{x}/cmdline', 'rb').read().split(b'\0')
+        except OSError:
+            continue
+        if int(x) in me or b'python' not in argv[0] or b'--detach' in argv:
+            continue  # shell wrappers, our own launcher
+        pids.append(int(x))
+    return pids
 
 
 def main():

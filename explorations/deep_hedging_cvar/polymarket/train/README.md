@@ -44,6 +44,13 @@ reseed, select, 5 seeds, publish) ran end to end in 1.2 min:
 --reseed-top 1 --final-steps 3e5 --seed-jobs 2 --probe-steps 2e5 --skip-tests
 --train-args "--num-envs 512 --minibatch-size 8192"`.
 
+## Improvement rounds (after the main pipeline)
+
+`rounds.py` runs DECISIONS.md D4's rounds (R1 BC warm start + KL, R2 off prior, R3 mark
+mode, R4 longer, R5 sim pretraining, R6 recurrent) with the stopping rule, and
+`finalize`s the best; see **ROUNDS.md** for the commands
+(`python rounds.py auto --after-main --detach`).
+
 ## Single steps
 
 ```bash

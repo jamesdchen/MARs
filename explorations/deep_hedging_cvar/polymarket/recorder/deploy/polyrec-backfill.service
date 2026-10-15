@@ -1,0 +1,14 @@
+# /etc/systemd/system/polyrec-backfill.service  (triggered by polyrec-backfill.timer)
+[Unit]
+Description=polyrec: fill winners of resolved markets
+After=network-online.target
+
+[Service]
+Type=oneshot
+User=polyrec
+Group=polyrec
+WorkingDirectory=/opt/polyrec
+ExecStart=/opt/polyrec/.venv/bin/python backfill_winners.py --out /var/lib/polyrec --recent 2
+Nice=10
+ProtectSystem=strict
+ReadWritePaths=/var/lib/polyrec

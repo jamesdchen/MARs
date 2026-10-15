@@ -83,10 +83,13 @@ def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", required=True)
     ap.add_argument("--days", default=None, help="comma-separated UTC days (default: all)")
+    ap.add_argument("--recent", type=int, default=None, help="only the last N UTC days (cron)")
     ap.add_argument("--dry-run", action="store_true")
     a = ap.parse_args(argv)
     out = Path(a.out)
     days = a.days.split(",") if a.days else None
+    if a.recent:
+        days = [time.strftime("%Y-%m-%d", time.gmtime(time.time() - k * 86400)) for k in range(a.recent)]
     state = out / "state"
     state.mkdir(exist_ok=True)
     cache_p = state / "resolutions.json"

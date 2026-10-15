@@ -90,6 +90,7 @@ class OutputConfig:
     raw_zstd_level: int = 6
     raw_keep_order_hashes: bool = False  # per-order hashes are ~70% of the compressed raw log
     raw_flush_interval_s: float = 10.0
+    raw_retention_days: int = 0          # >0: delete raw/<day> directories older than this many days
 
 
 @dataclass

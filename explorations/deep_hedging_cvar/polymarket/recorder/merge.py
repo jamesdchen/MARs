@@ -112,6 +112,8 @@ def select(recs, meta, trades, intervals, consts, assignment, orig_slugs, args):
             r["reason"] = f"coin/length {m.coin}/{m.contract_length} unknown to build.py"
         elif pd.isna(m.winner_up):
             r["reason"] = "unresolved (run backfill_winners.py)"
+        elif pd.isna(m.event_start) or pd.isna(m.end):
+            r["reason"] = "no eventStartTime/endDate"
         else:
             end = m.end.timestamp()
             o = m.event_start.timestamp()
@@ -285,6 +287,8 @@ def main(argv=None):
     ap.add_argument("--max-total-gap", type=float, default=15.0)
     ap.add_argument("--allow-missing-underlying", action="store_true",
                     help="keep markets without Binance data (build marks them; features.py cannot run)")
+    ap.add_argument("--no-underlying-fetch", action="store_true",
+                    help="do not download Binance data (implies markets without it need --allow-missing-underlying)")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--no-build", action="store_true")
     ap.add_argument("--no-features", action="store_true")
@@ -312,9 +316,10 @@ def main(argv=None):
         lo = min(cand.open) - 86400
         days = [d.strftime("%Y-%m-%d") for d in pd.date_range(day_of(lo), day_of(max(cand.end)), freq="D")]
         orig_days = {d for d in consts["SPLIT_DAYS"]}
-        days = [d for d in days if d not in orig_days]
+        days = [] if a.no_underlying_fetch else [d for d in days if d not in orig_days]
         print(f"fetching Binance 1s underlying for {sorted(cand.coin.unique())} x {days}", flush=True)
-        new_ul = fetch_underlying(dest, sorted(cand.coin.unique()), days)
+        if days:
+            new_ul = fetch_underlying(dest, sorted(cand.coin.unique()), days)
         for i, r in cand.iterrows():
             if not underlying_ok(new_ul, r.coin, int(r.open) - 3600, int(r.end)):
                 if not a.allow_missing_underlying:

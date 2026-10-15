@@ -1,0 +1,15 @@
+# polyrec runtime (Python >= 3.11; tested on 3.13)
+websockets>=15,<18      # asyncio client with recv(decode=False) and HTTPS_PROXY support (tested 17.2)
+aiohttp>=3.9,<4         # gamma / CLOB REST / data-api (tested 3.14.5)
+orjson>=3.9             # hot-path JSON (tested 3.13.0)
+zstandard>=0.22         # raw event log (tested 0.25.0)
+pyarrow>=15             # parquet output (tested 26.0.0)
+numpy>=1.26             # (tested 2.5.4)
+pandas>=2.1             # finalize / backfill / merge / verify (tested 3.0.6)
+uvloop>=0.19; sys_platform != "win32"   # optional, ~20% less CPU per frame; used automatically if installed
+
+# tests
+pytest>=8
+
+# merge.py additionally runs data/build.py and data/features.py; features.py needs scipy
+# (the system python3 in this repo's container has it: merge.py --python /usr/bin/python3).
