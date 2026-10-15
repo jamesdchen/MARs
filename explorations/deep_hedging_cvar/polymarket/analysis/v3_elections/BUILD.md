@@ -19,7 +19,8 @@ python build_elections.py --emit-tokens tokens.parquet    # token map for onchai
 | `--cutoff` | 2026-11-03T00:00Z | Windows must end by this time. Election night is out of scope (D11). |
 | `--max-gap`, `--max-total-gap` | 5 s, 15 s | The coverage rule from `recorder/merge.py`. |
 | `--allow-partial` | off | Keeps windows whose recorder or fills coverage is partial, with flag PARTIAL or TRADES_INCOMPLETE. Use it only for smoke tests. |
-| `--markets`, `--top-n`, `--min-rate` | all | Restricts the build to a subset of markets (see the size note below). |
+| `--top-n` / `--all` | 20 | Builds only the N markets with the highest `rate_per_day` in `sel/selection.json`. `--top-n 0` or `--all` builds every selected market. |
+| `--markets`, `--min-rate` | all | Further market filters, applied before `--top-n`. |
 | `--trades-source` | required | `onchain` reads `onchain/extract.py` output (`--trades-path`); this is the census source. `data-api` uses `/trades?market=<condition id>` and is cached. `file` reads a trades.parquet in the `data/raw` schema. `none` builds without fills. |
 | `--feat-layout` | split | `split` writes feat.bin as [N, 44], which the current env reads, plus feat_x.bin as [N, X]. `wide` writes feat.bin as [N, 44 + X], which needs MM_G = 88 in the env. |
 | `--max-gb` | 20 | Refuses to build anything larger than this. |
@@ -133,26 +134,128 @@ first snapshot) and the book snapshot in use at t.
     every taker leg has maker legs.
 - **Neg-risk conversions are invisible as fills.** This is the same limitation as in the census.
 
+## Side tables (self-describing output)
+
+### `rewards_ts.parquet`: one row per episode and UTC minute
+
+The table covers every minute of every window. A minute is included only if its sample second
+falls inside the window, which drops the single-second minute at the window end. Each row holds the
+values at that minute's sample second, which is the row where the env's hook pays.
+
+| column | type | meaning |
+|---|---|---|
+| market_idx | int32 | episode index (`markets.bin` row, `meta.slugs`, `markets_meta.market_idx`) |
+| condition_id, slug | str | market |
+| minute_ts | int64 | UTC minute start (unix s) |
+| sample_ts | int64 | the minute's sample second: one uniform draw per minute from `default_rng([20261015, int(condition_id[2:14], 16), window_open])` |
+| in_program | bool | latest reward snapshot taken at or before `sample_ts` lists the market as in the program |
+| daily_rate_usd | float | that snapshot's `total_daily_rate` (0 if not in the program) |
+| min_size | float | that snapshot's `rewards_min_size` (shares), carried forward from earlier snapshots if missing |
+| max_spread_c | float | that snapshot's `rewards_max_spread` v (cents), carried forward the same way |
+| snapshot_age_s | float | `sample_ts` minus the snapshot's `taken_at` |
+| mid | float | (best bid + best ask) / 2 of the env book, Yes frame; NaN if the book is not two-sided or not valid |
+| adjusted_mid | float | size-cutoff adjusted mid (formula below); NaN if unscorable |
+| comp_q_bid, comp_q_ask | float | competitors' Q on the Yes bid side and the Yes ask side |
+| comp_q_min | float | competitors' Q_min, which the env uses as `liq_comp` |
+| two_sided_only | bool | adjusted_mid is outside [0.10, 0.90] |
+| usd_per_sample | float | daily_rate_usd / 1440 |
+| liq_pi | float | what `feat.bin` `liq_pi` holds at `sample_ts`: usd_per_sample if in_program and scorable, else 0 |
+| book_valid | bool | env book valid at `sample_ts` |
+| covered | bool | `sample_ts` is inside recorder coverage |
+| scorable | bool | book valid and both sides non-empty |
+
+### `markets_meta.parquet`: one row per episode
+
+| column | meaning |
+|---|---|
+| market_idx | episode index |
+| condition_id, slug, question | market |
+| episode_id | `"<slug>@<open ISO>"` (= `meta.slugs`, `splits.json` key) |
+| day | UTC day of the window open |
+| window_start_ts, window_end_ts | unix seconds |
+| window_start_utc, window_end_utc | UTC timestamps |
+| market_end_ts | the market's `end_date` |
+| split, split_name | 0 train, 1 val, 2 test, 3 purged |
+| row_offset, n_rows | where the episode sits in the row-major binaries |
+| rewards_in_program_at_open, rewards_daily_rate_at_open, rewards_min_size, rewards_max_spread_c | reward program at the window open; `markets.bin` holds the same min size and max spread |
+| tick_size, min_order_size, taker_fee_rate, fee_exponent, maker_rebate_rate | from gamma |
+| flags | the raw `markets.bin` flags |
+| flag_has_trades, flag_has_underlying, flag_election, flag_unresolved, flag_partial, flag_in_program, flag_trades_incomplete | the flags decoded |
+| cov_total_gap_s, cov_max_gap_s | coverage gaps inside the window |
+| rows_valid, rows_covered, rows_two_sided, rows_in_program, rows_scorable | row counts |
+| n_taker_txs | taker transactions in the window |
+| n_fill_legs | maker legs written to `fills.bin` |
+
+In `--allow-partial` day windows, the program at the open is "not in program" whenever the open
+precedes the first snapshot (selection.json, taken 2026-10-15 20:20:55Z).
+
+### Formulas (`analysis/rewards/reward_terms.py`)
+
+The script recomputes these formulas vectorized on the full recorded ladder of each snapshot. On 500
+of 500 raw snapshots it matches `reward_terms.adjusted_mid` and `side_scores`.
+
+- **Score per order:** `S(d, v) = ((v - d) / v)^2` if `d < v`, else 0 (`reward_terms.S`). Here d is
+  the order's distance in cents from the adjusted mid, and v is `max_spread_c`.
+- **Adjusted mid** (`reward_terms.adjusted_mid`):
+  `adjusted_mid = (bid_cut + ask_cut) / 2`. On each side, the cut is the price of the first level
+  where the cumulative size from the touch reaches `min_size`, or the last level if the side never
+  reaches it. Each snapshot is computed in its own token's frame; a No-book result maps into the
+  Yes frame as `1 - mid`, with the bid and ask sides swapped.
+- **Side Q** (`reward_terms.side_scores`): `Q_bid = sum over bid levels of S(|adjusted_mid - p| * 100, v) * size * [size >= min_size]`, and likewise for asks. Each price level counts as one order.
+- **Competitors' Q_min** (`reward_terms.competitor_q`, 'hi' bound): `min(Q_bid, Q_ask) + |Q_bid - Q_ask| / 3`
+  if `0.10 <= adjusted_mid <= 0.90`, else `min(Q_bid, Q_ask)`.
+- **Our Q_min** (`reward_terms.q_min`, computed by the env):
+  `max(min(q1, q2), max(q1, q2) / 3)` inside the band, else `min(q1, q2)`.
+- **Per-sample payout:** `pi = daily_rate / 1440` (one sample per minute, `sample_period_s = 60`).
+- **Reward at a sample** (`reward_terms.reward_accrual`): `pi * Q_ours / (Q_ours + comp_q_min)`.
+
 ## Size
 
-Each row takes 580 B, so one market-day (86,401 rows) is about 50 MB. All 276 recorded markets come
-to about **14 GB per recorded day**. The disk has 27 GB free, so a full 18-day build of every market
-is about 250 GB and does not fit. You will need to choose one of these:
+Each row takes 580 B, so one market-day (86,401 rows) is about 50 MB. The default 20 markets come to
+about 1.0 GB per recorded day; all 276 recorded markets come to about 14 GB per day. The disk has
+27 GB free.
 
-- Build a subset of markets (`--top-n` or `--markets`; for example, 20 markets is about 1 GB per day).
-- Have the v3 env read an event-driven or sparse book.
+## Smoke test (2026-10-15 about 20:22 to 20:55 UTC recorded, `build_smoke/`)
 
-## Smoke test (2026-10-15, about 15 minutes recorded, `build_smoke/`)
+| build | episodes | rows | fill legs | size on disk | rewards_ts rows (covered) | load.verify | C env |
+|---|---|---|---|---|---|---|---|
+| `w4h` (default top 20, `--allow-partial`, 4 h) | 20 | 288,020 | 29 | 167 MB | 4,800 (486) | OK | steps with len_mask 4 |
+| `day` (default top 20, `--allow-partial`, 1 day) | 20 | 1,728,020 | 1,386 | 1.0 GB | 28,800 (484) | OK | refused: no length bit for 86400 |
+| `w300` (all markets, 5 min, full coverage, first version) | 580 | 174,580 | 16 | | | OK | steps with len_mask 1; the liquidity hook pays with size_mult 10 |
+| `w300_wide` (top 10, first version) | 24 | 7,224 | 5 | | | OK | refused: MM_G = 44, by design |
 
-| build | episodes | rows | fills | load.verify | C env |
-|---|---|---|---|---|---|
-| `w300` (5-minute windows, full coverage) | 580 | 174,580 | 16 legs | OK | opens and steps with len_mask 1; liq hook pays with size_mult 10 |
-| `w4h` (`--allow-partial`, top 20) | 18 | 259,218 | 25 | OK | opens and steps with len_mask 4 |
-| `day` (`--allow-partial`, top 3) | 1 | 86,401 | 19 | OK | refused: no length bit for 86400 |
-| `w300_wide` (top 10) | 24 | 7,224 | 5 | OK | refused: MM_G = 44 by design |
+"First version" means these builds predate the side tables and the top-20 default.
 
-In the `day` build, only 1 of the top 3 markets by rate had been recorded so far: 24 selected
-markets were still pending subscription.
+## What P/v3env/mm3.h should read
+
+The v3 env is being built centrally as `P/v3env/mm3.h`. This script does not build an env copy; it
+only keeps the binaries compatible.
+
+- **`markets.bin`** (88 B, `MmMarket` unchanged):
+  - row_offset, n_rows, open_ts, end_ts and contract_len_s, which can take any value. Episode
+    selection must not depend on the 300/900/14400 length bits.
+  - split, flags. UNRESOLVED (32) means: settle and mark post-end markouts at the last row's
+    `feat[mark]` (or `rw_adj_mid`), never at `winner_up` (which is -1). PARTIAL (64) and
+    TRADES_INCOMPLETE (256) mark smoke-only episodes.
+  - min_order_size, rewards_min_size, rewards_max_spread (the program at the open, for sizing).
+  - taker_fee_rate, fee_exponent, maker_rebate_rate.
+- **`book.bin`, `fills.bin`, `fill_index.bin`:** unchanged layouts.
+- **`feat.bin` [N, 44]:**
+  - Observed columns 0..32 and obs 47/48 (cols 41, 42), as now.
+  - `p_model` (33) for the empty-side quote base, and `mark` (34).
+  - `liq_mid` (38), `liq_comp` (39), `liq_pi` (40).
+  - The underlying slots `z` (4), `sdv_bp` (5), `sigma_1m_bp` (6), `delta_usd` (10) and `ulz*`
+    (23–25) are 0 and free to repurpose.
+- **`feat_x.bin` [N, 44]** (or `feat.bin` columns 44–87 with `--feat-layout wide`). The per-row
+  reward hook must use these columns instead of MM_LIQ_V and MM_LIQ_MIN:
+  - `rw_max_spread_c` (3) as v, and `rw_min_size` (2) as the min size.
+  - `rw_in_program` (0) and `rw_usd_per_sample` (11); `liq_pi` already contains the product.
+  - `rw_two_sided_only` (9) for the band rule.
+  - For sizes relative to the min size: `rw_min_size` (2) and `rw_min_size_mult` (39).
+  - Candidate reward observations: `rw_bid_score_a1..6` (24–29), `rw_ask_score_a1..6` (30–35),
+    `rw_size_ok_0..2` (36–38), `rw_comp_q` (8), `rw_daily_rate` (1) and `x_log_days_to_end` (41).
+  - Column indices are listed in `feat_meta.json["extra"]["column_index"]`.
+- **For evaluation only:** `rewards_ts.parquet` and `markets_meta.parquet`, never in the step.
 
 ## Env changes v3 needs (mm.h was not modified)
 

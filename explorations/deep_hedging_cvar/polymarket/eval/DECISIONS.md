@@ -369,3 +369,53 @@ unchanged.
   - Raw book `captured_at` values are whole seconds. Book rows may therefore reflect the market up
     to about 1 s later than the Binance features, roughly 0.5 s of optimism on average.
   - This may already be absorbed by the 3.5 s central match-delay calibration. Not acted on.
+
+## D13. How D1.3 is judged when selecting a multi-seed method, and the v2 freeze settings (recorded 2026-10-15 ~21:10 UTC, after val v2 results were visible, before any Jun 15 strategy result)
+
+**Stated plainly: this entry was written after the val v2 results of every ledger were visible.**
+It changes no data, env or evaluation code. The test split has not been touched.
+
+**What happened.**
+- The training agent changed how `train/rounds.py` and `train/v2search.py` compute T6 for a
+  multi-seed method. The old code took the mean of the per-seed T6 shares. The new code computes
+  T6 on seed-pooled attribution: mean inventory P&L over mean P&L.
+- The change was made after the v2s1 val results were seen, and went into commit `4f17e3a`
+  together with the ledger rows.
+- The reason it gave: under per-seed averaging a losing seed counts as T6 = 0. For example,
+  `v2s1/c29` quoting 15m+4h (seeds +236 / −71 / −84, mean +27) had a per-seed-mean T6 of 0.41,
+  but all of its seed-mean profit is inventory P&L (pooled share 4.19).
+
+**Decision for the v2 freeze (coordinator, 21:10 UTC).**
+1. **D1.3 for a multi-seed method is judged on seed-pooled attribution, with the directional
+   rule of `final/reduce.py` `directional_verdict`.** That rule is frozen in the v1
+   TEST_PLAN.json, and the test applies it to the RL seed mean. A method is directional if its
+   inventory P&L is > 0 and is either:
+   - more than 50% of a positive total; or
+   - more than 50% of the sum of the positive components (spread capture, 60 s markout,
+     inventory, rebates, rewards).
+
+   The T5 artifact share is also pooled, and the fills rule is mean fills/market ≥ 5. This is
+   "reading C" in `final/v2/SELECTION.md`. Readings A (per-seed mean) and B (pooled total share
+   only, the 4f17e3a code) are reported next to it, with their winners.
+2. **Single ensemble evaluations are not D8 candidates.** An ensemble evaluated once has no seed
+   mean. Picking the best of the ~200 ensemble × length-filter evaluations would select a single
+   draw, which T4 forbids ("never select the best seed"). D8's "pre-specified ensemble" remains a
+   way to deploy a method that was selected on its seed mean.
+3. **Comparators.** D7 keeps D1 unchanged, and no baseline was re-tuned on val v2. The v1 tuned
+   parameter sets are therefore kept: `baselines/tuned.json` (primary candidates) and
+   `baselines/tuned_active.json` (D1.2 secondary). The comparator is the best tuned baseline,
+   `fair_value`. It is also the best tuned baseline when re-scored on val v2 (+101 against
+   as_logit +24 and no-quote 0; `train/runs/v2/baselines.json`).
+4. **Env parameters of the plan: `mark_mode = 1`.** This is the env the selected config was
+   trained and val-scored with. `mark_mode` changes only the wealth observation and the training
+   reward. P&L, attribution and the baselines' inputs do not depend on it.
+   - A dry run on Aug 23 reproduces the ledger exactly: seed 0, −387.65 over 5,409 fills on both
+     paths.
+   - The v1 plan used the `mm.h` default `mark_mode = 0` for R7 `c02_h120`, which had been trained
+     with `mark_mode = 1`. So in v1 the RL policies saw a mid-marked wealth input that they were
+     not trained on. This is recorded here and not re-run.
+5. **D10 sensitivity.** `final/v2/d10_book_valid.py` is a post-hoc script that reads the frozen
+   outputs. It is committed before the test.
+6. **Cosmetic, not fixed.** `make_plan.py` writes `test_split.dates = "2026-08-24 UTC"`, which is
+   hard-coded. The v2 plan's data block (`data/build_jun15`, its file and test-row hashes, and the
+   288 market slugs) is what defines the test.

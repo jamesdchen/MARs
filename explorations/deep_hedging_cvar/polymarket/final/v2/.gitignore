@@ -1,0 +1,3 @@
+# same rules as final/.gitignore: env snapshots (100MB+) and per-shard scratch
+**/.snapshot/
+**/shards/

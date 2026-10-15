@@ -779,7 +779,61 @@ def episode_rows(ep, mb: pd.DataFrame, seg, trades_g, cfg, gm, L: int):
     st = {"rows_valid": int(valid.sum()), "rows_covered": int(covered.sum()), "rows_two_sided": int(two.sum()),
           "rows_in_program": int((cf["in_program"] > 0).sum()), "rows_scorable": int(scorable.sum()),
           "n_tx": n_tx, "n_legs": 0 if legs is None else int(len(legs)), **lg_stats}
-    return Xt, out, xf, rec, legs, st
+    # per-minute reward series (rewards_ts.parquet): the row of each UTC minute's sample second
+    mi = np.flatnonzero(sample)
+    mts = pd.DataFrame({
+        "minute_ts": (tgrid[mi] // 60) * 60, "sample_ts": tgrid[mi],
+        "in_program": cf["in_program"][mi] > 0, "daily_rate_usd": cf["rate"][mi], "min_size": cf["min_size"][mi],
+        "max_spread_c": cf["max_spread"][mi], "snapshot_age_s": cf["age"][mi],
+        "mid": np.where(two, mid, np.nan)[mi], "adjusted_mid": np.where(scorable, amid, np.nan)[mi],
+        "comp_q_bid": qb[mi], "comp_q_ask": qa[mi], "comp_q_min": comp[mi],
+        "two_sided_only": (scorable & ~inside)[mi], "usd_per_sample": usd_ps[mi],
+        "liq_pi": out[mi, CI["liq_pi"]], "book_valid": valid[mi], "covered": covered[mi], "scorable": scorable[mi]})
+    return Xt, out, xf, rec, legs, st, mts
+
+
+# ----------------------------------------------------------------------------- side tables
+FLAG_NAMES = {"has_trades": B.FLAG_HAS_TRADES, "has_underlying": B.FLAG_HAS_UNDERLYING, "election": FLAG_ELECTION,
+              "unresolved": FLAG_UNRESOLVED, "partial": FLAG_PARTIAL, "in_program": FLAG_IN_PROGRAM,
+              "trades_incomplete": FLAG_TRADES_INCOMPLETE}
+
+
+def write_side_tables(out: Path, eps, ep_meta, minute_parts, mk, n_rows):
+    """rewards_ts.parquet (per episode and UTC minute) and markets_meta.parquet (per episode)."""
+    if minute_parts:
+        ts = pd.concat(minute_parts, ignore_index=True).sort_values(["market_idx", "minute_ts"], kind="stable")
+    else:
+        ts = pd.DataFrame()
+    tmp = out / ".rewards_ts.parquet.tmp"
+    ts.to_parquet(tmp, index=False)
+    os.replace(tmp, out / "rewards_ts.parquet")
+    q = dict(zip(mk.slug, mk.question))
+    em = {d["market_idx"]: d for d in ep_meta}
+    rows = []
+    for x in eps:
+        d = em[x["i"]]
+        r = {"market_idx": np.int32(x["i"]), "condition_id": x["condition_id"], "slug": x["slug"],
+             "question": q.get(x["slug"], ""), "episode_id": x["id"], "day": x["day"],
+             "window_start_ts": np.int64(x["open_ts"]), "window_end_ts": np.int64(x["end_ts"]),
+             "window_start_utc": pd.Timestamp(x["open_ts"], unit="s", tz="UTC"),
+             "window_end_utc": pd.Timestamp(x["end_ts"], unit="s", tz="UTC"),
+             "market_end_ts": np.int64(x["market_end_ts"]),
+             "split": np.int32(x["split"]), "split_name": {0: "train", 1: "val", 2: "test", 3: "purged"}[x["split"]],
+             "row_offset": np.int64(x["row_offset"]), "n_rows": np.int32(n_rows),
+             "rewards_in_program_at_open": d["rw_in"], "rewards_daily_rate_at_open": d["rw_rate"],
+             "rewards_min_size": d["rw_min"], "rewards_max_spread_c": d["rw_spread"],
+             "tick_size": d["gm"]["tick"], "min_order_size": d["gm"]["min_size"], "taker_fee_rate": d["fee"],
+             "fee_exponent": d["gm"]["fee_exponent"], "maker_rebate_rate": d["gm"]["rebate_rate"],
+             "flags": np.int32(d["flags"]),
+             **{f"flag_{k}": bool(d["flags"] & v) for k, v in FLAG_NAMES.items()},
+             "cov_total_gap_s": x["cov_total_gap"], "cov_max_gap_s": x["cov_max_gap"],
+             "rows_valid": d["rows_valid"], "rows_covered": d["rows_covered"], "rows_two_sided": d["rows_two_sided"],
+             "rows_in_program": d["rows_in_program"], "rows_scorable": d["rows_scorable"],
+             "n_taker_txs": d["n_tx"], "n_fill_legs": d["n_legs"]}
+        rows.append(r)
+    tmp = out / ".markets_meta.parquet.tmp"
+    pd.DataFrame(rows).to_parquet(tmp, index=False)
+    os.replace(tmp, out / "markets_meta.parquet")
 
 
 # ----------------------------------------------------------------------------- main
@@ -799,7 +853,9 @@ def main(argv=None):
     ap.add_argument("--allow-partial", action="store_true",
                     help="keep windows with partial recorder / fills coverage (smoke tests); flag PARTIAL")
     ap.add_argument("--markets", default=None, help="comma list or file of slugs / condition ids to build")
-    ap.add_argument("--top-n", type=int, default=0, help="only the N markets with the highest reward rate")
+    ap.add_argument("--top-n", type=int, default=20, help="only the N markets with the highest reward rate "
+                    "(selection.json rate_per_day); 0 = every market")
+    ap.add_argument("--all", action="store_true", help="every selected market (= --top-n 0)")
     ap.add_argument("--min-rate", type=float, default=0.0, help="only markets with rate_per_day >= this")
     ap.add_argument("--trades-source", choices=["onchain", "data-api", "file", "none"], default=None,
                     help="fills: onchain = extract.py output dir (--trades-path), the census source; data-api = "
@@ -816,6 +872,8 @@ def main(argv=None):
                     "condition_id) for onchain/extract.py --tokens, then exit")
     ap.add_argument("--dry-run", action="store_true", help="select windows and print the plan only")
     a = ap.parse_args(argv)
+    if a.all:
+        a.top_n = 0
     t0 = time.time()
     rec, out = Path(a.rec).resolve(), Path(a.out).resolve()
     for bad in (DATA.resolve(), (rec).resolve()):
@@ -965,7 +1023,7 @@ def main(argv=None):
         tokmap[m.tok1] = (m.slug, False, m.condition_id)
     comp = Compactor(out / "cache" / "compact", tokmap, cfgs, reward_files, rec, sel_sha)
     carry = pd.DataFrame()
-    fill_parts, per_ep, mirror = [], [], {}
+    fill_parts, per_ep, mirror, minute_parts, ep_meta = [], [], {}, [], []
     last_day = max(by_day)
     for day in days:
         if day > last_day:
@@ -991,7 +1049,7 @@ def main(argv=None):
             groups = {s: g for s, g in DD.groupby("slug", sort=False)}
             for x in by_day[day]:
                 gm = gmeta[x["condition_id"]]
-                Xt, f44, xf, brec, legs, st = episode_rows(x, groups.get(x["slug"]), seg.get(x["slug"]),
+                Xt, f44, xf, brec, legs, st, mts = episode_rows(x, groups.get(x["slug"]), seg.get(x["slug"]),
                                                            tr_by.get(x["slug"]), cfgs.get(x["condition_id"]), gm, L)
                 r0 = x["row_offset"]
                 ticks[r0:r0 + n_rows] = Xt.astype(np.float32)
@@ -1014,6 +1072,15 @@ def main(argv=None):
                                 float(cf0["min_size"][0]) if cf0 else 0.0, float(cf0["max_spread"][0]) if cf0 else 0.0,
                                 0.0, gm["rebate_rate"], x["i"], gm["tick"])
                 per_ep.append({"id": x["id"], **st})
+                mts.insert(0, "slug", x["slug"])
+                mts.insert(0, "condition_id", x["condition_id"])
+                mts.insert(0, "market_idx", np.int32(x["i"]))
+                minute_parts.append(mts)
+                ep_meta.append({"market_idx": x["i"], "flags": flags, "fee": fee, "gm": gm,
+                                "rw_min": float(cf0["min_size"][0]) if cf0 else 0.0,
+                                "rw_spread": float(cf0["max_spread"][0]) if cf0 else 0.0,
+                                "rw_rate": float(cf0["rate"][0]) if cf0 else 0.0,
+                                "rw_in": bool(cf0["in_program"][0] > 0) if cf0 else False, **st})
             print(f"  {day}: {len(by_day[day])} episodes  {time.time() - t0:.0f}s  (compact cache hits {comp.hits}, "
                   f"misses {comp.misses})", flush=True)
         carry = carry_rows(D)
@@ -1150,6 +1217,7 @@ def main(argv=None):
         "stats": {"episodes": per_ep[:2000], "n_fills": int(len(fills))},
     }
     FT.write_atomic(out / "feat_meta.json", json.dumps(fmeta, indent=1, default=str))
+    write_side_tables(out, eps, ep_meta, minute_parts, mk, n_rows)
     LD.verify(out)
     tot = pd.DataFrame(per_ep).drop(columns="id").sum().to_dict() if per_ep else {}
     print(f"built {len(eps)} episodes, N={N}, fills {len(fills)}{' (dummy)' if dummy_fill else ''} into {out} "
