@@ -80,3 +80,7 @@ max_pages = 60
 
 [reconcile]
 interval_s = 120
+history_events = 1024
+
+[health]
+max_rss_mb = 6000
