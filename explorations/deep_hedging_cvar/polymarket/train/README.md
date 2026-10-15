@@ -6,18 +6,58 @@ validation-scored run to the ledger, sweeps, selects by the seed mean and retrai
 the selected config on fresh seeds. The protocol is `../eval/EVALUATION.md`.
 5.0 portability follows `../PUFFER5.md`.
 
+## Full run (one command, resumable)
+
 ```bash
-source ../../.venv/bin/activate        # from polymarket/train
+cd explorations/deep_hedging_cvar/polymarket/train
+source ../../.venv/bin/activate
+python run_all.py --dry-run                 # print the stages and commands
+python run_all.py                           # preflight -> probes -> sweep -> select -> seeds -> publish
+# options: --cvar-floor <best baseline val CVaR95> --max-inv <limit> --require-mm  (selection rule)
+#          --name main --trials 64 --steps 25e6 --jobs 4 --final-steps 100e6 --seed-jobs 5
+```
+
+Re-run the same command after a kill or crash: finished stages are skipped, the sweep
+resumes its Optuna study (trials a kill interrupted are marked stale and their
+parameters re-queued; their partial run dirs are kept as `*.killedN`), finished runs
+are never retrained or re-ledgered, and seeds skip finished seeds. `--from select`
+redoes the later stages. State and stage logs: `runs/pipeline/<name>/`.
+
+Outputs: `runs/sweeps/<name>/` (Optuna study, `sweep_log.jsonl`, one dir per run with
+`final.pt`, `log.jsonl`, `result.json`, `val_markets.jsonl`), `runs/sweeps/<name>/selected.json`
+(select.py), `runs/seeds/<name>/` (5 seed runs, `seeds.json`), and
+**`train/selected.json`** in the format `../final/make_plan.py` reads
+(`{"selected": {"cfg", "cfg_hash", "runs": [{"seed", "ckpt", "ckpt_sha256"}]}}`, the
+5 final seeds; checked with its `_seed_entries`), plus the ledger rows below.
+
+**Wall time on 4 idle cores** (measured: 158k agent steps/s per 1-thread process,
+unchanged with 2 concurrent; 4 parallel 1-thread runs measured 133-151k each):
+preflight tests ~2 min; probes 3 x 2M steps ~2 min; sweep 64 trials x 25M steps at
+4 in parallel, ~175 s per H=128 trial (H=256 slower), ~55-65 min; re-seeding the 4 best
+configs to 3 seeds (8 runs) ~7 min; 5 final seeds x 100M steps in parallel ~15 min.
+**Total ~1.4 h (range 1.3-1.6 h).** Other jobs on the box scale it up: at 05:30 three
+other agents' single-core jobs cut each trial to 17-50k SPS (~3x slower).
+
+The stand-in plumbing test of the same pipeline (4 trials, kill after 25 s, resume,
+reseed, select, 5 seeds, publish) ran end to end in 1.2 min:
+`python run_all.py --env standin --name pipe_smoke --trials 4 --steps 3e5 --jobs 2
+--reseed-top 1 --final-steps 3e5 --seed-jobs 2 --probe-steps 2e5 --skip-tests
+--train-args "--num-envs 512 --minibatch-size 8192"`.
+
+## Single steps
+
+```bash
 python test_train.py                   # stack tests (stand-in env, ~2 min)
-python probes.py --env real            # learnability probes on the real env's obs
-python train_ppo.py --env real --timesteps 50e6 --eval-every 10e6 --out runs/dev1
-python bc.py --env real --teacher fair_value --value --out runs/bc/fv.pt            # optional warm start
-python train_ppo.py --env real --init runs/bc/fv.pt --kl-coef 0.1 --kl-decay 0.5 ...
-python sweep.py --name s1 --env real --trials 24 --steps 20e6 --jobs 2 --threads 1 \
-                --reseed-top 3 --reseed-n 3
-python select.py --tag s1              # -> runs/sweeps/s1/selected.json
-python seeds.py --selected runs/sweeps/s1/selected.json --jobs 2 --threads 1
-python bench.py --env real --threads 1 2 4 --num-envs 4096 16384 --horizon 64 128
+python probes.py --env real --steps 2e6                        # learnability probes
+python train_ppo.py --env real --timesteps 50e6 --eval-every 10e6 --threads 1 --tag dev --out runs/dev1
+python train_ppo.py --env real --timesteps 20e6 --no-val --out runs/dev2   # never touches val
+python bc.py --env real --teacher fair_value --value --out runs/bc/fv.pt  # optional warm start
+python train_ppo.py --env real --init runs/bc/fv.pt --kl-coef 0.1 --kl-decay 0.5 --tag bc ...
+python sweep.py --name s2 --env real --trials 64 --steps 25e6 --jobs 4 --threads 1 --reseed-top 4 --reseed-n 3
+python select.py --tag s2 [--cvar-floor X --max-inv Y --require-mm]   # -> runs/sweeps/s2/selected.json
+python seeds.py --selected runs/sweeps/s2/selected.json --timesteps 100e6 --jobs 5 --threads 1
+python summary.py --tag s2 --by-config  # table: val P&L, fills/mkt, attribution, T6/T5, diagnostics
+python bench.py --env real --threads 1 --num-envs 4096 --horizon 64 --minibatch 8192
 ```
 
 Everything accepts `--env standin` (`standin.py`, a numpy toy with the same
@@ -32,9 +72,10 @@ env when `../env.py` exists.
 | `puffer3.py` | `Trainer`, a subclass of PufferLib 3.0's `PuffeRL` (same PPO, buffers, clamp, advantage, losses) with: recurrent state carried across epochs, reset on terminals and stored at each segment's row 0 so training replays the rollout's recurrence (5.0's `reset_every_horizon=0`); per-epoch logs and diagnostics; optional kickstarting KL to a teacher; faster sampling/scoring with identical values. |
 | `envs.py` | Adapters. `RealAdapter`: train env = `MmEnv(split=0)` (random market, random start in the first 20%); eval env = `MarketSetEnv`, every market of a split once from offset 0 (one 1-env handle per market sharing one interned config, seeded so handle j plays mm.h's list[j]; checks the contract-length one-hot at reset and the decision count at the end); fill/latency variants; obs-based groups (contract length) and teacher. `StandInAdapter` for the toy. Test split refused. |
 | `evaluator.py` | `evaluate(policy, adapter, split)`: argmax actions until every market finished once; per-market records -> P&L total/mean/median, CVaR95 (`../eval/stats.cvar`), max inventory, attribution sums, greedy action histograms. |
-| `train_ppo.py` | CLI training run: periodic eval (val headline + train split for the gap), checkpoints, `log.jsonl`, final eval under the variants, `result.json`, one ledger row. |
-| `ledger.py` | `trials.jsonl` (append under a file lock), `config_hash` = sha256 of the canonical config without the seed. |
-| `sweep.py` / `select.py` / `seeds.py` | Optuna TPE sweep on val; pick by seed mean over >= 3 seeds; retrain the pick on 5 fresh seeds. |
+| `train_ppo.py` | CLI training run: periodic eval (val headline + train split for the gap), checkpoints, `log.jsonl`, final eval under the variants, `result.json`; one ledger row per val evaluation, one run-index row. |
+| `ledger.py` | `trials.jsonl` (one row per validation evaluation) and `runs.jsonl` (one row per run), appended under a file lock; `config_hash` = sha256 of the canonical config without the seed. |
+| `run_all.py` | The resumable pipeline (above). |
+| `sweep.py` / `select.py` / `seeds.py` | Optuna TPE sweep on val (space: lr, ent_coef, gamma, GAE lambda, inv_penalty, hidden, mark_mode), resumable; pick by seed mean over >= 3 seeds (run index); retrain the pick on 5 fresh seeds, optionally longer. |
 | `bc.py` | Behaviour cloning of a teacher (baselines' `fair_value` through `../baselines/obs_spec.py`, else a simple obs quoter) on train markets; checkpoint loadable with `--init`. |
 | `probes.py` | Learnability probes (join both sides; fixed action; obs-dependent teacher). |
 | `bench.py` | Throughput grid. |
@@ -81,14 +122,27 @@ env when `../env.py` exists.
 - Variants: headline `central_1s` (fill_model 1, latency 1); the final evaluation
   also runs `pess_1s` (tie-break); `central_2s`, `central_0s`, `opt_1s` with
   `--variants`.
-- One ledger row per run (`trials.jsonl`; stand-in runs go to
-  `runs/standin_trials.jsonl`) with config hash, seed, full config, step/time, the
-  final checkpoint and its sha256, all val metrics per variant, the train-split
-  metrics, and `n_val_evals` (periodic val evals count; selection uses the final
-  checkpoint only). `--no-val` dev runs never touch val and write no row.
-  Note: EVALUATION.md names `polymarket/results/trials.jsonl` as the ledger; this
-  stack writes `train/trials.jsonl` as instructed (`--ledger` to change). Merge
-  or point both at one file before the final count N.
+- **Ledger** `train/trials.jsonl`: one row per validation evaluation (kind `val_eval`,
+  `split: 1`; periodic and final, every variant), written as it happens, so a crash
+  cannot lose one. This is the unit `../final/common.py count_trials` counts (one val
+  evaluation per record, every file named `trials.jsonl` under polymarket/). Run
+  summaries (config, final checkpoint + sha256, final metrics per variant) go to
+  `train/runs.jsonl`, which select/summary/seeds read; the sweep's own log is
+  `sweep_log.jsonl` so it is not counted twice. Stand-in runs use
+  `runs/standin_trials.jsonl` / `runs/standin_runs.jsonl`. `--no-val` dev runs never
+  touch val and write neither. Note: EVALUATION.md T4 names
+  `polymarket/results/trials.jsonl`; final/ globs every `trials.jsonl`, so this file is
+  counted either way.
+- The ledger was migrated on 2026-10-15 from one row per run to one row per evaluation
+  (regenerated from each run's `log.jsonl`; 27 evaluations from 7 runs, backup in
+  `runs/trials.jsonl.bak_before_migration`). Sweep `s1` (25M steps/trial) was killed by
+  the user's pause at ~trial 5: its 2 finished trials (4 val evaluations) are in the
+  ledger with `status: aborted by user pause`, plus an annotation row; trials 0, 1, 4, 5
+  were killed before any val evaluation (partial logs in `runs/sweeps/s1/`). The
+  pipeline uses a new name (`main`) by default; `--name s1` would resume s1 instead
+  (same 25M budget, its 4 killed trials re-queued).
+- **Config hash** includes the resolved env parameters and the sha256 of mm.h,
+  binding.c, env.py and the binding .so, so runs on different env builds never pool.
 - `select.py`: seed mean of val `pnl_total` (central, 1 s) over configs with >= 3
   seeds, optional `--cvar-floor` (best baseline's CVaR95) and `--max-inv`,
   tie-break on the pessimistic seed mean; reruns of a seed are ignored; writes
@@ -143,6 +197,7 @@ numbers move +-15% with it. Env alone (random actions, no policy): 3.6-5.2 M ste
 | PufferNet 1 layer, H 128 | 1 / 2 | 4096 x 64 | 16384 | 1 | 67k / 73k | 230k | 94k / 108k | 2.1 |
 | PufferNet 4 layers, H 128 (5.0 ini) | 1 / 2 | 4096 x 64 | 16384 | 1 | 23k / 33k | 84k / 120k | 31k / 46k | 2.2 |
 | end-to-end `train_ppo.py` defaults (incl. evals) | 2 | 4096 x 64 | 8192 | 1 | 159k median | | | ~3 |
+| **current defaults, new sampler** (1 process / each of 2 concurrent) | 1 | 4096 x 64 | 8192 | 1 | **158k / 157k** | 592k / 603k | 216k / 212k | 0.8 |
 
 What moved the number:
 - **The PPO update dominates.** Shared trunk (~1.3x over separate actor/critic) and
@@ -172,49 +227,60 @@ What moved the number:
 
 ## Smoke-tested
 
-All on 2026-10-15 (`runs/`, git-ignored).
-- `test_train.py`: 9/9 pass (sampler and scorer agree with `sample_logits`;
-  PufferNet scan == stepping; PufferNet == `../puffer5/puffernet_mm.py` on the same
-  weights; training recomputes rollout log-probs and values exactly for MLP and
-  PufferNet with terminals in segments and carried state; reward-clip stats;
-  evaluator covers every val market once, deterministic, refuses split 2; config
-  hash; PPO learns the join probe).
-- **Real env** (`../test_env.py` passing at 05:0x, obs 50):
-  - `train_ppo.py --env real --timesteps 6e6 --eval-every 3e6 --tag smoke`: 44 s,
-    159k SPS median; periodic + final val evals (central_1s, pess_1s), train-split
-    evals, 247 per-market val records, one ledger row in `trials.jsonl`.
-  - Probes, 2M steps each (~33 s): join (env-native `reward_mode=1`) 1.00, const 1.00,
-    teacher (tuned fair_value baseline) 0.90 (bar 0.9; BC on the same teacher
-    plateaus at 0.95 / 0.95 per price head).
-  - `bc.py --teacher fair_value` (tuned params from `../baselines/tuned.json`):
-    262k samples, 90% joint / 95% per-head accuracy on held-out envs. PPO
-    `--init` + KL 0.1 decaying over the first half: train-market greedy P&L -131
-    at 2M steps, -29 at 4M (cold start: -3696 at 3M, -3233 at 6M).
-  - Shared vs separate MLP, 20M steps, `--no-val`, train-market greedy P&L
-    (obs-48 env of 04:40): shared -1728 (48k SPS under load 10), separate -2699
-    (44k). Shared became the default.
-- **Stand-in**: `sweep.py` (3 trials + reseed of the best to 3 seeds) ->
-  `select.py` (picked the only config with 3 seeds; its seeds scored 118 / 60 / 125)
-  -> `seeds.py` (2 fresh seeds, same config hash reproduced), BC (99.4%) +
-  `--init` + KL.
+All on 2026-10-15 (`runs/`, git-ignored), env frozen at mm.h `746dd7de` unless noted.
+- `test_train.py`: 10/10 pass (sampler/scorer values and sampling frequencies vs
+  `sample_logits`; PufferNet scan == stepping; PufferNet == `../puffer5/puffernet_mm.py`
+  on the same weights; training recomputes rollout log-probs and values exactly for
+  MLP and PufferNet with terminals in segments and carried state; reward-clip stats;
+  evaluator covers every val market once, deterministic, refuses split 2; config hash;
+  PPO learns the join probe in 1M steps).
+- `run_all.py` end to end on the stand-in, including kill + resume (1.2 min).
+- Real env:
+  - `../puffer5/score_val.py` path: a 5.0 `.bin` written by `PufferNetPolicy.save_puffer5_bin`,
+    loaded by its `EvaluatorPolicy`, scored by `evaluator.evaluate` through `RealAdapter`
+    on all 431 train markets: identical P&L to the same weights in `PufferNetPolicy`.
+  - Probes: join (env-native `reward_mode=1`) 1.00 at 0.5M and 2M steps; const 1.00
+    at 2M; teacher (tuned fair_value) 0.8995 at both 2M and 6M steps, the same ceiling BC
+    reaches on that teacher (~0.95 per price head): the teacher depends on something the
+    MLP does not recover from the obs, not a PPO defect.
+  - `bc.py --teacher fair_value` (params from `../baselines/tuned.json`, re-tuned on the
+    frozen env): 65k-262k samples, 79-90% joint accuracy. Earlier (pre-freeze env)
+    PPO `--init` + KL 0.1: train-market greedy P&L -131 at 2M, -29 at 4M steps vs
+    -3233 at 6M from scratch.
+  - Throughput: 158k SPS end to end per 1-thread process; 2 concurrent: 157k each.
+
+## Results so far (validation, central fills / 1 s, greedy, all 247 markets)
+
+Single seeds, all in the ledger (27 val evaluations). Bar (DECISIONS.md D1): ~$0 per
+market (no-quote). From `python summary.py`:
+
+| run | lr | ent | mark | H | steps | val P&L | /market | CVaR95 | fills/mkt | spread | markout60 | inventory | rebates | T6+ share | 2-sided uptime | bid off | pess P&L | train P&L/mkt | entropy/head |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| explore mm1_lr1e-3 | 1e-3 | 0.01 | fv | 128 | 40M | -177 | -0.72 | -45.2 | 32.4 | 254 | -639 | 174 | 33.8 | 0.38 | 0.23 | 0.28 | -280 | -1.67 | 1.88/1.88/1.06 |
+| explore mm0_lr1e-3 | 1e-3 | 0.01 | mid | 128 | 40M | -239 | -0.97 | -47.2 | 40.0 | 352 | -771 | 140 | 39.8 | 0.26 | 0.44 | 0.12 | -253 | -2.29 | 1.89/1.88/1.06 |
+| explore mm1_lr3e-4 | 3e-4 | 0.01 | fv | 128 | 40M | -404 | -1.63 | -41.4 | 33.0 | 268 | -825 | 116 | 36.5 | 0.28 | 0.32 | 0.28 | -270 | -1.72 | 1.89/1.91/1.07 |
+| explore mm0_lr3e-4 | 3e-4 | 0.01 | mid | 128 | 40M | -540 | -2.19 | -34.6 | 38.0 | 304 | -845 | -38 | 38.5 | 0 | 0.44 | 0.09 | -327 | -2.47 | 1.92/1.93/1.08 |
+| s1 t003 (aborted sweep) | 8.8e-4 | 2.4e-4 | mid | 64 | 25M | -654 | -2.65 | -52.1 | 39.1 | 370 | -1271 | 197 | 50.7 | 0.32 | 0.18 | 0.24 | -534 | -7.47 | 1.50/1.75/1.04 |
+| s1 t002 (aborted sweep) | 1.3e-4 | 0.022 | mid | 64 | 25M | -748 | -3.03 | -48.7 | 47.0 | 498 | -1471 | 150 | 75.3 | 0.21 | 0.41 | 0.45 | -644 | -8.49 | 1.94/1.94/1.10 |
+
+What they show: PPO learns slowly and still loses at 25-40M steps. The greedy policies
+keep quoting (27-47 fills/market, mostly 'behind' the touch, two-sided uptime
+0.2-0.4) and lose to adverse selection exactly like the baselines: the 60 s markout
+(-640 to -1470) exceeds spread capture (+250 to +500). They do not learn not to quote.
+The sampling policy stays near uniform (price-head entropy 1.88-1.94 of 1.95), and
+approx_kl/clipfrac are tiny at lr 3e-4; lr 1e-3 and the fair-value mark (mark_mode 1)
+were the best of the four (P&L improving -740 -> -177 over training).
+What I would try, in order: the sweep as planned (lr up to 3e-3, low ent_coef,
+inv_penalty, mark_mode); BC warm start from the fair-value / no-quote teacher with
+the decaying KL (`bc.py`, `--init`, `--kl-coef`), which started near $0 on train
+markets; a stronger 'off' prior at init; longer budgets for the selected config.
 
 ## Open items
 
-- **Learning speed with the defaults is poor.** Cold-start PPO at lr 3e-4 barely
-  moves the policy: after 20M steps head entropies were 1.93 / 1.93 / 1.09 (max
-  1.95 / 1.95 / 1.10), approx_kl ~1e-4, clipfrac 0, explained variance ~0, and
-  train-market P&L still negative. The sweep's lr range goes to 3e-3, and the
-  smaller default minibatch doubles the Adam steps; the BC warm start is the other
-  route (see above). Nothing was swept yet: no val number exists except the one
-  `smoke` row.
-- **Ledger location**: EVALUATION.md T4 names `polymarket/results/trials.jsonl`;
-  this writes `train/trials.jsonl` as instructed. Merge before counting N.
-- **Selection constraints** need inputs: `select.py --cvar-floor <best baseline
-  CVaR95 on val>` and `--max-inv <risk limit>` (Q = 100 shares is the env's hard cap).
-- **Env drift**: the env changed under this work (obs 48 -> 50, config interning,
-  new Log fields). The config hash now includes the resolved env parameters and
-  the sha256 of mm.h / binding.c / env.py / binding .so, so runs on different env
-  versions never pool in select.py. Checkpoints from the obs-48 env are unusable.
-- The teacher probe sits at the 0.9 bar after 2M steps; a 6M-step run is in
-  `runs/probes_real_v2.jsonl`.
-- PufferNet is 2-6x slower than the MLP on CPU; 4 layers (5.0 parity) is ~30k SPS.
+- **Selection constraints** need inputs: `run_all.py --cvar-floor <best baseline val
+  CVaR95> --max-inv <limit>` (Q = 100 shares is the env's hard cap); `--require-mm`
+  applies D1.3 (fills >= 5/market, T6 <= 0.5).
+- **Ledger location**: EVALUATION.md T4 names `polymarket/results/trials.jsonl`; this
+  writes `train/trials.jsonl` (final/ counts every `trials.jsonl`).
+- PufferNet is 2-6x slower than the MLP on CPU; 4 layers (5.0 parity) ~30k SPS. The
+  pipeline sweeps the MLP only.

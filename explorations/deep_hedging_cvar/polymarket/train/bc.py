@@ -117,6 +117,8 @@ def fit(policy, data, epochs=8, lr=1e-3, horizon=64, mb_segments=32, value=False
             tot['v'] += vl
             tot['n'] += 1
         m = metrics(policy, va)
+        if not value:
+            m['value_ev'] = float('nan')  # value head not trained
         row = {'epoch': ep + 1, 'train_ce': tot['ce'] / tot['n'], 'train_vloss': tot['v'] / tot['n'], **m}
         hist.append(row)
         print(json.dumps({k: round(v, 4) if isinstance(v, float) else v for k, v in row.items()}), flush=True)

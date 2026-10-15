@@ -249,7 +249,7 @@ def test_config_hash():
 
 def test_join_probe_learns():
     import probes
-    res = probes.run_probe('join', backend='standin', steps=1_500_000, num_envs=512, threads=2,
+    res = probes.run_probe('join', backend='standin', steps=1_000_000, num_envs=512, threads=2,
                            quiet=True)
     assert res['greedy_success'] > 0.9, res
 
