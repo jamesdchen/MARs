@@ -22,7 +22,7 @@ def main():
         t = t.replace('LONG_RUNS', '\n'.join(lt))
     else:
         t = t.replace('LONG_RUNS', '')
-    n = fpos = inv = 0
+    n = fpos = inv = passpos = 0
     ex = []
     for l in open(os.path.join(HERE, 'trials.jsonl')):
         r = json.loads(l)
@@ -32,11 +32,12 @@ def main():
         F = v['sum/spread_capture'] + v['sum/markout_60'] + v['sum/rebates'] + (v.get('sum/liq_rewards') or 0)
         n += 1
         inv += v['sum/inventory_pnl'] > 0
+        passpos += bool(v.get('makes_markets')) and v['pnl_total'] > 0
         if F > 0:
             fpos += 1
             ex.append(f"{r['tag']} {r.get('name')}, {v['fills_per_market']:.1f} fills/market")
     t = t.replace('FPOS_COUNT', f'F > 0 in {fpos} of {n} evaluations ({"; ".join(ex)})')
-    t = t.replace('INVPOS_COUNT', f'{inv} of {n}')
+    t = t.replace('INVPOS_COUNT', f'{inv} of {n}').replace('PASSPOS_COUNT', f'{passpos} of {n}')
     t = t.replace('LEDGER_COUNT', f'Ledger: {n} val v2 evaluations in `trials.jsonl` (all of them, including smoke and '
                   'killed-trial rows).')
     open(os.path.join(HERE, 'REPORT.md'), 'w').write(t)

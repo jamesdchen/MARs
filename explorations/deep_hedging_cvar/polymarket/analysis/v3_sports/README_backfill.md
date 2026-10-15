@@ -195,3 +195,45 @@ The markets row comes from `polyrec.metadata.market_row`, with the sports column
 5. **Plan.** `max_history_days` and the daily quota decide the feasible range. Pro has 30 days, so start
    within days of getting the key, because the oldest days roll off.
 6. **`1s` vs `250ms`.** 250ms is allowed but costs 4× the requests. The env grid is ≥ 1 s, so 1s is enough.
+
+## D14 defaults (2026-10-15 22:20 UTC)
+
+The maker edge sits more than 1 h before kickoff (DECISIONS.md D14), so the defaults are now
+**1-minute books over the whole window**: `--hours-before 168` (7 d, effectively from listing),
+`--resolution 1m` and `--fine-hours 0`. The previous default, 1 s for the last 6 h, is still
+available with `--resolution 1s --fine-hours 6`. `build_sports.py` cuts episodes at T−1h, so the
+last hour is used for evaluation only.
+
+Dry run for kickoffs 2026-09-16..10-14:
+
+| setting | value |
+|---|---|
+| markets selected | 6,035 moneylines |
+| requests (dense upper bound) | ≤ 698,572, about 14 Pro-days |
+| requests with `--mirror` | ≤ 349,286, about 7 Pro-days |
+| parquet size | ≤ 7.3 GB |
+
+With `--min-volume 50000`, about half the markets are selected.
+
+## D15 defaults (2026-10-15 22:30 UTC; supersede the D14 defaults above)
+
+D15 withdraws D14's T−1h cut: the last 30 min before kickoff is the best bucket, so the edge is
+near kickoff. The defaults are now **1 s for the last 6 h before kickoff and 1 m from there back to
+7 d** (`--hours-before 168 --resolution 1s --fine-hours 6 --coarse-resolution 1m`).
+
+Dense upper bounds for kickoffs 2026-09-16..10-14:
+
+| options | markets | requests | Pro quota | parquet |
+|---|---|---|---|---|
+| (none) | 6,035 | 1.98 M | 39.6 days | ≤ 22.7 GB |
+| `--mirror` | 6,035 | 0.99 M | 19.8 days | |
+| `--mirror --min-volume 50000` | 3,108 | 0.51 M | 10.2 days | ≤ 11.7 GB |
+
+**Recommended first run:**
+```
+python backfill_pob.py --probe
+python backfill_pob.py --start <oldest day in plan history> --end <yesterday> --mirror --min-volume 50000
+```
+Run `--probe` first to confirm that the mirror holds. The run fetches the oldest days first,
+because the 30-day history drops one day per day. Sparse feeds need fewer requests than these
+bounds.

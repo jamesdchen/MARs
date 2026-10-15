@@ -1,0 +1,25 @@
+{
+ "set": "politics_live",
+ "n_fills": 2286,
+ "n_maker_fills": 1423,
+ "markets": 36,
+ "days": [
+  "2026-10-15"
+ ],
+ "taker_fees_usd": 3701.61115,
+ "maker_shares": 835671.602829,
+ "maker_notional": 445142.12243800005,
+ "top25": {
+  "maker_shares": 559381.1956040001,
+  "spread_usd": 1707.1395012763087,
+  "rebate_usd": 570.7983148555586,
+  "mo5_usd": 1680.755097364366,
+  "mo2h_usd": -1069.3245142254545,
+  "maker_pnl_mark": 2489.7778276875006,
+  "taker_pnl_mark": -264.4096892605,
+  "fees_paid": 228.51758999999998,
+  "direction_usd": 782.6383264111921,
+  "total_pnl": 2567.648863282559
+ },
+ "n_wallets_maker": 305
+}
