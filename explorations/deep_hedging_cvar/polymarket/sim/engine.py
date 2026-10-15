@@ -167,7 +167,8 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
     sig_u = mp["sigma_u"] * kn["sigma_u_mult"]
     z = rng.standard_normal((B, n))
     u = lfilter([1.0], [1, -phi], z, axis=1, zi=phi * z[:, :1] / np.sqrt(1 - phi ** 2))[0] * sig_u[:, None]
-    target = s_f[:, None] * x + (s_l - s_f)[:, None] * xb + u + np.asarray(mp["b_tau"])[tb_row][None, :]
+    fund = s_f[:, None] * x + (s_l - s_f)[:, None] * xb + np.asarray(mp["b_tau"])[tb_row][None, :]
+    target = fund + u                       # fund: Binance-driven part; u: mean-reverting disagreement
     pi_upd = np.clip(np.asarray(mp["update_prob"])[tb_row][None, :] * kn["refresh_rate_mult"][:, None], 0, 1)
     ev = rng.random((B, n)) < pi_upd
     ev[:, 0] = True
@@ -216,6 +217,7 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
     la_h = int(la["h"])
     la_kv = float(la["kappa"]) * kn["lookahead_mult"]
     la_on = la_h > 0 and la["kappa"] > 0
+    trk = float(model.raw["flow"].get("actual_book_tracking", 1.0))      # actual book: snapshot + trk*(target-snap)
     fee_r = model.fees["taker_fee_rate"] * kn["fee_rate_mult"] * (1 - kn["fee_free"])
     imp = model.impact[li]
     k_imp = imp["kappa"] * kn["impact_mult"]
@@ -400,11 +402,11 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
         # current mid target; the ticks rows keep showing the snapshot until the next update event
         tick_now = np.where(fine_now, 1, 10)
         cen = cm.sigmoid(target[:, t] + v_imp)
-        shift = (np.round((cen - m_now) * 1000.0 / tick_now) * tick_now).astype(np.int64)
+        shift = (np.round(trk * (cen - m_now) * 1000.0 / tick_now) * tick_now).astype(np.int64)
         # look-ahead informed takers: an arrival is informed w.p. 1 - exp(-kappa * edge_c), edge = what the mid
         # target will be in h s minus the actual book's touch, net of the taker fee (cents); they take that side
         if la_on:
-            fut = cm.sigmoid(target[:, min(t + la_h, n - 1)] + v_imp)
+            fut = cm.sigmoid(fund[:, min(t + la_h, n - 1)] + u[:, t] + v_imp)   # foresee Binance, not u
             a_ok = (ask_sz[:, 0] > EPS) & (ask_px[:, 0] + shift <= 1000 - tick_now)
             b_ok = (bid_sz[:, 0] > EPS) & (bid_px[:, 0] + shift >= tick_now)
             e_buy = np.where(a_ok, fut - (ask_px[:, 0] + shift) / 1000.0, -1.0)
