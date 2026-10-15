@@ -178,3 +178,9 @@ classified directional (T6); no invalidating exploit flag (T5); ex-top-5 / ex-to
 ## Amendment log
 
 - 2026-10-15: protocol written (no val or test results seen).
+- 2026-10-15: amendments D1–D6 are recorded in eval/DECISIONS.md. D6 was made after R1/R2 val
+  results were seen, and that file says so.
+- 2026-10-15 13:46 UTC: TEST_PLAN.json frozen, sha256
+  `75915990669c7038e81649a4e609ec8c776b0f264f0497fe390113e639eb4b6d`.
+  RL: 5 seeds of R7 `c02_h120`. Comparator: baseline/fair_value. Ledger N = 1489 val
+  evaluations over 1100 configs.
