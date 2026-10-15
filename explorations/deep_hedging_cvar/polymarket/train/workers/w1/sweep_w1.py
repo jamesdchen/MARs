@@ -11,7 +11,7 @@ Objective (maximised): seed-mean val-v2 P&L total (central fills, 1 s). Configs 
 D1.3 on seed means (fills/market >= 5, T6 <= 0.5, T5 <= 0.25) get P&L - 1000 so TPE
 does not drift to no-quote.
 
-    python sweep_w1.py sweep --trials 32 --jobs 4
+    python sweep_w1.py sweep --trials 48 --enqueue   # first slot; then 3 more without --enqueue
     python sweep_w1.py seeds --top 3 --seeds 3 4     # extra seeds of the top configs
     python sweep_w1.py table                          # aggregate -> runs/agg.json
 """
@@ -118,7 +118,7 @@ def cmd_sweep(a):
                                 storage=f'sqlite:///{os.path.join(RUNS, "optuna.db")}',
                                 sampler=optuna.samplers.TPESampler(seed=1, n_startup_trials=10,
                                                                    constant_liar=True))
-    if not study.trials:
+    if not study.trials and a.enqueue:
         # trial 0: the v1 best (R7 c02_h120); trials 1-3: hand-picked risk-aware variants
         study.enqueue_trial({'inv_penalty': 1e-4, 'markout_h': 120, 'mark_mode': 1,
                              'lr': BASE['ppo']['learning_rate'], 'ent_coef': BASE['ppo']['ent_coef'], 'close': 0})
@@ -130,7 +130,7 @@ def cmd_sweep(a):
         study.enqueue_trial({'inv_penalty': 1e-3, 'markout_h': 60, 'mark_mode': 2,
                              'lr': BASE['ppo']['learning_rate'], 'ent_coef': 3e-3,
                              'close': 1, 'close_inv_coef': 3e-2, 'close_ramp': 0.4})
-    for t in study.trials:  # a killed run leaves RUNNING trials: mark failed, re-queue its params
+    for t in (study.trials if a.requeue else []):  # a killed run leaves RUNNING trials: mark failed, re-queue its params
         if t.state == optuna.trial.TrialState.RUNNING:
             study._storage.set_trial_state_values(t._trial_id, optuna.trial.TrialState.FAIL)
             study.enqueue_trial(t.params)
@@ -146,8 +146,10 @@ def cmd_sweep(a):
             trial.set_user_attr(k, agg.get(k))
         return agg['pnl_total'] - (0.0 if agg['d13'] else 1000.0)
 
-    done = sum(t.state.is_finished() for t in study.trials)
-    study.optimize(objective, n_trials=max(0, a.trials - done), n_jobs=a.jobs)
+    # one thread per process (n_jobs threads raced on enqueued trials: 3 threads ran trial 0);
+    # parallel slots = several processes on the same sqlite study, capped at --trials in total
+    study.optimize(objective, n_jobs=1,
+                   callbacks=[optuna.study.MaxTrialsCallback(a.trials, states=None)])
 
 
 def load_configs():
@@ -191,8 +193,9 @@ if __name__ == '__main__':
     sub = p.add_subparsers(dest='cmd', required=True)
     s = sub.add_parser('sweep')
     s.add_argument('--trials', type=int, default=32)
-    s.add_argument('--jobs', type=int, default=4)
     s.add_argument('--seeds', type=int, nargs='*', default=[0, 1, 2])
+    s.add_argument('--enqueue', action='store_true', help='new study: enqueue the 4 hand-picked trials')
+    s.add_argument('--requeue', action='store_true', help='re-queue trials a kill left RUNNING')
     s = sub.add_parser('seeds')
     s.add_argument('--top', type=int, default=3)
     s.add_argument('--names', nargs='*')
