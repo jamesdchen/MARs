@@ -343,3 +343,29 @@ freeze and Jun 15 test still run as pre-registered.
 - Same D1.3 market-making rule, same T5/T6 detectors.
 - Every val evaluation goes in a ledger.
 - Each track's test is run once.
+
+## D12. Sub-second Binance order-flow features: evaluated, not adopted (recorded 2026-10-15 ~20:35 UTC)
+
+Study and code: `analysis/orderflow/`. The sha256 values of `mm.h`, `feat.bin` and `build_v2` are
+unchanged.
+
+- **Data:** 28 candidate features built from aggTrades: sub-second returns, activity, staleness, a
+  BTC-lead feature and the predicted fair-value change.
+- **Method:** fit on train only (6 purged 8-hour blocks). Then a single confirmation on val v2.
+- **Rule, fixed before val was looked at:** a candidate counts only if it adds at least +0.01 AUC
+  or +0.005 R² on a fill-toxicity or taker-flow target, with the same sign on train and val.
+  **Nothing passes.**
+- **Why:** Polymarket takers react to Binance moves 2–3.5 s before their print's block time. Under
+  central fills with 1 s latency, the quote facing that print is decided 5 s before it, so the
+  move hasn't happened yet. The AUC of last-second Binance for taker side, by decision time:
+
+  | decision time (s before print) | 5 | 4 | 3 | 2 |
+  |---|---:|---:|---:|---:|
+  | AUC | 0.53 | 0.54 | 0.61 | 0.69 |
+
+- **Consequence:** the lever is decision timing (latency, match delay), not features. Any timing
+  change must be validated against real fills first (live shadow quoting).
+- **Flag for the env owner:**
+  - Raw book `captured_at` values are whole seconds. Book rows may therefore reflect the market up
+    to about 1 s later than the Binance features, roughly 0.5 s of optimism on average.
+  - This may already be absorbed by the 3.5 s central match-delay calibration. Not acted on.
