@@ -4,3 +4,5 @@ rec/*.log
 rec/status.json
 __pycache__/
 rec/
+build/
+build_smoke/
