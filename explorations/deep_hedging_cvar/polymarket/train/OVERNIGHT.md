@@ -89,3 +89,11 @@ the mean of 3 seeds among D1.3-passing configs, then trained on 5 seeds at
   separate checks against 90% bands, so a perfect sim would pass all of them
   only about 7% of the time. The current sim also fails looser rules, so the
   gate stays as specified, and R5 does not run.
+
+### Container restarts (11:38 and 12:38 UTC)
+- The cloud container is reclaimed when the session sits idle, and that kills
+  detached training. R7 lost about an hour as a result: only 8 of its 16
+  configs finished.
+- **Fix (12:40):** the chain was relaunched; rounds resume from their run
+  dirs. A harness-tracked background task now waits on the chain to keep the
+  session alive, and it is re-armed at every hourly check-in.
