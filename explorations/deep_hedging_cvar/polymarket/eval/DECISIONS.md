@@ -126,3 +126,30 @@ and keep the test day unseen.
 
   The result is reported whatever it is, including "PPO does not beat not
   quoting".
+
+## D5. Extra improvement round R7: credit each fill with its markout (recorded 2026-10-15 08:45 UTC)
+
+**What we saw.** At the 08:39 check, about 44 of the 64 main-sweep trials had
+finished. All of them lose $2.7–5.9 per market on val. Their sampled policies
+stay close to uniform: price-head entropy is 1.6–1.94, against a maximum of
+1.95. Each greedy policy fills 40–75 times per market and loses those fills to
+adverse selection.
+
+**Our reading.** The dense mark-to-market reward lets inventory revaluation
+noise swamp the per-action signal, across episodes of 300–14,400 steps.
+
+**R7.**
+- Train with a new env reward mode 2, a training signal only:
+  - each of our fills is credited at once with `size × side × (mark_{t+H} − price)`
+    plus its rebate, with H = 60 s and the mark at fair value;
+  - an inventory-risk penalty is added;
+  - there is no per-step mark-to-market.
+- The reward may use data after t because it is not an observation. The
+  policy still sees only information up to t.
+- The objective is a surrogate. Selection and every reported number still use
+  true P&L, unchanged.
+- Modes 0 and 1 must stay bit-identical, so the env hash changes only by
+  adding this mode.
+
+**Order.** R7 runs right after R2 (R1, R2, R7, R3, R4, R5, R6). It follows the
+same improvement test and the same stopping rule as D4.

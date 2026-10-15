@@ -56,6 +56,9 @@ def align_metrics(d) -> dict:
     tk = mt.taker_table(d)
     _, a, t = mt.alignment_curve(d, tk, ks=(0, 4))
     out = {"align|at0": float(a[0]), "align|thr0": float(t[0]), "align|at4": float(a[1]), "align|thr4": float(t[1])}
+    sel = d.mk.L.values[tk.m.values] == 14400
+    _, a4, t4 = mt.alignment_curve(d, tk[sel].reset_index(drop=True), ks=(0, 4))
+    out.update({"align4h|at0": float(a4[0]), "align4h|at4": float(a4[1])})
     for L, n in zip((300, 900, 14400), LENS):
         out[f"count|{n}"] = float(d.X[d.L == L, cm.C["trade_count"]].sum())
     ts = mt.trade_stats(d, tk)
@@ -66,6 +69,7 @@ def align_metrics(d) -> dict:
 
 SCALE = {"total": 600.0, "fill_vol": None, "capture": 0.3, "mk5": 0.4, "mk30": 0.4, "mk60": 0.4,
          "at0": 0.03, "thr0": 0.03, "at4": 0.03, "thr4": 0.03, "count": None, "acf": 0.03}
+FIXED = {}
 
 
 def loss(sim: dict, real: dict) -> tuple[float, dict]:
@@ -140,6 +144,16 @@ def grid(name: str, base: dict) -> list[dict]:
             c["flow.refill_prob"] = rf
             cands.append(c)
         cands = cands[1:]
+    elif name == "lead12":
+        cands = [{"flow.state_dependent_updates": True}]
+        for hi, km in ((30, 1.0), (60, 1.0), (30, 0.5)):
+            c = {"flow.state_dependent_updates": True}
+            for L in LENS:
+                la = dict(base["flow"]["lookahead"][L])
+                la["h_hi"] = hi
+                la["kappa"] = la["kappa"] * km
+                c[f"flow.lookahead.{L}"] = la
+            cands.append(c)
     elif name == "copy5m":
         for k5, c5 in ((1.0, 0.0), (0.5, 0.0), (1.0, 0.1)):
             cands.append({"flow.direction.rho_copy_by_len.5m": c5, "flow.direction.rho_copy_by_len.15m": 0.1,
@@ -200,7 +214,7 @@ def main():
                  if k.endswith(".5m") or k.endswith("5m.kappa") or k.endswith("tracking") or k.endswith("refill_prob")}
         top = sorted(parts.items(), key=lambda kv: -kv[1])[:4]
         short = {k.replace("flow.", "").replace("direction.rho_copy_by_len", "copy"): v for k, v in cand.items()}
-        print(f"[{i}] loss {L:7.1f} {short} acf {sim['acf|5m']:.3f}/{sim['acf|15m']:.3f}/{sim['acf|4h']:.3f} | fv mk {sim['fair_value|mk5']:.2f}/{sim['fair_value|mk30']:.2f}/"
+        print(f"[{i}] loss {L:7.1f} {short} 4h at0/at4 {sim['align4h|at0']:.3f}/{sim['align4h|at4']:.3f} acf {sim['acf|5m']:.3f}/{sim['acf|15m']:.3f}/{sim['acf|4h']:.3f} | fv mk {sim['fair_value|mk5']:.2f}/{sim['fair_value|mk30']:.2f}/"
               f"{sim['fair_value|mk60']:.2f} st vol {sim['sym_touch|fill_vol']:.0f} cap {sim['sym_touch|capture']:.2f} "
               f"tot {sim['sym_touch|total']:.0f}/{sim['fair_value|total']:.0f} at0 {sim['align|at0']:.3f} "
               f"| worst {[(k, round(v, 1)) for k, v in top]} ({time.time() - t0:.0f}s)", flush=True)

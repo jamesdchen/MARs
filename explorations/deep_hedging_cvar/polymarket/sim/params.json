@@ -1,7 +1,7 @@
 {
  "meta": {
   "fitted_on": "train split 0 only: 431 markets (5m 248, 15m 146, 4h 37), opens 2026-08-21..22 UTC; Binance < 2026-08-23",
-  "created_utc": "2026-10-15T08:20:47.201043+00:00",
+  "created_utc": "2026-10-15T08:35:24.349850+00:00",
   "n_rows": 739031,
   "pricer": {
    "halflife_s": 300,
@@ -91142,6 +91142,43 @@
     ]
    ],
    "note": "P(book_age == 0) per (len, tau_b) in train ticks"
+  },
+  "update_dp_gain": {
+   "edges_cents": [
+    0.0,
+    0.1,
+    0.3,
+    1.0,
+    2.0,
+    5.0
+   ],
+   "gain": [
+    [
+     1.065233,
+     1.102756,
+     0.902526,
+     0.859269,
+     0.93574,
+     1.032349
+    ],
+    [
+     1.120512,
+     0.944909,
+     0.877633,
+     0.886527,
+     0.920137,
+     0.946189
+    ],
+    [
+     0.843831,
+     1.181827,
+     1.427751,
+     1.604758,
+     1.712593,
+     1.0
+    ]
+   ],
+   "note": "update probability multiplier by |p_model change over the last second| (cents, bucket lower edges); normalised so the mean rate is kept"
   },
   "size_library": {
    "file": "params_book.npz",

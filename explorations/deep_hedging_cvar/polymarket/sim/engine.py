@@ -169,7 +169,15 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
     u = lfilter([1.0], [1, -phi], z, axis=1, zi=phi * z[:, :1] / np.sqrt(1 - phi ** 2))[0] * sig_u[:, None]
     fund = s_f[:, None] * x + (s_l - s_f)[:, None] * xb + np.asarray(mp["b_tau"])[tb_row][None, :]
     target = fund + u                       # fund: Binance-driven part; u: mean-reverting disagreement
-    pi_upd = np.clip(np.asarray(mp["update_prob"])[tb_row][None, :] * kn["refresh_rate_mult"][:, None], 0, 1)
+    pi_upd = np.asarray(mp["update_prob"])[tb_row][None, :] * kn["refresh_rate_mult"][:, None]
+    ug = model.raw["book"].get("update_dp_gain")
+    if ug is not None and model.raw["flow"].get("state_dependent_updates", False):
+        dpc = np.abs(np.diff(p, axis=1, prepend=p[:, :1])) * 100
+        edges = np.asarray(ug["edges_cents"])
+        gain = np.asarray(ug["gain"])[li]
+        g_t = gain[np.clip(np.searchsorted(edges, dpc, side="right") - 1, 0, len(edges) - 1)]
+        pi_upd = pi_upd * g_t / max(float(np.mean(g_t)), 1e-9)   # keep the mean update rate
+    pi_upd = np.clip(pi_upd, 0, 1)
     ev = rng.random((B, n)) < pi_upd
     ev[:, 0] = True
     # the displayed latent mid (and the sticky tick grid) are tracked in the loop: price impact of prints
@@ -217,6 +225,8 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
     la_h = int(la["h"])
     la_kv = float(la["kappa"]) * kn["lookahead_mult"]
     la_on = la_h > 0 and la["kappa"] > 0
+    la_hi = int(la.get("h_hi", 0))
+    fcs = np.concatenate([np.zeros((B, 1)), np.cumsum(fund, axis=1)], axis=1) if (la_on and la_hi > la_h) else None
     trk = float(model.raw["flow"].get("actual_book_tracking", 1.0))      # actual book: snapshot + trk*(target-snap)
     r_refill = float(model.raw["flow"].get("refill_prob", 0.0))
     fee_r = model.fees["taker_fee_rate"] * kn["fee_rate_mult"] * (1 - kn["fee_free"])
@@ -420,7 +430,12 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
         # look-ahead informed takers: an arrival is informed w.p. 1 - exp(-kappa * edge_c), edge = what the mid
         # target will be in h s minus the actual book's touch, net of the taker fee (cents); they take that side
         if la_on:
-            fut = cm.sigmoid(fund[:, min(t + la_h, n - 1)] + u[:, t] + v_imp)   # foresee Binance, not u
+            if la_hi > la_h:                  # average of the Binance-driven target over [t+h, t+h_hi]
+                a_, b_ = min(t + la_h, n - 1), min(t + la_hi, n - 1)
+                fut_f = (fcs[:, b_ + 1] - fcs[:, a_]) / (b_ - a_ + 1)
+            else:
+                fut_f = fund[:, min(t + la_h, n - 1)]
+            fut = cm.sigmoid(fut_f + u[:, t] + v_imp)   # foresee Binance, not the disagreement u
             a_ok = (ask_sz[:, 0] > EPS) & (ask_px[:, 0] + shift <= 1000 - tick_now)
             b_ok = (bid_sz[:, 0] > EPS) & (bid_px[:, 0] + shift >= tick_now)
             e_buy = np.where(a_ok, fut - (ask_px[:, 0] + shift) / 1000.0, -1.0)

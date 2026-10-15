@@ -406,6 +406,23 @@ def fit_book(P: dict, mk: pd.DataFrame, reg, mid, spread) -> dict:
                      "rho = (acf1 - (1 - pi_update)) / pi_update so the per-second autocorrelation matches")
     out["size"] = sizes
     out["book_change_profile"] = dict(p_age0=age0, note="P(book_age == 0) per (len, tau_b) in train ticks")
+    # state dependence of book updates: P(age0 | len, |dp_model over 1 s| bucket) / P(age0 | len) (normal rows,
+    # tau > 30 s). Flat for 5m/15m; on 4h snapshots follow fair-value moves (0.14 -> 0.36).
+    dp1 = np.abs(P["p"] - np.r_[P["p"][0], P["p"][:-1]]) * 100
+    dp1 = np.where(same_mkt, dp1, 0.0)
+    edges = np.array([0.0, 0.1, 0.3, 1.0, 2.0, 5.0, np.inf])
+    db = np.clip(np.searchsorted(edges, dp1, side="right") - 1, 0, len(edges) - 2)
+    gain = np.ones((3, len(edges) - 1))
+    for j in range(3):
+        sel = v & (li == j) & (reg == cm.NORMAL) & (tau > 30)
+        base = fresh[sel].mean()
+        for k in range(len(edges) - 1):
+            s2 = sel & (db == k)
+            if s2.sum() > 200:
+                gain[j, k] = fresh[s2].mean() / base
+    out["update_dp_gain"] = dict(edges_cents=edges[:-1], gain=gain,
+                                 note="update probability multiplier by |p_model change over the last second| "
+                                      "(cents, bucket lower edges); normalised so the mean rate is kept")
     # empirical size library: joint top-5 bid/ask size vectors of real normal rows by (len, tau_b) plus the
     # log ratio of total depth to top-5 depth (resampled whole at update events: keeps round-lot clustering,
     # level correlation and missing levels); hollow rows separately
