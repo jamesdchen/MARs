@@ -116,7 +116,7 @@ def cmd_sweep(a):
     os.makedirs(RUNS, exist_ok=True)
     study = optuna.create_study(study_name='w1', direction='maximize', load_if_exists=True,
                                 storage=f'sqlite:///{os.path.join(RUNS, "optuna.db")}',
-                                sampler=optuna.samplers.TPESampler(seed=1, n_startup_trials=10,
+                                sampler=optuna.samplers.TPESampler(seed=a.sampler_seed or os.getpid(), n_startup_trials=10,
                                                                    constant_liar=True))
     if not study.trials and a.enqueue:
         # trial 0: the v1 best (R7 c02_h120); trials 1-3: hand-picked risk-aware variants
@@ -194,6 +194,8 @@ if __name__ == '__main__':
     s = sub.add_parser('sweep')
     s.add_argument('--trials', type=int, default=32)
     s.add_argument('--seeds', type=int, nargs='*', default=[0, 1, 2])
+    s.add_argument('--sampler-seed', type=int, default=None,
+                   help='TPE seed (default: pid; equal seeds in parallel processes sample equal configs)')
     s.add_argument('--enqueue', action='store_true', help='new study: enqueue the 4 hand-picked trials')
     s.add_argument('--requeue', action='store_true', help='re-queue trials a kill left RUNNING')
     s = sub.add_parser('seeds')
