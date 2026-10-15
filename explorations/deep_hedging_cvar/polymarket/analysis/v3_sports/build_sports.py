@@ -13,11 +13,14 @@ v3env's x3.bin layout). See README_build.md for every schema decision.
     python ../../v3env/adapt3.py build_w                                        # -> markets3.bin (env3)
     python build_sports.py --selftest                                           # synthetic, end to end
 
+Cut: episodes END at E = T - cut (`--cut-before-kickoff-s`, default 0 = at kickoff; DECISIONS.md D15
+withdrew D14's T-1h cut, the pull time is a policy hyperparameter, not a build cut), T = the
+scheduled kickoff (gamma gameStartTime, the v3 data rule), and settle at the mid at E. Every
+segment carries its time-to-kickoff bucket in meta.json (>24h, 6-24h, 1-6h, 1h-30m, 30-5m, 5-0m).
 Episode: `--seg 300|900|14400` = segments of exactly `seg` rows (+1) on a `dt`-second grid, tiling
-[kickoff - max_hours, kickoff] backwards from kickoff (the v2 env samples only these lengths);
-`--seg 0` = ONE episode per game, from the first valid book row (or kickoff - max_hours) to kickoff,
-any length (v3env/mm3 only). The last row of a game is the scheduled kickoff (gamma gameStartTime,
-the v3 data rule). Build at dt 1 (default) and use mm3's dt_far for a slower far-from-kickoff
+[E - max_hours, E] backwards from E (the v2 env samples only these lengths); `--seg 0` = ONE
+episode per game, from the first valid book row (or E - max_hours) to E, any length (v3env/mm3
+only); `--seg 0 --bucket-segments` splits it at the bucket boundaries (24 h, 6 h, 1 h, 30 m, 5 m). Build at dt 1 (default) and use mm3's dt_far for a slower far-from-kickoff
 cadence: latency, match delay, markouts and the T5 flags count rows, so --dt > 1 is discouraged.
 Book rows captured at/after kickoff and trades with block time >= kickoff are dropped. Each
 episode settles at its last row's mark (fractional): meta.json `segments[i].settle_price`
@@ -69,13 +72,33 @@ KICKOFF_CSV = HERE / "kickoff" / "kickoffs.csv"   # kickoff_watch.py: observed a
 FLAG_HAS_TRADES = 1
 FLAG_SETTLE_PX = 16          # LEGACY: settle = log_strike_vs_ul_open (env_sports/mm.h, adapt3.py "sports-1")
 FLAG_HEAD_PADDED = 64        # segment starts before the first book row (padded with no-book rows)
-FLAG_AT_KICKOFF = 128        # segment ends at kickoff (the last segment of the game)
+FLAG_AT_CUT = 128            # segment ends at the cut T - cut_s (= AT_KICKOFF with the default cut 0)
+FLAG_AT_KICKOFF = FLAG_AT_CUT  # old name
 FLAG_KICKOFF_FALLBACK = 256  # no gamma gameStartTime: kickoff from eventStartTime / endDate
 FLAG_COVERAGE = 512          # recorder coverage log available (stale flag = recorder not live)
 FLAG_TRADES_TRUNC = 1024     # data-api history capped: the oldest pre-game legs may be missing (was 32)
 FLAG_IN_PROGRAM = 2048       # in a liquidity-reward program at some row of the episode
 FLAG_RW_LATER_SNAPSHOT = 4096  # some row's program comes from a snapshot taken after that row's day
 FLAG_EARLY_START = 8192      # kickoff_watch saw the game live before the scheduled kickoff (in-play rows)
+
+# D14/D15 time-to-kickoff buckets: (name, lower bound s, upper bound s); a row belongs by its seconds to kickoff
+BUCKETS = [(">24h", 86400, None), ("6-24h", 21600, 86400), ("1-6h", 3600, 21600), ("1h-30m", 1800, 3600),
+           ("30-5m", 300, 1800), ("5-0m", 0, 300)]
+BUCKET_BOUNDS = [b[1] for b in BUCKETS[:-1]]          # 86400, 21600, 3600, 1800, 300 (descending)
+
+
+def bucket_of(sec) -> np.ndarray:
+    sec = np.asarray(sec)
+    return np.searchsorted(-np.array(BUCKET_BOUNDS), -sec, side="right")   # 0 = >24h ... 5 = 5-0m
+
+
+def bucket_info(to_ko_rows: np.ndarray) -> dict:
+    """Bucket of an episode = the bucket holding most of its decision rows (all rows but the settlement row);
+    pure = all of them in one bucket (always with --bucket-segments)."""
+    r = to_ko_rows[:-1] if len(to_ko_rows) > 1 else to_ko_rows
+    cnt = np.bincount(bucket_of(r), minlength=len(BUCKETS))
+    return {"bucket": BUCKETS[int(cnt.argmax())][0], "bucket_pure": bool((cnt > 0).sum() == 1),
+            "bucket_rows": {BUCKETS[k][0]: int(c) for k, c in enumerate(cnt) if c}}
 
 # Liquidity rewards (analysis/rewards/reward_terms.py, the elections builder, ENV3.md section 5)
 REWARD_BAND = (0.10, 0.90)   # single-sided scoring allowed inside, c = 3
@@ -641,6 +664,11 @@ def build(args) -> dict:
         seg_s, nseg, n_tot = 0, 1, None                # per game: first valid book row (or the cap) .. kickoff
         cap_rows = int(max_hours * 3600 // dt) + 1 if max_hours > 0 else None
     legacy_settle = not args.no_legacy_settle
+    cut_s = int(args.cut_before_kickoff_s)           # D14: training episodes end at T - cut_s
+    if cut_s < 0:
+        raise SystemExit("--cut-before-kickoff-s must be >= 0")
+    if args.bucket_segments and seg:
+        raise SystemExit("--bucket-segments needs --seg 0 (fixed-length segments cannot follow bucket boundaries)")
     slug_rx = re.compile(args.slugs) if args.slugs else None
     now = int(args.now or time.time())
     actual = load_actual_kickoffs(args.kickoff_csv)
@@ -803,17 +831,25 @@ def build(args) -> dict:
         dn_up = np.c_[1.0 - dn.amid.values, dn.qa.values, dn.qb.values]
         snap[EXTRA] = np.where(snap.from_down.values[:, None], dn_up, up.values)
         cov_iv = cov_all.get(slug)
+        # cut: episodes end at E = kickoff - cut_s (default 0; with --allow-open: the last book row if earlier),
+        # on a grid anchored at E
+        cut = min(ko, int(m.kickoff_true) - cut_s)
+        grid_end = cut
         if seg:
             n_m = n_tot
-        else:                                          # first valid book row .. kickoff, on the kickoff grid
+        else:                                          # first valid book row .. cut, on the cut grid
             fv = int(snap.index.values[snap.valid.values][0])
-            n_m = (ko - fv) // dt + 1
+            n_tr = (cut - fv) // dt + 1                # training rows (<= 0: book starts after the cut)
             if cap_rows:
-                n_m = min(n_m, cap_rows)
+                n_tr = min(n_tr, cap_rows)
+            n_m = n_tr
             if n_m < 2:
                 stats["segments_dropped_short"] += 1
                 continue
-        t, X, stale, first_book, ex = market_grid(snap, ko, n_m, dt, cov_iv, args.stale_s)
+        e_idx = n_m - 1                                # grid row of the cut
+        stats["book_rows_after_cut_dropped"] = stats.get("book_rows_after_cut_dropped", 0) + int(
+            (g.ts > grid_end).sum())
+        t, X, stale, first_book, ex = market_grid(snap, grid_end, n_m, dt, cov_iv, args.stale_s)
         # reward program per grid row (UTC day of the row)
         cond = m.cond if isinstance(m.cond, str) else None
         rdays = utc_day(t)
@@ -844,7 +880,9 @@ def build(args) -> dict:
             tr["px_up"] = np.where(tr.outcome_idx == 0, tr.price.astype(np.float64), 1.0 - tr.price.astype(np.float64))
             earliest = int(tr.timestamp.min()) if trunc else None    # legs before it may be missing
             stats["legs_after_kickoff_dropped"] += int((tr.timestamp >= ko).sum())
-            tr = tr[tr.timestamp < ko]
+            stats["legs_after_cut_dropped"] = stats.get("legs_after_cut_dropped", 0) + int(
+                ((tr.timestamp < ko) & (tr.timestamp > grid_end)).sum())
+            tr = tr[(tr.timestamp < ko) & (tr.timestamp <= grid_end)]
             taker, maker = tr[tr.is_taker], tr[~tr.is_taker].copy()
             tx_size = taker.groupby("tx")["size"].sum().astype(np.float64)
             tx_side = taker.groupby("tx")["aggressor_up"].first()
@@ -888,20 +926,29 @@ def build(args) -> dict:
         feat, sf, book, x3 = features(t, X, sub_row, stale, args.p_model, seg, dt, ko, first_book, ex=ex, prog=prog,
                                       seed=market_seed(cond, slug), cov_known=cov_iv is not None)
         stats["markets"] += 1
-        # ---- segments: (first row, last row, segments before kickoff)
+        # ---- segments: (first row, last row, segments before the cut, eval_only)
+        to_ko = (ko - t).astype(np.int64)
         if seg:
-            spans = [(k * seg, (k + 1) * seg, nseg - 1 - k) for k in range(nseg)]
+            spans = [(k * seg, (k + 1) * seg, nseg - 1 - k, False) for k in range(nseg)]
         else:
             a0 = 0
             if earliest is not None and not args.keep_truncated and t[0] < earliest:
                 a0 = int(np.searchsorted(t, earliest))         # start where the (truncated) trade history starts
                 stats["segments_trimmed_trades_truncated"] = stats.get("segments_trimmed_trades_truncated", 0) + 1
-            spans = [(a0, n_m - 1, 0)]
-        for a, b, kk in spans:
-            Ls = b - a                                         # episode rows - 1 (= contract_len_s)
-            if not seg and Ls * dt < args.min_window_s:
+            cuts = [a0]
+            if args.bucket_segments:                           # split at the bucket boundaries
+                for bnd in BUCKET_BOUNDS:
+                    p_ = int(np.searchsorted(-to_ko, -bnd))    # first row with to_ko <= bnd
+                    if cuts[-1] < p_ < e_idx:
+                        cuts.append(p_)
+            cuts.append(e_idx)
+            spans = [(cuts[j], cuts[j + 1], len(cuts) - 2 - j, False) for j in range(len(cuts) - 1)
+                     if cuts[j + 1] > cuts[j]]
+            if (e_idx - a0) * dt < args.min_window_s:          # the whole game window (before any bucket split)
                 stats["segments_dropped_short"] += 1
-                continue
+                spans = []
+        for a, b, kk, _ in spans:
+            Ls = b - a                                         # episode rows - 1 (= contract_len_s)
             sl = slice(a, b + 1)
             covered = X[sl, TC["book_valid"]] > 0
             two = feat[sl, CI["mark_is_fv"]] < 0.5
@@ -919,6 +966,8 @@ def build(args) -> dict:
             Xs[:, TC["seconds_to_close"]] = np.arange(Ls, -1, -1)        # rows to the episode end
             fs = feat[sl].copy()
             fs[:, CI["tau_frac"]] = np.arange(Ls, -1, -1) / Ls
+            for L_, c_ in ((300, "len_5m"), (900, "len_15m"), (14400, "len_4h")):   # one-hot of THIS segment
+                fs[:, CI[c_]] = float(Ls == L_)
             sfs = sf[sl].copy()
             sfs[:, 1] = np.arange(Ls, -1, -1) * dt
             xs = x3[sl]
@@ -944,7 +993,8 @@ def build(args) -> dict:
                     lg = L
                 else:
                     lg = None
-            sid = f"{slug}#k{kk}"                     # k0 = the segment ending at kickoff (--seg 0: the window)
+            sid = f"{slug}#k{kk}"                     # k0 = the segment ending at the cut (kickoff by default)
+            bk_ = bucket_info(to_ko[a:b + 1])
             f = spool / f"{len(segs)}.npz"
             np.savez(f, X=Xs.astype(np.float32), feat=fs.astype(np.float32), sf=sfs.astype(np.float32), book=bks,
                      x3=xs.astype(np.float32), legs=lg if lg is not None else np.zeros(0, FILL_DTYPE))
@@ -952,16 +1002,17 @@ def build(args) -> dict:
             later = bool((prog["later"][sl] > 0).any())
             flags = ((FLAG_SETTLE_PX if legacy_settle else 0) | (FLAG_HAS_TRADES if lg is not None else 0)
                      | (FLAG_TRADES_TRUNC if trunc else 0) | (FLAG_HEAD_PADDED if cover < 1 else 0)
-                     | (FLAG_AT_KICKOFF if kk == 0 else 0) | (FLAG_KICKOFF_FALLBACK if m.kickoff_fallback else 0)
+                     | (FLAG_AT_CUT if kk == 0 else 0) | (FLAG_KICKOFF_FALLBACK if m.kickoff_fallback else 0)
                      | (FLAG_COVERAGE if cov_iv is not None else 0) | (FLAG_IN_PROGRAM if in_prog else 0)
                      | (FLAG_RW_LATER_SNAPSHOT if later else 0) | (FLAG_EARLY_START if m.early_start else 0))
             seg_meta = {
                 "sid": sid, "slug": slug, "condition_id": cond, "n_rows": Ls + 1,
                 "open_ts": int(t[a]), "end_ts": int(t[b]), "row_s": dt,
-                "kickoff_ts": int(ko), "event_ts": int(ko),
+                "kickoff_ts": int(ko), "cut_ts": int(t[e_idx]), "event_ts": int(t[b]),
                 "kickoff_scheduled_ts": int(m.kickoff_true), "kickoff_source": m.kickoff_source,
                 "kickoff_cut_open_TESTING": bool(args.allow_open and ko != m.kickoff_true),
-                "at_kickoff": kk == 0, "segments_before_kickoff": int(kk),
+                "at_cut": bool(kk == 0), "segments_before_cut": int(kk),
+                "to_kickoff_start_s": int(to_ko[a]), "to_kickoff_end_s": int(to_ko[b]), **bk_,
                 "settle_mode": 1, "settle_price": settle,
                 "actual_start": m.actual if isinstance(m.actual, dict) else None, "early_start": bool(m.early_start),
                 "rw": {"in_program_any": in_prog, "in_program_last": bool(xs[-1, 3] > 0),
@@ -969,7 +1020,8 @@ def build(args) -> dict:
                        "min_size_last": float(xs[-1, 1]), "usd_paid_pool": float(xs[:, 6].sum()),
                        "sample_rows_scorable": int((xs[:, 6] > 0).sum()),
                        "snapshot_days": sorted(snap_days), "later_snapshot": later}}
-            segs.append(dict(sid=sid, slug=slug, file=f, open_ts=int(t[a]), end_ts=int(t[b]), split=int(m.split),
+            segs.append(dict(sid=sid, slug=slug, file=f, open_ts=int(t[a]), end_ts=int(t[b]),
+                             split=int(m.split),
                              league=league_id[m.league], settle=settle, flags=flags, m=m, cover=cover, L=Ls,
                              rw_min=float(xs[-1, 1]), rw_spread=float(xs[-1, 0]), meta=seg_meta,
                              n_legs=0 if lg is None else len(lg), two_frac=float(two.mean()), kickoff=ko))
@@ -1050,7 +1102,7 @@ def build(args) -> dict:
         "columns": TCOLS, "column_index": TC,
         "market_record": {"itemsize": MARKET_DTYPE.itemsize, "fields": layout,
                           "flags": {"HAS_TRADES": FLAG_HAS_TRADES, "SETTLE_PX": FLAG_SETTLE_PX,
-                                    "HEAD_PADDED": FLAG_HEAD_PADDED, "AT_KICKOFF": FLAG_AT_KICKOFF,
+                                    "HEAD_PADDED": FLAG_HEAD_PADDED, "AT_CUT": FLAG_AT_CUT,
                                     "KICKOFF_FALLBACK": FLAG_KICKOFF_FALLBACK, "COVERAGE": FLAG_COVERAGE,
                                     "TRADES_TRUNCATED": FLAG_TRADES_TRUNC, "IN_PROGRAM": FLAG_IN_PROGRAM,
                                     "RW_LATER_SNAPSHOT": FLAG_RW_LATER_SNAPSHOT, "EARLY_START": FLAG_EARLY_START},
@@ -1068,8 +1120,10 @@ def build(args) -> dict:
                       ("dropped (--no-legacy-settle): log_strike_vs_ul_open = 0, no bit 16, winner_up = -1 (mm3: "
                        "mode-0 fallback to the last-row mark = settle_price). env_sports/ and the current "
                        "adapt3.py cannot read this build."),
-            "event_ts": "segments[i].kickoff_ts (= event_ts): the scheduled kickoff the game was cut at; equals "
-                        "open_ts + sports_feat.seconds_to_kickoff[row_offset]"},
+            "kickoff_ts": "segments[i].kickoff_ts: the scheduled kickoff T (gameStartTime; --allow-open: the last "
+                          "book row if earlier); equals open_ts + sports_feat.seconds_to_kickoff[row_offset]",
+            "event_ts": "segments[i].event_ts = end_ts: where the episode settles (AT_CUT episodes: cut_ts = "
+                        "T - cut_before_kickoff_s = T by default)"},
         "segments": seg_meta,
         "splits": {"ids": SPLIT_NAMES, "rule": split_rule + "; by game day (slug date, else kickoff UTC date); "
                    "every segment of a game takes the game's split", "day_split": day_split, "counts": counts},
@@ -1081,19 +1135,27 @@ def build(args) -> dict:
                       "no_trade_vwap_maxmin": 0.0, "no_book": "book_valid=0, book_age=0, empty ladders"},
         "sports": {
             "dt_s": dt, "seg_rows": seg, "seg_hours": seg_s / 3600, "segments_per_game": nseg,
-            "max_hours_before_kickoff": max_hours if max_hours > 0 else None, "window_rows_per_game": n_tot,
+            "max_hours_before_cut": max_hours if max_hours > 0 else None, "window_rows_per_game": n_tot,
             "episode": ("one episode per game: first valid book row (or kickoff - max_hours) .. kickoff, any length "
                         "(n_rows varies; v3env/mm3 only: the v2 mm.h samples only 300/900/14400 rows and "
                         "train/envs.py MarketSetEnv asserts the len_* one-hot, which is all 0 here)") if not seg else
                        f"segments of {seg} rows tiling [kickoff - max_hours, kickoff] backwards",
             "min_window_s": args.min_window_s if not seg else None,
+            "cut_before_kickoff_s": cut_s,
+            "cut_note": "episodes end at the cut T - cut_before_kickoff_s and settle at the mid there; D15: default 0 "
+                        "(at kickoff); the quote pull before kickoff is a policy / env (pull_s) hyperparameter",
+            "buckets": {"def": {b[0]: [b[1], b[2]] for b in BUCKETS},
+                        "rule": "segments[i].bucket = the bucket of most decision rows (seconds to kickoff); "
+                                "bucket_pure = all in one; --bucket-segments (seg 0) splits windows at every boundary",
+                        "bucket_segments": bool(args.bucket_segments),
+                        "counts": {b[0]: sum(1 for x in seg_meta if x["bucket"] == b[0]) for b in BUCKETS}},
             "env3": {"recommended": "dt 1 build; mm3 len_mask 15 (bit 8 dt_other), dt_far / far_s for the far-from-"
                                     "kickoff cadence (e.g. dt_other=2, dt_far=30, far_s=7200), pull_s, flat_c",
                      "dt_gt_1": "discouraged: latency / match delay / markouts / T5 flags count rows (ENV3.md issue 3)"},
             "min_cover": args.min_cover, "p_model": args.p_model, "stale_s": args.stale_s,
             "allow_open_TESTING_ONLY": bool(args.allow_open),
-            "row_time": "row j of a segment is unix time open_ts + j * dt_s; the last row (end_ts) is kickoff "
-                        "for AT_KICKOFF segments. Every env quantity counted in rows (latency, match delay, dt "
+            "row_time": "row j of a segment is unix time open_ts + j * dt_s; the last row (end_ts) is the cut "
+                        "T - cut_before_kickoff_s for AT_CUT segments. Every env quantity counted in rows (latency, match delay, dt "
                         "params, markout_h, flow/mret windows, minute boundaries) is in units of dt_s seconds.",
             "kickoff": "gamma gameStartTime; fallback eventStartTime, endDate, recorder markets, books market_end_at",
             "cut": "book rows with captured_at >= kickoff and trade legs with block time >= kickoff are dropped",
@@ -1220,7 +1282,10 @@ def verify(out: Path) -> None:
     if sp["seg_rows"]:
         assert set(mk["contract_len_s"]) <= set(SEG_LENS)
     else:
-        assert (mk["flags"] & FLAG_AT_KICKOFF > 0).all() and len({s.split("#")[0] for s in meta["slugs"]}) == len(mk)
+        games = [s.split("#")[0] for s in meta["slugs"]]
+        assert ((mk["flags"] & FLAG_AT_CUT) > 0).sum() == len(set(games)), "one AT_CUT episode per game"
+        if not sp.get("buckets", {}).get("bucket_segments"):
+            assert len(set(games)) == len(games)
     assert (mk["end_ts"] - mk["open_ts"] == mk["contract_len_s"] * sp["dt_s"]).all()
     assert np.isfinite(feat).all() and np.abs(feat[:, :N_OBS]).max() <= CLIP
     last = mk["row_offset"] + mk["n_rows"] - 1
@@ -1235,8 +1300,13 @@ def verify(out: Path) -> None:
     kts = np.array([x["kickoff_ts"] for x in sm], np.int64)
     assert np.array_equal(kts, mk["open_ts"] + np.rint(sf[mk["row_offset"], 0]).astype(np.int64)), \
         "meta kickoff_ts != open_ts + sports_feat.seconds_to_kickoff[row 0] (adapt3's event_ts)"
-    ko = mk["flags"] & FLAG_AT_KICKOFF > 0
-    assert (sf[last[ko], 0] == 0).all() and (kts[ko] == mk["end_ts"][ko]).all(), "AT_KICKOFF segment does not end at kickoff"
+    cut = np.array([x["cut_ts"] for x in sm], np.int64)
+    ko = mk["flags"] & FLAG_AT_CUT > 0
+    assert (mk["end_ts"][ko] == cut[ko]).all() and (np.rint(sf[last[ko], 0]) == (kts - cut)[ko]).all(), \
+        "AT_CUT segment does not end at the cut"
+    assert (mk["end_ts"] <= cut).all()
+    assert all(x["bucket_pure"] for x in sm) if sp.get("buckets", {}).get("bucket_segments") else True
+    assert all(x["event_ts"] == x["end_ts"] for x in sm)
     assert (sf[:, 0] >= 0).all(), "row after kickoff"
     x3 = np.fromfile(out / "sports_x3.bin", np.float32).reshape(meta["N"], len(X3_COLS))
     for j, c in ((4, "liq_mid"), (5, "liq_comp"), (6, "liq_pi")):
@@ -1525,7 +1595,8 @@ def selftest(args) -> None:
         base = {**vars(args), "rec": [str(rec)], "dt": 1, "min_cover": 0.6, "offline": True, "no_gamma": True,
                 "no_fetch_trades": True, "splits": None, "slugs": None, "allow_open": False, "now": None,
                 "max_markets": 0, "keep_truncated": False, "rewards_dir": str(tmp / "rewards"), "kickoff_csv": None,
-                "drop_early_starts": False, "no_legacy_settle": False, "min_window_s": 600.0}
+                "drop_early_starts": False, "no_legacy_settle": False, "min_window_s": 600.0,
+                "cut_before_kickoff_s": 0, "bucket_segments": False}
         outs = {}
         for wu in ("a", "b"):
             o = tmp / f"build_{wu}"
@@ -1555,7 +1626,8 @@ def selftest(args) -> None:
         g = sorted(segs)
         assert len(g) == 4 and mw["sports"]["stats"]["segments_dropped_short"] == 1, "game 1 (500 s) must be dropped"
         for x in mw["segments"]:
-            assert x["at_kickoff"] and x["end_ts"] == x["kickoff_ts"] and x["n_rows"] > 900
+            assert x["at_cut"] and x["end_ts"] == x["kickoff_ts"] == x["cut_ts"] and x["n_rows"] > 900
+            assert x["bucket"] == "30-5m" and not x["bucket_pure"] and x["to_kickoff_end_s"] == 0
         # reward programs: g0 in program via a later snapshot, g1 not started yet, g3 in program, g2 / g4 out
         prog = {s_: (segs[s_]["rw"]["in_program_any"], segs[s_]["rw"]["later_snapshot"]) for s_ in g}
         assert prog[g[0]] == (True, True) and prog[g[1]] == (False, False) and prog[g[2]] == (True, False) \
@@ -1577,6 +1649,22 @@ def selftest(args) -> None:
         build(argparse.Namespace(**{**base, "out": str(ow2), "seg": 0, "max_hours": None, "splits": str(sv),
                                     "no_legacy_settle": True}))
         verify(ow2)
+        # cut 300 s before kickoff, and --bucket-segments (windows split at 30 m / 5 m here)
+        oc = tmp / "build_cut300"
+        mc = build(argparse.Namespace(**{**base, "out": str(oc), "seg": 0, "max_hours": None, "splits": str(sv),
+                                          "cut_before_kickoff_s": 300}))
+        verify(oc)
+        for x, y in zip(sorted(mc["segments"], key=lambda z: z["sid"]), sorted(mw["segments"], key=lambda z: z["sid"])):
+            assert x["end_ts"] == x["cut_ts"] == x["kickoff_ts"] - 300 and x["n_rows"] == y["n_rows"] - 300
+            assert x["to_kickoff_end_s"] == 300 and x["bucket"] == "30-5m" and x["bucket_pure"]
+        ob = tmp / "build_buckets"
+        mb_ = build(argparse.Namespace(**{**base, "out": str(ob), "seg": 0, "max_hours": None, "splits": str(sv),
+                                          "bucket_segments": True}))
+        verify(ob)
+        bks = sorted((x["slug"], x["bucket"], x["n_rows"], x["at_cut"]) for x in mb_["segments"])
+        assert len(bks) == 8 and all(x["bucket_pure"] for x in mb_["segments"]), bks
+        assert {b_[1] for b_ in bks} == {"30-5m", "5-0m"} and all(b_[2] == 301 for b_ in bks if b_[1] == "5-0m")
+        print("cut 300 s and --bucket-segments builds OK:", bks[:2])
         if args.no_env:
             return
         # ---- v3env: adapt3.py (today's sports branch) + env3, and the proposed x3 = sports_x3.bin variant
@@ -1645,9 +1733,14 @@ def main(argv=None):
                     "discouraged for v3env: latency, markouts and flags count rows; use mm3 dt_far instead)")
     ap.add_argument("--seg", type=int, default=14400, help="rows per episode: 300 / 900 / 14400 (mm.h buckets), or 0 = "
                     "one episode per game window, first valid book row .. kickoff, any length (v3env only)")
-    ap.add_argument("--max-hours", type=float, default=None, help="window before kickoff (floored to whole "
+    ap.add_argument("--max-hours", type=float, default=None, help="window before the CUT (floored to whole "
                     "segments); default 24 for --seg > 0, no cap (first book row) for --seg 0")
     ap.add_argument("--min-window-s", type=float, default=600.0, help="--seg 0: drop games with a shorter window")
+    ap.add_argument("--cut-before-kickoff-s", type=int, default=0,
+                    help="episodes end (and settle) this many s before the scheduled kickoff (default 0 = at kickoff, "
+                         "D15; D14's 3600 was withdrawn)")
+    ap.add_argument("--bucket-segments", action="store_true",
+                    help="--seg 0: split each game window at the bucket boundaries 24h/6h/1h/30m/5m before kickoff")
     ap.add_argument("--rewards-dir", default=str(REWARDS_DIR) if REWARDS_DIR.is_dir() else None,
                     help="rewards_snapshot.py daily files (rewards_<day>.json) for the per-day reward programs; "
                          "'' = none (rate 0 everywhere)")
