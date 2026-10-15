@@ -11,5 +11,6 @@ train/checkpoints/
 /build/
 data/build_v2/
 data/build_jun15/
-data/raw/marketlens/
+data/raw/marketlens/deltas.parquet
 data/raw/aggtrades/
+data/raw/marketlens/*.parquet
