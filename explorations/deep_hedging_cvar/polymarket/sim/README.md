@@ -13,19 +13,16 @@ It writes markets in exactly the on-disk format the C replay env reads:
 So `mm.h` replays synthetic markets unchanged: pass `data_dir=data/build_sim`.
 
 **Status.** The consistency gate of SIMULATOR.md §5 **fails** (`VALIDATION.md`: C env, central fills,
-L = 1 s, 20 replications on the train schedule). Per that spec, use the sim only as an initialiser for
-pretraining, followed by replay fine-tuning, and quote no sim result.
+L = 1 s, 20 replications on the train schedule; it also has the before/after table of the informed-taker
+fix). Per that spec, use the sim only as an initialiser for pretraining, followed by replay fine-tuning,
+and quote no sim result.
 
-| gate | result |
+| gate | result after the informed-taker fix |
 |---|---|
-| G1 | sym_touch total inside the band, but median and hourly KS outside. fair_value fails: +1289 sim vs -797 real. |
-| G2 | fails: the sim ranks fair_value above no_quote |
-| G3 | fails: fill volume and spread capture too high, markouts too mild |
-| G4 | the book passes (spread/depth KS <= 0.05, one-sided 19/19, trades/market KS <= 0.13). It fails on a few trade-rate and P(buy\|gap) cells and on 5m sign ACF. |
-
-The main defect: real takers adversely select fair-value quotes much harder than the sim's takers do.
-The fair_value baseline's markout is -4.7 c/share at 60 s real vs -1.4 sim. VALIDATION.md has the fix
-to try next.
+| G1 | sym_touch: the per-market median is inside the band and KS is 0.065, but the total overshoots (-3564 vs -2958) and the hourly KS is 0.18. fair_value: +425 [45, 829] vs real -797, hourly KS 0.25. |
+| G2 | fails: the sim still ranks fair_value above no_quote |
+| G3 | 4/22 components inside the band (was 1). sym_touch spread capture is 2.6x real. |
+| G4 | the book passes (spread/depth/trades-per-market KS, one-sided 19/19), and so does sign ACF 3/3. It fails on 1 spread-median cell, 3 trade-rate cells and 2 P(buy\|gap) cells. |
 
 ## Quick start
 
@@ -65,8 +62,8 @@ Every synthetic market:
 `sim_markets.parquet` holds each market's draws: segment, strike, winner and every randomisation knob.
 
 Throughput and size.
-* 500 random markets (296 x 5m, 159 x 15m, 45 x 4h) with randomisation:
-  - 0.88 M rows and 0.78 M fill legs;
+* 500 random markets (296 x 5m, 159 x 15m, 45 x 4h) with randomisation (the current `data/build_sim/`):
+  - 0.88 M rows and 0.74 M fill legs;
   - 375 MB in total: ticks 141 MB, feat 155 MB, book 56 MB, fills.parquet 27 MB;
   - 53 s single-threaded: engine 20 s, data/features.py 25 s.
 * The engine runs B same-length markets in lockstep. A 4h batch is 14,401 sequential numpy steps, so
@@ -135,7 +132,10 @@ At these values the displayed mid reproduces the real slopes of Δmid on Δp:
 
 The level slope corresponds to the 73-85% same-second pass-through of REPORT §3 measured on snapshot pairs.
 
-Two features beyond SIMULATOR.md came out of the validation. Both are documented in VALIDATION.md.
+Four features beyond SIMULATOR.md came out of the validation. All are documented in VALIDATION.md.
+* **Look-ahead informed takers** (see Direction above). Real takers adversely select fair-value quotes
+  much harder than takers who only see the 1 s Binance kline.
+* **Touch resilience** (refill 0.8). BTC/ETH books absorb about 8 prints/s without the touch moving.
 * **Captured vs actual book.** Real snapshots are sparse: book_age p90 12-31 s, and only about 30%
   of seconds show a change even with 1.4 prints/s on 5m. Prints therefore land far from the captured
   touch. Prints execute against the actual book (the captured shape shifted to the current target),

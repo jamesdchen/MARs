@@ -60,7 +60,7 @@ def build_features(build_dir: str | Path):
     tp = raw / "trades.parquet"
     if tp.exists() or tp.is_symlink():
         tp.unlink()
-    tp.symlink_to(bd / "fills.parquet")
+    tp.symlink_to(Path("..") / "fills.parquet")          # relative: survives renaming the build dir
     F.BUILD = bd
     F.RAW = raw
     F.load = lambda: load(bd)

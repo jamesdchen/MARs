@@ -1,7 +1,7 @@
 {
  "meta": {
   "fitted_on": "train split 0 only: 431 markets (5m 248, 15m 146, 4h 37), opens 2026-08-21..22 UTC; Binance < 2026-08-23",
-  "created_utc": "2026-10-15T07:56:01.798693+00:00",
+  "created_utc": "2026-10-15T08:20:47.201043+00:00",
   "n_rows": 739031,
   "pricer": {
    "halflife_s": 300,
@@ -91422,9 +91422,9 @@
    "n_markets": 429,
    "note": "log A_m = a_len + a_coin + N(0, sd^2) (Hawkes baseline scale per market)",
    "a_len_shift": {
-    "5m": -0.13471,
-    "15m": -0.186253,
-    "4h": -0.737855
+    "5m": -0.177803,
+    "15m": -0.224281,
+    "4h": -0.278516
    }
   },
   "direction": {
@@ -93618,30 +93618,30 @@
       "kappa": 0.5
      }
     },
-    "loss": 92.54521230988425,
+    "loss": 92.545212,
     "sim": {
-     "sym_touch|total": -3843.915094583819,
-     "sym_touch|fill_vol": 221.92692684954392,
-     "sym_touch|capture": 1.7844534132100158,
-     "sym_touch|mk5": -2.740477440912305,
-     "sym_touch|mk30": -5.087498716644504,
-     "sym_touch|mk60": -5.390498758908451,
-     "fair_value|total": 257.1140371312358,
-     "fair_value|fill_vol": 100.7582991583437,
-     "fair_value|capture": 1.8740581328078019,
-     "fair_value|mk5": -2.346153625490931,
-     "fair_value|mk30": -3.739213793162889,
-     "fair_value|mk60": -2.775416956174868,
-     "align|at0": 0.575805270393545,
-     "align|thr0": 0.4267387030874587,
-     "align|at4": 0.6485264386435965,
-     "align|thr4": 0.48165462349407195,
+     "sym_touch|total": -3843.915095,
+     "sym_touch|fill_vol": 221.926927,
+     "sym_touch|capture": 1.784453,
+     "sym_touch|mk5": -2.740477,
+     "sym_touch|mk30": -5.087499,
+     "sym_touch|mk60": -5.390499,
+     "fair_value|total": 257.114037,
+     "fair_value|fill_vol": 100.758299,
+     "fair_value|capture": 1.874058,
+     "fair_value|mk5": -2.346154,
+     "fair_value|mk30": -3.739214,
+     "fair_value|mk60": -2.775417,
+     "align|at0": 0.575805,
+     "align|thr0": 0.426739,
+     "align|at4": 0.648526,
+     "align|thr4": 0.481655,
      "count|5m": 111361.0,
      "count|15m": 41446.0,
      "count|4h": 4090.0,
-     "acf|5m": 0.267334782248216,
-     "acf|15m": 0.2915812389846833,
-     "acf|4h": 0.23231572940465947
+     "acf|5m": 0.267335,
+     "acf|15m": 0.291581,
+     "acf|4h": 0.232316
     },
     "note": "5m look-ahead kappa lowered to 0.5 and copy prob 0 (5m) / 0.1 (15m) so the sign ACF of trades matches real (look-ahead informed trades already come in same-sign runs)"
    }
