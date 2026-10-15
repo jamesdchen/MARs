@@ -309,7 +309,11 @@ def test_val_dry_run_and_reports():
     assert report.main(["--split", "1", "--results-dir", str(res), "--out", str(out),
                         "--figures", str(_TMP / "fig_val"), "--n-boot", "200"]) == 0
     txt = out.read_text()
-    assert "DRY RUN" in txt and "Stand-in env" in txt and "Synthetic dataset" in txt
+    assert "DRY RUN" in txt and "Synthetic dataset" in txt
+    if BACKEND == "cenv":
+        assert "Stand-in env" not in txt and "max |state diff|" in txt and "Replay mismatch" not in txt
+    else:
+        assert "Stand-in env" in txt
     for i in range(1, 14):
         assert f"## {i}. " in txt, i
     assert "**Overall:" in txt and "NOT EVALUABLE" not in txt   # full plan: every criterion evaluated

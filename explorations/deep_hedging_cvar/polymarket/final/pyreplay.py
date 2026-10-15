@@ -259,18 +259,21 @@ class ReplayEnv:
                    -1: live_sz[b] if np.isfinite(self.live_bid[b]) else 0.0}    # our bid (buy)
             queue_used = {+1: 0.0, -1: 0.0}
             crossed, stale = bk["crossed"][j], bk["age"][j] > 10.0
-            for leg in legs:
+            has_px = "px" in legs.dtype.names
+            for leg in legs:                      # prices compared in integer mils, as in the C core
                 tside = int(leg["side"])
-                p = float(leg["price"])
+                pm = int(leg["px"]) if has_px else int(round(float(leg["price"]) * 1000))
                 if self.mirror:
-                    tside, p = -tside, 1.0 - p
+                    tside, pm = -tside, 1000 - pm
+                p = pm / 1000.0
                 size = float(leg["size"])
                 self.min_taker[b] += size
                 ours = self.live_ask[b] if tside == +1 else self.live_bid[b]
                 if not np.isfinite(ours) or rem[tside] <= 1e-12:
                     continue
-                through = (ours < p - 1e-9) if tside == +1 else (ours > p + 1e-9)
-                at = abs(ours - p) < 1e-9
+                om = int(round(ours * 1000))
+                through = (om < pm) if tside == +1 else (om > pm)
+                at = om == pm
                 if self.fm == 0:
                     q = size if (through or at) else 0.0
                 else:
@@ -281,7 +284,7 @@ class ReplayEnv:
                     elif at and self.fm == 1:
                         lvl_p = bk["ap"][j] if tside == +1 else bk["bp"][j]
                         lvl_s = bk["as_"][j] if tside == +1 else bk["bs"][j]
-                        hit = np.abs(lvl_p - ours) < 1e-9
+                        hit = np.round(lvl_p * 1000).astype(np.int64) == om
                         depth = float(lvl_s[hit].sum()) if hit.any() else 0.0
                         ahead = max(depth - queue_used[tside], 0.0)
                         q = max(size - ahead, 0.0)

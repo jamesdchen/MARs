@@ -37,7 +37,36 @@ So the tuner drives every baseline towards not quoting at all
 
    If it fails any of them, we report what the policy actually does (for
    example "learns to mostly not quote"), whatever its P&L.
-4. **Re-tuning on the frozen env.** The baseline tuning above ran on an env
+4. **Re-tuning on the frozen env.** (Frozen 2026-10-15: `mm.h` sha256
+   `746dd7dea250eee035a8cb08a7be479eacf2d44ac1b7251503bc0d0e468566a9`; build
+   hashes are in ENV.md.) The baseline tuning above ran on an env
    version from before the freeze. Every baseline will be re-tuned on the
    frozen env and data hashes before the final comparison, and all earlier
    trials stay in the multiple-testing count.
+
+## D2. T5 artifact flags: a sweep through the touch is normal, not an artifact (2026-10-15)
+
+**What we saw.** The env sets a flag on any fill whose trade printed outside
+the snapshot's `[bid, ask]`. The env owner checked this on 40 train markets
+(central fills, latency 1). The flag compares each trade against the book at
+the match row, which is the pre-trade book, as intended. The flag covers 83%
+of fill volume for quotes that join the touch, and 93% for quotes 4 ticks
+behind it.
+
+The reason is that most of our fill volume comes from takers sweeping through
+the touch. A print exactly at our price is mostly absorbed by the displayed
+queue ahead of us, which leaves only 5-10% of our volume. These fills are how
+a resting order normally gets filled, so they are not an artifact of the
+replay. If EVALUATION.md T5 is read literally ("more than 25% of P&L from one
+flag makes the result invalid"), almost every policy would be invalid.
+
+**Decision.** T5's 25% P&L rule applies to the flags that point to replay
+artifacts:
+- `inspread`: a print on the wrong side of the touch, which the snapshot
+  cannot explain;
+- crossed or stale book;
+- one-sided book;
+- the last 30 s before close.
+
+The through-the-touch flag is still logged and reported, but it is not an
+exploit detector.
