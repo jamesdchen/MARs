@@ -1,6 +1,6 @@
 """News-jump and resolution risk for makers in the politics universe.
 
-1. Jumpiness of CLOB prices-history (outcome-0 frame, forward-filled onto a 10-min grid, Sep 15 -> Oct 15):
+1. Jumpiness of CLOB prices-history (outcome-0 frame, forward-filled onto a 10-min grid, Sep 1 -> Oct 15):
    share of 10-min moves above 2c / 5c / 10c, jumps per market-day, share of the total absolute variation
    that comes from the largest 1% of 10-min moves.
 2. Maker P&L concentration: maker fills whose next 2 h contain a >= 5c 10-min move (a "jump window"); their
@@ -20,7 +20,7 @@ U = {r["slug"]: r for r in json.load(open(OUT / "universe.json"))}
 ph = pd.read_parquet(HERE / "data/prices_history.parquet")
 tok0 = {r["tokens"][0]: r["slug"] for r in U.values()}
 ph = ph[ph.token_id.isin(tok0)].assign(slug=lambda d: d.token_id.map(tok0))
-t_lo = pd.Timestamp("2026-09-15", tz="UTC").timestamp()
+t_lo = pd.Timestamp("2026-09-01", tz="UTC").timestamp()
 
 rows, jumps = [], {}
 for slug, g in ph.groupby("slug"):
