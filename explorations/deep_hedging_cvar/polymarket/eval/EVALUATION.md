@@ -184,7 +184,7 @@ classified directional (T6); no invalidating exploit flag (T5); ex-top-5 / ex-to
   `75915990669c7038e81649a4e609ec8c776b0f264f0497fe390113e639eb4b6d`.
   RL: 5 seeds of R7 `c02_h120`. Comparator: baseline/fair_value. Ledger N = 1489 val
   evaluations over 1100 configs.
-- 2026-10-15 22:22 UTC: **v2 TEST_PLAN frozen** (DECISIONS.md D7, D8, D10, D13):
+- 2026-10-15 22:17 UTC: **v2 TEST_PLAN frozen** (DECISIONS.md D7, D8, D10, D13):
   `final/v2/TEST_PLAN.json`, sha256
   `72c84da5a31877fa5c8c883d2797381e800a39c39331cd8b52e675e94159a2dc`.
   - **Test data.** `data/build_jun15`: 288 BTC 5m markets of 2026-06-15, test rows sha256
@@ -200,3 +200,10 @@ classified directional (T6); no invalidating exploit flag (T5); ex-top-5 / ex-to
     - D10 sensitivity, reported only: `final/v2/d10_book_valid.py` on those results.
     - The val dry run of the same settings (Aug 23, `final/v2/dryrun/`) completed 168 of 168 runs.
       It reproduced the training-time val P&L of every RL seed exactly.
+- 2026-10-15 22:18–22:35 UTC: **v2 test run once** (`MM_FINAL=1 final/run_test.py --plan
+  final/v2/TEST_PLAN.json --split 2 --results-dir final/v2/results`). Run
+  `test-2026-10-15T221819+0000` completed 168 of 168 runs; there was no crash and no rerun.
+  - **Result: FAIL.** RL minus fair_value is −495.16, 95% CI [−1,609.81, +550.93].
+  - Report: `final/RESULTS_V2.md`.
+  - The 22:17 timestamp of the freeze entry above was corrected from a mistyped 22:22 before
+    the run finished. The hash and content are unchanged.
