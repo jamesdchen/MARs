@@ -27,7 +27,7 @@ Everything is reproducible from the scripts in this folder (see "Files" at the e
      (+0.21 ¢).
    - The source is the counterparty, not the spread. Politics takers are mostly uninformed at minute-to-hour
      horizons. Crypto takers trade on Binance moves, which have no analogue here. The politics 5-min adverse
-     selection is 0.36 ¢; crypto's is about 1.7 ¢ against the trade-implied mid.
+     selection is 0.36 ¢; crypto's is about 2.1 ¢ against the trade-implied mid.
 2. **Revenue split, all makers in the 60 markets, per day:**
    - Spread net of 5-min adverse selection: **≈ $8.0k**.
    - Maker rebates: **≈ $5.2k** (25% of the 4–5% politics/economics taker fee; geopolitics has no fee).
@@ -106,7 +106,7 @@ Selection:
 | `rewardsMaxSpread` (¢) | 2.5–6.5 | 2.5–4.5 | 2.5–6.5 |
 | `rewardsMinSize` (shares) | 50–200 | 200 | 50–200 |
 | current daily reward pool (active markets) | $5,993 | $2,302 | $2,962 |
-| holding rewards | 15 of 40 active (2028 and midterm markets, "out before 2027") | 0 | some ("out before 2027") |
+| holding rewards (active markets) | 13 (2028 nominations and midterm markets) | 0 | 3 (Putin / Xi out before 2027, China invades Taiwan) |
 
 Notes:
 - **Fees.** The fee is `C·rate·p(1−p)`, paid by takers only. The rebate is 25% of the fee-equivalent of each
@@ -324,7 +324,8 @@ jump-weighted adverse selection.
 - Fills in the last hour were break-even. 149 fills after the gamma `closedTime` (late UMA settlement) earned
   about 9 ¢, which is free money for anyone still quoting.
 - The main resolution risks are:
-  - a binary that flips at the final hour (Brazil round 1: four candidate markets resolved No within hours);
+  - a binary that flips in the final hours, as on election nights (Brazil round 1 resolved six of our markets within
+    a day);
   - UMA disputes and late settlement, which tie up capital;
   - the drop of the reward pool at close.
 
@@ -340,7 +341,7 @@ jump-weighted adverse selection.
 
 | need | source | status |
 |---|---|---|
-| L2 book at 1 s, all levels, with deltas | `polyrec` with `recorder_politics.toml` (+ `run_recorder.py`: the UA patch needed for CLOB REST from aiohttp) | working; about 15 MB/h raw for 40 markets |
+| L2 book at 1 s, all levels, with deltas | `polyrec` with `recorder_politics.toml` (+ `run_recorder.py`: the UA patch needed for CLOB REST from aiohttp) | working; about 7 MB/h (books + raw events) for 40 markets, about 3% of a core |
 | queue position | **No L3 in the public feed**: the ws `price_change.hash` is a 20-byte value that differs between the two legs of one change, so it is not the order hash. Estimate it as `mm.h` does: join at the shown size, at-price prints consume it, cancels ahead pro rata. Politics books change slowly (about 30 touch-size changes per hour), so the estimate is much tighter than for crypto. | method exists in `mm.h` (central model) |
 | fills with maker and taker identity and exact block time | `onchain/extract.py` (no `--slim` to keep `order_hash`); `--calldata` adds order creation time and original size | working; minutes per day for 60 markets |
 | scheduled events (FOMC, polls, debates, election nights) | calendar file | to build (small) |
@@ -356,8 +357,8 @@ jump-weighted adverse selection.
   per market-day.
 - **Recommendation: ≥ 4 weeks of continuous recording (Oct 16 → Nov 13).** That window includes the Oct 25
   Brazil runoff, the Oct 28 FOMC and the Nov 3 US midterms. Hold out one scheduled event per category as
-  test. Record about 100 markets rather than 40: the recorder uses about 5% of a core and well under
-  1 GB/day.
+  test. Record about 100 markets rather than 40: the recorder uses about 3% of a core and about
+  0.2 GB/day for 40 markets.
 
 ### 7.2 Extending the C env (`mm.h` is data-source agnostic)
 
