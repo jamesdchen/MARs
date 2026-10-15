@@ -92,6 +92,7 @@ FLAGS = {
     'dt': (('env', 'kw', 'dt'), float),
     'Q': (('env', 'kw', 'Q'), float),
     'mark_mode': (('env', 'kw', 'mark_mode'), int),
+    'off_prior': (('policy', 'off_prior'), float),  # MLP: initial logit bonus of 'off' (absent = 0)
 }
 
 

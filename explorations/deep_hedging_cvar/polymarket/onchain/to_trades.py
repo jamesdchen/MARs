@@ -12,7 +12,9 @@ trades.parquet schema (identical dtypes, writer copied from data/fetch_trades.py
   equals usdc/shares of that maker fill), size (float32 shares), is_taker (bool: OrderFilled whose taker is the
   exchange contract), aggressor_up (int8, per tx from the taker leg in the Up frame: Down BUY = Up SELL),
   tx (fixed_size_binary(32)).
-One OrderFilled = one data-api row (takerOnly=false): one taker leg + one leg per maker order.
+One OrderFilled = one data-api row (takerOnly=false): one taker leg + one leg per maker order, except that the
+data-api omits maker legs below 0.01 shares (dust from rounding; ~1 in 40k maker legs). They are dropped here
+too unless --keep-dust is given; the taker leg keeps its full size either way, as in the data-api.
 
 markets.parquet: same 36 columns as data/raw/markets.parquet. n_taker / n_fills count the legs in this output,
 and `truncated` is True when the converted date range does not cover the market's whole trading lifetime
@@ -35,9 +37,14 @@ import extract
 import markets as M
 
 
-def convert(fills: pd.DataFrame, tokmap: pd.DataFrame) -> pd.DataFrame:
+DUST = 0.01   # the data-api omits maker legs below 0.01 shares (0 of 434k maker legs in data/raw are < 0.01)
+
+
+def convert(fills: pd.DataFrame, tokmap: pd.DataFrame, keep_dust: bool = False) -> pd.DataFrame:
     tm = tokmap.drop_duplicates("token_id").set_index("token_id")
     f = fills[fills.token_id.isin(tm.index)]
+    if not keep_dust:
+        f = f[(f.role == "taker") | (f["size"] >= DUST - 1e-9)]
     oi = tm.outcome_idx.loc[f.token_id].values.astype(np.int8)
     t = pd.DataFrame(dict(
         slug=tm.slug.loc[f.token_id].values, tx=f.tx_hash.str.lower().values, timestamp=f.block_time.values.astype(np.int64),
@@ -54,8 +61,9 @@ def convert(fills: pd.DataFrame, tokmap: pd.DataFrame) -> pd.DataFrame:
     return t.drop(columns="log_index").reset_index(drop=True)
 
 
-def write_trades(t: pd.DataFrame, path: Path):
-    """Byte-for-byte the writer of data/fetch_trades.py (schema, dictionary slug, zstd-19)."""
+def write_trades(t: pd.DataFrame, path: Path, zstd_level: int = 9):
+    """The writer of data/fetch_trades.py (same schema and dictionary slug; it uses zstd-19, which costs ~80 s
+    per day of crypto fills, so the level is a parameter)."""
     slugs = pd.Categorical(t.slug)
     txbuf = b"".join(bytes.fromhex(x[2:]) for x in t.tx)
     tbl = pa.table({
@@ -71,7 +79,8 @@ def write_trades(t: pd.DataFrame, path: Path):
     })
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(".tmp")
-    pq.write_table(tbl, tmp, compression="zstd", compression_level=19, use_dictionary=["slug"], row_group_size=1 << 20)
+    pq.write_table(tbl, tmp, compression="zstd", compression_level=zstd_level, use_dictionary=["slug"],
+                   row_group_size=1 << 20)
     tmp.replace(path)
 
 
@@ -132,6 +141,9 @@ def main():
     ap.add_argument("--start", required=True)
     ap.add_argument("--end", required=True)
     ap.add_argument("--slug-regex", default=M.CRYPTO_RE, help="keep markets whose slug matches")
+    ap.add_argument("--keep-dust", action="store_true",
+                    help="keep maker legs < 0.01 shares (on-chain truth; the data-api drops them)")
+    ap.add_argument("--zstd-level", type=int, default=9, help="data/raw/trades.parquet used 19 (slow)")
     ap.add_argument("--out")
     ap.add_argument("--markets-out")
     args = ap.parse_args()
@@ -145,10 +157,10 @@ def main():
     if missing:                               # e.g. complement-token legs of kept txs outside the day's map
         tokmap = pd.concat([tokmap, g.lookup_tokens(missing)]).drop_duplicates("token_id")
     tokmap = M.filter_slug(tokmap, args.slug_regex)
-    t = convert(fills, tokmap)
+    t = convert(fills, tokmap, args.keep_dust)
     tag = f"{args.start}_{args.end}"
     out = Path(args.out) if args.out else src / f"trades_{tag}.parquet"
-    write_trades(t, out)
+    write_trades(t, out, args.zstd_level)
     t0, t1 = C.utc_ts(args.start), C.utc_ts(args.end) + 86400
     mk = markets_table(sorted(t.slug.unique()), t, t0, t1, g)
     mout = Path(args.markets_out) if args.markets_out else src / f"markets_{tag}.parquet"

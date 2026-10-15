@@ -87,7 +87,7 @@ class MLPPolicy(nn.Module):
     recurrent = False
 
     def __init__(self, env=None, obs_size=None, nvec=None, hidden=128, layers=2,
-                 act='tanh', shared=False):
+                 act='tanh', shared=False, off_prior=0.0):
         super().__init__()
         self.obs_size, self.nvec = _space_dims(env, obs_size, nvec)
         self.hidden_size = hidden
@@ -97,6 +97,12 @@ class MLPPolicy(nn.Module):
         self.critic_trunk = None if self.shared else _trunk(self.obs_size, hidden, layers, act)
         self.actor_head = _ortho(nn.Linear(hidden, sum(self.nvec)), 0.01)
         self.value_head = _ortho(nn.Linear(hidden, 1), 1.0)
+        if off_prior:
+            # 'off' prior: raise the initial logit of choice 0 (off) of the two price
+            # heads, e.g. 2.0 -> P(off) ~ 0.55 per head instead of 1/7 (rounds.py R2)
+            with torch.no_grad():
+                for h in (0, 1):
+                    self.actor_head.bias[sum(self.nvec[:h])] += float(off_prior)
 
     def forward_eval(self, obs, state=None):
         x = obs.float()

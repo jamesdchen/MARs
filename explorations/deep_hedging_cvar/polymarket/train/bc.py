@@ -175,6 +175,9 @@ def main():
     p.add_argument('--teacher', default=None, help="teacher name (real: a baselines.py name, default "
                    "fair_value; stand-in: 'standin')")
     p.add_argument('--teacher-params', default=None, help='JSON file of teacher parameters')
+    p.add_argument('--teacher-source', default='tuned', choices=['tuned', 'tuned_active', 'default'],
+                   help="real env: parameters from baselines/tuned.json (primary tuning), "
+                        "tuned_active.json (activity-constrained, D1.2) or the baseline's defaults")
     p.add_argument('--env-kw', nargs='*', help='env kwargs key=value for the collection env')
     p.add_argument('--num-envs', type=int, default=1024)
     p.add_argument('--steps', type=int, default=1024, help='steps per env to collect')
@@ -203,6 +206,12 @@ def main():
     torch.set_num_threads(a.threads)
     adapter = get_adapter(a.env)
     params = json.load(open(a.teacher_params)) if a.teacher_params else None
+    if params is None and a.teacher_source != 'tuned' and a.env != 'standin':
+        if a.teacher_source == 'default':
+            params = {}
+        else:
+            src = os.path.join(os.path.dirname(HERE), 'baselines', f'{a.teacher_source}.json')
+            params = json.load(open(src))[a.teacher or 'fair_value']['best_params']
     teacher_name = a.teacher or ('standin' if adapter.name == 'standin' else 'fair_value')
     env_kw = {}
     for it in a.env_kw or []:
@@ -236,7 +245,7 @@ def main():
     os.makedirs(os.path.dirname(os.path.abspath(a.out)), exist_ok=True)
     torch.save({'policy': policy.state_dict(), 'policy_kwargs': pk, 'obs_size': adapter.obs_size,
                 'nvec': list(adapter.nvec), 'cfg': {'env': {'backend': adapter.name, 'kw': env_kw}},
-                'bc': {'teacher': teacher_name, 'teacher_params': params, 'samples': int(acts.shape[0]),
+                'bc': {'teacher': teacher_name, 'teacher_source': a.teacher_source, 'teacher_params': params, 'samples': int(acts.shape[0]),
                        'collect_seconds': t_col, 'teacher_action_counts': teacher_hist, 'history': hist,
                        'value': a.value, 'gamma': a.gamma, 'train_eval': tr_eval, 'args': vars(a)}},
                a.out)

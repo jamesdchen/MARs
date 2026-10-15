@@ -117,6 +117,25 @@ class OrderBook:
         self.dirty = True
         return True
 
+    def prune_better_than(self, is_bid: bool, limit) -> list:
+        """Remove levels strictly better than `limit` (bids above / asks below; limit None = whole side).
+
+        Used when a price_change reports the exchange's best bid/ask after the change and our book has
+        levels beyond it: those were consumed by a trade whose follow-up `book` event has not arrived
+        yet. Returns the removed prices."""
+        if is_bid:
+            gone = [p for p in self.bids if limit is None or p > limit]
+            for p in gone:
+                del self.bids[p]
+        else:
+            gone = [p for p in self.asks if limit is None or p < limit]
+            for p in gone:
+                del self.asks[p]
+        if gone:
+            self._recompute_best()
+            self.dirty = True
+        return gone
+
 
 # ---------------------------------------------------------------------- helpers
 def mirror(bids: dict, asks: dict) -> tuple[dict, dict]:

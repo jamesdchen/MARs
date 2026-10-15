@@ -129,6 +129,14 @@ def grid(name: str, base: dict) -> list[dict]:
             c.update({f"flow.impact.{L}.kappa": imp0[L] * 0.5 for L in LENS})
             c["flow.actual_book_tracking"] = trk
             cands.append(c)
+    elif name == "refill":
+        for rf, k in itertools.product((0.5, 0.8, 0.95), (1.0, 3.0)):
+            c = {f"flow.lookahead.{L}": {"h": 5, "kappa": k} for L in LENS}
+            c.update({f"flow.informed.{L}.w": 0.0 for L in LENS})
+            c.update({f"flow.impact.{L}.kappa": imp0[L] * 0.5 for L in LENS})
+            c["flow.refill_prob"] = rf
+            cands.append(c)
+        cands = cands[1:]
     elif name == "refine2":
         for h, k, trk in itertools.product((10, 20, 40), (3.0, 10.0), (0.5, 0.25)):
             c = {f"flow.lookahead.{L}": {"h": h, "kappa": k} for L in LENS}
@@ -177,7 +185,7 @@ def main():
         with open(LOG, "a") as f:
             f.write(json.dumps(rec) + "\n")
         short = {k.replace("flow.", ""): v for k, v in cand.items()
-                 if k.endswith(".5m") or k.endswith("5m.kappa") or k.endswith("tracking")}
+                 if k.endswith(".5m") or k.endswith("5m.kappa") or k.endswith("tracking") or k.endswith("refill_prob")}
         top = sorted(parts.items(), key=lambda kv: -kv[1])[:4]
         print(f"[{i}] loss {L:7.1f} {short} | fv mk {sim['fair_value|mk5']:.2f}/{sim['fair_value|mk30']:.2f}/"
               f"{sim['fair_value|mk60']:.2f} st vol {sim['sym_touch|fill_vol']:.0f} cap {sim['sym_touch|capture']:.2f} "

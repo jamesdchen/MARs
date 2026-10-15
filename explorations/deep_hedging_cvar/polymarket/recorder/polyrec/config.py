@@ -64,7 +64,8 @@ class ReconcileConfig:
     mode: str = "book"             # "book": GET /book per token; "books": POST /books batches
     batch: int = 40                # tokens per POST /books
     concurrency: int = 4
-    on_bba_mismatch: bool = True   # early reconcile when price_change best_bid/ask disagree with our book
+    prune_on_bba: bool = True      # drop our levels beyond the exchange's best bid/ask (stale after trades)
+    on_bba_mismatch: bool = True   # early reconcile when we MISS a level the exchange reports as best
     min_gap_s: float = 10.0        # minimum spacing of early reconciles per token
     size_tol: float = 1e-6
 

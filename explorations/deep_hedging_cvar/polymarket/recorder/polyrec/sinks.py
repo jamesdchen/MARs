@@ -14,6 +14,8 @@ final files plus any parts not yet absorbed.
 """
 from __future__ import annotations
 
+import contextlib
+import fcntl
 import json
 import logging
 import os
@@ -30,6 +32,19 @@ from .schema import BOOK_SCHEMA
 
 log = logging.getLogger("polyrec.sinks")
 MANIFEST_KEY = b"polyrec_parts"
+
+
+@contextlib.contextmanager
+def file_lock(root: Path, name: str):
+    """Inter-process advisory lock per dataset (compaction vs backfill_winners.py rewrites)."""
+    p = Path(root) / f".lock-{name}"
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with open(p, "a+") as fh:
+        fcntl.flock(fh.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
 
 
 def hour_key(t: float) -> str:
@@ -100,7 +115,7 @@ class PartSink:
         return sorted(hours)
 
     def compact(self, hour: str) -> Path | None:
-        with self._lock:
+        with self._lock, file_lock(self.root, self.name):
             parts_dir = self.day_dir(hour) / "_parts"
             parts = sorted(parts_dir.glob(f"{self.name}_{hour}__*.parquet")) if parts_dir.exists() else []
             final = self.final_path(hour)
@@ -332,6 +347,7 @@ class RawLog:
         self.bytes_out_closed = 0
         self.lines = 0
         self.paused = False   # set by the disk guard
+        self.hour_lo = self.hour_hi = 0.0
 
     def _open(self, hour: str):
         import zstandard as zstd
@@ -345,10 +361,11 @@ class RawLog:
     def write(self, line: bytes, t: float):
         if not self.enabled or self.paused:
             return
-        h = hour_key(t)
-        if h != self.hour:
+        if not (self.hour_lo <= t < self.hour_hi):
             self.close()
-            self._open(h)
+            self._open(hour_key(t))
+            self.hour_lo = t // 3600 * 3600
+            self.hour_hi = self.hour_lo + 3600
         self.buf.append(line)
         self.buf_bytes += len(line) + 1
         self.lines += 1
@@ -386,6 +403,7 @@ class RawLog:
             pass
         self.writer = self.fh = None
         self.hour = None
+        self.hour_lo = self.hour_hi = 0.0
 
     def bytes_out(self) -> int:
         cur = 0
@@ -398,21 +416,33 @@ class RawLog:
 
 
 def iter_raw(path: Path):
-    """Yield decoded JSON objects from a raw log file (tolerates a truncated tail)."""
+    """Yield decoded JSON objects from a raw log file. Tolerates a torn tail (hard crash): everything
+    up to the last flushed zstd block is returned. Handles concatenated frames."""
     import orjson
     import zstandard as zstd
+    dctx = zstd.ZstdDecompressor()
+    dobj = dctx.decompressobj()
+    pending = b""
     with open(path, "rb") as fh:
-        rd = zstd.ZstdDecompressor().stream_reader(fh, read_across_frames=True)
-        pending = b""
         while True:
-            try:
-                chunk = rd.read(1 << 20)
-            except zstd.ZstdError:
-                break
+            chunk = fh.read(1 << 16)
             if not chunk:
                 break
-            pending += chunk
-            *lines, pending = pending.split(b"\n")
-            for ln in lines:
-                if ln:
-                    yield orjson.loads(ln)
+            while chunk:
+                try:
+                    out = dobj.decompress(chunk)
+                except zstd.ZstdError:
+                    out, chunk = b"", None
+                if out:
+                    pending += out
+                    *lines, pending = pending.split(b"\n")
+                    for ln in lines:
+                        if ln:
+                            yield orjson.loads(ln)
+                if chunk is None:
+                    return
+                if getattr(dobj, "eof", False):          # frame complete: continue with the next one
+                    chunk = dobj.unused_data
+                    dobj = dctx.decompressobj()
+                else:
+                    chunk = b""

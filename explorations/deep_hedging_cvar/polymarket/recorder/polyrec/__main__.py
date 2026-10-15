@@ -79,14 +79,14 @@ def main(argv=None):
             s.pre_open_s = a.pre_open
     if a.settle_delay is not None:
         cfg.trades.settle_delay_s = a.settle_delay
-    try:
-        import uvloop  # optional, lowers per-frame overhead
-        uvloop.install()
-    except ImportError:
-        pass
     from .recorder import Recorder
     rec = Recorder(cfg, run_id=a.run_id, duration_s=a.duration)
-    return asyncio.run(rec.run())
+    try:
+        import uvloop  # optional: lower per-frame overhead
+        factory = uvloop.new_event_loop
+    except ImportError:
+        factory = None
+    return asyncio.run(rec.run(), loop_factory=factory)
 
 
 if __name__ == "__main__":

@@ -171,21 +171,17 @@ class Recorder:
                 p = float(it["price"])
                 s = float(it["size"])
                 st["pc_items"] += 1
-                if b.apply_level(is_bid, p, s, ts):
-                    self.dirty.add(tok)
                 if b.rec_buf is not None and len(b.rec_buf) < REC_BUF_MAX:
                     b.rec_buf.append((EV_LEVEL, ts, is_bid, p, s))
-                if b.initialized:
+                if b.initialized:      # deltas without a base snapshot are meaningless: skip them
+                    if b.apply_level(is_bid, p, s, ts):
+                        self.dirty.add(tok)
                     ebb = it.get("best_bid")
-                    if ebb is not None and (parse_best(ebb, True) != b.best_bid
-                                            or parse_best(it.get("best_ask"), False) != b.best_ask):
-                        tok.n_bba += 1
-                        st["bba_mismatch"] += 1
-                        if (self.cfg.reconcile.on_bba_mismatch and not tok.rec_inflight
-                                and now - tok.last_rec_start >= self.cfg.reconcile.min_gap_s):
-                            tok.next_rec = 0.0
-                            tok.rec_trigger = "bba"
-                    st["bba_checks"] += 1
+                    if ebb is not None:
+                        st["bba_checks"] += 1
+                        eb, ea = parse_best(ebb, True), parse_best(it.get("best_ask"), False)
+                        if eb != b.best_bid or ea != b.best_ask:
+                            self._bba_fix(tok, eb, ea, ts, now)
             e.pop("market", None)
         elif et == "book":
             st["book"] += 1
@@ -223,6 +219,40 @@ class Recorder:
             e["r"] = r_ms
             e["c"] = shard.id
             self.raw.write(orjson.dumps(e), now)
+
+    def _bba_fix(self, tok: Token, eb, ea, ts: int, now: float):
+        """The exchange's best bid/ask after this change disagree with our book.
+
+        Our extra levels beyond the exchange's best are stale (consumed by a trade; the exchange's
+        follow-up `book` event repairs them 50 ms - 1 s later), so they are pruned right away. A level
+        we are MISSING cannot be repaired from top-of-book alone (size unknown): that triggers an early
+        REST reconcile."""
+        b = tok.book
+        st = self.st
+        tok.n_bba += 1
+        st["bba_mismatch"] += 1
+        missing = False
+        for is_bid, exp in ((True, eb), (False, ea)):
+            got = b.best_bid if is_bid else b.best_ask
+            if got == exp:
+                continue
+            stale = got is not None and (exp is None or (got > exp if is_bid else got < exp))
+            if stale and self.cfg.reconcile.prune_on_bba:
+                gone = b.prune_better_than(is_bid, exp)
+                st["bba_pruned_levels"] += len(gone)
+                if b.rec_buf is not None:
+                    b.rec_buf.extend((EV_LEVEL, ts, is_bid, p, 0.0) for p in gone)
+                got = b.best_bid if is_bid else b.best_ask
+            if got != exp:
+                missing = True
+        if b.dirty:
+            self.dirty.add(tok)
+        if missing:
+            st["bba_missing"] += 1
+            if (self.cfg.reconcile.on_bba_mismatch and not tok.rec_inflight
+                    and now - tok.last_rec_start >= self.cfg.reconcile.min_gap_s):
+                tok.next_rec = 0.0
+                tok.rec_trigger = "bba"
 
     def _flush_tick(self, now: float):
         """Close tick self.next_tick: one row per changed, live book, stamped with that second."""
@@ -725,6 +755,7 @@ class Recorder:
                 "reconcile_errors": st["reconcile_error"],
                 "bba_checks": st["bba_checks"], "bba_mismatch": st["bba_mismatch"],
                 "bba_mismatch_rate": st["bba_mismatch"] / st["bba_checks"] if st["bba_checks"] else 0.0,
+                "bba_pruned_levels": st["bba_pruned_levels"], "bba_missing": st["bba_missing"],
                 "mirror_checks": st["mirror_checks"],
                 "mirror_mismatch_rate": st["mirror_mismatch"] / st["mirror_checks"] if st["mirror_checks"] else 0.0,
                 "rows": st["rows"], "rows_crossed_rate": st["rows_crossed"] / st["rows"] if st["rows"] else 0.0,

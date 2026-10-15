@@ -222,11 +222,17 @@ class RealAdapter:
         """Resolved env parameters (env.params: defaults + overrides, without the
         per-run split/seed) and sha256 of the env code and binding (part of the
         config hash, so runs on a changed env never pool with old ones)."""
-        p = self.mod.params(**{k: v for k, v in kw.items() if k != 'split'})
+        p = self.mod.params(**{k: v for k, v in kw.items() if k not in ('split', 'data_dir')})
         p.pop('split', None)
         files = ['mm.h', 'binding.c', 'env.py'] + [f for f in os.listdir(PM)
                                                  if f.startswith('binding') and f.endswith('.so')]
-        return {'params': p, 'code': {f: sha256_file(os.path.join(PM, f)) for f in sorted(files)}}
+        code = {f: sha256_file(os.path.join(PM, f)) for f in sorted(files)}
+        if kw.get('data_dir'):  # another data build (e.g. the simulator's): pin it too
+            d = kw['data_dir']
+            code.update({f'data:{f}': sha256_file(os.path.join(d, f)) for f in ('markets.bin', 'meta.json')
+                         if os.path.exists(os.path.join(d, f))})
+            p['data_dir'] = os.path.abspath(d)
+        return {'params': p, 'code': code}
 
     def split_markets(self, split):
         _no_test(split)
@@ -241,12 +247,18 @@ class RealAdapter:
 
     def make_train(self, num_envs, seed=0, **kw):
         kw.pop('split', None)
+        if kw.get('data_dir'):  # same observation layout required (rounds.py R5: sim pretraining)
+            other = json.load(open(os.path.join(kw['data_dir'], 'feat_meta.json')))['column_index']
+            if other != self.col:
+                raise ValueError(f"{kw['data_dir']}: feature layout differs from data/build")
         return self.mod.MmEnv(num_envs=num_envs, seed=seed, split=0, **kw)
 
     def make_eval(self, split=1, seed=0, **kw):
         _no_test(split)
         for k in ('split', 'fixed_market', 'fixed_start', 'cycle_stride', 'allow_test', 'len_mask'):
             kw.pop(k, None)
+        if kw.pop('data_dir', None):  # evaluation is always on the replay (data/build)
+            raise ValueError('evaluation runs on data/build only; pretraining runs need --no-val --no-train-eval')
         mk = self.split_markets(split)
         return MarketSetEnv(self.mod, mk, split, seed=seed, len_cols=self.len_cols, **kw), len(mk)
 

@@ -1,0 +1,17 @@
+{
+  "_doc": "Day -> split for merge.py (see polyrec/splits.py). 'frozen' must equal data/build.py SPLIT_DAYS and never changes. Recorded days use 'days' (single dates or 'a..b' ranges; value train|val|test|exclude|auto) else 'default'. 'auto' = cycle[(day - anchor) mod len]; an 8-day cycle rotates val/test through the weekdays. Every assignment merge.py uses is pinned in lock_file; a day that was ever test can never move.",
+  "frozen": {
+    "2026-08-20": "train",
+    "2026-08-21": "train",
+    "2026-08-22": "train",
+    "2026-08-23": "val",
+    "2026-08-24": "test"
+  },
+  "days": {},
+  "default": "auto",
+  "auto": {
+    "anchor": "2026-10-15",
+    "cycle": ["train", "train", "train", "train", "train", "train", "val", "test"]
+  },
+  "lock_file": "split_lock.json"
+}

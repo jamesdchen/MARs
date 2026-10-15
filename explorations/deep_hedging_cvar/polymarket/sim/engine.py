@@ -218,6 +218,7 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
     la_kv = float(la["kappa"]) * kn["lookahead_mult"]
     la_on = la_h > 0 and la["kappa"] > 0
     trk = float(model.raw["flow"].get("actual_book_tracking", 1.0))      # actual book: snapshot + trk*(target-snap)
+    r_refill = float(model.raw["flow"].get("refill_prob", 0.0))
     fee_r = model.fees["taker_fee_rate"] * kn["fee_rate_mult"] * (1 - kn["fee_free"])
     imp = model.impact[li]
     k_imp = imp["kappa"] * kn["impact_mult"]
@@ -309,7 +310,20 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
         return sz[:, :5], sz[:, 5:]
 
     def compact(px, sz, side, R, t, refill=True):
-        """Remove exhausted levels (shift left) and append fresh levels behind the last one."""
+        """Remove exhausted levels (shift left) and append fresh levels behind the last one. After a print
+        (refill=True), an exhausted level that still has a live price is first replenished in place with prob
+        r_refill (competing makers re-post at the touch), with a fresh size from the library."""
+        if refill and r_refill > 0:
+            ex = (sz <= EPS) & ((px > 0) if side == 0 else (px < 1000))
+            if ex.any():
+                ri, ki = np.nonzero(ex & (rng.random(sz.shape) < r_refill))
+                if len(ri):
+                    lib_ = model.size_lib[(li, 2, int(tb_row[t]))]
+                    for g in np.unique(cgm[R[ri]]):
+                        sel = cgm[R[ri]] == g
+                        lg = model.size_lib[(li, int(g), int(tb_row[t]))]
+                        draw = lg[rng.integers(0, len(lg), sel.sum()), ki[sel] + (0 if side == 0 else 5)]
+                        sz[ri[sel], ki[sel]] = np.where(draw > 0, draw, np.exp(mu_sz[ki[sel]])) * depth_mult[R[ri[sel]]]
         empty = sz <= EPS
         order = np.argsort(empty, axis=1, kind="stable")
         px = np.take_along_axis(px, order, 1)

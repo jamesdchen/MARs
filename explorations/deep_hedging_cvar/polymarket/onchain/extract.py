@@ -5,6 +5,7 @@ archive RPCs into per-day parquet partitions.
   python extract.py --start 2026-08-21 --end 2026-08-21 --market-set crypto-updown --max-event-start 2026-08-23
   python extract.py --start 2026-08-21T01:50 --end 2026-08-21T02:15 --slugs bnb-updown-5m-1787277900 --out data/val_bnb
   python extract.py --from-block 92381000 --to-block 92382000 --all
+  python extract.py --start 2026-06-01 --end 2026-08-31 --events OrderFilled     # months: fills only, ~40% less
 
 How it works
   * Block window: dates (inclusive, UTC) or datetimes (end exclusive) -> blocks via a cached block->time map
@@ -202,8 +203,9 @@ def part_path(out: Path, table: str, date: str, lo: int, hi: int) -> Path:
 # ============================================================================================ fetching
 class Extractor:
     def __init__(self, pool: rpc.Pool, clock: rpc.BlockClock, out: Path, events: list[str],
-                 verify_frac: float = 0.02, max_tries: int = 20):
+                 verify_frac: float = 0.05, max_tries: int = 20, drop_cols: tuple = ()):
         self.pool, self.clock, self.out = pool, clock, out
+        self.drop_cols = list(drop_cols)
         self.topics = [C.TOPICS[e] for e in events]
         self.verify_frac, self.max_tries = verify_frac, max_tries
         self.ledger = Ledger(out)
@@ -289,10 +291,13 @@ class Extractor:
         cols, n_logs, n_kept, used = self.fetch_segment(lo, hi, dec)
         counts = {}
         for name in SCHEMAS:
-            tbl = to_table(name, cols[name])
+            tbl = self._drop(to_table(name, cols[name]))
             counts[name] = tbl.num_rows
+            pp = part_path(self.out, name, date, lo, hi)
             if tbl.num_rows:
-                C.write_parquet_atomic(tbl, part_path(self.out, name, date, lo, hi), compression_level=3)
+                C.write_parquet_atomic(tbl, pp, compression_level=3)
+            elif pp.exists():          # stale part from a run with another filter
+                pp.unlink()
         rec = dict(type="seg", date=date, lo=lo, hi=hi, fp=fp, logs=n_logs, kept_logs=n_kept, **counts,
                    secs=round(time.time() - t0, 2), eps=used, t=int(time.time()))
         self.ledger.append(rec)
@@ -302,6 +307,9 @@ class Extractor:
             self.tot["kept"] += n_kept
             self.tot["segs"] += 1
         return rec
+
+    def _drop(self, tbl: pa.Table) -> pa.Table:
+        return tbl.drop_columns([c for c in self.drop_cols if c in tbl.column_names])
 
     def seg_done(self, date, lo, hi, fp) -> bool:
         r = self.ledger.segs.get((date, lo, hi, fp))
@@ -322,7 +330,7 @@ class Extractor:
                 tbl = pa.concat_tables([pq.read_table(p) for p in parts])
                 tbl = tbl.sort_by([("block", "ascending"), ("log_index", "ascending")])
             else:
-                tbl = SCHEMAS[name].empty_table()
+                tbl = self._drop(SCHEMAS[name].empty_table())
             bt = tbl.column("block_time").to_numpy()
             blk = tbl.column("block").to_numpy()
             miss = bt < 0
@@ -393,7 +401,7 @@ def segments(lo: int, hi: int, seg: int) -> list[tuple[int, int]]:
 def day_tokens(args, date: str):
     """-> (token map DataFrame or None, fingerprint)."""
     import markets as M
-    ev = ",".join(args.events)
+    ev = ",".join(args.events) + ("|slim" if args.slim else "")
     if args.all:
         return None, hashlib.sha1(f"all|{ev}".encode()).hexdigest()[:12]
     if args.tokens:
@@ -424,12 +432,16 @@ def main():
     g.add_argument("--all", action="store_true", help="no market filter (~5M fills/day, ~10 GB JSON/day)")
     ap.add_argument("--max-event-start", help="crypto-updown: drop markets whose event starts at/after this date")
     ap.add_argument("--events", default="OrderFilled,OrdersMatched,FeeCharged")
+    ap.add_argument("--slim", action="store_true",
+                    help="drop order_hash (half of the fills bytes; only needed to link an order's fills across txs)")
     ap.add_argument("--out", help="output dir (default data/<set>)")
     ap.add_argument("--rpc", action="append", help="url[,conc[,span[,span_max[,rps[,max_batch]]]]]; repeatable (default: 3 keyless)")
     ap.add_argument("--workers", type=int, default=4, help="segments in flight (also capped by endpoint conc)")
     ap.add_argument("--seg", type=int, default=1000, help="checkpoint segment size in blocks")
-    ap.add_argument("--verify-frac", type=float, default=0.02, help="fraction of segments recounted elsewhere")
+    ap.add_argument("--verify-frac", type=float, default=0.05, help="fraction of segments re-fetched (10 blocks) and recounted")
     ap.add_argument("--calldata", action="store_true", help="also decode matchOrders calldata (orders/)")
+    ap.add_argument("--calldata-sample-frac", type=float, default=1.0, help="hash-sample of txs for --calldata")
+    ap.add_argument("--calldata-mode", choices=["auto", "txs", "blocks"], default="auto")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
     if args.from_block is None and not (args.start and args.end):
@@ -443,7 +455,8 @@ def main():
 
     pool = rpc.Pool.from_specs(args.rpc)
     clock = rpc.BlockClock(pool)
-    ex = Extractor(pool, clock, out, args.events, args.verify_frac)
+    ex = Extractor(pool, clock, out, args.events, args.verify_frac,
+                   drop_cols=("order_hash",) if args.slim else ())
     days = plan(clock, args)
     cpu0, t_start = time.process_time(), time.time()
 
@@ -456,7 +469,11 @@ def main():
         dr = ex.ledger.days.get(date)
         if dr and dr["fp"] == fp and (dr["lo"], dr["hi"]) == (lo, hi):
             print(f"{date}: already complete ({dr.get('fills')} fills)")
+            if args.calldata:          # still decode calldata for it, without recompacting
+                meta[date] = dict(lo=lo, hi=hi, full=False, fp=fp, left=0, t0=None)
             continue
+        if dr and dr["fp"] != fp:
+            print(f"{date}: WARNING filter changed ({dr['fp']} -> {fp}); the day is re-extracted and overwritten")
         segs = segments(lo, hi, args.seg)
         todo = [(a, b) for a, b in segs if not ex.seg_done(date, a, b, fp)]
         meta[date] = dict(lo=lo, hi=hi, full=full, fp=fp, left=len(todo), t0=None)
@@ -478,7 +495,7 @@ def main():
                   f"clock={s['clock']}", flush=True)
         if args.calldata:
             import calldata
-            calldata.run_day(out, date, pool, clock)
+            calldata.run_day(out, date, pool, clock, mode=args.calldata_mode, sample_frac=args.calldata_sample_frac)
 
     for date, m in meta.items():
         if m["left"] == 0:
@@ -507,7 +524,7 @@ def main():
                 t = ex.tot
                 print(f"  {t['segs']}/{len(work)} segs  {t['blocks']/el:.0f} blocks/s  {t['logs']/el:.0f} logs/s  "
                       f"cpu {100*(time.process_time()-cpu0)/el:.0f}%  "
-                      f"MB {sum(e.stats['bytes'] for e in pool.eps)/1e6:.0f}  "
+                      f"JSON MB {sum(e.stats['bytes'] for e in pool.eps)/1e6:.0f}  "
                       f"spans {[int(e.span) for e in pool.eps]}", flush=True)
     clock.save()
     el = time.time() - t_start
