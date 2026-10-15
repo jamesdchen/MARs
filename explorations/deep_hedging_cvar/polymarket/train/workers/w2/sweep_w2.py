@@ -38,6 +38,11 @@ CONFIGS = {
     'c07': {'inv_penalty': 1e-3},
     'c08': {'inv_penalty': 1e-2},
     'c09': {'markout_h': 300, 'hidden': 128, 'inv_penalty': 1e-3},
+    # added after the seed-1 look: 4h winners are directional (T6 > 1); push toward flat at close
+    'c10': {'inv_penalty': 3e-3},
+    'c11': {'close_inv_coef': 0.5},
+    'c12': {'close_inv_coef': 2.0},
+    'c13': {'inv_penalty': 3e-3, 'close_inv_coef': 1.0},
 }
 
 
@@ -51,6 +56,7 @@ def cmd(mask_name, cname, seed, steps=25e6, suffix=''):
         '--lr', repr(p['lr']), '--ent-coef', repr(p['ent_coef']), '--inv-penalty', repr(p['inv_penalty']),
         '--hidden', str(p['hidden']), '--timesteps', str(int(steps)),
         '--env-kw', f'data_dir={V2}', f'len_mask={MASKS[mask_name]}',
+        *(['--close-inv-coef', str(p['close_inv_coef'])] if 'close_inv_coef' in p else []),
         '--seed', str(seed), '--threads', '1', '--no-train-eval', '--variants', 'central_1s',
         '--out', out, '--tag', f'w2_{name}', '--ledger', LEDGER, '--quiet']
 
@@ -80,7 +86,7 @@ def main():
     jobs = []
     if a.what == 'sweep':
         # seed-major so every config gets a first seed early
-        for seed, m, c in itertools.product(a.seeds, a.masks, CONFIGS):
+        for seed, m, c in itertools.product(a.seeds, a.masks, [c for c in CONFIGS if c <= 'c09']):
             jobs.append(cmd(m, c, seed))
     else:
         suffix = '' if a.what == 'extra' else f'_{int(a.steps / 1e6)}M'
