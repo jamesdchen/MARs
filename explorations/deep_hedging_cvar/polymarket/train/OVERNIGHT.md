@@ -45,3 +45,30 @@ the mean of 3 seeds among D1.3-passing configs, then trained on 5 seeds at
 ## Rounds
 
 (Appended as each round finishes.)
+
+### R1: BC warm start (finished ~10:15 UTC). Not improved under D1.3.
+- 16 configs × 3 seeds. Half imitate the tuned fair_value quoter
+  (`baselines/tuned.json`), half the active one (`tuned_active.json`). After
+  imitation, PPO trains with a decaying KL penalty to the BC policy.
+- **The `tuned` teacher gives the only profitable RL policies so far**:
+  - seed means of +$110 to +$144 total on val, about +$0.45–0.58 per market;
+  - small SEs, for example 140.6 ± 7.8;
+  - but only 4.0–4.7 fills per market. That is below D1.3's threshold of 5,
+    so these policies can't be selected.
+  - They reproduce the low-activity, directional teacher.
+- The best D1.3-passing config is `c13_tuned_active`: −$147.7 ± 4.2 total.
+  That matches the main config.
+
+### R2: off-prior init (finished ~10:35 UTC). Not improved.
+- **A strong prior towards "off"** gives about 0 fills, i.e. it learns not to
+  quote: +$6 ± 6 total.
+- **A weak prior** (0.5, lr 2×): −$69 ± 109 total, 10 fills per market. This
+  is the best D1.3-passing result, but within noise of the previous best.
+
+### Stopping rule and D6 (10:50 UTC)
+- R1 and R2 both failed to improve, so `auto` stopped (D4 streak rule). That
+  happened before R7 ran.
+- D6, recorded after seeing these results, resumes with R7, then R3, R4, R5
+  (only if the sim gate passes), R6, then finalize, with the 15:30 deadline
+  unchanged.
+- The finalize step that had started was stopped.
