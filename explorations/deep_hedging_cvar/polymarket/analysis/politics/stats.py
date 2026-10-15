@@ -10,7 +10,7 @@ import pandas as pd
 HERE = Path(__file__).resolve().parent
 rng = np.random.default_rng(0)
 rows = []
-for SET in ("politics", "crypto"):
+for SET in [s for s in ("politics", "crypto", "crypto_more") if (HERE / f"data/maker_fills_{s}.parquet").exists()]:
     M = pd.read_parquet(HERE / f"data/maker_fills_{SET}.parquet")
     M["day"] = (M.block_time // 86400).astype(int)
     M["cl"] = M.slug + "|" + M.day.astype(str)
