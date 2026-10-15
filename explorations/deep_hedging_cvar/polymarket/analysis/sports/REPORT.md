@@ -3,23 +3,45 @@
 **Question:** is market making in sports markets more promising than in crypto up/down, where our replay study
 found no edge (`../../final/RESULTS.md`)? If so, where exactly, and what data would a faithful replay need?
 
-**Short answer: not clearly better per share, but better structured, and in specific places worth a replay.**
+**Short answer: not better per share for an average maker, but better structured, and there is one clearly
+profitable segment: two-sided in-play professionals.**
 
-Measured with the same keyless on-chain yardstick, makers in aggregate do worse in sports than in crypto up/down.
-In sports, spread capture is 0.6¢ vs 1.0¢ per share, rebates are 0.12¢ vs 0.20¢, and the 30-minute markout is
-about 0 pre-game and −0.8¢ in-play, against +0.7¢ for crypto. On the other hand, sports has three structural
-features crypto lacks:
-- a 1 s delay on marketable orders while makers can cancel freely;
-- a cheap, sharp, external fair value pre-game (Pinnacle, Smarkets and Kalshi agree with Polymarket to within
-  ~0.5¢);
-- roughly 30× more maker volume per market.
+On the same keyless on-chain yardstick (235 sports markets, Oct 2–14), sports makers in aggregate earn less than
+crypto up/down makers:
+- spread capture 0.6¢ vs 1.0¢ per share;
+- rebates 0.09–0.13¢ vs 0.20¢;
+- 30-minute markout −0.3¢ pre-game and −0.4¢ in-play, vs +0.7¢.
 
-The informed flow that hurts makers in sports is in-play, around scoring events: maker fills just before a ≥8¢ move
-mark out at −1.1¢ after 10 s. External exchanges cannot protect against it; Smarkets suspends on goals and reprices
-~60 s after Polymarket. **Promising:** pre-game soccer (UCL/EPL/La Liga), esports pre-match, NBA/NHL pre-game with
-thinner queues, prices 0.5–0.7, quoting against a Pinnacle/Smarkets anchor, and pulling quotes before the start.
-**Avoid:** in-play quoting without a sub-second score feed, NFL pre-game moneylines (queues of millions of shares
-at a 1¢ spread), and tails above 0.9.
+Pre-game makers keep a significant +0.25¢ at 1 min (SE 0.03), but it is gone by 5 min.
+
+Two features of sports change the picture:
+- **In-play two-sided wallets earn +1.6¢/share to resolution** including rebates (SE 0.6, 96M shares). That is about
+  $1.5M in 13 days on 235 markets, the only maker segment with a significantly positive result.
+- **One-sided "limit-order bettors" pay for it:** −3.4¢/share in-play (SE 1.2).
+
+The pick-off happens at scoring events. Maker fills followed within 60 s by a ≥8¢ move are 10% of in-play maker
+shares, and they lose 1.1/1.4/1.7¢ at 10 s/1 min/5 min.
+
+Structurally, sports offers what crypto lacks:
+- a 1 s delay on marketable orders, while makers cancel freely;
+- a cheap, sharp, external fair value pre-game: Pinnacle, Smarkets and Kalshi agree with Polymarket to within
+  ~0.5¢;
+- about 30× more maker volume per market.
+
+But external exchanges cannot protect anyone in-play: Smarkets suspends on goals and reprices ~60 s after
+Polymarket.
+
+**Where it is promising:**
+1. In-play two-sided quoting, with a sub-second score feed and automatic pulls on events. This is where the
+   incumbents make money, and the 1 s taker delay helps exactly this maker.
+2. Pre-game quoting 0.5–24 h before the start against a Pinnacle/Smarkets anchor, pulling quotes in the last
+   30 min. Edge is small (+0.1 to +0.5¢), with soccer (EPL/UCL) and favourites at 0.7–0.95 the least bad.
+
+**Avoid:**
+- one-sided resting size;
+- the last 30 min before the start and the first in-play hour without a feed;
+- NFL pre-game moneylines (queues of millions of shares at a 1¢ spread);
+- long in-play tails (3 h+ esports/tennis: −2.2¢).
 
 Everything here is train-free exploratory analysis. No file under `data/build_jun15` or any val/test set was touched.
 
@@ -28,7 +50,8 @@ Everything here is train-free exploratory analysis. No file under `data/build_ju
 | piece | what | where |
 |---|---|---|
 | census | gamma `/events?tag_id=100639` (sports "Games"), every event with endDate Oct 1–15 (22,340 closed events, 498k markets incl. open) | `scripts/census.py`, `out/census_summary.txt` |
-| on-chain fills | `onchain/extract.py --slugs` for 69 high-volume sports markets (games Oct 8–15: NFL, CFB, MLB, NHL, NBA, UCL, EPL, La Liga, ATP/WTA, CS2, LoL, Dota 2, Valorant, WNBA, MLS; 61 moneylines, 8 spreads/totals), blocks of 2026-10-02 → 10-14. 761 segments, ~38 min, ~90 GB JSON streamed, 51 MB kept. Markets with game start after 10-14 20:00 were dropped because their in-play falls outside the pull, leaving **65 markets, 281k maker legs, 130M maker shares, $61M taker notional, $1.06M taker fees** | `scripts/maker_econ.py`, `out/maker_econ.txt` |
+| on-chain fills, main sample | `onchain/extract.py --slugs` for 239 high-volume sports game markets (`out/sample_slugs_big.txt`; per league top-25 by volume, ≥$150k, games Oct 3–14; 23 leagues; moneylines plus 25 spreads/totals), blocks 2026-10-02 → 10-14. 6 workers, 761 segments, ~20 min, ~40 GB JSON streamed. Markets starting after 10-14 20:00 were dropped (their in-play is outside the pull), leaving **235 markets, 956k maker legs, 380M maker shares, $181M taker notional, $2.67M taker fees** | `scripts/maker_econ.py --big`, `out/maker_econ_big.txt` |
+| on-chain fills, first sample | the same for 69 markets (games Oct 8–15), leaving 65 markets: a robustness check with the same conclusions | `out/maker_econ.txt` |
 | crypto comparison | same extractor and same script on all crypto up/down, 2026-10-14 08:00–14:00 (865 markets, 331k maker legs) | `out/maker_econ_crypto.txt` |
 | live books | `recorder/polyrec` (generic source, `recorder_sports.toml`) on 18 sports markets from 19:42 UTC: UEL/UECL in-play, CS2/LoL in-play, NHL ×4, NBA ×2, CFB, NFL SEA@DEN moneyline/spread/total through kickoff | `scripts/live_books.py`, `out/live_books.txt` |
 | external odds | Smarkets exchange quotes every 3 s for 13 of those games (keyless) | `scripts/smarkets_poll.py`, `scripts/leadlag.py`, `out/leadlag.txt` |
@@ -53,8 +76,11 @@ Caveats:
 - This measures what the **incumbent** maker population earns. A new entrant has worse queue position.
   The crypto RL replay showed that this gap is what matters.
 - The touch proxy is noisy, and stale in thin markets.
-- Resolution markouts are dominated by 65 binary outcomes: the SE is 1.3¢ in-play and 6¢ pre-game, so use them as a
-  sanity check only.
+- Resolution markouts are dominated by the binary outcomes: the SE is 0.6¢ in-play and 2.9¢ pre-game over 235
+  markets.
+- The touch proxy was checked against tonight's recorded books (`scripts/proxy_check.py`, `out/proxy_check.txt`).
+  Over 7 markets and 1,175 trades it is unbiased (mean error −0.1 to +0.3¢), with mean absolute error 0.3–1.0¢ and
+  65–83% of errors within half the 1¢ spread. Markout means are reliable; single fills are noisy.
 
 ## 1. Structure
 
@@ -71,7 +97,7 @@ Caveats:
 | ticks | 0.01; 0.001 near the extremes | 0.01 |
 
 Rebates and rewards compared with fees:
-- Our 65 markets paid $1.06M of taker fees in 13 days, so the rebate pool was ~$160k (~$2.4k per game market).
+- Our 235 markets paid $2.67M of taker fees in 13 days, so the rebate pool was ~$400k (~$1.7k per market).
 - Scaled to the category, about $0.8M/day of sports taker fees gives ~$120k/day of rebates (less after the zero-fee
   NFL/CFB props).
 - Liquidity rewards are about $49k/day spread over 7,800 markets.
@@ -91,29 +117,28 @@ Rebates and rewards compared with fees:
 
 By market type: moneyline 62% + child moneyline 14%, totals 11%, spreads 7.5%, other props < 6%.
 
-### 1.3 Pre-game vs in-play (taker notional, 65-market sample)
+### 1.3 Pre-game vs in-play (taker notional, 235-market sample)
 
-**58% of taker notional trades in-play.** Including the last pre-game hour, 68% trades within ±3 h of the start.
+**59% of taker notional trades in-play.** Including the last pre-game hour, 74% trades within ±3 h of the start.
 
 | league | in-play share | | league | in-play share |
 |---|---|---|---|---|
-| WNBA (finals) | 98% | | LoL | 68% |
-| WTA / ATP | 86% / 82% | | MLB | 67% |
-| Dota 2 | 83% | | La Liga | 60% |
-| CFB | 80% | | CS2 | 46% |
-| NFL | 71% | | NBA / EPL / NHL | 40% / 37% / 34% |
-| | | | UCL | 23% |
+| WNBA (finals) / Euroleague | 97–99% | | NFL | 64% |
+| WTA / ATP | 89% / 84% | | La Liga / MLB / Bundesliga | 61% / 55% / 54% |
+| Dota 2 | 85% | | CS2 / Valorant / UFC | 52% / 53% / 48% |
+| CFB | 75% | | EPL / NBA | 45% / 40% |
+| LoL | 69% | | NHL / Nations League / UCL | 34% / 33% / 30% |
 
 Taker notional by time to start:
-- before −24 h: 2%;
+- before −24 h: 1.5%;
 - −24 h to −6 h: 6%;
-- −6 h to −1 h: 12%;
+- −6 h to −1 h: 11%;
 - last hour: 22%;
-- 0 to +30 min: 9%;
-- +30 to +60 min: 8%;
-- +1 to +2 h: 16%;
-- +2 to +3 h: 14%;
-- after +3 h: 11%.
+- 0 to +30 min: 10%;
+- +30 to +60 min: 9%;
+- +1 to +2 h: 20%;
+- +2 to +3 h: 13%;
+- after +3 h: 7%.
 
 ## 2. Maker economics (on-chain, keyless)
 
@@ -121,78 +146,102 @@ Taker notional by time to start:
 
 | | spread capture | +10 s | +1 min | +5 min | +30 min | resolution | rebate | maker shares |
 |---|---|---|---|---|---|---|---|---|
-| **sports pre-game**, all makers | 0.62 (0.09) | 0.33 (0.06) | 0.22 (0.07) | 0.10 (0.04) | 0.09 (0.40) | −2.9 (6.2) | 0.16 | 50M |
-| **sports in-play**, all makers | 0.58 (0.04) | 0.10 (0.08) | 0.12 (0.17) | −0.15 (0.23) | −0.83 (0.61) | −1.5 (1.3) | 0.10 | 79M |
-| sports pre-game, **two-sided** wallets | 1.04 (0.35) | 0.60 (0.23) | 0.53 (0.26) | 0.47 (0.14) | 1.89 (0.94) | −6.0 (8.7) | 0.15 | 6M |
-| sports in-play, **two-sided** wallets | 0.70 (0.06) | 0.31 (0.07) | 0.44 (0.18) | −0.25 (0.29) | −1.47 (0.68) | +1.6 (1.4) | 0.11 | 32M |
-| sports in-play, **one-sided** wallets | 0.35 (0.06) | −0.21 (0.16) | −0.25 (0.27) | −0.24 (0.48) | −1.38 (1.25) | −4.5 (2.9) | 0.08 | 30M |
+| **sports pre-game**, all makers | 0.61 (0.04) | 0.38 (0.03) | 0.25 (0.03) | 0.03 (0.08) | −0.27 (0.45) | −0.6 (2.9) | 0.13 | 144M |
+| **sports in-play**, all makers | 0.63 (0.03) | 0.10 (0.04) | −0.02 (0.07) | −0.24 (0.11) | −0.41 (0.30) | −0.8 (0.6) | 0.09 | 237M |
+| pre-game, **two-sided** wallets | 0.73 (0.15) | 0.48 (0.09) | 0.39 (0.10) | −0.10 (0.37) | 0.39 (0.64) | −2.3 (3.7) | 0.11 | 19M |
+| pre-game, **one-sided** wallets | 0.57 (0.03) | 0.36 (0.03) | 0.22 (0.03) | 0.05 (0.07) | −0.13 (0.40) | 0.0 (3.1) | 0.13 | 105M |
+| in-play, **two-sided** wallets | 0.75 (0.04) | 0.25 (0.05) | 0.10 (0.09) | −0.19 (0.15) | −0.01 (0.34) | **+1.48 (0.59)** | 0.10 | 96M |
+| in-play, **one-sided** wallets | 0.43 (0.04) | −0.09 (0.06) | −0.25 (0.11) | −0.44 (0.21) | −1.56 (0.58) | **−3.36 (1.24)** | 0.08 | 89M |
 | **crypto up/down** (Oct 14 08–14 UTC), all makers | 1.03 (0.05) | 0.20 (0.09) | 0.15 (0.22) | 0.67 (0.23) | 0.69 (0.26) | 0.63 (0.27) | 0.20 | 4.5M |
 | crypto up/down, two-sided wallets | 1.16 (0.08) | 0.33 (0.17) | −0.09 (0.40) | 0.68 (0.21) | 0.82 (0.24) | 0.80 (0.24) | 0.24 | 1.6M |
 
+The 65-market first sample (`out/maker_econ.txt`) gives the same pattern:
+- pre-game: +0.22¢ at 1 min, +0.09¢ at 30 min;
+- in-play: −0.83¢ at 30 min;
+- two-sided in-play: +1.6¢ to resolution;
+- jump fills: −1.1¢ at 10 s.
+
 Reading:
-1. **Spread capture is lower in sports.** Pre-game books sit at one 1¢ tick (§4), so the half-spread is at most 0.5¢.
-2. **Pre-game, makers keep a small positive edge at short horizons** (+0.2¢ at 1 min, +0.1¢ at 5 min, significant).
-   By 30 min it is about 0, with wide error. Two-sided wallets do better (+0.5¢ at 5 min).
-3. **In-play, the edge decays to negative by 5–30 min.** This is driven by scoring events (2.3).
+1. **Spread capture is lower in sports** (0.6 vs 1.0¢). Pre-game books sit at one 1¢ tick (§4), so the half-spread
+   is at most 0.5¢.
+2. **Pre-game, makers keep a small, highly significant edge at 10 s–1 min** (+0.4/+0.25¢), which is gone by 5 min.
+   The external anchor (§3) pins the price, so there is little to be picked off on, but also little drift to earn.
+3. **In-play, the population splits.**
+   - Two-sided wallets, which quote both sides and stay roughly flat, earn +1.5¢ to resolution plus a 0.1¢ rebate.
+   - One-sided wallets, whose resting orders take a view, lose 3.4¢.
+   - This is a transfer from slow resting money to fast two-sided makers and takers.
 4. **Aggregate crypto makers look better on this yardstick** (+0.7¢ at 30 min and to resolution). That does not
-   contradict the RL result: incumbents with Binance-speed and queue priority earn what a new entrant cannot
-   (`final/RESULTS.md`). Sports makers in aggregate do worse, because the population includes many one-sided
-   "limit-order bettors" whose resting orders lose to in-play information.
+   contradict the RL replay: incumbents with Binance speed and queue priority earn what a new entrant cannot
+   (`final/RESULTS.md`). The same caution applies to the sports in-play pros.
 
-### 2.2 Where (selected cells; full tables in `out/maker_econ.txt`)
+### 2.2 Where (selected cells; full tables in `out/maker_econ_big.txt`)
 
-**By league, 30-min markout + rebate (¢/share).** Pre-game:
-- EPL +1.50; UCL +0.63; MLB +0.59; LoL +0.31; La Liga +0.46; NFL +0.09;
-- CS2 −0.08; ATP −1.78; Valorant −4.3; NHL −5.6. The last two are small samples.
+**By league, 30-min markout + rebate (¢/share; per-league SEs are large, so read signs only where |x| > 1).**
+
+Pre-game:
+- EPL +1.6; WTA +1.2; Dota 2 +0.3; UCL +0.2;
+- MLB 0.0; CS2 −0.1; NFL −0.2; ATP −0.7; CFB −1.0; LoL −1.1; Nations League −1.3; NHL −5.6 (small).
 
 In-play:
-- EPL +4.7; WNBA +11.4 (1 game); MLB +1.85; LoL +1.80; CS2 +0.48; La Liga +0.46; UCL −0.31;
-- ATP −1.16; WTA −1.59; NHL −1.74; NFL −2.17; Dota 2 −2.64; NBA −3.07; CFB −3.83.
+- EPL +4.0; Nations League +1.3; MLB +0.6; Valorant +0.5; ATP +0.1; CS2 +0.1; UCL +0.1; LoL 0.0;
+- Dota 2 −0.8; WTA −0.9; NFL −1.2; CFB −2.2; NBA −3.1 (small); La Liga −3.4; Bundesliga −5.3.
 
-Football-style in-play markets, where possessions change slowly and scores arrive in jumps (NFL, CFB, NBA), and
-tennis/Dota are the worst for makers. Soccer and LoL are the least bad.
+High-scoring US football (NFL/CFB) and some soccer leagues are worst in-play. CS2/LoL/UCL are about flat. EPL is
+positive in both phases.
 
-**By price (favourite probability), two-sided wallets, +30 min:**
-- pre-game: 0.5–0.6 +1.48 (spread capture 1.40), 0.6–0.7 +0.59, 0.7–0.8 −0.02;
-- in-play: 0.5–0.6 −3.11, 0.6–0.7 −1.72, 0.8–0.9 −3.07.
-- Above 0.95, spread capture is 0.2¢ (tick-bound) and the markouts are noise.
+**By price (favourite probability), all makers, +30 min + rebate.**
+- Pre-game: 0.5–0.6 −0.4; 0.6–0.7 −0.6; 0.7–0.8 +1.4; 0.8–0.9 +0.7; 0.9–0.95 +1.1.
+- In-play: −0.2 to −1.0 in every bin.
+- Above 0.95, spread capture is 0.07–0.2¢ (tick-bound), and maker volume there is large (48M in-play shares) but
+  worthless.
+- Two-sided in-play wallets are positive to resolution in every bin from 0.5 to 0.95 (+1.3 to +2.7¢), except
+  0.7–0.8.
 
-**By time to start (all makers):**
-- 24 h+ before: +2.6 at 30 min, small sample;
-- 6–24 h: 0.0;
-- 2–6 h: 0.1;
-- 30 min–2 h: +0.5;
-- last 30 min: 0.0;
-- first hour in-play: −1.1;
-- 1–3 h in: +0.5;
-- 3–10 h in (long esports/tennis/cricket): −4.2.
+**By time to start (all makers, +30 min + rebate):**
+
+| window | value (¢) |
+|---|---|
+| 24 h+ before | +1.3 |
+| 6–24 h before | +0.1 |
+| 2–6 h before | +0.2 |
+| 30 min–2 h before | +0.45 |
+| **last 30 min before** | **−0.9** |
+| **first hour in-play** | **−0.9** |
+| 1–3 h in-play | +0.4 |
+| 3–10 h in-play (long esports/tennis/cricket) | −2.2 |
 
 **By market type:**
-- spreads/totals pre-game: spread capture 0.6¢, +30 min about 0.
-- NFL/CFB spreads and totals pay **no fee and no rebate**. Their makers face takers who pay nothing, so expect
-  tighter, more informed flow.
+- Spreads and totals have higher spread capture (0.8¢ pre-game) but are thin.
+- NFL/CFB spreads and totals pay **no fee and no rebate**, so their makers face takers who pay nothing.
 
 ### 2.3 Scoring events
 
-In-play maker legs followed within 60 s by a ≥8¢ mid move are **11% of in-play maker shares**. They capture 1.1¢ of
-spread but mark out at **−1.1¢ (+10 s)**, −0.5¢ (+1 min) and −1.3¢ (+5 min), and **−8.5¢ to resolution**. The other
-in-play fills hold +0.26¢ at 10 s and +0.2¢ at 1 min. This is the sports analogue of the Binance pick-off:
+In-play maker legs followed within 60 s by a ≥8¢ mid move are **10% of in-play maker shares**. They capture 1.6¢ of
+spread but then mark out at:
+- **−1.1¢** at +10 s;
+- **−1.4¢** at +1 min;
+- **−1.7¢** at +5 min;
+- −3.3¢ to resolution.
+
+The other in-play fills hold +0.23¢ at 10 s and +0.13¢ at 1 min. This is the sports analogue of the Binance
+pick-off:
 - the informed traders are the fastest viewers of the game feed (TV/stream latency, court-siders, data feeds);
-- the 1 s marketable-order delay protects makers only if they see the event within that second.
+- the 1 s marketable-order delay protects makers only if they see the event within that second;
+- the two-sided pros evidently do, or they price the risk in, since their in-play 10 s markout is +0.25¢.
 
-### 2.4 Top maker wallets (realised to resolution, 65 markets)
+### 2.4 Top maker wallets (realised to resolution, 235 markets)
 
-- **8,006 wallets** made markets.
-- The top 5 hold 29% of maker shares and the top 25 hold 50%. Compare crypto: 2,452 wallets, top 25 = 31%.
-- Top-25 maker legs net **−$0.20M** to resolution including rebates. All their legs, counting their taker trades,
-  net **+$1.17M**.
-- Individual results swing by ±$1M: 0x2c33… −$1.13M; 0xf0f3… +$1.17M; 0x1f3a… −$0.55M.
-- Spread capture alone ($45–80k per top wallet) and rebates ($7–11k) are small next to the directional inventory
-  P&L.
-- The largest sports "makers" are mostly directional books that rest size, not flat market makers. Their per-share
-  net (−12¢ … +16¢) is direction, not spread.
-- Aggregate maker legs net −$2.5M to resolution. With only 65 outcomes, that is within noise of 0 (−1.9¢/share, SE
-  ≈ 2–6¢).
+- **11,345 wallets** made markets.
+- The top 5 hold 26% of maker shares and the top 25 hold 45%. Compare crypto: 2,452 wallets in 6 h, top 25 = 31%.
+- Top-25 maker legs net **+$0.70M** to resolution including rebates. All their legs, counting their taker trades,
+  net **+$2.29M**.
+- Individual results swing by ±$1–2M: 0x2c33… −$1.81M on 135 markets; 0xf0f3… +$1.31M on 39; 0x1f3a… +$1.05M on 83;
+  0x6754… −$0.68M.
+- Spread capture ($15–180k per top wallet) and rebates ($1–26k) are small next to the inventory P&L.
+- The biggest sports "makers" are mixed books: large resting size plus active taking (millions of taker shares).
+- Broad, flat two-sided operators earn small positive amounts: 0xfe78… +$0.13M on 203 markets; 0x2005… +$0.18M on
+  159; 0x5268… +$0.08M on 103.
+- Aggregate maker legs net −$2.3M to resolution, about −0.6¢/share, within ~1 SE of zero.
 
 ## 3. Fair value: is there a Binance for sports?
 
@@ -263,40 +312,52 @@ Suggested sequence:
 
 **Is sports more promising than crypto up/down?**
 
-1. **On realised economics: no.** The incumbent maker population earns about 0 pre-game and loses in-play at 30 min.
-   Crypto incumbents earn about +0.7¢. Spread is tick-bound at 1¢, and rebates are 15% of a 0.05 (or 0.03, or 0)
-   fee.
-2. **On structure, sports pre-game is the most tractable place we have seen for a model-light maker:**
+1. **For an average maker: no.**
+   - The incumbent population earns +0.25¢ at 1 min pre-game, then about −0.3¢ by 30 min.
+   - In-play it loses −0.4¢ at 30 min and −0.8¢ to resolution.
+   - Crypto incumbents measured the same way earn about +0.7¢.
+   - The spread is tick-bound at 1¢, and the rebate is 15% of a 0.05 (or 0.03, or 0) fee.
+2. **For a fast two-sided in-play maker: yes. This is the one significantly profitable segment found.**
+   - +1.5¢ + 0.1¢ rebate per share to resolution, SE 0.6, on 96M shares in 13 days across 235 markets.
+   - It is paid for by one-sided resting money (−3.4¢) and by the fact that takers face a 1 s delay while makers
+     cancel instantly.
+   - The risk is concentrated at scoring events: 10% of in-play maker volume, −1.4¢ at 1 min.
+   - To play, a maker needs:
+     - a score/event feed faster than the takers' (Polymarket's sports WS is public and shared, so it is not enough
+       alone);
+     - automatic pulls on events;
+     - inventory control into resolution.
+3. **Pre-game is the most tractable but thinnest opportunity:**
    - fair value is observable for free from sharp books and exchanges, and agrees with Polymarket to 0.3–0.5¢;
-   - takers are delayed 1 s while makers cancel instantly;
-   - prices drift slowly (pre-game mid changes ≈ 0 per minute for 30 min in NFL/NHL books);
-   - pre-game two-sided makers keep +0.5¢ at 5 min (SE 0.14).
+   - prices hardly move: no mid change in 30 min of NFL/NHL books.
 
-   **Where:** soccer (UCL, EPL, La Liga) and esports (LoL, CS2) pre-match, NBA/NHL pre-game, prices 0.5–0.7, the last
-   0.5–2 h before the start.
+   **Where:** 0.5–24 h before the start, soccer (EPL, UCL), favourites at 0.7–0.95, pulling quotes in the last
+   30 min.
 
    **The binding constraint is queue position, not information.**
-   - Pre-game NFL books hold ~2.5M shares within 1¢, against ~80k maker shares filled per hour in the last 6 h.
-   - So a new quote at the touch would wait hours.
+   - Pre-game NFL books hold ~2.5M shares within 1¢, against ~120k maker shares filled per hour in the last 6 h, so
+     a new quote at the touch would wait hours.
    - Fills mostly arrive when the price moves through the quote, which is adverse.
-   - Thinner books turn over within minutes: NBA (2–6k shares within 1¢ vs 23k/h) and esports/CS2 in-play.
-3. **In-play is where volume is (58%), and where the pick-off risk lives.**
-   - Fills before ≥8¢ jumps lose 1.1¢ in 10 s and 8.5¢ to resolution.
-   - Only a maker with a sub-second score feed and automatic pulls on events should quote in-play.
-   - The 1 s taker delay helps exactly that maker.
+   - NHL, NBA, esports and tennis books turn over far faster. NBA, for example: 2–6k shares within 1¢ vs 23k/h.
+   - Liquidity rewards (~$49k/day across sports) are small, except for outliers: LoL Worlds; NFL/CFB 1H spreads at
+     min size 1,000.
 
 **Main risks:**
 - event jumps and stale quotes after scores;
 - game-start wipe timing: early starts may not be cleared, and the docs warn about this;
-- one-sided inventory into resolution. Binary outcomes give fat P&L tails, and top wallets swing ±$1M;
+- one-sided inventory into resolution. Binary outcomes give fat P&L tails, and top wallets swing ±$1–2M;
 - fee regime changes (0.03→0.05 on Jul 10; NFL/CFB special rate; zero-fee props);
-- concentration: the top 5 makers hold 29% of maker volume;
+- concentration: the top 5 makers hold 26% of maker volume;
 - home/away and outcome-order mix-ups (the docs warn assignments can change);
 - the delay rule can change by market (0/1/3 s);
-- our estimates use a touch proxy, and resolution P&L over 65 outcomes is statistically weak.
+- our estimates use a validated but noisy touch proxy, and these are incumbent economics, not those of a new entrant
+  at the back of the queue.
 
 **Recommendation for the next step:**
-- If any sports work is pursued, build a **pre-game soccer/esports/NBA replay** from a week of polyrec + Smarkets/
-  Pinnacle + on-chain fills (or Marketlens at $39), with the game-start wipe and the 1 s taker delay modelled.
-- Test a fair-value quoter anchored to the external no-vig price before any RL.
-- Treat in-play as out of scope until a low-latency score feed is in the data.
+1. Build a **sports replay** from 7–10 days of polyrec books, the sports score WS and Smarkets/Pinnacle quotes, plus
+   on-chain fills (or Marketlens at $39 for history). Model the game-start wipe, the 1 s taker delay and per-market
+   fees.
+2. Pre-game: test a fair-value quoter anchored to the no-vig external price.
+3. In-play: the question to answer first is **how fast our event detection would be relative to the takers'**.
+   Measure the lag of the Polymarket sports WS and ESPN against the book's own jump times in the recorded data.
+   Without an edge there, in-play quoting copies the losing one-sided population, not the pros.
