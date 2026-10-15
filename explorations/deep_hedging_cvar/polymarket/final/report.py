@@ -375,19 +375,27 @@ def figures(R, fig_dir: Path):
     # 3 sensitivity heatmaps: RL - best baseline, and RL alone, over fill model x latency
     fms, lats = ["optimistic", "central", "pessimistic"], [0, 1, 2]
     grids = {}
-    for name, fn in (("RL (seed mean) - best baseline", lambda vid: R.total("rl/mean", vid) - R.total(R.best, vid)),
-                     ("RL (seed mean)", lambda vid: R.total("rl/mean", vid))):
+    if "rl" in R.groups:
+        panels = (("RL (seed mean) - best baseline", ("rl/mean", R.best)), ("RL (seed mean)", ("rl/mean", None)))
+    else:                                         # no RL in the plan: the comparator and the best active baseline
+        sec = [m["id"] for m in R.methods if m["group"] == "baseline_c" and R.has(m["id"], head)]
+        panels = [(f"{R.label(R.best)} (comparator)", (R.best, None))]
+        if sec:
+            top = max(sec, key=lambda k: R.total(k, head))
+            panels.append((R.label(top), (top, None)))
+    for name, (a, b) in panels:
         g = np.full((3, 3), np.nan)
         for i, fm in enumerate(fms):
             for j, lat in enumerate(lats):
                 vid = f"{fm}_lat{lat}_x1"
-                if R.has("rl/mean", vid) and R.has(R.best, vid):
-                    g[i, j] = fn(vid)
+                if R.has(a, vid) and (b is None or R.has(b, vid)):
+                    g[i, j] = R.total(a, vid) - (R.total(b, vid) if b else 0.0)
         grids[name] = g
     if any(np.isfinite(g).any() for g in grids.values()):
         from matplotlib.colors import LinearSegmentedColormap
         cmap = LinearSegmentedColormap.from_list("div", [C["neg"], C["mid"], C["pos"]])
-        fig, axes = plt.subplots(1, 2, figsize=(8.6, 3.2))
+        fig, axes = plt.subplots(1, len(grids), figsize=(4.3 * len(grids), 3.2), squeeze=False)
+        axes = axes[0]
         for ax, (name, g) in zip(axes, grids.items()):
             lim = np.nanmax(np.abs(g)) if np.isfinite(g).any() else 1.0
             lim = lim if lim > 0 else 1.0
@@ -509,7 +517,16 @@ def build(R: Results, fig_dir: Path, out_path: Path, ds: Dataset | None) -> str:
     tuned = [m["id"] for m in R.methods if m["group"] == "baseline" and m.get("tuned")]
     if tuned and all(R.has(b, head) for b in tuned):
         best_test = max(tuned, key=lambda b: R.total(b, head))
-    L.append(table(["RL", "baseline", "diff (with rewards+rebates)", "95% CI", "diff (floor: without)",
+    if not rows and R.has(R.best, head):         # no RL in this plan (dry run): baselines vs the comparator
+        for b in [m["id"] for m in R.methods if m["group"] in ("baseline", "baseline_c") and m["id"] != R.best]:
+            if not R.has(b, head):
+                continue
+            r1 = R.ci(R.hourly(b, head), R.hourly(R.best, head))
+            r2 = R.ci(R.hourly(b, head, "dpnl_ex_rr"), R.hourly(R.best, head, "dpnl_ex_rr"))
+            rows.append([R.label(b), R.label(R.best) + " (comparator)", f2(r1["estimate"]), cis(r1),
+                         f2(r2["estimate"]), cis(r2), f2(r1["corr_ab"], False)])
+        L.append("No RL method in this plan: each baseline minus the comparator, descriptive only.\n")
+    L.append(table(["method", "minus", "diff (with rewards+rebates)", "95% CI", "diff (floor: without)",
                     "95% CI", "corr"], rows) + "\n")
     if best_test:
         L.append(f"Post hoc (secondary, conservative): the best tuned baseline on this split is "
