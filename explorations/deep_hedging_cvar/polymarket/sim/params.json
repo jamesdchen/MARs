@@ -1,7 +1,7 @@
 {
  "meta": {
   "fitted_on": "train split 0 only: 431 markets (5m 248, 15m 146, 4h 37), opens 2026-08-21..22 UTC; Binance < 2026-08-23",
-  "created_utc": "2026-10-15T05:05:44.475712+00:00",
+  "created_utc": "2026-10-15T05:08:30.478752+00:00",
   "n_rows": 739031,
   "pricer": {
    "halflife_s": 300,
@@ -91967,7 +91967,244 @@
    ],
    "note": "block time - match time (COVERAGE.md: alignment with the book peaks at 3-4 s); a fitted delay mixture could not reproduce the real alignment curve (see VALIDATION.md)"
   },
-  "n_taker_tx": 158970
+  "n_taker_tx": 158970,
+  "informed": {
+   "5m": {
+    "w": 0.3,
+    "kappa_noise": 1.0,
+    "loss": 32.050574,
+    "loss_pbuy": 27.45492,
+    "markout_drift_real_sim": {
+     "drift5": [
+      -1.364819,
+      -1.817856
+     ],
+     "drift30": [
+      -2.448637,
+      -2.470176
+     ],
+     "drift60": [
+      -2.86428,
+      -2.57876
+     ]
+    },
+    "grid": [
+     {
+      "w": 0.0,
+      "kappa_imp": 0.0,
+      "loss": 67.405664
+     },
+     {
+      "w": 0.0,
+      "kappa_imp": 0.005,
+      "loss": 53.979753
+     },
+     {
+      "w": 0.0,
+      "kappa_imp": 0.01,
+      "loss": 41.112374
+     },
+     {
+      "w": 0.0,
+      "kappa_imp": 0.02,
+      "loss": 32.600656
+     },
+     {
+      "w": 0.0,
+      "kappa_imp": 0.04,
+      "loss": 62.30079
+     },
+     {
+      "w": 0.3,
+      "kappa_imp": 0.0,
+      "loss": 63.24886
+     },
+     {
+      "w": 0.3,
+      "kappa_imp": 0.005,
+      "loss": 46.455092
+     },
+     {
+      "w": 0.3,
+      "kappa_imp": 0.01,
+      "loss": 32.050574
+     },
+     {
+      "w": 0.3,
+      "kappa_imp": 0.02,
+      "loss": 47.400823
+     },
+     {
+      "w": 0.3,
+      "kappa_imp": 0.04,
+      "loss": 199.133279
+     }
+    ]
+   },
+   "15m": {
+    "w": 0.3,
+    "kappa_noise": 1.0,
+    "loss": 17.508956,
+    "loss_pbuy": 11.180215,
+    "markout_drift_real_sim": {
+     "drift5": [
+      -1.349447,
+      -0.947261
+     ],
+     "drift30": [
+      -1.978989,
+      -1.532673
+     ],
+     "drift60": [
+      -1.866638,
+      -1.680639
+     ]
+    },
+    "grid": [
+     {
+      "w": 0.0,
+      "kappa_imp": 0.0,
+      "loss": 71.374985
+     },
+     {
+      "w": 0.0,
+      "kappa_imp": 0.005,
+      "loss": 48.535079
+     },
+     {
+      "w": 0.0,
+      "kappa_imp": 0.01,
+      "loss": 42.82645
+     },
+     {
+      "w": 0.0,
+      "kappa_imp": 0.02,
+      "loss": 30.22814
+     },
+     {
+      "w": 0.0,
+      "kappa_imp": 0.04,
+      "loss": 21.119259
+     },
+     {
+      "w": 0.3,
+      "kappa_imp": 0.0,
+      "loss": 39.418437
+     },
+     {
+      "w": 0.3,
+      "kappa_imp": 0.005,
+      "loss": 26.372589
+     },
+     {
+      "w": 0.3,
+      "kappa_imp": 0.01,
+      "loss": 17.508956
+     },
+     {
+      "w": 0.3,
+      "kappa_imp": 0.02,
+      "loss": 26.892879
+     },
+     {
+      "w": 0.3,
+      "kappa_imp": 0.04,
+      "loss": 140.180232
+     }
+    ]
+   },
+   "4h": {
+    "w": 0.3,
+    "kappa_noise": 1.0,
+    "loss": 26.923884,
+    "loss_pbuy": 22.594268,
+    "markout_drift_real_sim": {
+     "drift5": [
+      -0.651458,
+      -0.187992
+     ],
+     "drift30": [
+      -1.110554,
+      -1.159678
+     ],
+     "drift60": [
+      -1.213993,
+      -1.445048
+     ]
+    },
+    "grid": [
+     {
+      "w": 0.0,
+      "kappa_imp": 0.0,
+      "loss": 94.600218
+     },
+     {
+      "w": 0.0,
+      "kappa_imp": 0.01,
+      "loss": 85.221658
+     },
+     {
+      "w": 0.0,
+      "kappa_imp": 0.02,
+      "loss": 60.302544
+     },
+     {
+      "w": 0.0,
+      "kappa_imp": 0.04,
+      "loss": 41.866018
+     },
+     {
+      "w": 0.0,
+      "kappa_imp": 0.08,
+      "loss": 65.555717
+     },
+     {
+      "w": 0.3,
+      "kappa_imp": 0.0,
+      "loss": 98.339239
+     },
+     {
+      "w": 0.3,
+      "kappa_imp": 0.01,
+      "loss": 77.175513
+     },
+     {
+      "w": 0.3,
+      "kappa_imp": 0.02,
+      "loss": 32.518504
+     },
+     {
+      "w": 0.3,
+      "kappa_imp": 0.04,
+      "loss": 26.923884
+     },
+     {
+      "w": 0.3,
+      "kappa_imp": 0.08,
+      "loss": 93.544913
+     }
+    ]
+   },
+   "note": "P(buy) = (1-w) * P_fit(buy | gap) + w * 1[staleness > 0], staleness = sigmoid(target + v) - displayed latent mid (what the next book update reveals); w and the impact kappa by grid search on simulated markout drift + P(buy|gap) curve (train)"
+  },
+  "impact": {
+   "5m": {
+    "kappa": 0.01,
+    "halflife_s": 300.0,
+    "rise_halflife_s": 15.0
+   },
+   "15m": {
+    "kappa": 0.01,
+    "halflife_s": 300.0,
+    "rise_halflife_s": 15.0
+   },
+   "4h": {
+    "kappa": 0.04,
+    "halflife_s": 300.0,
+    "rise_halflife_s": 15.0
+   },
+   "note": "each print adds kappa * sign * sqrt(min(size, 500)/10) to an impact accumulator a (logit units, decays with half-life halflife_s); the mid target carries v, which approaches a with half-life rise_halflife_s"
+  }
  },
  "fees": {
   "taker_fee_rate": 0.07,

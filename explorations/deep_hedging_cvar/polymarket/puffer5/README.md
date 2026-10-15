@@ -6,9 +6,14 @@ trainer, pinned to `ea7f989` on the 5.0 branch (`6ffa5b1` plus per-stream cuBLAS
 env API, `ini.h`, `puffercpu.c` and `build.sh` are identical). The rules the core follows for
 this are in `../PUFFER5.md`; the bates port in `../../bates/puffer5/` is the prior art.
 
+Checked against the frozen core: `mm.h` sha256 `746dd7dea250eee035a8cb08a7be479eacf2d44ac1b7251503bc0d0e468566a9`
+(`MM_OBS = 50`, a Log of 43 floats, 9 exploit flags; model in `../ENV.md`). The wrapper's
+compile-time checks fail if the Log or the flags change shape, and `make_ini.py` reads the
+knobs from `mm.h`, so after a core change rerun `make_ini.py` and the tests below.
+
 | file | what |
 |---|---|
-| `polymarket_mm.h` | the 5.0 wrapper: `Env` struct, `puf_init` (reads `[env]`), `puf_reset`, `puf_step` (float actions to int), `puf_log` |
+| `polymarket_mm.h` | the 5.0 wrapper: `Env` struct, `puf_init` (reads `[env]`), `puf_reset`, `puf_step` (float actions to int), `puf_log` (the Log's 42 fields, plus `share_<flag>` and `pnl_share_<flag>` per exploit flag, as `../env.py`) |
 | `make_ini.py` | writes `polymarket_mm.ini` (`[env]` = every knob of `mm.h` at its default, plus `data_dir`, `seed`, `log_episodes`; `[eval_env]`; PPO defaults) and `sweep.ini` (Protein space) |
 | `patch_pufferlib.py` | two idempotent edits to a 5.0 checkout: `[eval_env]` overrides for the final evaluation, and no generic `[sweep.*]` blocks in `default.ini`; `--selftest` checks them on CPU |
 | `puffernet_mm.py` | torch replica of 5.0's PufferNet with discrete heads, `.bin` checkpoint loader, `policy_fn`, and `EvaluatorPolicy` for `../train/evaluator.py` |
@@ -139,7 +144,7 @@ wrapper does not draw.)
 13. **Eval agent count**: `eval_agents` must split evenly over `vec.num_buffers` (2); 3952
     does. The minibatch shape rules are only asserted for training.
 14. **Checkpoints** (`checkpoints/polymarket_mm/<run_id>/<step>.bin`) are the fp32 master
-    weights cut at the unpadded count: encoder `(H, 48)`, decoder `(18, H)`, then `(3H, H)`
+    weights cut at the unpadded count: encoder `(H, 50)`, decoder `(18, H)`, then `(3H, H)`
     per MinGRU layer, no logstd. With `H % 8 == 0` the layout is the same in both builds and
     the length determines `obs_size` (`puffernet_mm.infer_obs_size`).
 15. **Build on Colab**: `build.sh` links `-lomp5` (symlink Ubuntu's `libomp.so.5`), needs

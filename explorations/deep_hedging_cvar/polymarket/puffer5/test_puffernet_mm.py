@@ -42,7 +42,9 @@ torch.set_num_threads(1)
 PUFFERLIB_DIR = os.environ.get(
     'PUFFERLIB_DIR',
     '/tmp/claude-0/-home-user-MARs/bd289cf3-b2b3-5940-9bd3-6798f7649804/scratchpad/pufferlib5')
-OBS = 41
+# the env's observation size (50), from the core
+with open(os.path.join(os.path.dirname(HERE), 'mm.h')) as _f:
+    OBS = int(re.search(r'#define MM_OBS (\d+)', _f.read())[1])
 CONFIGS = [(OBS, 128, 4), (OBS, 64, 2), (OBS, 32, 1), (13, 20, 1)]
 B, T = 64, 40
 D = sum(ACT_SIZES) + 1

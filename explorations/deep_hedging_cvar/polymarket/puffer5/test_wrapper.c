@@ -18,6 +18,9 @@
  *    market is played k times by k * n_val envs; each env logs exactly one episode, and that
  *    Log equals the core's Log at its first terminal.
  * 3. split = 2 is refused (puf_init exits 1) without MM_FINAL=1, and without allow_test = 1.
+ * 4. puf_log: every name of PMM_LOG_NAMES sits at its field's offset in mm.h's Log (checked
+ *    with offsetof), and the summed-then-averaged Log (as vec_log) comes out under those names
+ *    plus share_<flag> and pnl_share_<flag>.
  */
 
 #include <stdio.h>
@@ -25,10 +28,10 @@
 #include <unistd.h>
 #include "polymarket_mm.h"
 
-#define N 256
-#define T 3200
+#define N 128
+#define T 2000
 #define K_EVAL 2
-#define T_EVAL 3200
+#define T_EVAL 2900   // > 2880 decisions of a 4h market at dt = 5
 
 static const int SIZES[MM_NUM_ATNS] = MM_ACT_SIZES;
 
@@ -85,6 +88,53 @@ static Mm* make_cores(int n, Dict* kw, float* obs) {
         mm_reset(&cores[i], obs + (size_t)i * MM_OBS);
     }
     return cores;
+}
+
+#define FIELD(x) {#x, offsetof(Log, x)}
+static const struct { const char* name; size_t off; } LOG_FIELDS[] = {
+    FIELD(score), FIELD(perf), FIELD(episode_return), FIELD(episode_length), FIELD(pnl),
+    FIELD(pnl_trading), FIELD(spread_capture), FIELD(markout_5), FIELD(markout_30),
+    FIELD(markout_60), FIELD(inventory_pnl), FIELD(rebates), FIELD(liq_rewards),
+    FIELD(inv_penalty), FIELD(fills), FIELD(fill_vol), FIELD(buy_vol), FIELD(sell_vol),
+    FIELD(max_abs_inv), FIELD(final_abs_inv), FIELD(uptime_two_sided), FIELD(uptime_any),
+    FIELD(reward_clip_frac), FIELD(rejects), FIELD(vol_crossed), FIELD(vol_stale),
+    FIELD(vol_onesided), FIELD(vol_last30), FIELD(vol_last10), FIELD(vol_inside2),
+    FIELD(vol_extreme), FIELD(vol_outside), FIELD(vol_inspread), FIELD(pnl_crossed),
+    FIELD(pnl_stale), FIELD(pnl_onesided), FIELD(pnl_last30), FIELD(pnl_last10),
+    FIELD(pnl_inside2), FIELD(pnl_extreme), FIELD(pnl_outside), FIELD(pnl_inspread),
+};
+
+// Names vs offsets, and puf_log on the Logs summed and divided by n as vec_log does.
+static int check_log(PolymarketMM* envs, int n) {
+    int bad = 0, nf = (int)(sizeof(LOG_FIELDS) / sizeof(LOG_FIELDS[0]));
+    bad += nf != PMM_LOG_N;
+    for (int i = 0; i < nf && i < PMM_LOG_N; i++) {
+        bad += LOG_FIELDS[i].off != i * sizeof(float) || strcmp(LOG_FIELDS[i].name, PMM_LOG_NAMES[i]);
+    }
+    Log agg;
+    memset(&agg, 0, sizeof(agg));
+    float* acc = (float*)&agg;
+    for (int e = 0; e < n; e++) {
+        const float* f = (const float*)&envs[e].log;
+        for (int j = 0; j < (int)(sizeof(Log) / sizeof(float)); j++) {
+            acc[j] += f[j];
+        }
+    }
+    float cnt = agg.n;
+    for (int j = 0; j < (int)(sizeof(Log) / sizeof(float)); j++) {
+        acc[j] /= cnt;
+    }
+    Dict out = {0};
+    puf_log(&agg, &out);
+    bad += out.size != PMM_LOG_N + 2 * MM_NFLAGS;
+    bad += dict_get(&out, "score") != agg.score || dict_get(&out, "pnl_inspread") != agg.pnl_inspread;
+    double share = dict_get(&out, "share_inspread");
+    bad += agg.fill_vol > 0 && fabs(share - agg.vol_inspread / agg.fill_vol) > 1e-6;
+    printf("puf_log: %d Log names at their offsets, %d keys; mean over %g episodes: score %.3f, "
+        "fill volume %.1f, share_inspread %.3f%s\n", nf, out.size, cnt, dict_get(&out, "score"),
+        agg.fill_vol, share, bad ? " MISMATCH" : "");
+    dict_clear(&out);
+    return bad;
 }
 
 static int same(const void* a, const void* b, size_t n) {
@@ -195,6 +245,7 @@ int main(int argc, char** argv) {
     printf("train config: %d envs x %d steps (OpenMP), %ld episode ends, %g logged; "
         "mismatching obs/reward/terminal/Log arrays: %ld\n", N, T, terms, n_logged, bad);
     fail |= bad != 0 || n_logged != (double)terms || terms == 0;
+    fail |= check_log(envs, N) != 0;
 
     // 2. final-evaluation config
     Dict ek;

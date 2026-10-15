@@ -45,22 +45,32 @@ struct Env {
 typedef Env PolymarketMM;
 
 // Log fields in struct order, all floats, n last (the trainer sets env/n itself).
+// test_wrapper.c checks every name against offsetof.
 static const char* PMM_LOG_NAMES[] = {
     "score", "perf", "episode_return", "episode_length", "pnl", "pnl_trading", "spread_capture",
     "markout_5", "markout_30", "markout_60", "inventory_pnl", "rebates", "liq_rewards",
     "inv_penalty", "fills", "fill_vol", "buy_vol", "sell_vol", "max_abs_inv", "final_abs_inv",
-    "uptime_two_sided", "uptime_any", "vol_crossed", "vol_stale", "vol_onesided", "vol_last30",
-    "vol_last10", "vol_inside2", "vol_extreme", "vol_outside", "reward_clip_frac", "rejects",
+    "uptime_two_sided", "uptime_any", "reward_clip_frac", "rejects",
+    "vol_crossed", "vol_stale", "vol_onesided", "vol_last30", "vol_last10", "vol_inside2",
+    "vol_extreme", "vol_outside", "vol_inspread",
+    "pnl_crossed", "pnl_stale", "pnl_onesided", "pnl_last30", "pnl_last10", "pnl_inside2",
+    "pnl_extreme", "pnl_outside", "pnl_inspread",
 };
 #define PMM_LOG_N (int)(sizeof(PMM_LOG_NAMES) / sizeof(PMM_LOG_NAMES[0]))
-// Fails to compile if mm.h's Log gains or loses a field.
-typedef char pmm_log_layout_check[sizeof(Log) == (PMM_LOG_N + 1) * sizeof(float) ? 1 : -1];
-// vol_crossed .. vol_outside: fill volume per exploit flag, in the order of MM_FL_*.
+// Exploit flags (EVALUATION.md T5), in the order of MM_FL_*: Log.vol_<flag> (fill volume) and
+// Log.pnl_<flag> (spread capture + 60 s markout of those fills) are MM_NFLAGS floats each.
 static const char* PMM_FLAG_NAMES[] = {
-    "crossed", "stale", "onesided", "last30", "last10", "inside2", "extreme", "outside"};
-#define PMM_VOL0 22
-typedef char pmm_flag_check[offsetof(Log, vol_crossed) == PMM_VOL0 * sizeof(float)
-    && offsetof(Log, vol_outside) == (PMM_VOL0 + 7) * sizeof(float) && MM_NFLAGS == 8 ? 1 : -1];
+    "crossed", "stale", "onesided", "last30", "last10", "inside2", "extreme", "outside", "inspread"};
+#define PMM_NFLAG_NAMES (int)(sizeof(PMM_FLAG_NAMES) / sizeof(PMM_FLAG_NAMES[0]))
+#define PMM_VOL0 (int)(offsetof(Log, vol_crossed) / sizeof(float))
+#define PMM_PNL0 (int)(offsetof(Log, pnl_crossed) / sizeof(float))
+// Fail to compile if mm.h's Log or flags change shape.
+typedef char pmm_log_layout_check[sizeof(Log) == (PMM_LOG_N + 1) * sizeof(float)
+    && offsetof(Log, n) == PMM_LOG_N * sizeof(float) ? 1 : -1];
+typedef char pmm_flag_check[MM_NFLAGS == PMM_NFLAG_NAMES
+    && offsetof(Log, vol_inspread) == (PMM_VOL0 + MM_NFLAGS - 1) * sizeof(float)
+    && PMM_PNL0 == PMM_VOL0 + MM_NFLAGS
+    && offsetof(Log, pnl_inspread) == (PMM_PNL0 + MM_NFLAGS - 1) * sizeof(float) ? 1 : -1];
 
 static void pmm_fail(const char* msg) {
     fprintf(stderr, "polymarket_mm: %s\n", msg);
@@ -129,9 +139,14 @@ void puf_log(Log* log, Dict* out) {
     for (int i = 0; i < PMM_LOG_N; i++) {
         dict_set(out, PMM_LOG_NAMES[i], f[i]);
     }
-    for (int i = 0; i < MM_NFLAGS; i++) {   // share of fill volume per exploit flag (env.py)
+    // As env.py: share of fill volume, and of fill P&L (spread capture + 60 s markout), per
+    // exploit flag; the P&L share is NaN when that total is not positive.
+    float vol = log->fill_vol, fill_pnl = log->spread_capture + log->markout_60;
+    for (int i = 0; i < MM_NFLAGS; i++) {
         char key[64];
         snprintf(key, sizeof(key), "share_%s", PMM_FLAG_NAMES[i]);
-        dict_set(out, key, log->fill_vol > 0.0f ? f[PMM_VOL0 + i] / log->fill_vol : 0.0f);
+        dict_set(out, key, vol > 0.0f ? f[PMM_VOL0 + i] / vol : 0.0f);
+        snprintf(key, sizeof(key), "pnl_share_%s", PMM_FLAG_NAMES[i]);
+        dict_set(out, key, fill_pnl > 0.0f ? f[PMM_PNL0 + i] / fill_pnl : NAN);
     }
 }

@@ -51,10 +51,46 @@ def summarize(records, group_key=None):
         vals = np.array([r[k] for r in recs], dtype=np.float64)
         out[f'sum/{k}'] = float(vals.sum())
         out[f'mean/{k}'] = float(vals.mean())
+    out.update(protocol_flags(recs))
     if group_key and group_key in recs[0]:
         for g in sorted({r[group_key] for r in recs}):
             gp = pnl[[r[group_key] == g for r in recs]]
             out[f'pnl_total/{g}'] = float(gp.sum())
+    return out
+
+
+T5_FLAGS = ('inspread', 'crossed', 'stale', 'onesided', 'last30')  # DECISIONS.md D2
+
+
+def protocol_flags(recs):
+    """EVALUATION.md T6 / T5 and DECISIONS.md D1 / D2, from per-market Log records.
+
+    t6_share: inventory/resolution P&L over total P&L when the total is > 0 (a
+      policy is 'directional' above 0.5); t6_share_pos: positive inventory P&L over
+      the sum of the positive components (spread capture, 60 s markout, inventory,
+      rebates, rewards), defined for any total.
+    t5_max_share: largest share of fill P&L (spread capture + 60 s markout) made
+      under one artifact flag of D2 (inspread, crossed, stale, onesided, last30).
+    makes_markets: fills/market >= 5, t6 share <= 0.5, t5 share <= 0.25 (D1.3)."""
+    out = {}
+    if not recs or 'inventory_pnl' not in recs[0]:
+        return out
+    tot = lambda k: float(sum(r.get(k, 0.0) for r in recs))  # noqa: E731
+    pnl, inv = tot('pnl'), tot('inventory_pnl')
+    comps = [tot('spread_capture'), tot('markout_60'), inv, tot('rebates'), tot('liq_rewards')]
+    pos = sum(max(c, 0.0) for c in comps)
+    out['t6_share'] = inv / pnl if pnl > 0 else float('nan')
+    out['t6_share_pos'] = max(inv, 0.0) / pos if pos > 0 else float('nan')
+    fill_pnl = tot('spread_capture') + tot('markout_60')
+    shares = {f: tot(f'pnl_{f}') / fill_pnl for f in T5_FLAGS if f'pnl_{f}' in recs[0]} if fill_pnl > 0 else {}
+    for f, v in shares.items():
+        out[f't5_share/{f}'] = v
+    out['t5_max_share'] = max(shares.values()) if shares else float('nan')
+    fills = tot('fills') / len(recs)
+    out['fills_per_market'] = fills
+    t6 = out['t6_share'] if pnl > 0 else 0.0
+    t5 = out['t5_max_share'] if shares else 0.0
+    out['makes_markets'] = float(fills >= 5 and t6 <= 0.5 and t5 <= 0.25)
     return out
 
 

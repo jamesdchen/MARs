@@ -61,6 +61,20 @@ def test_sampler_matches_sample_logits():
     assert a2.shape == (256, 3)
 
 
+def test_sampler_distribution():
+    """Empirical action frequencies of sample_actions match softmax(logits)."""
+    g = torch.Generator().manual_seed(5)
+    base = (torch.randn(1, 7, generator=g) * 1.5, torch.randn(1, 7, generator=g), torch.randn(1, 3, generator=g))
+    n = 200_000
+    logits = tuple(b.expand(n, -1) for b in base)
+    a, _ = sample_actions(logits, generator=g)
+    for h, b in enumerate(base):
+        p = torch.softmax(b[0], -1)
+        f = torch.bincount(a[:, h].long(), minlength=len(p)).float() / n
+        se = (p * (1 - p) / n).sqrt()
+        assert ((f - p).abs() <= 5 * se + 1e-4).all(), (h, f, p)
+
+
 def test_puffernet_scan_equals_steps():
     torch.manual_seed(1)
     S, T, D = 5, 24, 16

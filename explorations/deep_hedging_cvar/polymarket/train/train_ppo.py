@@ -307,64 +307,60 @@ def main(argv=None):
                               'gap_score': row.get('gap/score_mean')}), flush=True)
         return results, tr, ck
 
-    eval_every = int(args.eval_every)
-    next_eval = eval_every if eval_every else None
+    def loop_and_finish():
+        eval_every = int(args.eval_every)
+        next_eval = eval_every if eval_every else None
+        while trainer.global_step < cfg['total_timesteps']:
+            trainer.evaluate()
+            logs = trainer.train()
+            since_eval.append(logs)
+            log({'type': 'train', **logs})
+            if not args.quiet and trainer.epoch % 10 == 1:
+                keys = ('step', 'sps', 'losses/entropy', 'losses/value_loss', 'losses/clipfrac',
+                        'losses/approx_kl', 'clip_frac_reward', 'term_row0_frac', 'env/score')
+                print(json.dumps({k: round(logs[k], 5) if isinstance(logs.get(k), float) else logs.get(k)
+                                  for k in keys}), flush=True)
+            if args.max_epochs and trainer.epoch >= args.max_epochs:
+                break
+            if next_eval and trainer.global_step >= next_eval and trainer.global_step < cfg['total_timesteps']:
+                do_eval()
+                next_eval += eval_every
+
+        wall = time.time() - t0
+        train_rows = [json.loads(l) for l in open(os.path.join(out, 'log.jsonl')) if '"type": "train"' in l]
+        sps = float(np.median([r['sps'] for r in train_rows[1:]] or [train_rows[0]['sps']]))
+        results, tr, ck = do_eval(final=True)
+        env.close()
+
+        result = {'kind': 'train_run', 'backend': adapter.name, 'tag': args.tag, 'cfg_hash': cfg_hash,
+                  'seed': args.seed, 'cfg': cfg, 'steps': trainer.global_step, 'epochs': trainer.epoch,
+                  'wall_s': wall, 'sps_median': sps, 'run_dir': out, 'ckpt': ck,
+                  'ckpt_sha256': sha256_file(ck), 'n_val_evals': n_val_evals,
+                  'headline': None if args.no_val else headline,
+                  'val': {n: nan_to_none(r) for n, r in results.items()},
+                  'train_eval': nan_to_none(tr) if tr else None}
+        with open(os.path.join(out, 'result.json'), 'w') as f:
+            json.dump(result, f, indent=1, default=float)
+        if args.result_json:
+            with open(args.result_json, 'w') as f:
+                json.dump(result, f, indent=1, default=float)
+        if not args.no_val:
+            ledger.append(result, ledger_path)
+        if not args.quiet:
+            h = results.get(headline, {})
+            print(json.dumps({'done': out, 'steps': trainer.global_step, 'wall_s': round(wall, 1),
+                              'sps_median': round(sps), 'val_pnl_total': h.get('pnl_total'),
+                              'val_cvar95': h.get('cvar95'), 'ledger': ledger_path}), flush=True)
+        return result
+
     try:
-        return _loop_and_finish()
+        return loop_and_finish()
     except BaseException as e:
         if n_val_evals and not args.no_val:  # T4: val evaluations made before a crash are ledgered too
             ledger.append({'kind': 'train_run_failed', 'backend': adapter.name, 'tag': args.tag,
                            'cfg_hash': cfg_hash, 'seed': args.seed, 'cfg': cfg, 'run_dir': out,
                            'n_val_evals': n_val_evals, 'error': f'{type(e).__name__}: {e}'}, ledger_path)
         raise
-
-
-def _unused():
-    pass
-
-
-def _loop_body_placeholder():
-    while trainer.global_step < cfg['total_timesteps']:
-        trainer.evaluate()
-        logs = trainer.train()
-        since_eval.append(logs)
-        log({'type': 'train', **logs})
-        if not args.quiet and trainer.epoch % 10 == 1:
-            keys = ('step', 'sps', 'losses/entropy', 'losses/value_loss', 'losses/clipfrac',
-                    'losses/approx_kl', 'clip_frac_reward', 'term_row0_frac', 'env/score')
-            print(json.dumps({k: round(logs[k], 5) if isinstance(logs.get(k), float) else logs.get(k)
-                              for k in keys}), flush=True)
-        if args.max_epochs and trainer.epoch >= args.max_epochs:
-            break
-        if next_eval and trainer.global_step >= next_eval and trainer.global_step < cfg['total_timesteps']:
-            do_eval()
-            next_eval += eval_every
-
-    wall = time.time() - t0
-    train_rows = [json.loads(l) for l in open(os.path.join(out, 'log.jsonl')) if '"type": "train"' in l]
-    sps = float(np.median([r['sps'] for r in train_rows[1:]] or [train_rows[0]['sps']]))
-    results, tr, ck = do_eval(final=True)
-    env.close()
-
-    result = {'kind': 'train_run', 'backend': adapter.name, 'tag': args.tag, 'cfg_hash': cfg_hash,
-              'seed': args.seed, 'cfg': cfg, 'steps': trainer.global_step, 'epochs': trainer.epoch,
-              'wall_s': wall, 'sps_median': sps, 'run_dir': out, 'ckpt': ck,
-              'ckpt_sha256': sha256_file(ck), 'n_val_evals': n_val_evals, 'headline': None if args.no_val else headline,
-              'val': {n: nan_to_none(r) for n, r in results.items()},
-              'train_eval': nan_to_none(tr) if tr else None}
-    with open(os.path.join(out, 'result.json'), 'w') as f:
-        json.dump(result, f, indent=1, default=float)
-    if args.result_json:
-        with open(args.result_json, 'w') as f:
-            json.dump(result, f, indent=1, default=float)
-    if not args.no_val:
-        ledger.append(result, ledger_path)
-    if not args.quiet:
-        h = results.get(headline, {})
-        print(json.dumps({'done': out, 'steps': trainer.global_step, 'wall_s': round(wall, 1),
-                          'sps_median': round(sps), 'val_pnl_total': h.get('pnl_total'),
-                          'val_cvar95': h.get('cvar95'), 'ledger': ledger_path}), flush=True)
-    return result
 
 
 if __name__ == '__main__':
