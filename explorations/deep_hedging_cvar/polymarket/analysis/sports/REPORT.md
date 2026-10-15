@@ -34,12 +34,13 @@ Polymarket.
 **Where it is promising:**
 1. In-play two-sided quoting, with a sub-second score feed and automatic pulls on events. This is where the
    incumbents make money, and the 1 s taker delay helps exactly this maker.
-2. Pre-game quoting 0.5–24 h before the start against a Pinnacle/Smarkets anchor, pulling quotes in the last
-   30 min. Edge is small (+0.1 to +0.5¢), with soccer (EPL/UCL) and favourites at 0.7–0.95 the least bad.
+2. Pre-game quoting from listing to T−1 h (the D14 window) against a Pinnacle/Smarkets anchor. The edge is small:
+   0 to +30 bps at +30 min in the 1–24 h buckets, and +250 bps (CI from 0) above 24 h on thin volume. The rebate
+   adds ~25 bps. Tennis and esports are the most consistently positive leagues; NFL is flat.
 
 **Avoid:**
 - one-sided resting size;
-- the last 30 min before the start and the first in-play hour without a feed;
+- the last hour before the start and the first in-play hour without a feed;
 - NFL pre-game moneylines (queues of millions of shares at a 1¢ spread);
 - long in-play tails (3 h+ esports/tennis: −2.2¢).
 
@@ -353,8 +354,9 @@ Suggested sequence:
    - fair value is observable for free from sharp books and exchanges, and agrees with Polymarket to 0.3–0.5¢;
    - prices hardly move: no mid change in 30 min of NFL/NHL books.
 
-   **Where:** 0.5–24 h before the start, soccer (EPL, UCL), favourites at 0.7–0.95, pulling quotes in the last
-   30 min.
+   **Where:** listing to T−1 h (D14); ATP, esports (Valorant, Dota 2, CS2) and UCL/La Liga/UNL >1 h buckets;
+   favourites at 0.7–0.95. Quotes off in the last hour, which is 54% of pre-game maker volume but −130 bps with a
+   wide CI.
 
    **The binding constraint is queue position, not information.**
    - Pre-game NFL books hold ~2.5M shares within 1¢, against ~120k maker shares filled per hour in the last 6 h, so

@@ -1,0 +1,48 @@
+{
+ "reward_pool_by_snapshot": {
+  "2026-10-15T20:22:32Z": {
+   "selected_pool_per_day": 26411.99616,
+   "in_program": 300
+  },
+  "2026-10-15T21:22:37Z": {
+   "selected_pool_per_day": 25752.99616,
+   "in_program": 300
+  }
+ },
+ "bootstrap": {
+  "block_s": 1800,
+  "n": 4000,
+  "blocks": 5
+ },
+ "window": [
+  "2026-10-15T20:21:26Z",
+  "2026-10-15T22:16:00Z"
+ ],
+ "hours": 1.9094444444444445,
+ "markets_simulated": 300,
+ "skipped": {},
+ "books_up_to": "2026-10-15T22:18:03Z",
+ "fills_complete_to": "2026-10-15T22:16:58Z",
+ "reward_snapshots": [
+  "rewards/2026-10-15/rewards_2026-10-15T20.parquet",
+  "rewards/2026-10-15/rewards_2026-10-15T21.parquet"
+ ],
+ "trades_legs": 607679,
+ "taker_txs_in_window": 236,
+ "markets_with_trades_in_window": 66,
+ "moas": 30.0,
+ "lag_s": 3,
+ "inv_cap_mult": 5.0,
+ "fracs": [
+  0.25,
+  0.5,
+  0.75
+ ],
+ "mults": [
+  1,
+  2
+ ],
+ "built_at": "2026-10-15T22:22:42.396044+00:00",
+ "runtime_s": 261.2,
+ "build_elections_import": "ok (BE.load_selection/load_reward_cfg/cfg_at/coverage_segments/reward_stats/side_ladder/trades_data_api/LIQ_SEED; reward_terms.S/q_min/competitor_q)"
+}

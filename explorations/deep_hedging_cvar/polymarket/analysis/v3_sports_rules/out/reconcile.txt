@@ -1,0 +1,225 @@
+Sep24-30 done
+Oct01-07 done
+Sep24-Oct07 done
+Oct08-14 (census) done
+                window            by       group                                  def    bps     lo      hi  spread_bps  notional_k  games     legs
+0             Sep24-30           all         all                            C0 census   52.0    1.1    94.8       190.9    116927.4   5347   884077
+1             Sep24-30           all         all                   C1 +cap at kickoff   49.6   28.4    73.2       190.9    116927.4   5347   884077
+2             Sep24-30           all         all                     C2 +price filter   34.9   13.1    56.3       133.5    111304.1   5128   830940
+3             Sep24-30           all         all                       C3 +to kickoff   21.9  -11.9    47.2       133.7    110976.6   4966   827158
+4             Sep24-30           all         all                   C4 C2, w2 notional   34.8   14.3    54.8       133.2    111532.5   5128   830940
+5             Sep24-30           all         all                   C5 C2, touch price   -9.6  -32.0    11.7        88.7    111710.8   5128   830940
+6             Sep24-30           all         all             C6 C5, legs beyond touch  -30.4  -55.2    -9.2        86.5    103091.0   4933   628886
+7             Sep24-30           all         all                     C7 C6 to kickoff  -43.0  -77.5   -15.4        86.6    102854.7   4798   626102
+8             Sep24-30           all         all  C8 C2, legs beyond touch, own price   39.4   17.2    59.7       156.9    102486.8   4933   628886
+9             Sep24-30         level      inside                 level, 30 min capped  -42.2  -89.2     0.6      -188.2      7210.8   3859    87170
+10            Sep24-30         level      inside                    level, to kickoff  -38.4  -92.1    11.3      -171.5      7127.2   3794    86652
+11            Sep24-30         level       touch                 level, 30 min capped   23.9    8.8    38.6        92.1     83465.2   4414   540252
+12            Sep24-30         level       touch                    level, to kickoff    6.0  -23.4    27.8        92.1     83391.7   4296   538735
+13            Sep24-30         level          +1                 level, 30 min capped   53.9    2.3   111.5       273.2     16095.9   3921   127675
+14            Sep24-30         level          +1                    level, to kickoff   81.7   12.0   143.3       273.3     16052.0   3847   126803
+15            Sep24-30         level          +2                 level, 30 min capped  122.2  -30.3   256.1       498.5      2823.2   3030    36584
+16            Sep24-30         level          +2                    level, to kickoff   11.7 -225.3   210.5       498.8      2791.7   2995    36353
+17            Sep24-30         level  +3 or more                 level, 30 min capped  571.8  444.0   691.6      1593.1      1709.0   2969    39259
+18            Sep24-30         level  +3 or more                    level, to kickoff  530.2  356.1   729.7      1612.1      1613.9   2896    38615
+19            Sep24-30     touch_ttk        0-5m                    level, to kickoff   79.2   59.9   102.1        92.5      7373.2   1880    29945
+20            Sep24-30     touch_ttk       5-30m                    level, to kickoff   37.0    0.9    71.1        94.5     17995.1   2462    82923
+21            Sep24-30     touch_ttk      30m-2h                    level, to kickoff  -26.2 -116.5    30.4        95.8     19930.4   2655   115140
+22            Sep24-30     touch_ttk        2-6h                    level, to kickoff    2.8  -44.7    53.9        90.9     18273.0   2615   117236
+23            Sep24-30     touch_ttk       6-24h                    level, to kickoff   -3.9  -42.9    30.7        87.8     14626.7   2714   137021
+24            Sep24-30     touch_ttk        >24h                    level, to kickoff  -41.8 -119.0    48.9        85.3      5193.3   1480    56470
+25            Sep24-30  touch_league      soccer                    level, to kickoff   19.4   -9.7    45.1        95.7     21511.7   1776   257963
+26            Sep24-30  touch_league     esports                    level, to kickoff  -51.2 -259.7    79.3        96.8      9954.6    629    75433
+27            Sep24-30  touch_league      tennis                    level, to kickoff   93.4   23.3   169.9       100.5      2934.1   1041    42977
+28            Sep24-30  touch_league         nfl                    level, to kickoff    5.1  -27.3    26.5        88.1     31283.5     50    67942
+29            Sep24-30  touch_league         cfb                    level, to kickoff   15.5   -9.2    43.1        84.8      8687.5    173    32872
+30            Sep24-30  touch_league         mlb                    level, to kickoff   -3.0  -41.7    28.1        98.2      6910.6    127    36321
+31            Sep24-30           ttk        0-5m                            C0 census   26.6 -416.5   407.2       121.4      9331.5   2393    51593
+32            Sep24-30           ttk        0-5m                   C1 +cap at kickoff   88.3   69.8   109.1       121.4      9331.5   2393    51593
+33            Sep24-30           ttk       5-30m                            C0 census   96.7  -82.2   260.4       125.4     24466.1   3032   131757
+34            Sep24-30           ttk       5-30m                   C1 +cap at kickoff   61.8   12.1   118.1       125.4     24466.1   3032   131757
+35            Sep24-30           ttk      30m-2h                            C0 census   28.3  -19.2    61.7       148.3     26787.8   3379   180132
+36            Sep24-30           ttk      30m-2h                   C1 +cap at kickoff   28.3  -15.5    63.1       148.3     26787.8   3379   180132
+37            Sep24-30           ttk        2-6h                            C0 census   31.2  -32.2    97.7       239.5     25746.8   3368   183099
+38            Sep24-30           ttk        2-6h                   C1 +cap at kickoff   31.2  -25.6   100.0       239.5     25746.8   3368   183099
+39            Sep24-30           ttk       6-24h                            C0 census   59.8   29.4    99.0       202.2     21649.7   3270   225359
+40            Sep24-30           ttk       6-24h                   C1 +cap at kickoff   59.8   28.5   103.4       202.2     21649.7   3270   225359
+41            Sep24-30           ttk        >24h                            C0 census   67.8   30.5   119.5       403.3      8945.5   2053   112137
+42            Sep24-30           ttk        >24h                   C1 +cap at kickoff   67.9   29.2   118.1       403.3      8945.5   2053   112137
+43            Sep24-30        league      soccer                            C0 census  105.8   35.4   161.3       140.9     33571.4   2176   410348
+44            Sep24-30        league      soccer                   C1 +cap at kickoff   34.1  -14.9    96.0       140.9     33571.4   2176   410348
+45            Sep24-30        league     esports                            C0 census   44.5  -49.4   141.3       144.9     14567.0    685   160566
+46            Sep24-30        league     esports                   C1 +cap at kickoff   27.7  -45.9    84.6       144.9     14567.0    685   160566
+47            Sep24-30        league      tennis                            C0 census  249.1  123.6   385.8       490.5      7259.3   1458    85072
+48            Sep24-30        league      tennis                   C1 +cap at kickoff  267.5  176.8   384.1       490.5      7259.3   1458    85072
+49            Sep24-30        league         nfl                            C0 census   45.7  -47.2   121.5       197.1     37336.0     63    84105
+50            Sep24-30        league         nfl                   C1 +cap at kickoff   38.7   19.2    69.9       197.1     37336.0     63    84105
+51            Sep24-30        league         cfb                            C0 census   30.4  -60.4   113.9       154.7     12088.6    189    48547
+52            Sep24-30        league         cfb                   C1 +cap at kickoff   31.0   18.9    44.1       154.7     12088.6    189    48547
+53            Sep24-30        league         mlb                            C0 census -212.9 -645.0   114.5       254.5      8628.2    162    48168
+54            Sep24-30        league         mlb                   C1 +cap at kickoff   43.9   13.2    71.9       254.5      8628.2    162    48168
+55            Oct01-07           all         all                            C0 census  -26.0 -168.4    83.4       185.2    112761.6   5492   836564
+56            Oct01-07           all         all                   C1 +cap at kickoff   49.5   32.4    67.1       185.2    112761.6   5492   836564
+57            Oct01-07           all         all                     C2 +price filter   44.7   28.8    62.6       138.9    105851.0   5198   775166
+58            Oct01-07           all         all                       C3 +to kickoff   40.9   17.8    66.2       136.2    103738.5   4044   737290
+59            Oct01-07           all         all                   C4 C2, w2 notional   44.6   27.8    61.6       138.5    106192.9   5198   775166
+60            Oct01-07           all         all                   C5 C2, touch price   -0.7  -21.6    16.7        93.2    106226.4   5198   775166
+61            Oct01-07           all         all             C6 C5, legs beyond touch  -21.8  -45.3    -2.5        91.7     98174.4   4980   554737
+62            Oct01-07           all         all                     C7 C6 to kickoff  -22.4  -48.6     3.4        91.8     96294.1   3911   527692
+63            Oct01-07           all         all  C8 C2, legs beyond touch, own price   48.9   32.0    69.2       163.0     97607.4   4980   554737
+64            Oct01-07         level      inside                 level, 30 min capped  -35.5  -96.0     9.8      -210.2      6467.3   3846    85908
+65            Oct01-07         level      inside                    level, to kickoff  -30.2  -98.7    25.7      -205.6      6264.5   3179    81390
+66            Oct01-07         level       touch                 level, 30 min capped   34.6   17.3    51.8        96.5     81311.7   4462   494415
+67            Oct01-07         level       touch                    level, to kickoff   35.3   10.8    60.6        96.6     79881.3   3559   471813
+68            Oct01-07         level          +1                 level, 30 min capped   88.3   58.0   118.8       280.1     13114.2   4057   121770
+69            Oct01-07         level          +1                    level, to kickoff   79.0   27.3   141.0       280.2     12794.5   3315   115101
+70            Oct01-07         level          +2                 level, 30 min capped  110.5   44.0   189.8       503.6      3329.7   3072    35897
+71            Oct01-07         level          +2                    level, to kickoff   90.5   16.4   188.6       504.3      3255.1   2657    34100
+72            Oct01-07         level  +3 or more                 level, 30 min capped  379.7  192.7   568.3      1760.5      1628.1   2765    37176
+73            Oct01-07         level  +3 or more                    level, to kickoff  199.9 -155.4   490.3      1600.1      1542.9   2295    34886
+74            Oct01-07     touch_ttk        0-5m                    level, to kickoff   70.0   44.7    92.4       102.6      8488.7   1726    28115
+75            Oct01-07     touch_ttk       5-30m                    level, to kickoff   48.6  -14.6   106.7        95.2     20508.2   2373    76742
+76            Oct01-07     touch_ttk      30m-2h                    level, to kickoff   -2.1  -75.2    68.9        98.9     19724.4   2558   102994
+77            Oct01-07     touch_ttk        2-6h                    level, to kickoff   10.4  -44.7    87.8        95.3     15138.2   2466   100625
+78            Oct01-07     touch_ttk       6-24h                    level, to kickoff   52.9  -20.9   140.0        94.1     13631.8   2409   133047
+79            Oct01-07     touch_ttk        >24h                    level, to kickoff  163.3  -44.3   490.7        90.8      2390.0    919    30290
+80            Oct01-07  touch_league      soccer                    level, to kickoff   24.6  -12.5    68.3       100.2     16442.1   1540   209633
+81            Oct01-07  touch_league     esports                    level, to kickoff   65.2   21.9   111.8        98.2     20235.0    450    95264
+82            Oct01-07  touch_league      tennis                    level, to kickoff  112.4   10.3   255.7        98.9      3746.1    908    42371
+83            Oct01-07  touch_league         nfl                    level, to kickoff    9.9   -7.7    26.0        94.4     23919.3     34    42711
+84            Oct01-07  touch_league         cfb                    level, to kickoff  -37.3  -73.6     0.1        85.7      6769.5    110    24076
+85            Oct01-07  touch_league       other                    level, to kickoff  275.6 -527.1  1115.0        91.4      1809.9    111    15926
+86            Oct01-07           ttk        0-5m                            C0 census  107.6 -314.1   534.0       136.8     11090.2   2321    51209
+87            Oct01-07           ttk        0-5m                   C1 +cap at kickoff   87.7   54.0   125.6       136.8     11090.2   2321    51209
+88            Oct01-07           ttk       5-30m                            C0 census -266.2 -722.5   112.7       135.7     27285.7   3002   131609
+89            Oct01-07           ttk       5-30m                   C1 +cap at kickoff   53.6   -4.5    98.6       135.7     27285.7   3002   131609
+90            Oct01-07           ttk      30m-2h                            C0 census    7.3  -32.8    43.8       165.6     27588.5   3255   165164
+91            Oct01-07           ttk      30m-2h                   C1 +cap at kickoff    7.3  -32.9    42.5       165.6     27588.5   3255   165164
+92            Oct01-07           ttk        2-6h                            C0 census   48.5   31.3    66.4       245.3     19756.7   3155   158304
+93            Oct01-07           ttk        2-6h                   C1 +cap at kickoff   48.5   31.3    66.6       245.3     19756.7   3155   158304
+94            Oct01-07           ttk       6-24h                            C0 census   56.6   34.5    83.1       183.8     20370.9   3121   232215
+95            Oct01-07           ttk       6-24h                   C1 +cap at kickoff   56.6   34.0    83.0       183.8     20370.9   3121   232215
+96            Oct01-07           ttk        >24h                            C0 census  124.5   77.2   187.0       376.0      6669.6   2359    98063
+97            Oct01-07           ttk        >24h                   C1 +cap at kickoff  124.5   76.5   197.0       376.0      6669.6   2359    98063
+98            Oct01-07        league      soccer                            C0 census -131.8 -551.3   225.8       160.8     30677.2   2614   393151
+99            Oct01-07        league      soccer                   C1 +cap at kickoff   60.8   26.1    94.6       160.8     30677.2   2614   393151
+100           Oct01-07        league     esports                            C0 census   -2.3 -103.2    90.5       135.1     25318.6    548   163154
+101           Oct01-07        league     esports                   C1 +cap at kickoff   67.7   47.3    85.8       135.1     25318.6    548   163154
+102           Oct01-07        league      tennis                            C0 census  126.0 -104.2   404.7       188.1      8027.1   1343    84888
+103           Oct01-07        league      tennis                   C1 +cap at kickoff  104.7   29.2   192.6       188.1      8027.1   1343    84888
+104           Oct01-07        league         nfl                            C0 census   25.4 -127.1   162.2       201.6     27361.7     65    56948
+105           Oct01-07        league         nfl                   C1 +cap at kickoff   30.7   16.6    48.1       201.6     27361.7     65    56948
+106           Oct01-07        league         cfb                            C0 census  -62.4 -255.2   118.3       366.3      9965.5    171    38456
+107           Oct01-07        league         cfb                   C1 +cap at kickoff   13.7   -4.2    30.7       366.3      9965.5    171    38456
+108           Oct01-07        league       other                            C0 census -143.9 -566.0   414.4       225.8      2557.6    207    33558
+109           Oct01-07        league       other                   C1 +cap at kickoff -171.7 -493.0   270.3       225.8      2557.6    207    33558
+110        Sep24-Oct07           all         all                            C0 census   13.7  -50.7    75.4       188.1    229689.0   9915  1720641
+111        Sep24-Oct07           all         all                   C1 +cap at kickoff   49.5   35.4    63.7       188.1    229689.0   9915  1720641
+112        Sep24-Oct07           all         all                     C2 +price filter   39.7   25.9    53.0       136.1    217155.1   9471  1606106
+113        Sep24-Oct07           all         all                       C3 +to kickoff   31.1   11.7    49.8       134.9    214715.1   8303  1564448
+114        Sep24-Oct07           all         all                   C4 C2, w2 notional   39.6   26.1    53.5       135.8    217725.4   9471  1606106
+115        Sep24-Oct07           all         all                   C5 C2, touch price   -5.3  -20.1    10.1        90.9    217937.2   9471  1606106
+116        Sep24-Oct07           all         all             C6 C5, legs beyond touch  -26.2  -42.5   -10.9        89.0    201265.4   9132  1183623
+117        Sep24-Oct07           all         all                     C7 C6 to kickoff  -33.0  -55.3   -14.8        89.1    199148.8   8052  1153794
+118        Sep24-Oct07           all         all  C8 C2, legs beyond touch, own price   44.0   29.3    58.8       159.9    200094.2   9132  1183623
+119        Sep24-Oct07         level      inside                 level, 30 min capped  -39.0  -74.3    -5.5      -198.6     13678.1   7174   173078
+120        Sep24-Oct07         level      inside                    level, to kickoff  -34.5  -77.7     2.6      -187.4     13391.8   6497   168042
+121        Sep24-Oct07         level       touch                 level, 30 min capped   29.2   16.7    40.0        94.3    164776.8   8192  1034667
+122        Sep24-Oct07         level       touch                    level, to kickoff   20.3    1.0    37.4        94.3    163273.1   7269  1010548
+123        Sep24-Oct07         level          +1                 level, 30 min capped   69.3   37.3   107.5       276.3     29210.1   7443   249445
+124        Sep24-Oct07         level          +1                    level, to kickoff   80.5   33.8   124.4       276.4     28846.6   6689   241904
+125        Sep24-Oct07         level          +2                 level, 30 min capped  115.9   45.1   202.1       501.3      6152.9   5780    72481
+126        Sep24-Oct07         level          +2                    level, to kickoff   54.1  -49.0   164.9       501.7      6046.8   5344    70453
+127        Sep24-Oct07         level  +3 or more                 level, 30 min capped  478.1  371.0   590.8      1674.8      3337.1   5429    76435
+128        Sep24-Oct07         level  +3 or more                    level, to kickoff  368.8  184.2   541.4      1606.2      3156.8   4929    73501
+129        Sep24-Oct07     touch_ttk        0-5m                    level, to kickoff   74.3   57.7    90.1        97.9     15861.9   3606    58060
+130        Sep24-Oct07     touch_ttk       5-30m                    level, to kickoff   43.1    6.0    78.9        94.9     38503.3   4835   159665
+131        Sep24-Oct07     touch_ttk      30m-2h                    level, to kickoff  -14.2  -74.3    34.2        97.4     39654.8   5209   218134
+132        Sep24-Oct07     touch_ttk        2-6h                    level, to kickoff    6.3  -33.1    48.8        92.9     33411.2   5067   217861
+133        Sep24-Oct07     touch_ttk       6-24h                    level, to kickoff   23.5  -14.3    70.7        90.9     28258.5   4999   270068
+134        Sep24-Oct07     touch_ttk        >24h                    level, to kickoff   22.8  -68.8   137.1        87.0      7583.3   2077    86760
+135        Sep24-Oct07  touch_league      soccer                    level, to kickoff   21.7   -2.3    47.0        97.6     37953.8   3028   467596
+136        Sep24-Oct07  touch_league     esports                    level, to kickoff   26.8  -52.9    84.1        97.7     30189.6   1023   170697
+137        Sep24-Oct07  touch_league      tennis                    level, to kickoff  104.1   35.9   195.1        99.6      6680.3   1860    85348
+138        Sep24-Oct07  touch_league         nfl                    level, to kickoff    7.2   -8.9    22.7        90.8     55202.8     67   110653
+139        Sep24-Oct07  touch_league         cfb                    level, to kickoff   -7.6  -31.4    15.3        85.2     15457.0    228    56948
+140        Sep24-Oct07  touch_league         mlb                    level, to kickoff   20.1  -18.0    54.6       100.9     10472.8    168    47711
+141        Sep24-Oct07           ttk        0-5m                            C0 census   70.6 -214.7   359.4       129.8     20421.8   4714   102802
+142        Sep24-Oct07           ttk        0-5m                   C1 +cap at kickoff   87.9   68.0   109.8       129.8     20421.8   4714   102802
+143        Sep24-Oct07           ttk       5-30m                            C0 census  -94.6 -336.6   123.9       130.9     51751.8   6034   263366
+144        Sep24-Oct07           ttk       5-30m                   C1 +cap at kickoff   57.5   21.1    93.9       130.9     51751.8   6034   263366
+145        Sep24-Oct07           ttk      30m-2h                            C0 census   17.6  -10.7    44.2       157.1     54376.3   6630   345296
+146        Sep24-Oct07           ttk      30m-2h                   C1 +cap at kickoff   17.6  -12.0    42.5       157.1     54376.3   6630   345296
+147        Sep24-Oct07           ttk        2-6h                            C0 census   38.7   -2.0    73.4       242.0     45503.5   6502   341403
+148        Sep24-Oct07           ttk        2-6h                   C1 +cap at kickoff   38.7   -2.0    73.5       242.0     45503.5   6502   341403
+149        Sep24-Oct07           ttk       6-24h                            C0 census   58.3   37.9    83.5       193.3     42020.7   6225   457574
+150        Sep24-Oct07           ttk       6-24h                   C1 +cap at kickoff   58.3   37.7    81.3       193.3     42020.7   6225   457574
+151        Sep24-Oct07           ttk        >24h                            C0 census   92.0   55.7   129.4       391.6     15615.1   3802   210200
+152        Sep24-Oct07           ttk        >24h                   C1 +cap at kickoff   92.1   60.6   130.1       391.6     15615.1   3802   210200
+153        Sep24-Oct07        league      soccer                            C0 census   -7.6 -242.1   164.6       150.4     64248.7   4260   803499
+154        Sep24-Oct07        league      soccer                   C1 +cap at kickoff   46.8   11.4    82.5       150.4     64248.7   4260   803499
+155        Sep24-Oct07        league     esports                            C0 census   14.8  -52.1    83.8       138.7     39885.6   1162   323720
+156        Sep24-Oct07        league     esports                   C1 +cap at kickoff   53.1   19.3    77.4       138.7     39885.6   1162   323720
+157        Sep24-Oct07        league      tennis                            C0 census  184.5   40.2   340.4       331.7     15286.4   2682   169960
+158        Sep24-Oct07        league      tennis                   C1 +cap at kickoff  182.0  124.1   248.8       331.7     15286.4   2682   169960
+159        Sep24-Oct07        league         nfl                            C0 census   37.1  -44.4   108.5       199.0     64697.6    101   141053
+160        Sep24-Oct07        league         nfl                   C1 +cap at kickoff   35.3   22.0    53.4       199.0     64697.6    101   141053
+161        Sep24-Oct07        league         cfb                            C0 census  -11.5 -112.2    87.5       250.3     22054.1    292    87003
+162        Sep24-Oct07        league         cfb                   C1 +cap at kickoff   23.2   12.0    34.3       250.3     22054.1    292    87003
+163        Sep24-Oct07        league         mlb                            C0 census -146.5 -460.7    91.8       221.8     12770.7    217    63467
+164        Sep24-Oct07        league         mlb                   C1 +cap at kickoff   51.8   26.5    75.1       221.8     12770.7    217    63467
+165  Oct08-14 (census)           all         all                            C0 census   65.6    2.2   135.4       145.1    101530.1   7001   815734
+166  Oct08-14 (census)           all         all                   C1 +cap at kickoff   71.0   33.8   115.8       145.1    101529.9   7001   815725
+167  Oct08-14 (census)           all         all                     C2 +price filter   57.7   25.6    99.2       130.3     96886.6   6741   773843
+168  Oct08-14 (census)           all         all                       C3 +to kickoff   17.0  -23.3    62.2       129.7     93838.2   5567   729836
+169  Oct08-14 (census)           all         all                   C4 C2, w2 notional   57.7   26.3   102.4       130.3     96854.0   6741   773843
+170  Oct08-14 (census)           all         all                   C5 C2, touch price   17.5  -14.9    61.1        89.8     97242.3   6741   773843
+171  Oct08-14 (census)           all         all             C6 C5, legs beyond touch   -3.8  -40.0    43.6        88.5     89163.9   6473   552791
+172  Oct08-14 (census)           all         all                     C7 C6 to kickoff  -51.8  -94.8    -0.7        88.7     86405.8   5368   521465
+173  Oct08-14 (census)           all         all  C8 C2, legs beyond touch, own price   62.4   30.1   110.9       155.3     88634.7   6473   552791
+174  Oct08-14 (census)         level      inside                 level, 30 min capped  -19.7  -67.3    33.9      -203.1      6346.5   5076    86522
+175  Oct08-14 (census)         level      inside                    level, to kickoff   48.3  -55.0   209.1      -202.6      6115.7   4328    80790
+176  Oct08-14 (census)         level       touch                 level, 30 min capped   62.2   24.2   118.4        94.0     71346.5   5966   493660
+177  Oct08-14 (census)         level       touch                    level, to kickoff   16.2  -28.0    78.7        94.0     69152.3   5020   468883
+178  Oct08-14 (census)         level          +1                 level, 30 min capped   31.8  -35.1    81.9       266.4     13547.0   5320   124554
+179  Oct08-14 (census)         level          +1                    level, to kickoff  -19.9  -96.3    39.5       266.6     13118.6   4541   116409
+180  Oct08-14 (census)         level          +2                 level, 30 min capped  128.2   43.9   201.0       487.8      4105.6   3761    35030
+181  Oct08-14 (census)         level          +2                    level, to kickoff   57.2   -0.7   127.2       488.9      3993.7   3248    32481
+182  Oct08-14 (census)         level  +3 or more                 level, 30 min capped  207.5   92.7   316.8      1036.9      1541.0   3094    34077
+183  Oct08-14 (census)         level  +3 or more                    level, to kickoff  144.9   14.8   282.9      1001.7      1457.9   2582    31273
+184  Oct08-14 (census)     touch_ttk        0-5m                    level, to kickoff   65.4   45.7    83.1        92.4      6767.9   2292    28788
+185  Oct08-14 (census)     touch_ttk       5-30m                    level, to kickoff   47.8    3.9    98.3        94.7     17481.8   3371    85363
+186  Oct08-14 (census)     touch_ttk      30m-2h                    level, to kickoff   56.9  -67.5   252.4        95.7     20202.7   3489   111463
+187  Oct08-14 (census)     touch_ttk        2-6h                    level, to kickoff  -21.4 -118.9    56.0        94.5     11421.0   3268    94317
+188  Oct08-14 (census)     touch_ttk       6-24h                    level, to kickoff  -82.6 -172.4     7.5        91.3     11508.1   3281   120494
+189  Oct08-14 (census)     touch_ttk        >24h                    level, to kickoff  -63.2 -199.1    82.6        88.5      1770.9   1291    28458
+190  Oct08-14 (census)  touch_league      soccer                    level, to kickoff  -18.6  -71.6    26.1        92.2     29703.9   2849   255384
+191  Oct08-14 (census)  touch_league     esports                    level, to kickoff   44.1  -22.1    92.0        97.1     12808.7    453    64885
+192  Oct08-14 (census)  touch_league      tennis                    level, to kickoff  -37.6 -123.1    28.1       101.8      3576.3   1036    39175
+193  Oct08-14 (census)  touch_league         nba                    level, to kickoff  -30.8 -216.7   113.1        93.1      1046.2     31    21930
+194  Oct08-14 (census)  touch_league         nfl                    level, to kickoff   -3.2  -50.3    41.0        96.8     10156.3     30    25003
+195  Oct08-14 (census)  touch_league         cfb                    level, to kickoff  -28.8  -81.6    16.9        86.3      4839.9    103    20626
+196  Oct08-14 (census)           ttk        0-5m                            C0 census -221.7 -593.5   137.6       114.1      8682.6   3034    49308
+197  Oct08-14 (census)           ttk        0-5m                   C1 +cap at kickoff   81.1   64.7    97.6       114.1      8682.4   3033    49299
+198  Oct08-14 (census)           ttk       5-30m                            C0 census  143.1   12.2   329.4       122.6     23485.9   4196   141093
+199  Oct08-14 (census)           ttk       5-30m                   C1 +cap at kickoff   54.7   19.3    97.1       122.6     23485.9   4196   141093
+200  Oct08-14 (census)           ttk      30m-2h                            C0 census   61.2  -29.4   177.6       135.4     30093.4   4319   184442
+201  Oct08-14 (census)           ttk      30m-2h                   C1 +cap at kickoff   61.2  -21.7   189.2       135.4     30093.4   4319   184442
+202  Oct08-14 (census)           ttk        2-6h                            C0 census   50.0   32.3    67.4       117.2     15924.7   4130   152530
+203  Oct08-14 (census)           ttk        2-6h                   C1 +cap at kickoff   50.0   30.2    66.7       117.2     15924.7   4130   152530
+204  Oct08-14 (census)           ttk       6-24h                            C0 census   40.7    5.9    73.1       130.4     17701.5   4219   209650
+205  Oct08-14 (census)           ttk       6-24h                   C1 +cap at kickoff   40.7    6.4    71.7       130.4     17701.5   4219   209650
+206  Oct08-14 (census)           ttk        >24h                            C0 census  330.1   70.8   657.0       463.2      5642.1   2705    78711
+207  Oct08-14 (census)           ttk        >24h                   C1 +cap at kickoff  330.1   73.6   684.6       463.2      5642.1   2705    78711
+208  Oct08-14 (census)        league      soccer                            C0 census   83.9    1.4   171.5       129.2     46968.6   4019   436649
+209  Oct08-14 (census)        league      soccer                   C1 +cap at kickoff   30.7    7.6    54.9       129.2     46968.6   4019   436649
+210  Oct08-14 (census)        league     esports                            C0 census   -8.5  -87.5    63.5       131.2     16647.5    576   121469
+211  Oct08-14 (census)        league     esports                   C1 +cap at kickoff   65.0   41.2    87.6       131.2     16647.5    576   121469
+212  Oct08-14 (census)        league      tennis                            C0 census  -99.0 -316.3    78.8       155.6      5634.0   1396    68026
+213  Oct08-14 (census)        league      tennis                   C1 +cap at kickoff  -60.3 -224.8    82.5       155.6      5634.0   1396    68026
+214  Oct08-14 (census)        league         nba                            C0 census  219.2  -40.1   633.9       162.9      2617.6     52    45866
+215  Oct08-14 (census)        league         nba                   C1 +cap at kickoff  208.4  -34.7   591.8       162.9      2617.6     52    45866
+216  Oct08-14 (census)        league         nfl                            C0 census  109.1  -41.0   283.0       246.1     13021.0     61    38748
+217  Oct08-14 (census)        league         nfl                   C1 +cap at kickoff  123.3   39.0   296.8       246.1     13021.0     61    38748
+218  Oct08-14 (census)        league         cfb                            C0 census    5.9 -177.8   144.9       116.6      6691.6    185    33469
+219  Oct08-14 (census)        league         cfb                   C1 +cap at kickoff   31.9    8.0    53.4       116.6      6691.6    185    33469

@@ -34,20 +34,37 @@ python split3.py /data/v3/sports --out splits/sports_v3.json           # writes 
 git add splits/sports_v3.json splits/sports_v3.json.sha256 split_registry.jsonl   # commit it before training
 # 4. comparators on val (no_quote is the D1 primary candidate)
 nice -n 10 python evaluator3.py comparators --data-dir /data/v3/sports --split-map splits/sports_v3.json \
-    --env3-kw obs_size=80 size_mode=1 Q=1000 pull_s=300 flat_c=0.5 --variants central_1s pess_1s
+    --env3-kw obs_size=80 size_mode=1 Q=1000 pull_s=3600 flat_c=0.5 --variants central_1s pess_1s
 # 5. train (each periodic and final val evaluation is a ledger row)
 nice -n 10 python train_ppo3.py --data-dir /data/v3/sports --split-map splits/sports_v3.json \
-    --env3-kw obs_size=80 size_mode=1 Q=1000 pull_s=300 flat_c=0.5 close_inv_coef=0.05 close_ramp_s=1800 \
+    --env3-kw obs_size=80 size_mode=1 Q=1000 pull_s=3600 flat_c=0.5 close_inv_coef=0.05 close_ramp_s=7200 \
     --timesteps 25e6 --threads 1 --seed 0 --eval-every 5e6 --tag s_main
 # 6. evaluate a checkpoint (per-market rows with --markets), and pool the seeds of one config (D13 reading C)
 nice -n 10 python evaluator3.py policy --ckpt runs/<run>/final.pt --data-dir /data/v3/sports \
-    --split-map splits/sports_v3.json --env3-kw obs_size=80 size_mode=1 Q=1000 pull_s=300 flat_c=0.5 --markets
+    --split-map splits/sports_v3.json --env3-kw obs_size=80 size_mode=1 Q=1000 pull_s=3600 flat_c=0.5 --markets
 python evaluator3.py pool runs/<run_s0> runs/<run_s1> runs/<run_s2>
 ```
 
-Settlement: each episode settles at the last pre-kickoff mark (`settle_mode` 1 from
-markets3.bin). `flat_c` charges the crossing cost, and `pull_s` takes the quotes down before
-kickoff. Sports have no reward pools in any build yet (ENV3.md open issue 1), so leave
+**D14: the quote window is listing to kickoff − 1 h.** The env runs each episode to kickoff and
+settles there at the last pre-kickoff mark (`settle_mode` 1 from markets3.bin); it has no option
+to end an episode at T − 1 h. So:
+
+- `pull_s=3600` forces the quotes off in the last hour.
+- `close_inv_coef` with `close_ramp_s` (shaping, training only) pushes the inventory towards 0
+  before then.
+- The evaluator reports the D14 P&L directly. `d14/pnl_marked_T1h_total` is the observed wealth at
+  the first decision inside the last hour, which is the inventory marked at the mid at T − 1 h.
+  `d14/pnl_flat_T1h_total` subtracts |inventory| × `flat_c` there.
+- The full-episode P&L, which also carries the inventory through the last hour, stays the Log's
+  `pnl`. The difference is the `tk/lt1h` bucket.
+
+Ending episodes exactly at T − 1 h would need a build cut there: build_sports.py could cut at
+kickoff − 3600 s, or adapt3.py could set `event_ts` and settle at the T − 1 h row. Neither builder
+nor adapter was changed.
+
+`split3.py` keeps a sports game day only if at least one of its episodes starts more than
+`--min-pre-hours` (1) before kickoff. The file records, per day, how many episodes reach into each
+D14 bucket. Sports have no reward pools in any build yet (ENV3.md open issue 1), so leave
 `liq_rewards` off unless `adapt3.py --rewards` was given pools. obs_size 80 still adds the kickoff
 clock (obs 50) and the category one-hot.
 
@@ -95,6 +112,15 @@ From `evaluator3.summarize3`, for every evaluation, both overall and per group (
 - **D1.3.** ≥ 5 fills per market, not directional, and T5 ≤ 25%.
 - **D1.2 (`d12/active`).** ≥ 5 fills per market and a two-sided uptime ≥ 0.25, for secondary
   comparators.
+- **D14 time buckets (`tk/<bucket>/*`, `d14/*`).** P&L, decision steps and quoting share per
+  time-to-kickoff bucket: `gt24h`, `6_24h`, `1_6h` and `lt1h` (the last hour). Each step's change
+  of the observed wealth (obs 34) goes to the bucket of the step's decision time (obs 50). The
+  unobserved terminal step takes the remainder, so the buckets add up to the P&L exactly.
+  - Wealth in the observation clips at ±0.25 Q. `tk/clip_steps` counts the steps where it does,
+    and those steps make the split between buckets unreliable (the total stays exact), so use
+    Q ≥ 1000.
+  - The buckets need obs_size > 50.
+  - The same lines are reported per league group.
 
 With `--markets`, one row per market carries its P&L lines and its own T5 / T6 numbers.
 
@@ -152,6 +178,11 @@ For each build, smoke3 runs:
 4. `evaluator3 policy` on central_1s and pess_1s;
 5. every comparator.
 
+The smoke builds hold less than an hour per game, so `split3 --min-pre-hours 0` turns off the D14
+day rule. The D14 bucket attribution was also checked on the synthetic sports games, with the
+bucket edges scaled down to 30 / 20 / 10 minutes: the buckets add up to each market's P&L, and the
+marked-at-T−1h P&L equals the sum of the earlier buckets.
+
 All four builds ran without errors. Rows are in `smoke_trials.jsonl`.
 
 | build | markets (train / val / test days) | train sps | wall (train + evals) |
@@ -174,3 +205,5 @@ or a single 45-minute election recording, and no conclusions are drawn from them
   books are in the repo.
 - **Sports reward pools are in no build** (ENV3.md open issue 1).
 - **Comparator tuning (D1.4) is not done yet.** It runs once the val split exists.
+- **D14 needs pre-game history longer than 1 h per game.** Under the D14 rule, the current sports
+  smoke data (≤ 15 min per game) has no quotable day at all.
