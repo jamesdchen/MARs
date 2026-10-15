@@ -7,6 +7,18 @@
 | Env binaries | `build_sports.py`, `README_build.md`, `env_sports/` | Raw data (recorder / backfill) becomes ticks/feat/fills/book/markets in the `data/build` schema. Episodes end at kickoff, and inventory settles at the last pre-kickoff mid. That settlement needs the patched env copy in `env_sports/` (fractional settlement, 3 lines). |
 | Historical backfill | `backfill_pob.py`, `README_backfill.md`, `pob_openapi.json` | Ready for `POLYORDERBOOKS_API_KEY`. Run `--probe` first, then e.g. `--start 2026-09-16 --end 2026-10-14 --mirror --min-volume 50000`. It is resumable and writes `raw_pob/` in the recorder layout. Trades come from data-api, keyless (`--stage meta` works now). |
 
+## v3 data rule: episode cut (recorded 2026-10-15 ~21:15 UTC, before any v3 result)
+
+- **The episode cut is the scheduled `gameStartTime`** (gamma). Polymarket's `clearBookOnStart` wipe
+  fires at the scheduled time, not at the actual start. For example, val-flyr-mibrf was wiped at
+  21:00:00.1 but went `running` at 21:08:15, 496 s late. So the book itself pins the scheduled cut.
+- **The actual start from the sports websocket** (`kickoff_watch.py`) is used only to label games and
+  to exclude early starts, where a game started before the scheduled time and the cut would contain
+  in-play rows. It never moves the cut later.
+- **Esports** (cs2, lol, dota2, val): gamma `endDate` is `gameStartTime + 6 h`. Since 21:14 UTC the
+  recorder therefore uses a separate source with offsets shifted by −6 h, so book rows stop 5 min
+  after the scheduled start instead of recording up to 6 h of in-play books.
+
 Pipeline: `rec_out/` and/or `raw_pob/` → `python build_sports.py --rec rec_out --rec raw_pob --out build --splits splits.json --verify`.
 D11 fixes the splits by game date once the backfill range is known, and before any evaluation.
 
