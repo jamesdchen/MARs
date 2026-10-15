@@ -74,7 +74,7 @@ sensitivity). So:
 - **D14 lines.** `d14/*` (marked / flat at T − 1 h) is still reported, for comparison.
 
 `split3.py` keeps a sports game day only if at least one of its episodes starts more than
-`--min-pre-hours` (default 1, D14's rule; pass 0 under D15) before kickoff. The file records, per
+`--min-pre-hours` (default 0 per D15; D14 used 1) before kickoff. The file records, per
 day, how many episodes reach into each D14 bucket. Sports-2 builds carry the reward programs
 (`sports_x3.bin`), so `liq_rewards=1` pays the hook on in-program games. obs_size 80 adds the
 kickoff clock (obs 50), the category one-hot and the reward slots.
