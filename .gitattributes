@@ -7,3 +7,6 @@
 *.jpg binary
 *.gif binary
 *.pdf binary
+
+# Polymarket market data (plain git: each file is well under 50 MB; LFS is not allowed on public forks)
+explorations/deep_hedging_cvar/polymarket/data/**/*.parquet binary
