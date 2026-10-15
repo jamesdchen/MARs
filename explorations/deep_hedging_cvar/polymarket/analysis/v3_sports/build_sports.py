@@ -1283,7 +1283,10 @@ def verify(out: Path) -> None:
         assert set(mk["contract_len_s"]) <= set(SEG_LENS)
     else:
         games = [s.split("#")[0] for s in meta["slugs"]]
-        assert ((mk["flags"] & FLAG_AT_CUT) > 0).sum() == len(set(games)), "one AT_CUT episode per game"
+        at = [g_ for g_, f_ in zip(games, mk["flags"]) if f_ & FLAG_AT_CUT]
+        assert len(at) == len(set(at)), "more than one AT_CUT episode per game"
+        if not sp.get("buckets", {}).get("bucket_segments"):     # (a bucket piece can be dropped, e.g. no book)
+            assert len(at) == len(set(games)), "one AT_CUT episode per game"
         if not sp.get("buckets", {}).get("bucket_segments"):
             assert len(set(games)) == len(games)
     assert (mk["end_ts"] - mk["open_ts"] == mk["contract_len_s"] * sp["dt_s"]).all()
