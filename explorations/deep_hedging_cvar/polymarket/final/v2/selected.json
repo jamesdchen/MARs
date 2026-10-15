@@ -1,0 +1,159 @@
+{
+ "selected": {
+  "cfg": {
+   "env": {
+    "backend": "real",
+    "kw": {
+     "inv_penalty": 2.019450244810231e-06,
+     "mark_mode": 1,
+     "markout_h": 60,
+     "reward_mode": 2,
+     "data_dir": "/home/user/MARs/explorations/deep_hedging_cvar/polymarket/data/build_v2",
+     "len_mask": 7
+    },
+    "code_sha256": {
+     "binding.c": "03adf9f954243b2baf4a10d5a762b544822f2abb86c904b53519a97edab398c0",
+     "binding.cpython-313-x86_64-linux-gnu.so": "a5fd99bf2a4df9b5ee49714e10eecd1743ef1f554dac6e51d9984528a356f0ee",
+     "env.py": "e2b8209e681350618cfd3bbb64995ac738bdbba16effe6362d5c742d732413a9",
+     "mm.h": "9189f83adbb3f42ab803aca998ff97954c7cc092ffd65401d2b835abaa98a8e9",
+     "data:markets.bin": "a35032d146d7802ec68b63a938fcfb0e37b322132c64efcee5df4e40b9e7d1f8",
+     "data:meta.json": "65eb41bfdece786e51aea95f013cf0a537ac1eac015f49bb8ad612db3369b551"
+    },
+    "resolved": {
+     "allow_test": 0.0,
+     "fill_model": 1.0,
+     "latency": 1.0,
+     "match_delay": -1.0,
+     "dt": 0.0,
+     "dt_5m": 1.0,
+     "dt_15m": 1.0,
+     "dt_4h": 5.0,
+     "Q": 100.0,
+     "inv_penalty": 2.019450244810231e-06,
+     "reward_scale": 0.0,
+     "size_mult": 1.0,
+     "part_cap": -1.0,
+     "fee_rate": -1.0,
+     "rebate_rate": -1.0,
+     "liq_rewards": 0.0,
+     "liq_moas": 1.0,
+     "mark_mode": 1.0,
+     "reward_mode": 2.0,
+     "tick_rule": 0.0,
+     "len_mask": 7.0,
+     "fixed_market": -1.0,
+     "fixed_start": -1.0,
+     "cycle_stride": 0.0,
+     "start_frac": 0.2,
+     "markout_h": 60.0,
+     "data_dir": "/home/user/MARs/explorations/deep_hedging_cvar/polymarket/data/build_v2"
+    }
+   },
+   "policy": {
+    "kind": "mlp",
+    "hidden": 64,
+    "layers": 2,
+    "act": "tanh",
+    "shared": true,
+    "off_prior": 0.5
+   },
+   "ppo": {
+    "learning_rate": 0.0014191706633231397,
+    "ent_coef": 0.001218969461417805,
+    "gamma": 0.9988214282795336,
+    "gae_lambda": 0.9794307540969474,
+    "clip_coef": 0.2,
+    "vf_coef": 0.5,
+    "vf_clip_coef": 10.0,
+    "max_grad_norm": 0.5,
+    "update_epochs": 1,
+    "bptt_horizon": 64,
+    "minibatch_size": 8192,
+    "optimizer": "adam",
+    "anneal_lr": true,
+    "adam_eps": 1e-08
+   },
+   "num_envs": 4096,
+   "total_timesteps": 25000000,
+   "init": null,
+   "kl_teacher": null
+  },
+  "cfg_hash": "9695dc2374d35c66ca5f79583b373f3cd2c94b326b5361c81100dbfb33df9c08",
+  "runs": [
+   {
+    "seed": 0,
+    "ckpt": "final/v2/ckpt/c00_s0.pt",
+    "ckpt_sha256": "f90f667514fbe141f38490071ba91fa30b67aedb107ac4ed7a7f765d2f498bc8",
+    "source_run": "train/runs/v2/v2s1/c00_s0",
+    "cfg_hash": "9695dc2374d35c66ca5f79583b373f3cd2c94b326b5361c81100dbfb33df9c08"
+   },
+   {
+    "seed": 1,
+    "ckpt": "final/v2/ckpt/c00_s1.pt",
+    "ckpt_sha256": "a2d6573f3c484fd1d577e96fa0a6d53d290e3bc01b8b9b4ae705be1252aa0bc3",
+    "source_run": "train/runs/v2/v2s1/c00_s1",
+    "cfg_hash": "9695dc2374d35c66ca5f79583b373f3cd2c94b326b5361c81100dbfb33df9c08"
+   },
+   {
+    "seed": 2,
+    "ckpt": "final/v2/ckpt/c00_s2.pt",
+    "ckpt_sha256": "d20d34e49509d3dd0740de3045fe9ccab164632537c07bb304e7342120eb4c27",
+    "source_run": "train/runs/v2/v2s1/c00_s2",
+    "cfg_hash": "9695dc2374d35c66ca5f79583b373f3cd2c94b326b5361c81100dbfb33df9c08"
+   },
+   {
+    "seed": 3,
+    "ckpt": "final/v2/ckpt/c00_s3.pt",
+    "ckpt_sha256": "ef230ec6cfecb5c3feeadd42f00d45885bb15d5b88eceb6fe4c621563c1d93cf",
+    "source_run": "train/runs/v2/v2final/c00_s3",
+    "cfg_hash": "9695dc2374d35c66ca5f79583b373f3cd2c94b326b5361c81100dbfb33df9c08"
+   },
+   {
+    "seed": 4,
+    "ckpt": "final/v2/ckpt/c00_s4.pt",
+    "ckpt_sha256": "b2b58047dadf2fba0be22162cd336b5eddcc876e78b1fe6c783dd47defc58fa5",
+    "source_run": "train/runs/v2/v2final/c00_s4",
+    "cfg_hash": "9695dc2374d35c66ca5f79583b373f3cd2c94b326b5361c81100dbfb33df9c08"
+   }
+  ],
+  "n_seeds": 5,
+  "mean": -34.96480862635266,
+  "std": 169.9046528335607,
+  "name": "v2s1/c00 (all contract lengths, no length filter)"
+ },
+ "selection_rule": "DECISIONS.md D8 (+ D13): best seed-mean val-v2 P&L (central fills, 1 s; data/build_v2 split 1, 374 markets) among methods with >= 3 seeds passing D1.3, D1.3 judged on seed-pooled attribution with final/reduce.py directional_verdict (reading C); single ensemble evaluations not eligible. See final/v2/SELECTION.md",
+ "selection_val": {
+  "seeds": [
+   0,
+   1,
+   2
+  ],
+  "per_seed": [
+   -184.9722398056765,
+   -69.46414777822793,
+   149.54196170484647
+  ],
+  "mean": -34.96480862635266,
+  "se": 98.09449705002619
+ },
+ "final_seeds_val": {
+  "seeds": [
+   0,
+   1,
+   2,
+   3,
+   4
+  ],
+  "per_seed": [
+   -184.9722398056765,
+   -69.46414777822793,
+   149.54196170484647,
+   -362.092608746374,
+   -87.85160539159551
+  ],
+  "mean": -110.9677280034055,
+  "se": 83.26541125319213,
+  "note": "seeds 3 and 4 trained after selection (tag v2final), same config; not used for selection"
+ },
+ "n_trials_ledger": null
+}
