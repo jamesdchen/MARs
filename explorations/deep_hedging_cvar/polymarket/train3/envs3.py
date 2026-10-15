@@ -68,6 +68,24 @@ VIEWS = os.path.join(HERE, 'views')
 HASH_CACHE = os.path.join(HERE, '.hashcache.json')
 OBS_CAT = 52            # ENV3.md section 7: obs 52-54 = category one-hot (crypto, sports, elections)
 OBS_EV = 50             # ev_log = log1p(seconds to event) / log1p(86400)
+# D15 time-to-kickoff buckets (build_sports.BUCKETS): name, the bound below it (s), build_sports' name
+BUCKETS = (('gt24h', 86400, '>24h'), ('6_24h', 21600, '6-24h'), ('1_6h', 3600, '1-6h'), ('1h_30m', 1800, '1h-30m'),
+           ('30_5m', 300, '30-5m'), ('5_0m', 0, '5-0m'))
+BUCKET_FROM_BUILD = {b: n for n, _, b in BUCKETS}
+
+
+def episode_bucket(lead_s, n_rows, row_s=1.0):
+    """build_sports.bucket_info for an episode whose first row is lead_s seconds before the event: the
+    D15 bucket holding most of its decision rows (all but the last), bounds upper-inclusive (a row
+    exactly 1800 s out is 30_5m). Used when meta.json has no segments[i].bucket (sports-1 builds)."""
+    nd = max(int(n_rows) - 1, 1)
+
+    def n_le(b):                    # decision rows j in [0, nd) with lead_s - j * row_s <= b
+        j0 = max(0, math.ceil((lead_s - b) / row_s - 1e-9))
+        return max(0, nd - j0)
+    le = [n_le(b) for _, b, _ in BUCKETS[:-1]]
+    cnt = [nd - le[0]] + [le[k - 1] - le[k] for k in range(1, len(le))] + [le[-1]]
+    return BUCKETS[int(np.argmax(cnt))][0]
 
 
 # ----------------------------------------------------------------------------- hashing
@@ -142,7 +160,8 @@ def _utc_day(ts):
 def market_table(build):
     """Per-market facts of a build (markets.bin + markets3.bin + meta.json), in market order:
     idx, split (the build's), n_rows, open_ts, end_ts, event_ts, contract_len_s, category, league,
-    group, date (the split-map key), slug, settle_mode, row_s, rw_rate_day, min_order_size."""
+    group, date (the split-map key), slug, settle_mode, row_s, rw_rate_day, min_order_size, and for
+    sports the episode's D15 bucket (meta.json segments[i].bucket, else episode_bucket)."""
     no_jun15(build)
     mk = np.fromfile(os.path.join(build, 'markets.bin'), MARKET_DTYPE)
     p3 = os.path.join(build, 'markets3.bin')
@@ -151,6 +170,9 @@ def market_table(build):
         raise ValueError(f'{p3}: {len(ext)} records for {len(mk)} markets (rerun adapt3.py)')
     meta = json.load(open(os.path.join(build, 'meta.json')))
     slugs = meta.get('slugs') or [f'm{i}' for i in range(len(mk))]
+    segs = meta.get('segments')                     # build_sports sports-2: one record per market
+    if segs is not None and len(segs) != len(mk):
+        segs = None
     kind = detect_kind(build)
     rows = []
     for i, m in enumerate(mk):
@@ -173,7 +195,12 @@ def market_table(build):
             date = _utc_day(m['open_ts'])
             league = CAT_NAMES[cat]
             group = CAT_NAMES[cat]
-        rows.append({'idx': i, 'split': int(m['split']), 'n_rows': int(m['n_rows']),
+        bucket = None
+        if kind == 'sports' or cat == 1:
+            bk = segs[i].get('bucket') if segs is not None else None
+            bucket = BUCKET_FROM_BUILD.get(bk) or episode_bucket(ev - int(m['open_ts']), int(m['n_rows']),
+                                                                 float(e['row_s']) if e is not None else 1.0)
+        rows.append({'idx': i, 'split': int(m['split']), 'n_rows': int(m['n_rows']), 'bucket': bucket,
                      'open_ts': int(m['open_ts']), 'end_ts': int(m['end_ts']), 'event_ts': ev,
                      'contract_len_s': int(m['contract_len_s']), 'category': cat,
                      'category_name': CAT_NAMES[cat], 'league': league, 'group': group, 'date': date,
@@ -344,7 +371,7 @@ class MarketSetEnv3:
             self.records.append({'env': int(i), 'market': int(m['idx']),
                                  **{k: m[k] for k in ('contract_len_s', 'open_ts', 'end_ts', 'event_ts', 'category',
                                                       'category_name', 'league', 'group', 'date', 'slug',
-                                                      'n_rows', 'rw_rate_day')},
+                                                      'n_rows', 'rw_rate_day', 'bucket')},
                                  **{k: float(v) for k, v in log.items() if k != 'n'}})
             self.active[i] = False
         return self.observations, self.rewards, self.terminals, self.truncations, []

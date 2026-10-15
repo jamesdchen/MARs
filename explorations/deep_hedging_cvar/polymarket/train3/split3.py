@@ -15,6 +15,10 @@ made loadable or not by adapt3.py), per track, and assigns them by D11's rule:
 - track E (elections, by UTC day of the window open): days at or after --cutoff (default
   2026-11-03, election night, out of scope) are excluded; of the rest, the LAST recorded days are
   test with the same 60 / 20 / 20 arithmetic (oldest train, then val, newest test).
+D14 (sports): the quote window is listing to kickoff - 1 h, so a game day is kept only if at least
+--min-markets of its episodes start more than --min-pre-hours (default 0 under D15; D14 used 1) before kickoff; the file
+records per day how many episodes are quotable and how many reach into each time-to-kickoff bucket
+(> 24 h, 6-24 h, 1-6 h), the buckets D14 reports by.
 `--exclude DAY ...` drops days (e.g. a partial first recording day) before the rule is applied;
 `--min-markets` drops days with fewer markets.
 
@@ -50,23 +54,45 @@ def d11_rule(days):
     return {d: ('train' if i < n_tr else ('val' if i < n_tr + n_va else 'test')) for i, d in enumerate(days)}
 
 
+def _track(build, m):
+    return {1: 'sports', 2: 'elections'}.get(m['category']) or envs3.detect_kind(build)
+
+
 def available(build):
     """{track: {day: n_markets}} over the markets of a build."""
     out = {}
     for m in envs3.market_table(build):
-        track = {1: 'sports', 2: 'elections'}.get(m['category'])
-        if track is None:
-            track = envs3.detect_kind(build)
+        track = _track(build, m)
         out.setdefault(track, {}).setdefault(m['date'], 0)
         out[track][m['date']] += 1
     return out
 
 
-def make_split(build, track, exclude=(), cutoff='2026-11-03', min_markets=1):
+D14_BUCKETS = (('gt24h', 86400), ('6_24h', 21600), ('1_6h', 3600))
+
+
+def d14_coverage(build, track, min_pre_hours):
+    """Sports, DECISIONS.md D14 (quote window = listing to kickoff - 1 h): per game day, the markets
+    whose episode starts more than `min_pre_hours` before kickoff (`quotable`), and how many episodes
+    reach into each time-to-kickoff bucket (> 24 h, 6-24 h, 1-6 h)."""
+    quot, buck = {}, {}
+    for m in envs3.market_table(build):
+        if _track(build, m) != track:
+            continue
+        lead = m['event_ts'] - m['open_ts']               # seconds from the episode start to kickoff
+        quot[m['date']] = quot.get(m['date'], 0) + int(lead > min_pre_hours * 3600)
+        b = buck.setdefault(m['date'], {k: 0 for k, _ in D14_BUCKETS})
+        for k, lo in D14_BUCKETS:
+            b[k] += int(lead > lo)
+    return quot, buck
+
+
+def make_split(build, track, exclude=(), cutoff='2026-11-03', min_markets=1, min_pre_hours=1.0):
     avail = available(build)
     if track not in avail:
         raise SystemExit(f'{build}: no {track} markets (tracks present: {sorted(avail)})')
     per_day = avail[track]
+    quot, buck = d14_coverage(build, track, min_pre_hours) if track == 'sports' else ({}, {})
     dropped = {}
     days = []
     for d, n in sorted(per_day.items()):
@@ -76,6 +102,9 @@ def make_split(build, track, exclude=(), cutoff='2026-11-03', min_markets=1):
             dropped[d] = f'at or after --cutoff {cutoff} (election night out of scope, D11)'
         elif n < min_markets:
             dropped[d] = f'fewer than {min_markets} markets'
+        elif track == 'sports' and min_pre_hours > 0 and quot.get(d, 0) < min_markets:
+            dropped[d] = (f'no market with data more than {min_pre_hours:g} h before kickoff '
+                          '(D14: the quote window ends at kickoff - 1 h)')
         else:
             days.append(d)
     assign = d11_rule(days)
@@ -87,6 +116,10 @@ def make_split(build, track, exclude=(), cutoff='2026-11-03', min_markets=1):
             '_build_markets_sha256': envs3.sha256_file(os.path.join(build, 'markets.bin')),
             '_markets_per_day': per_day, '_dropped': dropped, '_created_utc': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
             '_counts': {s: sorted(d for d, v in assign.items() if v == s) for s in ('train', 'val', 'test')}}
+    if track == 'sports':
+        meta.update({'_quote_window': 'D14: listing (or start of data) to kickoff - 1 h; flat / marked at T - 1 h; '
+                                      'reported per time-to-kickoff bucket (> 24 h, 6-24 h, 1-6 h) and per league',
+                     '_min_pre_hours': min_pre_hours, '_quotable_per_day': quot, '_episodes_reaching_bucket': buck})
     full = {**assign, **{d: 'exclude' for d in dropped}}
     if track == 'sports':
         doc = {**meta, 'days': full, 'default': 'exclude'}       # build_sports.py --splits layout
@@ -105,12 +138,15 @@ def main(argv=None):
     ap.add_argument('--exclude', nargs='*', default=[], help='days to drop before the rule')
     ap.add_argument('--cutoff', default='2026-11-03', help='elections: days at or after this are dropped')
     ap.add_argument('--min-markets', type=int, default=1)
+    ap.add_argument('--min-pre-hours', type=float, default=0.0,
+                    help='sports (D14): a game day needs --min-markets episodes starting more than this many hours '
+                         'before kickoff; 0 disables')
     a = ap.parse_args(argv)
     envs3.no_jun15(a.build)
     envs3.no_jun15(a.out)
     track = a.track or envs3.detect_kind(a.build)
     print(json.dumps({'build': os.path.realpath(a.build), 'available': available(a.build)}, indent=1))
-    doc = make_split(a.build, track, set(a.exclude), a.cutoff, a.min_markets)
+    doc = make_split(a.build, track, set(a.exclude), a.cutoff, a.min_markets, a.min_pre_hours)
     if a.dry_run:
         doc['_dry_run'] = True
     raw = (json.dumps(doc, indent=1, sort_keys=False) + '\n').encode()

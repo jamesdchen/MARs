@@ -8,6 +8,7 @@ a separate reward-income line for elections, and the comparators of D11 / D1 ada
 CLI (every val evaluation appends one row to the ledger, default train3/trials.jsonl):
 
     python evaluator3.py comparators --data-dir BUILD [--split-map F] [--env3-kw k=v ...] [--names ...]
+        [--pull-grid [S ...]]       # D15 sweep: each comparator at env pull_s in S (default 0 300 900 1800 3600)
     python evaluator3.py policy --ckpt RUN/final.pt --data-dir BUILD [--split-map F] [--env3-kw ...]
     python evaluator3.py pool RUN_DIR [RUN_DIR ...]          # seed-pooled D1.3 of several result.json
 
@@ -24,8 +25,20 @@ sums / means of every Log field) plus:
 - `t6/*`: final/reduce.py `directional_verdict` on the attribution totals (imported, not copied);
 - `d13/*`: fills/market >= 5, not directional, T5 valid -> `d13/makes_markets`; `d12/active`: the D1.2
   activity requirement of a secondary comparator (>= 5 fills / market, two-sided uptime >= 0.25);
-- `group/<g>/*` and `cat/<c>/*`: the same per league group ('sports/nba', 'elections') and per
-  category, and `per_market` rows (fills, P&L, components, T5 / T6 per market) when asked.
+- `net/*` (DECISIONS.md D15, analysis/v3_sports_rules/RECONCILE.md section 6): gross filled shares,
+  filled notional, |inventory| at the episode end (the settlement row: kickoff), the netted share
+  1 - sum |end inv| / sum gross (pooled, `net/netted_share`) and its per-episode mean
+  (`net/netted_share_ep`), and the flatten drag (flat_c x |end inv|, already in the P&L) in USD and
+  in bps of the filled notional; from the env Log's net_* fields (v3env/mm3.h);
+- `tk/<bucket>/*` (D15 time buckets, track S): P&L, steps and quoting share per time-to-kickoff
+  bucket of the decision time: gt24h, 6_24h, 1_6h, 1h_30m, 30_5m, 5_0m (build_sports' > 24 h, 6-24 h,
+  1-6 h, 1 h-30 m, 30-5 m, 5-0 m; from the observed wealth, adding up to the P&L exactly), `tk/lt1h/*`
+  = the last three summed; and `d14/*`, the P&L marked at T - 1 h and flattened there (D14's
+  withdrawn window, kept for comparison); see TimeBuckets;
+- `group/<g>/*`, `cat/<c>/*` and `bucket/<b>/*`: the same per league group ('sports/nba',
+  'elections'), per category and per episode bucket (the build's `segments[i].bucket`: the D15
+  bucket holding most of the episode's decision rows; exact with --bucket-segments builds), and
+  `per_market` rows (fills, P&L, components, netting, T5 / T6 per market) when asked.
 For a multi-seed method, `pooled_verdict` averages each attribution component over the seeds
 first and then applies directional_verdict and the T5 shares (DECISIONS.md D13 reading C).
 
@@ -136,6 +149,15 @@ def verdicts(tot, n_markets):
     out.update({f'd13/ok_{k}': v for k, v in ok.items()})
     out['d13/makes_markets'] = all(ok.values())
     out.update(income(tot))
+    out.update(netting(tot))
+    return out
+
+
+def netting(tot):
+    """D15 netting / flatten lines from summed Log fields (v3env/env3.py netting, prefixed net/)."""
+    import env3
+    out = {f'net/{k}': v for k, v in env3.netting(tot).items()}
+    out['net/notional'] = float(tot.get('net_notional', 0.0))
     return out
 
 
@@ -161,13 +183,14 @@ def per_market(recs):
     rows = []
     for r in recs:
         v = verdicts(r, 1)
-        rows.append({k: r.get(k) for k in ('market', 'slug', 'group', 'category_name', 'date', 'n_rows', 'pnl',
-                                             'fills', 'fill_vol', 'max_abs_inv', 'final_abs_inv',
+        rows.append({k: r.get(k) for k in ('market', 'slug', 'group', 'category_name', 'bucket', 'date', 'n_rows',
+                                             'pnl', 'fills', 'fill_vol', 'max_abs_inv', 'final_abs_inv',
                                              'uptime_two_sided', 'uptime_any', 'settle_px', 'rw_scored')}
                     | {k.split('/', 1)[1]: v[k] for k in ('income/trading', 'income/rebates', 'income/rewards',
                                                           'income/spread_capture', 'income/markout_60',
                                                           'income/inventory', 't6/share_of_total',
-                                                          't6/directional', 't5/worst_flag', 't5/worst_share')})
+                                                          't6/directional', 't5/worst_flag', 't5/worst_share')}
+                    | {k.replace('/', '_'): v[k] for k in NET_KEYS})
     return rows
 
 
@@ -178,9 +201,10 @@ def summarize3(recs):
     if not recs:
         return out
     out.update(verdicts(_sums(recs), len(recs)))
-    for key, prefix in (('group', 'group'), ('category_name', 'cat')):
-        for g in sorted({r[key] for r in recs}):
-            rg = [r for r in recs if r[key] == g]
+    out.update(time_buckets(recs))
+    for key, prefix in (('group', 'group'), ('category_name', 'cat'), ('bucket', 'bucket')):
+        for g in sorted({r[key] for r in recs if r.get(key) is not None}):
+            rg = [r for r in recs if r.get(key) == g]
             pnl = np.array([r['pnl'] for r in rg])
             v = verdicts(_sums(rg), len(rg))
             out.update({f'{prefix}/{g}/n': len(rg), f'{prefix}/{g}/pnl_total': float(pnl.sum()),
@@ -189,7 +213,9 @@ def summarize3(recs):
                         f'{prefix}/{g}/t6_share': v['t6/share_of_total'], f'{prefix}/{g}/t6_directional': v['t6/directional'],
                         f'{prefix}/{g}/t5_worst_share': v['t5/worst_share'],
                         f'{prefix}/{g}/makes_markets': v['d13/makes_markets'],
-                        **{f'{prefix}/{g}/{k}': v[k] for k in ('income/trading', 'income/rebates', 'income/rewards')}})
+                        **{f'{prefix}/{g}/{k}': v[k] for k in ('income/trading', 'income/rebates', 'income/rewards')},
+                        **{f'{prefix}/{g}/{k}': v[k] for k in NET_KEYS},
+                        **{f'{prefix}/{g}/{k}': v for k, v in time_buckets(rg).items()}})
     # train_ppo.py / rounds.py read these names
     out['fills_per_market'] = out['d13/fills_per_market']
     out['t6_share'] = out['t6/share_of_total']
@@ -197,6 +223,30 @@ def summarize3(recs):
     out['makes_markets'] = float(out['d13/makes_markets'])
     # D1.2: a secondary comparator must keep trading (>= 5 fills / market, two-sided uptime >= 0.25)
     out['d12/active'] = bool(out['d13/fills_per_market'] >= MIN_FILLS and out.get('mean/uptime_two_sided', 0.0) >= 0.25)
+    return out
+
+
+NET_KEYS = ('net/gross_filled_sh', 'net/end_abs_inv', 'net/netted_share', 'net/netted_share_ep',
+            'net/flat_drag_usd', 'net/flat_drag_bps')
+
+
+def time_buckets(recs):
+    """D15 lines: P&L, decision steps and quoting steps per time-to-event bucket (and the last hour
+    summed), and the P&L marked / flattened at T - 1 h (TimeBuckets; absent when obs_size <= 50)."""
+    if not recs or f'tk_pnl_{TK_BUCKETS[-1][0]}' not in recs[0]:
+        return {}
+    s = lambda k: float(sum(r.get(k, 0.0) for r in recs))  # noqa: E731
+    out = {}
+    for name, members in [(n, (n,)) for n, _ in TK_BUCKETS] + [('lt1h', TK_LAST_HOUR)]:
+        out[f'tk/{name}/pnl_total'] = sum(s(f'tk_pnl_{m}') for m in members)
+        st = sum(s(f'tk_steps_{m}') for m in members)
+        out[f'tk/{name}/steps'] = st
+        out[f'tk/{name}/quote_frac'] = sum(s(f'tk_quote_steps_{m}') for m in members) / st if st else float('nan')
+    out['d14/pnl_marked_T1h_total'] = s('d14_pnl_marked_T1h')
+    out['d14/pnl_flat_T1h_total'] = s('d14_pnl_flat_T1h')
+    out['d14/abs_inv_T1h_mean'] = float(np.mean([abs(r['d14_inv_T1h']) for r in recs]))
+    out['d14/markets_reaching_T1h'] = s('d14_reached_T1h')
+    out['tk/clip_steps'] = s('tk_clip_steps')
     return out
 
 
@@ -217,6 +267,88 @@ def pooled_verdict(summaries):
     return v
 
 
+
+# ----------------------------------------------------------------------------- D15 time buckets
+# (name, lower bound in seconds to the event): a decision belongs to the first bucket whose bound it
+# exceeds, so bounds are upper-inclusive as build_sports.bucket_of (1800 s is 30_5m, 300 s is 5_0m)
+TK_BUCKETS = (('gt24h', 86400.0), ('6_24h', 21600.0), ('1_6h', 3600.0), ('1h_30m', 1800.0), ('30_5m', 300.0),
+              ('5_0m', -1.0))
+TK_LAST_HOUR = ('1h_30m', '30_5m', '5_0m')
+assert tuple(n for n, _ in TK_BUCKETS) == tuple(n for n, _, _ in envs3.BUCKETS)   # record 'bucket' uses the same names
+T1H = 3600.0
+OBS_INV, OBS_WEALTH = 33, 34          # ENV.md section 6: inventory / Q, clip(W / (0.05 Q), +-5)
+PULL_GRID = (0.0, 300.0, 900.0, 1800.0, 3600.0)              # D15 candidate pull times (and 0 = at kickoff)
+
+
+class TimeBuckets:
+    """DECISIONS.md D15: P&L per time-to-kickoff bucket (> 24 h, 6-24 h, 1-6 h, 1 h-30 m, 30-5 m,
+    5-0 m) and D14's P&L marked (and flattened) at T - 1 h, from the observations of the eval loop.
+
+    Each step's change of the observed wealth W = cash + rebates + rewards + inventory x mark (obs 34)
+    is credited to the bucket of the step's decision time (obs 50, seconds to the event). The
+    terminal step is not observed (auto-reset), so the market's Log P&L minus the observed sum goes
+    to the last step's bucket: the buckets add up to the P&L exactly. W is clipped at +-0.25 Q in
+    the observation: steps at the clip are counted (`tk_clip_steps`) and make the split between
+    buckets (not the total) unreliable; use Q >= 1000. `d14_pnl_marked_T1h` is W at the first
+    decision within 1 h of the event (the inventory marked at the mid there; the whole P&L if the
+    episode never gets that close), `d14_inv_T1h` the inventory then, and `d14_pnl_flat_T1h` the
+    marked P&L minus |inventory| x flat_c / 100 (the env's flattening cost). A step counts as quoting
+    when the action quotes a side and the env's pull_s has not forced the quotes off. Needs obs_size > 50."""
+
+    def __init__(self, env, N):
+        p = env.envs[0].params
+        self.on = env.obs_size > envs3.OBS_EV
+        self.Q, self.flat = float(p['Q']), float(p['flat_c']) / 100.0
+        self.pull = float(p['pull_s'])                # the env forces quotes off within pull_s of the event
+        nb = len(TK_BUCKETS)
+        self.pnl = np.zeros((N, nb))
+        self.steps = np.zeros((N, nb))
+        self.qsteps = np.zeros((N, nb))
+        self.clip = np.zeros(N)
+        self.w1h = np.full(N, np.nan)
+        self.inv1h = np.full(N, np.nan)
+        self.last_b = np.zeros(N, np.int64)
+
+    def before(self, obs, act, active):
+        if not self.on:
+            return
+        sec = np.expm1(obs[:, envs3.OBS_EV].astype(np.float64) * LOG86400)
+        b = np.select([sec > lo for _, lo in TK_BUCKETS[:-1]], list(range(len(TK_BUCKETS) - 1)), len(TK_BUCKETS) - 1)
+        self.b, self.w0 = b, obs[:, OBS_WEALTH].astype(np.float64) * 0.05 * self.Q
+        self.clip += active & (np.abs(obs[:, OBS_WEALTH]) >= 4.999)
+        i = np.flatnonzero(active)
+        self.steps[i, b[i]] += 1
+        q = ((act[:, 0] != 0) | (act[:, 1] != 0)) & ~((self.pull > 0) & (sec <= self.pull))
+        self.qsteps[i, b[i]] += q[i]
+        first = active & (sec <= T1H) & np.isnan(self.w1h)
+        self.w1h[first] = self.w0[first]
+        self.inv1h[first] = obs[first, OBS_INV].astype(np.float64) * self.Q
+        self.last_b[i] = b[i]
+
+    def after(self, obs, term, active):
+        if not self.on:
+            return
+        i = np.flatnonzero(active & ~term)
+        w1 = obs[:, OBS_WEALTH].astype(np.float64) * 0.05 * self.Q
+        self.pnl[i, self.b[i]] += w1[i] - self.w0[i]
+
+    def finish(self, i, pnl):
+        if not self.on:
+            return {}
+        self.pnl[i, self.last_b[i]] += pnl - self.pnl[i].sum()
+        out = {}
+        for k, (name, _) in enumerate(TK_BUCKETS):
+            out[f'tk_pnl_{name}'] = float(self.pnl[i, k])
+            out[f'tk_steps_{name}'] = float(self.steps[i, k])
+            out[f'tk_quote_steps_{name}'] = float(self.qsteps[i, k])
+        reached = not np.isnan(self.w1h[i])
+        out['d14_reached_T1h'] = float(reached)
+        out['d14_pnl_marked_T1h'] = float(self.w1h[i]) if reached else float(pnl)
+        out['d14_inv_T1h'] = float(self.inv1h[i]) if reached else 0.0
+        out['d14_pnl_flat_T1h'] = out['d14_pnl_marked_T1h'] - (abs(self.inv1h[i]) * self.flat if reached else 0.0)
+        out['tk_clip_steps'] = float(self.clip[i])
+        return out
+
 # ----------------------------------------------------------------------------- evaluation
 def evaluate(policy, adapter, split=1, env_kw=None, seed=0, device='cpu', max_steps=None,
              return_records=False, with_markets=False):
@@ -236,6 +368,7 @@ def evaluate(policy, adapter, split=1, env_kw=None, seed=0, device='cpu', max_st
     nvec = tuple(int(n) for n in env.single_action_space.nvec)
     hist = [np.zeros(n) for n in nvec]
     active = np.ones(N, bool)
+    tk = TimeBuckets(env, N)
     was = policy.training if is_torch else None
     if is_torch:
         policy.eval()
@@ -251,10 +384,13 @@ def evaluate(policy, adapter, split=1, env_kw=None, seed=0, device='cpu', max_st
                     act = np.asarray(policy(obs), np.int32)
                 for h, n in enumerate(nvec):
                     hist[h] += np.bincount(act[active, h], minlength=n)[:n]
+                tk.before(obs, act, active)
                 obs, _, term, _, _ = env.step(act)
+                tk.after(obs, np.asarray(term, bool), active)
                 done = torch.as_tensor(np.asarray(term, dtype=np.float32))
                 for rec in adapter.eval_records(env):
                     if rec['market'] not in records:
+                        rec.update(tk.finish(rec['env'], rec['pnl']))
                         records[rec['market']] = rec
                         active[rec['env']] = False
                 steps += 1
@@ -426,32 +562,47 @@ def _ledger_append(row, path):
 
 
 def run_comparators(adapter, env_kw, names, split=1, variants=('central_1s',), ledger_path=LEDGER, tag=None,
-                    params=None, with_markets=False):
-    """Evaluate each comparator under each variant; one ledger row per val evaluation."""
+                    params=None, with_markets=False, pull_grid=None):
+    """Evaluate each comparator under each variant; one ledger row per val evaluation.
+
+    pull_grid (D15): evaluate every comparator at each quote-pull time in the grid (seconds before
+    the event; 0 = quote to kickoff). The env's pull_s forces the quotes off, and a comparator with
+    its own pull_s parameter (mid_value, as_mid, reward_farmer) gets the same value, so the grid
+    point alone decides when quoting stops. Results are keyed `<name>/<variant>/pull<s>`, and each
+    is its own ledger row (the grid is a val-selected hyperparameter, D15: never chosen on test)."""
     out = {}
     kw0 = dict(env_kw)
     kw0['obs_size'] = max(int(kw0.get('obs_size', 50)), 80)
-    ident = adapter.identity(kw0)
-    for name in names:
-        for var in variants:
-            kw = {**kw0, **adapter.variants[var]}
-            fn = make_baseline(name, (params or {}).get(name), kw)
-            res = evaluate(fn, adapter, split=split, env_kw=kw, with_markets=with_markets)
-            out[f'{name}/{var}'] = res
-            if split == 1 and ledger_path:
-                _ledger_append({'kind': 'val_eval', 'split': 1, 'source': 'comparator', 'backend': adapter.name,
-                                'tag': tag, 'method': name, 'params': {**BASELINE_DEFAULTS[name],
-                                                                      **((params or {}).get(name) or {})},
-                                'variant': var, 'variant_kw': adapter.variants[var], 'env': ident,
-                                'val': nan_to_none({k: v for k, v in res.items() if k != 'per_market'})},
-                               ledger_path)
+    pulls = [None] if pull_grid is None else [float(x) for x in pull_grid]
+    for pull in pulls:
+        kwp = dict(kw0) if pull is None else {**kw0, 'pull_s': pull}
+        ident = adapter.identity(kwp)
+        for name in names:
+            prm = dict((params or {}).get(name) or {})
+            if pull is not None and 'pull_s' in BASELINE_DEFAULTS[name]:
+                prm['pull_s'] = pull
+            for var in variants:
+                kw = {**kwp, **adapter.variants[var]}
+                fn = make_baseline(name, prm, kw)
+                res = evaluate(fn, adapter, split=split, env_kw=kw, with_markets=with_markets)
+                key = f'{name}/{var}' if pull is None else f'{name}/{var}/pull{int(pull)}'
+                out[key] = res
+                if split == 1 and ledger_path:
+                    _ledger_append({'kind': 'val_eval', 'split': 1, 'source': 'comparator', 'backend': adapter.name,
+                                    'tag': tag, 'method': name, 'params': {**BASELINE_DEFAULTS[name], **prm},
+                                    'variant': var, 'variant_kw': adapter.variants[var], 'env': ident,
+                                    'pull_s': pull, 'pull_grid': list(pulls) if pull is not None else None,
+                                    'val': nan_to_none({k: v for k, v in res.items() if k != 'per_market'})},
+                                   ledger_path)
     return out
 
 
 def headline(res):
     keys = ('n_markets', 'pnl_total', 'pnl_mean', 'fills_per_market', 'income/trading', 'income/rebates',
-            'income/rewards', 't6/share_of_total', 't6/directional', 't5/worst_flag', 't5/worst_share',
-            'd13/makes_markets', 'd12/active', 'mean/uptime_two_sided')
+            'income/rewards', 'income/flat_cost', 't6/share_of_total', 't6/directional', 't5/worst_flag',
+            't5/worst_share', 'd13/makes_markets', 'd12/active', 'mean/uptime_two_sided', 'net/netted_share',
+            'net/flat_drag_bps', 'net/end_abs_inv', 'd14/pnl_flat_T1h_total') + tuple(
+            f'tk/{n}/pnl_total' for n, _ in TK_BUCKETS)
     return {k: (round(res[k], 4) if isinstance(res.get(k), float) else res.get(k)) for k in keys}
 
 
@@ -473,6 +624,9 @@ def main(argv=None):
         s.add_argument('--threads', type=int, default=1)
     sub.choices['comparators'].add_argument('--names', nargs='*')
     sub.choices['comparators'].add_argument('--params', help='JSON {name: params}')
+    sub.choices['comparators'].add_argument('--pull-grid', nargs='*', type=float, metavar='S',
+                                            help='D15 sweep: evaluate each comparator at env pull_s = each S '
+                                                 '(seconds before kickoff; no values = 0 300 900 1800 3600)')
     sub.choices['policy'].add_argument('--ckpt', required=True)
     s = sub.add_parser('pool')
     s.add_argument('runs', nargs='+', help='run dirs (result.json) or result.json files')
@@ -496,8 +650,9 @@ def main(argv=None):
         kw['split_map'] = a.split_map
     if a.cmd == 'comparators':
         names = a.names or TRACK_COMPARATORS.get(envs3.detect_kind(a.data_dir), TRACK_COMPARATORS['sports'])
+        grid = None if a.pull_grid is None else (a.pull_grid or list(PULL_GRID))
         res = run_comparators(adapter, kw, names, a.split, a.variants, ledger_path, a.tag,
-                              json.loads(a.params) if a.params else None, a.markets)
+                              json.loads(a.params) if a.params else None, a.markets, grid)
     else:
         from policy import load_checkpoint
         pol, ck = load_checkpoint(a.ckpt)

@@ -39,6 +39,39 @@ liquidity rewards off. Five training seeds.
   - Seeds: −$148 to +$63.
   - By contract length: positive on 4h markets (+$118), negative on 5m and 15m.
 
+## v2 result (Jun 15)
+
+**FAIL again, and worse.** Protocol v2 kept improving on validation (Aug 23–24, 374 markets) in
+the local sweep and five parallel workers. It then froze one method and ran it once on an
+untouched test set: every BTC 5-minute market of 2026-06-15, 288 markets from Marketlens. Full
+report: [`final/RESULTS_V2.md`](final/RESULTS_V2.md). Selection: [`final/v2/SELECTION.md`](final/v2/SELECTION.md).
+
+**Selected method: `v2s1/c00`.**
+- A reward-mode-2 MLP trained on 60 s fill markouts. It quotes every contract length; 5 seeds.
+- It had the best val v2 seed mean among methods that count as market making (D1.3) and have at
+  least 3 seeds, judged with the rule frozen in the test plan (DECISIONS.md D8, D13).
+- **It already lost on val:** −$35 against no-quote's $0. **No D1.3-passing method made money on
+  val v2.** Every profitable method was directional, mostly through 4h resolution P&L.
+
+| Jun 15, central fills, 1 s latency | P&L, 288 markets | per market |
+|---|---:|---:|
+| **RL `v2s1/c00`**, seed mean of 5 | **−$926** | −$3.21 |
+| not quoting | $0 | $0 |
+| pre-registered comparator (fair-value quoter) | −$431 | −$1.49 |
+| best forced-to-trade baseline (fair-value, active) | −$101 | −$0.35 |
+
+- **Primary endpoint:** RL minus the comparator is −$495, 95% CI [−$1,610, +$551], so the verdict
+  is **FAIL**. The pessimistic-fill, 2 s latency and concentration criteria fail too.
+- **RL still makes markets.** It fills 26 times per market, is not directional and does not
+  exploit replay artifacts. Adverse selection (−$1,735) swamps spread capture (+$472).
+- **Fill model at 1 s:** optimistic +$521, central −$926, pessimistic −$1,128. Every seed loses
+  (−$654 to −$1,252).
+- **Fills on bookless seconds (D10, reported only).** Fills in the seconds before a market has a
+  book cost RL $444. Without them RL is still −$481.
+- **Caveats (fixed before the run).** The test is BTC 5m only, from a different data source
+  (Marketlens), two months before training. So it tests robustness to a shift in source and
+  period, not the full portfolio.
+
 ## How we got here
 
 1. **Data.**

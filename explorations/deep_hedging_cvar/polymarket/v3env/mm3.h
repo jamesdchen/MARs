@@ -179,10 +179,17 @@ struct Mm3Log {
     float rw_scored;          // ... at which our orders scored
     float rw_share;           // sum over scored samples of our share Q_min / (Q_min + Q_comp)
     float episode_rows;       // rows of the episode (start to end)
+    // D15 netting / flatten diagnostics (RECONCILE.md section 6); Log only, nothing else reads them
+    float net_gross_sh;       // gross filled shares (buys + sells), summed in double
+    float net_notional;       // filled notional, sum of price x shares (USD)
+    float net_end_inv;        // |inventory| at the episode's end (the settlement row: kickoff for sports)
+    float net_share;          // 1 - net_end_inv / net_gross_sh, for an episode with fills (else 0)
+    float net_eps;            // 1 for an episode with fills (net_share / net_eps = mean per episode)
+    float net_flat_drag;      // flattening cost charged at settlement, USD (= flat_c / 100 x net_end_inv; in pnl)
     float n;
 };
 
-typedef char m3_log_layout_check[(sizeof(Mm3Log) == 50 * sizeof(float)
+typedef char m3_log_layout_check[(sizeof(Mm3Log) == 56 * sizeof(float)
     && offsetof(Mm3Log, pnl_crossed) - offsetof(Mm3Log, vol_crossed) == M3_NFLAGS * sizeof(float)
     && offsetof(Mm3Log, close_penalty) == 42 * sizeof(float)) ? 1 : -1];
 
@@ -460,6 +467,7 @@ typedef struct {
     double settle, flat, row_s, ev_off;     // ev_off = event_ts - open_ts (s)
     double rw_v, rw_min, rw_rate;
     double close_pen, flat_cost, rw_share;
+    double gross, notional;                 // D15 diagnostics: filled shares and notional (Log only)
     float rw_samples, rw_scored;
     int category, legacy;
 } Mm3;
@@ -772,6 +780,7 @@ static inline void m3_begin(Mm3* m, int mk, int off) {
     memset(m->pnl_flag, 0, sizeof(m->pnl_flag));
     m->rows = m->rows_two = m->rows_any = m->steps = m->clips = m->rejects = m->ret = 0.0f;
     m->close_pen = m->flat_cost = m->rw_share = 0.0;
+    m->gross = m->notional = 0.0;
     m->rw_samples = m->rw_scored = 0.0f;
 }
 
@@ -906,6 +915,8 @@ static inline void m3_book_fill(Mm3* m, int side, double f, int tau, int u, cons
     m->minute_fill += f;
     m->n_fills += 1.0f;
     m->fill_vol += (float)f;
+    m->gross += f;
+    m->notional += f * p;
     if (side == 0) m->buy_vol += (float)f; else m->sell_vol += (float)f;
     double ai = fabs(m->inv);
     if (ai > m->max_inv) m->max_inv = (float)ai;
@@ -1289,6 +1300,16 @@ static inline void m3_log_episode(Mm3* m, Mm3Log* log, double pnl) {
     log->rw_scored += m->rw_scored;
     log->rw_share += (float)m->rw_share;
     log->episode_rows += (float)(m->r_end - m->s0);
+    double end_inv = fabs(m->inv);
+    log->net_gross_sh += (float)m->gross;
+    log->net_notional += (float)m->notional;
+    log->net_end_inv += (float)end_inv;
+    if (m->gross > 0.0) {
+        double ns = 1.0 - end_inv / m->gross;
+        log->net_share += (float)(ns > 0.0 ? ns : 0.0);
+        log->net_eps += 1.0f;
+    }
+    log->net_flat_drag += (float)m->flat_cost;
     log->n += 1.0f;
 }
 

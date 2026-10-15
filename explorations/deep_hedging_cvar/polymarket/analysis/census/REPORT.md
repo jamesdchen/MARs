@@ -16,22 +16,36 @@ with an event-clustered bootstrap 95% CI; "ex-rewards" means spread + markout + 
    - The top-20 continuous quoters lose in both periods: −23 bps (Oct), −12 bps (OOS). The spread does not
      cover adverse selection for an always-on maker. This is our study's finding, and the pivot away from
      crypto stands.
-2. **Pre-game sports as a whole does *not* replicate.**
-   - The Oct 8–14 result (+64 bps [1, 130] at +30 min) shrinks to **+13 [−35, 55] out of sample**. Pooled it
-     is +25 [−16, 63], positive on 11 of 28 days.
-   - **What does replicate is the time-to-kickoff structure.** The last hour before kickoff (44% of pre-game
-     volume) has no edge. Earlier windows are positive in **both** periods, with CIs above 0:
-
-     | time to kickoff | Oct 8–14 (+30 min, ex-rewards) | OOS (+30 min, ex-rewards) | pooled +30 min / +2 h | pooled maker volume |
-     |---|---|---|---|---|
-     | 6–24 h | +41 [7, 75] | +43 [17, 64] | +42 [20, 60] / +35 [6, 66] | $2.9M/day |
-     | > 24 h | +330 [73, 665] | +81 [55, 114] | +135 [71, 220] / +157 [69, 276] | $1.0M/day |
-     | 1–6 h | +30 [−9, 62] | +53 [31, 74] | +49 [30, 66] at +30 min (the +2 h mark crosses kickoff) | $5.2M/day |
-
-   - By league, the cells positive in both periods are soccer, esports and MLB at 6–24 h and > 24 h, plus NFL,
-     MLB and NHL at 1–6 h (§6b).
-   - **D11 refinement for pre-game sports:** quote from listing until about 1 h before kickoff and stay flat in
-     the last hour and in-play. Addressable maker volume is about $4–9M/day rather than $16M.
+2. **Pre-game sports replicates once the mark is capped at kickoff** (§6d; correction of 22:40 UTC, after w2's
+   `analysis/v3_sports_rules/RECONCILE.md`).
+   - **Why the earlier numbers were noisy.** The census marked a pre-game leg at t + 30 min even when that
+     falls after kickoff. Legs in the last 30 min before kickoff then carry in-game price moves.
+   - **Uncapped (census) results:** +64 bps [1, 130] for Oct 8–14, +13 [−35, 55] out of sample, +25 [−16, 63]
+     pooled.
+   - **Capped results (mark = min(t + 30 min, last pre-kickoff micro-price)), ex-rewards at +30 min:**
+     - by week: **+53, +50, +49, +71 bps**, each CI above 0;
+     - out of sample: **+49 [32, 64]**;
+     - pooled: **+57 [34, 79]**;
+     - marked to kickoff, pooled: +76 [46, 110].
+   - **Time to kickoff (pooled, capped):**
+     - last 30 min: **+69 [2, 127]**, and +62 to +69 in every week;
+     - 30–60 min: +32 [−6, 91] (weakest);
+     - 1–6 h: +49 [28, 66];
+     - 6–24 h: +42 [22, 59];
+     - more than 24 h: +135 [72, 218].
+   - So **the "last hour ≈ 0" and the T−1 h cut were artifacts of the in-play mark.** Quoting all the way to
+     kickoff is supported.
+   - Caveats:
+     - A fill minutes before kickoff has only minutes for adverse selection to show before its mark.
+     - Flattening at kickoff costs about half a spread, unless inventory is netted across a game's markets
+       (w2 §5).
+   - By league (pooled, capped, +30 min), CIs above 0 for:
+     - esports +60 [40, 78];
+     - MLB +87 [54, 117];
+     - NFL +46 [20, 78];
+     - NHL +49 [14, 83];
+     - tennis +132 [81, 186].
+   - Soccer is +42 [−22, 94] and college football +11 [−22, 37].
 3. **Election reward farming replicates.**
    - With rewards: +133 bps [94, 165] (Oct), **+101 [63, 130] (OOS)**, pooled +108 [75, 130] at +2 h and
      +164 [106, 219] at +1 d.
@@ -39,12 +53,17 @@ with an event-clustered bootstrap 95% CI; "ex-rewards" means spread + markout + 
      Positive on 16 of 28 days.
    - Within elections, ex-rewards is ≈ 0 at prices 0.15–0.85, which is where the rewards pay. It is +43 bps
      [18, 73] above 0.85.
+   - **New-maker capture (§7):** on live books for the top 300 midterm markets, $36 per $1k per day at $10k,
+     $22 at $25k, $10 at $100k and $6 at $250k (contested markets, conservative bound). That reconciles w3's
+     2.5%/day (small book) with w6's 0.12%/day (very large book or stiffer competition).
    - **Caveat:** rewards for the older weeks use today's (Oct 15) rewards snapshot, so they are uncertain. The
      wallet REWARD payouts of the top makers ran at 2.0× (Oct) and 2.7× (OOS) the proxy. The proxy looks
      conservative, but its per-market split is not observable.
-4. **New: geopolitics.** It is the only category besides crypto up/down with a positive pooled ex-rewards edge
-   whose CI excludes 0: +47 bps [11, 102] at +30 min. It is positive on 20 of 28 days, and +94 [46, 146] with
-   rewards. The Oct week alone was ≈ 0, so treat it as a candidate, not a pick.
+4. **Geopolitics: noise, not a regime** (§6e).
+   - The pooled +47 bps [11, 102] comes from a handful of military-action longshot events.
+   - The top 5 of about 520 events account for 70% of the edge dollars. Without them it is +18 bps; without
+     the top 10, +1 bp.
+   - Weekly figures: +84, +23, +88, +12. The bulk of volume, priced above 0.85 ($1.2M/day), is −2 [−26, 18].
 5. **Avoid (replicated):**
    - weather: pooled ex-rewards at +2 h −64 bps [−79, −48]; 2 of 28 days positive;
    - economics: −124 [−228, −100];
@@ -446,20 +465,225 @@ How to read it:
 
 ### 6c. What changes in the recommendation (D11)
 
-- **Keep pre-game sports, but narrow it to the window more than 1 h before kickoff.** Quote soccer, esports,
-  NFL, MLB and NHL from listing until T−1 h, then cancel everything and stay flat through the game.
-  - Expected edge for an average-queue maker is about +40–50 bps of filled notional at 1–24 h (pooled CI
-    lower bound about 20–30) and more beyond 24 h, on $4–9M/day of maker volume.
+- **Keep pre-game sports, from listing to kickoff.** This is superseded by §6d. An earlier draft said to stop at
+  T−1 h; that came from the in-play mark artifact.
+  - With kickoff-capped marks, the whole pre-game window is about +57 bps [34, 79] of filled notional (ex
+    rewards, pooled).
+  - The last 30 min is +69 [2, 127]: positive every week, but its marks are short.
+  - Cancel at kickoff and stay flat in-play. Flatten cost at kickoff is the open question for the replay.
   - The replay must test whether *our* quotes, which are always on, get the average fill. In crypto the
     top-20 continuous quoters did worse than average. In pre-game sports they did better (+84 vs +21 bps).
 - **Keep elections reward farming.** The with-rewards edge replicates (+101 OOS), and adverse selection is the
   lowest anywhere (0.5–0.6¢).
   - The money is the reward program. Quote 0.15–0.85, two-sided, inside `rewards_max_spread`.
   - The risk is the program changing, and Nov 3. Pull quotes at the first returns.
-- **Geopolitics** is the third candidate: +47 [11, 102] ex-rewards pooled, positive OOS, ≈ 0 in Oct.
+- **Geopolitics:** event-driven noise, not a regime (§6e). Not a candidate.
 - **Data needs** are unchanged from §4. For pre-game, record from market listing to T−1 h, plus the last
-  hour, to measure what is given up by stopping early. PolyOrderBooks (sports, keyed) can backfill. Elections
+  hour, since the last 30 min is the best bucket on capped marks. PolyOrderBooks (sports, keyed) can backfill. Elections
   need our recorder, starting now.
+
+### 6d. Pre-game sports with marks capped at kickoff (added 22:40 UTC)
+
+`kickoff_cap.py` → `out*/sports_kickoff_capped.csv` and `out_pooled/sports_kickoff_capped_all_periods.csv`.
+
+The mark is the micro-price at min(t + h, kickoff−). Kickoff− means the micro-price after the last taker print
+strictly before `gameStartTime`. Markets are joined only when they have a pre-kickoff print, so event counts
+are a little lower than in §6b. Values are ex-rewards, bps of maker notional, event-bootstrap 95% CI. This
+follows w2's `analysis/v3_sports_rules/RECONCILE.md`, which found the same artifact and the same capped
+numbers on this leg definition (+50/+49/+71 for Sep 24–30, Oct 1–7, Oct 8–14).
+
+| period             | time to kickoff   |   events | uncapped +30m (census)   | capped +30m    | capped +2h    | to kickoff     |
+|:-------------------|:------------------|---------:|:-------------------------|:---------------|:--------------|:---------------|
+| Sep 17–Oct 7 (OOS) | all pre-game      |    15811 | 16 [-32, 56]             | 49 [32, 64]    | 56 [33, 83]   | 69 [44, 97]    |
+| Sep 17–Oct 7 (OOS) | <30m              |    10639 | -49 [-213, 81]           | 62 [18, 99]    | 62 [18, 99]   | 62 [18, 99]    |
+| Sep 17–Oct 7 (OOS) | 30-60m            |     8994 | 5 [-16, 26]              | 5 [-16, 26]    | 7 [-21, 35]   | 7 [-21, 35]    |
+| Sep 17–Oct 7 (OOS) | 1-6h              |    11965 | 53 [31, 74]              | 53 [31, 74]    | 72 [29, 130]  | 88 [42, 149]   |
+| Sep 17–Oct 7 (OOS) | 6-24h             |    10344 | 43 [18, 65]              | 43 [18, 65]    | 41 [7, 81]    | 64 [24, 104]   |
+| Sep 17–Oct 7 (OOS) | >24h              |     5863 | 81 [54, 112]             | 81 [54, 112]   | 87 [49, 136]  | 146 [74, 221]  |
+| pooled             | all pre-game      |    21587 | 27 [-10, 63]             | 57 [34, 79]    | 62 [35, 92]   | 76 [46, 110]   |
+| pooled             | <30m              |    15132 | -27 [-157, 82]           | 69 [2, 128]    | 69 [2, 128]   | 69 [2, 128]    |
+| pooled             | 30-60m            |    12655 | 32 [-6, 91]              | 32 [-6, 91]    | 35 [-21, 102] | 35 [-21, 102]  |
+| pooled             | 1-6h              |    16576 | 49 [28, 66]              | 49 [28, 66]    | 66 [25, 113]  | 87 [40, 139]   |
+| pooled             | 6-24h             |    14459 | 42 [22, 59]              | 42 [22, 59]    | 35 [9, 64]    | 52 [1, 104]    |
+| pooled             | >24h              |     7825 | 135 [72, 218]            | 135 [72, 218]  | 157 [71, 270] | 225 [108, 355] |
+| Sep 17–23          | all pre-game      |     6864 | 22 [-23, 65]             | 53 [36, 72]    | 46 [25, 66]   | 42 [17, 66]    |
+| Sep 17–23          | <30m              |     4110 | -50 [-198, 82]           | 65 [37, 97]    | 65 [37, 97]   | 65 [37, 97]    |
+| Sep 17–23          | 30-60m            |     3462 | 10 [-8, 30]              | 10 [-8, 30]    | -13 [-41, 19] | -13 [-41, 19]  |
+| Sep 17–23          | 1-6h              |     4788 | 81 [55, 112]             | 81 [55, 112]   | 79 [43, 119]  | 76 [35, 120]   |
+| Sep 17–23          | 6-24h             |     4275 | 8 [-61, 51]              | 8 [-61, 51]    | -16 [-86, 31] | -12 [-89, 54]  |
+| Sep 17–23          | >24h              |     2638 | 50 [13, 98]              | 50 [13, 98]    | 69 [-9, 163]  | -28 [-125, 56] |
+| Sep 24–30          | all pre-game      |     5347 | 52 [6, 94]               | 50 [28, 74]    | 40 [12, 66]   | 48 [16, 74]    |
+| Sep 24–30          | <30m              |     3300 | 77 [-92, 250]            | 69 [32, 112]   | 69 [32, 112]  | 69 [32, 112]   |
+| Sep 24–30          | 30-60m            |     2829 | 27 [-16, 62]             | 27 [-16, 62]   | 5 [-56, 49]   | 5 [-56, 49]    |
+| Sep 24–30          | 1-6h              |     3714 | 31 [-17, 76]             | 31 [-17, 76]   | 13 [-43, 63]  | 27 [-43, 73]   |
+| Sep 24–30          | 6-24h             |     3270 | 60 [29, 102]             | 60 [29, 102]   | 47 [15, 87]   | 71 [28, 118]   |
+| Sep 24–30          | >24h              |     2053 | 68 [30, 117]             | 68 [30, 117]   | 79 [31, 150]  | 67 [-25, 166]  |
+| Oct 1–7            | all pre-game      |     5467 | -27 [-144, 77]           | 49 [33, 67]    | 50 [27, 78]   | 63 [39, 90]    |
+| Oct 1–7            | <30m              |     3231 | -158 [-506, 192]         | 63 [26, 98]    | 63 [26, 98]   | 63 [26, 98]    |
+| Oct 1–7            | 30-60m            |     2704 | -26 [-89, 23]            | -26 [-89, 23]  | -1 [-84, 72]  | -1 [-84, 72]   |
+| Oct 1–7            | 1-6h              |     3522 | 43 [22, 66]              | 43 [22, 66]    | 23 [-14, 61]  | 24 [-23, 70]   |
+| Oct 1–7            | 6-24h             |     3088 | 56 [35, 83]              | 56 [35, 83]    | 84 [24, 179]  | 71 [7, 161]    |
+| Oct 1–7            | >24h              |     2299 | 120 [75, 183]            | 120 [75, 183]  | 111 [59, 172] | 362 [202, 566] |
+| Oct 8–14 (=w4)     | all pre-game      |     7010 | 66 [2, 132]              | 71 [36, 120]   | 57 [17, 112]  | 33 [-8, 84]    |
+| Oct 8–14 (=w4)     | <30m              |     4493 | 45 [-118, 215]           | 62 [31, 95]    | 62 [31, 95]   | 62 [31, 95]    |
+| Oct 8–14 (=w4)     | 30-60m            |     3661 | 100 [-22, 306]           | 100 [-22, 306] | 78 [-42, 281] | 78 [-42, 281]  |
+| Oct 8–14 (=w4)     | 1-6h              |     4636 | 30 [-14, 61]             | 30 [-14, 61]   | -4 [-52, 34]  | -32 [-104, 25] |
+| Oct 8–14 (=w4)     | 6-24h             |     4224 | 41 [7, 75]               | 41 [7, 75]     | 14 [-25, 56]  | -66 [-139, 9]  |
+| Oct 8–14 (=w4)     | >24h              |     2711 | 330 [74, 657]            | 330 [74, 657]  | 411 [61, 893] | 361 [37, 794]  |
+
+By league (pooled, maker volume > $100k/day):
+
+| league     |   events | maker $/day   | uncapped +30m   | capped +30m    | to kickoff      |
+|:-----------|---------:|:--------------|:----------------|:---------------|:----------------|
+| soccer     |    10553 | 5332k         | 24 [-84, 107]   | 42 [-22, 94]   | 87 [-1, 181]    |
+| nfl        |      163 | 3806k         | 45 [-25, 102]   | 46 [20, 78]    | 70 [27, 113]    |
+| esports    |     2277 | 2579k         | 16 [-26, 60]    | 60 [40, 78]    | 40 [-14, 82]    |
+| cfb        |      542 | 1298k         | -26 [-107, 51]  | 11 [-22, 37]   | 34 [-11, 75]    |
+| mlb        |      475 | 1122k         | -36 [-165, 70]  | 87 [54, 117]   | 88 [47, 127]    |
+| tennis     |     5360 | 931k          | 114 [10, 217]   | 132 [81, 186]  | 218 [154, 284]  |
+| nhl        |      195 | 313k          | -33 [-270, 139] | 49 [14, 83]    | 39 [-9, 90]     |
+| other      |      785 | 231k          | 220 [-245, 777] | 286 [-90, 843] | 129 [-267, 658] |
+| basketball |      557 | 173k          | -39 [-136, 60]  | 40 [-11, 90]   | 3 [-101, 80]    |
+| nba        |       68 | 123k          | 190 [-20, 498]  | 166 [-28, 448] | 221 [-124, 693] |
+
+How to read it:
+- **Uncapped, the last 30 min swings between −158 and +77 bps by week.** That is in-game noise.
+- **Capped, the last 30 min is +62 to +69 bps in every week.** It is the most consistent bucket.
+- **The window more than 24 h before kickoff stays the strongest per $**, but it is small: $0.9M/day.
+- **The earlier "T−1 h" cut (D14) is not supported.** The 30–60 min bucket is the weakest (+32 [−6, 91]
+  pooled), but the last 30 min is strong.
+- Two caveats keep this from being a free lunch:
+  - Fills in the final minutes are marked after only minutes, so slow adverse selection is under-measured.
+  - Getting flat at kickoff costs about half a spread, unless the game's moneyline, spread and totals
+    inventory nets out.
+
+The replay should measure P&L to kickoff, including the flatten cost.
+
+### 6e. Geopolitics: regime or noise? (added 22:40 UTC)
+
+`geo_note.py` → `out_pooled/geo_note.csv`. Values are ex-rewards, bps, event-bootstrap 95% CI.
+
+| cut            | key      |   events | maker $/day   | +30m ex-rew      | +2h ex-rew      |   top-5 events share of edge $ |   +30m ex top-5 events |   ex top-10 |
+|:---------------|:---------|---------:|:--------------|:-----------------|:----------------|-------------------------------:|-----------------------:|------------:|
+| week           | w1       |      440 | 2054k         | 84 [-3, 213]     | 56 [-45, 198]   |                           1.01 |                     -1 |         -15 |
+| week           | w2       |      427 | 1456k         | 23 [-16, 84]     | 19 [-29, 82]    |                           1.49 |                    -14 |         -23 |
+| week           | w3       |      449 | 1535k         | 88 [25, 193]     | 105 [38, 210]   |                           0.88 |                     13 |         -20 |
+| week           | w4       |      437 | 2065k         | 12 [-92, 91]     | 1 [-148, 103]   |                           3.75 |                    -46 |         -68 |
+| price (pooled) | p.15-.85 |      332 | 557k          | 66 [-10, 174]    | 51 [-36, 171]   |                           1.09 |                     -8 |         -58 |
+| price (pooled) | p<.15    |      503 | 54k           | 1070 [461, 2210] | 824 [355, 1580] |                           0.62 |                    413 |         202 |
+| price (pooled) | p>.85    |      490 | 1167k         | -2 [-25, 18]     | 4 [-18, 24]     |                          -4.22 |                    -12 |         -18 |
+| pooled         | all      |      523 | 1777k         | 51 [16, 108]     | 43 [2, 100]     |                           0.66 |                     18 |           1 |
+
+**Verdict: event-driven noise, not a regime.**
+- **Few events.** The pooled +47–52 bps comes from a handful of jumpy military-action markets (Saudi/Yemen,
+  Pakistan/Afghanistan, Israel/Lebanon). The top 5 events account for 70% of the edge dollars. Excluding them
+  leaves +18 bps, and excluding the top 10 leaves +1.
+- **Cheap longshots.** Positive cells sit at prices below 0.15 (+1,070 bps at +30 min on only $54k/day). The
+  same cell's resolution markout is strongly negative.
+- **Bulk volume is flat.** The bulk, priced above 0.85 ($1.2M/day), is −2 [−26, 18].
+- **Week by week**, it is +84, +23, +88, +12; only Oct 1–7 has a CI above 0. The Oct 8–14 "≈ 0" is the typical
+  week once the event draw is quiet.
+
+Not a track.
+
+## 7. Election reward capture for a new maker (added 23:00 UTC)
+
+`election_rewards.py` → `out_pooled/election_rewards_curve.csv`, `election_rewards.csv` and
+`election_rewards_markets.csv`. This answers the coordinator's question (a): reconcile w6's 0.12%/day with w3's
+2.5%/day.
+
+### Setup
+
+- **Markets:** the top 300 open midterm markets (gamma tag `midterms`) by CLOB `rate_per_day`. Their pools
+  total **$25,960/day**; median min_size is 50 and median max_spread 6.5¢.
+- **Competitor depth:** the real live CLOB books, YES token, polled **6 times, 10 min apart**
+  (2026-10-15 22:10–23:00 UTC), giving 1,800 books.
+- **Our quote:** one bid and one ask of `rewards_min_size` shares each, at the largest tick distance below
+  max_spread/2 from the size-cutoff-adjusted mid (3¢ at max_spread 6.5¢).
+- **Score:** `analysis/rewards/reward_terms.py`. S = ((v−d)/v)²·size, and the two-sided Q_min rule applies
+  inside [0.10, 0.90].
+- **Competitors:**
+  - every resting price level counts as one order;
+  - the bound is **conservative** ("hi": competitor liquidity as two-sided as possible);
+  - the "lo" bound treats every competitor as one-sided and gives them 0 outside the band, which hands us
+    whole pools; it is shown only as an unrealistic ceiling.
+- **Reward:** rate_per_day × our average share across snapshots.
+- **Capital:** size × (bid + 1 − ask), i.e. YES-bid collateral plus NO-bid collateral for the ask.
+- **Allocation:** capital goes out greedily, one min-size lot at a time, to the market with the highest
+  marginal reward per $. Our k lots score k·q against the competitors' Q.
+- **CI:** bootstrap over markets (200 replicates of the whole allocation).
+
+### Results (conservative bound)
+
+**All 300 markets.** 6 of them had less than min_size of competing depth inside the band, so a first
+quoter takes most of their pool:
+
+| capital deployed   |   markets used |   reward $/day | $/day per $1k [95% CI]   |   %/day |
+|:-------------------|---------------:|---------------:|:-------------------------|--------:|
+| $500               |             13 |            241 | 495.5 [232.3, 791.3]     |   49.55 |
+| $1,000             |             21 |            279 | 283.8 [155.5, 437.4]     |   28.38 |
+| $2,500             |             30 |            342 | 137.4 [84.6, 198.9]      |   13.74 |
+| $5,000             |             40 |            416 | 83.4 [57.4, 115.3]       |    8.34 |
+| $10,000            |             52 |            521 | 52.2 [38.6, 67.6]        |    5.22 |
+| $25,000            |             61 |            719 | 28.8 [23.1, 35.3]        |    2.88 |
+| $50,000            |             68 |            913 | 18.3 [15.2, 21.8]        |    1.83 |
+| $100,000           |             73 |           1167 | 11.7 [9.9, 13.6]         |    1.17 |
+| $250,000           |             96 |           1654 | 6.6 [5.7, 7.5]           |    0.66 |
+
+**"Contested" markets only**, those with at least min_size of competing depth inside the band (the more
+realistic case, since empty bands attract competitors):
+
+| capital deployed   |   markets used |   reward $/day | $/day per $1k [95% CI]   |   %/day |
+|:-------------------|---------------:|---------------:|:-------------------------|--------:|
+| $500               |              9 |             92 | 186.3 [109.8, 290.0]     |   18.63 |
+| $1,000             |             16 |            125 | 125.8 [79.9, 191.6]      |   12.58 |
+| $2,500             |             25 |            185 | 74.2 [52.9, 103.8]       |    7.42 |
+| $5,000             |             36 |            258 | 51.6 [39.5, 68.2]        |    5.16 |
+| $10,000            |             46 |            361 | 36.2 [29.4, 45.9]        |    3.62 |
+| $25,000            |             55 |            559 | 22.4 [18.9, 27.2]        |    2.24 |
+| $50,000            |             62 |            752 | 15.0 [12.7, 17.9]        |    1.5  |
+| $100,000           |             67 |           1006 | 10.1 [8.6, 11.7]         |    1.01 |
+| $250,000           |             90 |           1492 | 6.0 [5.2, 6.8]           |    0.6  |
+
+**Equal allocation**, one min-size lot in each of the 298 scorable markets ($17.4k): **$17.6
+per $1k per day [9.7, 26.9]**, about 1.8%/day. The median market yields only
+$1.58 per $1k per day. A few thin markets carry the average.
+
+### Reconciling w6 and w3
+
+The yield is **a steep function of capital**, because each market's pool is fixed and our share saturates.
+- **w3's 2.5%/day** (= $25/$1k/day) matches a **≈ $15–25k book** spread over the best 50–60 markets: the
+  contested curve gives 2.2%/day [1.9, 2.7] at $25k and 3.6%/day at $10k.
+- **w6's 0.12%/day** (= $1.2/$1k/day) is below our curve even at $250k (0.6%/day [0.52, 0.68]). It
+  corresponds to roughly $1M+ spread over these 300 markets, or to a competition model stiffer than the live
+  book.
+- At $250k we would take about $1.5k/day, about 6% of the $26k/day pool.
+- The ceiling ("lo" bound) is 32%/day at $25k. It is not credible: it assumes no competitor
+  is two-sided.
+
+### What this leaves out (all of it pushes realised yield down)
+
+- **Fills.**
+  - Quotes about 3¢ from the mid do get hit.
+  - The census average elections maker at prices 0.15–0.85 loses about 17 bps of filled notional before
+    rewards (§6b).
+  - At a turnover of 10–100% of capital per day, that costs $0.2–1.7 per $1k per day. It is small next to the
+    $6–36 reward yields at $10k–$250k.
+  - The real risk is jumps: news, polls, and **Nov 3 election night**. A two-sided min-size quote can be swept
+    for a 20–50¢ loss per share. Pull quotes before the first returns.
+- **Competition reacts.** The 6 empty-band markets would draw competitors within days. The contested-only
+  curve is the safer planning number.
+- **Sampling.** Six snapshots in one evening hour. Depth varies by time of day, and the scorer samples once a
+  minute at random times. The sampling CI is not in the bootstrap.
+- **Rate changes.** Rates are today's and can change, and the program could stop.
+- **Order size.** Price levels aggregate several orders. Some competitor orders below min_size don't score,
+  which makes our competitor Q an overstatement, i.e. conservative.
+
+### Planning number
+
+For a new maker with **$10–25k** on contested midterm markets: **$22–36 per $1k per day** (CI about 19–46),
+before fill costs of $0.2–2. That is **about 2–3.5%/day** for the 19 days to Nov 3, falling to about 1%/day
+at $100k.
 
 ## Files
 
@@ -469,7 +693,8 @@ How to read it:
   `crypto_validation.csv`, `top_vs_rest.csv`, `sports_detail.csv`, `top_makers.csv` (wallets truncated),
   `top_makers_by_cat.csv`, `rewards_check.csv`, `holding.csv`, `daily_edge.csv`.
 - `cache/` (git-ignored) holds `legs*.parquet`, the gamma and reward caches and the per-market sums.
-- Replication: `period.py`, `run_periods.sh`, `boot_buckets.py`, `tables.py`. Outputs for the three periods are
+- Replication: `period.py`, `run_periods.sh`, `boot_buckets.py`, `tables.py`. Follow-ups: `kickoff_cap.py`
+  (§6d), `geo_note.py` (§6e), `election_rewards.py` (§7). Outputs for the three periods are
   `out/` (Oct 8–14), `out_oos/` (Sep 17–Oct 7) and `out_pooled/` (Sep 17–Oct 14): the same files as above,
   plus `boot_cells.csv`, `sports_league_kickoff.csv` and `out_pooled/replication.md`.
 

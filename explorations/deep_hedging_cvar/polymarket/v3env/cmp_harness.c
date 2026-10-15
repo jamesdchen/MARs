@@ -116,7 +116,7 @@ int cmp_run(const double* p3, int n, int T, const int* markets, const int* start
                 if (d > stats[4]) stats[4] = d;
                 if (memcmp(&fa[k], &fb[k], 4) != 0) stats[5] += 1;
             }
-            if (fa[42] != fb[49]) stats[5] += 1;     // n
+            if (fa[42] != lb[i].n) stats[5] += 1;     // n (v3 appends fields before it)
             double sa[16] = {x->inv, x->cash, x->rebates, x->liq, x->wealth, x->penalty, x->ord[0].rem, x->ord[0].q,
                              x->ord[1].rem, x->ord[1].q, (double)x->ord[0].px, (double)x->ord[1].px,
                              (double)x->ord[0].live, (double)x->ord[1].live, (double)x->t, (double)x->market};
