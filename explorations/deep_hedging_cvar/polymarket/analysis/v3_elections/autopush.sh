@@ -11,7 +11,8 @@ while true; do
     cp analysis/v3_elections/rec/status.json analysis/v3_elections/rec/status_last.json 2>/dev/null
     git add analysis/v3_elections/*.py analysis/v3_elections/*.sh analysis/v3_elections/*.md analysis/v3_elections/.gitignore 2>/dev/null
     git add -f analysis/v3_elections/sel analysis/v3_elections/rec/status_last.json 2>/dev/null
-    for d in books reconcile market_qc markets trades rewards coverage; do
+    mkdir -p analysis/v3_elections/pushed/coverage; cp analysis/v3_elections/rec/coverage/*.jsonl analysis/v3_elections/pushed/coverage/ 2>/dev/null; git add -f analysis/v3_elections/pushed
+    for d in books reconcile market_qc markets trades rewards; do
       [ -d analysis/v3_elections/rec/$d ] && find analysis/v3_elections/rec/$d -type f \( -name '*.parquet' -o -name '*.jsonl' \) -not -path '*/_parts/*' -print0 | xargs -0 -r git add -f
     done
     for f in train/workers/w3/*.jsonl train/workers/w3/*.py train/workers/w3/*.md; do [ -e "$f" ] && git add "$f"; done
