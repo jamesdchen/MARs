@@ -1,0 +1,314 @@
+{
+ "selected": {
+  "cfg": {
+   "env": {
+    "backend": "real",
+    "code_sha256": {
+     "binding.c": "03adf9f954243b2baf4a10d5a762b544822f2abb86c904b53519a97edab398c0",
+     "binding.cpython-313-x86_64-linux-gnu.so": "5125a1fc988c061d7af1f9e0d015a14e7fb965705d23f51a32dd775905d67bed",
+     "env.py": "e2b8209e681350618cfd3bbb64995ac738bdbba16effe6362d5c742d732413a9",
+     "mm.h": "746dd7dea250eee035a8cb08a7be479eacf2d44ac1b7251503bc0d0e468566a9"
+    },
+    "kw": {
+     "inv_penalty": 0.0037282737097460235,
+     "mark_mode": 1
+    },
+    "resolved": {
+     "Q": 100.0,
+     "allow_test": 0.0,
+     "cycle_stride": 0.0,
+     "dt": 0.0,
+     "dt_15m": 1.0,
+     "dt_4h": 5.0,
+     "dt_5m": 1.0,
+     "fee_rate": -1.0,
+     "fill_model": 1.0,
+     "fixed_market": -1.0,
+     "fixed_start": -1.0,
+     "inv_penalty": 0.0037282737097460235,
+     "latency": 1.0,
+     "len_mask": 7.0,
+     "liq_moas": 1.0,
+     "liq_rewards": 0.0,
+     "mark_mode": 1.0,
+     "match_delay": -1.0,
+     "part_cap": -1.0,
+     "rebate_rate": -1.0,
+     "reward_mode": 0.0,
+     "reward_scale": 0.0,
+     "size_mult": 1.0,
+     "start_frac": 0.2,
+     "tick_rule": 0.0
+    }
+   },
+   "init": null,
+   "kl_teacher": null,
+   "num_envs": 4096,
+   "policy": {
+    "act": "tanh",
+    "hidden": 64,
+    "kind": "mlp",
+    "layers": 2,
+    "shared": true
+   },
+   "ppo": {
+    "adam_eps": 1e-08,
+    "anneal_lr": true,
+    "bptt_horizon": 64,
+    "clip_coef": 0.2,
+    "ent_coef": 0.0003684359367379143,
+    "gae_lambda": 0.9794307540969474,
+    "gamma": 0.9988214282795336,
+    "learning_rate": 0.0003874545765516461,
+    "max_grad_norm": 0.5,
+    "minibatch_size": 8192,
+    "optimizer": "adam",
+    "update_epochs": 1,
+    "vf_clip_coef": 10.0,
+    "vf_coef": 0.5
+   },
+   "total_timesteps": 100000000
+  },
+  "cfg_hash": "5d66f35df689b8abeaae493b2d9fa8e743b06cb6c97256877667b27be9fe1ccd",
+  "runs": [
+   {
+    "seed": 100,
+    "ckpt": "/home/user/MARs/explorations/deep_hedging_cvar/polymarket/train/runs/seeds/main/seed_100/final.pt",
+    "ckpt_sha256": "e1af61a6cf7c3c130d465d032e41dd321fc77ffd8ec0b1ba27adea4e16d448c4",
+    "cfg_hash": "5d66f35df689b8abeaae493b2d9fa8e743b06cb6c97256877667b27be9fe1ccd"
+   },
+   {
+    "seed": 101,
+    "ckpt": "/home/user/MARs/explorations/deep_hedging_cvar/polymarket/train/runs/seeds/main/seed_101/final.pt",
+    "ckpt_sha256": "f3284ddd0d5dfea05ddbb56df20c7c9f08af8aef3b9c6bd69d0b0e796eb03a1e",
+    "cfg_hash": "5d66f35df689b8abeaae493b2d9fa8e743b06cb6c97256877667b27be9fe1ccd"
+   },
+   {
+    "seed": 102,
+    "ckpt": "/home/user/MARs/explorations/deep_hedging_cvar/polymarket/train/runs/seeds/main/seed_102/final.pt",
+    "ckpt_sha256": "f06784fe49d06e4efeb7a21d792be989536bca5e8082b874e51865a8a7b564c4",
+    "cfg_hash": "5d66f35df689b8abeaae493b2d9fa8e743b06cb6c97256877667b27be9fe1ccd"
+   },
+   {
+    "seed": 103,
+    "ckpt": "/home/user/MARs/explorations/deep_hedging_cvar/polymarket/train/runs/seeds/main/seed_103/final.pt",
+    "ckpt_sha256": "013d2469cd9f662a013b82dc750ce3d2a59357f461988b49dd436054d580cbc8",
+    "cfg_hash": "5d66f35df689b8abeaae493b2d9fa8e743b06cb6c97256877667b27be9fe1ccd"
+   },
+   {
+    "seed": 104,
+    "ckpt": "/home/user/MARs/explorations/deep_hedging_cvar/polymarket/train/runs/seeds/main/seed_104/final.pt",
+    "ckpt_sha256": "de9905b5eace436cf0e61b505d74c03be8d9e1927873983773af22b1a44fb04a",
+    "cfg_hash": "5d66f35df689b8abeaae493b2d9fa8e743b06cb6c97256877667b27be9fe1ccd"
+   }
+  ],
+  "n_seeds": 5
+ },
+ "selection": {
+  "sweep": "main",
+  "selected_json": "/home/user/MARs/explorations/deep_hedging_cvar/polymarket/train/runs/sweeps/main/selected.json",
+  "sweep_cfg_hash": "d80458312d8825f683d58421e9fe5da692922843747aa7d7675fcd89088b37bc",
+  "rule": {
+   "metric": "pnl_total",
+   "variant": "headline",
+   "statistic": "seed mean",
+   "min_seeds": 3,
+   "cvar_floor": null,
+   "max_inv": null,
+   "tiebreak_variant": "pess_1s",
+   "tie_tol": 0.0,
+   "tag": "main",
+   "require_mm": true
+  },
+  "sweep_seed_mean": -149.37753931735642,
+  "sweep_seeds": [
+   0,
+   2,
+   1
+  ],
+  "n_val_evals_ledger_at_selection": 171
+ },
+ "final_seeds_val": {
+  "central_1s/pnl_total": {
+   "mean": -243.79307249889243,
+   "min": -415.26965453336015,
+   "max": -85.50890002935193,
+   "std": 140.0431482997658
+  },
+  "central_1s/pnl_mean": {
+   "mean": -0.987016487849767,
+   "min": -1.6812536620783811,
+   "max": -0.3461898786613439,
+   "std": 0.5669763089059344
+  },
+  "central_1s/pnl_median": {
+   "mean": 0.0,
+   "min": 0.0,
+   "max": 0.0,
+   "std": 0.0
+  },
+  "central_1s/cvar95": {
+   "mean": -36.875598123295575,
+   "min": -61.51170500473453,
+   "max": -12.789193830992042,
+   "std": 19.79805387589668
+  },
+  "central_1s/max_abs_inv": {
+   "mean": 98.71428527832032,
+   "min": 93.57142639160156,
+   "max": 100.0,
+   "std": 2.571429443359375
+  },
+  "central_1s/frac_positive": {
+   "mean": 0.3611336032388664,
+   "min": 0.13360323886639677,
+   "max": 0.48582995951417,
+   "std": 0.13209552907766356
+  },
+  "central_1s/score_mean": {
+   "mean": -0.987016487849767,
+   "min": -1.6812536620783811,
+   "max": -0.3461898786613439,
+   "std": 0.5669763089059344
+  },
+  "central_1s/sum/spread_capture": {
+   "mean": 64.2159581191587,
+   "min": 17.09470118649915,
+   "max": 101.04292236404726,
+   "std": 28.212901482158593
+  },
+  "central_1s/sum/markout_60": {
+   "mean": -326.8849688460512,
+   "min": -516.1394958291348,
+   "max": -95.84527836443885,
+   "std": 163.22806390112882
+  },
+  "central_1s/sum/inventory_pnl": {
+   "mean": 1.3825426964825795,
+   "min": -71.06117891748622,
+   "max": 124.43528552229122,
+   "std": 67.9691747504679
+  },
+  "central_1s/sum/rebates": {
+   "mean": 17.493387990692828,
+   "min": 2.6852477116181035,
+   "max": 35.34957214644237,
+   "std": 12.470701523007685
+  },
+  "central_1s/sum/liq_rewards": {
+   "mean": 0.0,
+   "min": 0.0,
+   "max": 0.0,
+   "std": 0.0
+  },
+  "central_1s/sum/pnl_trading": {
+   "mean": -261.2864644200075,
+   "min": -450.61922811577097,
+   "max": -104.9461199779762,
+   "std": 149.46343225692993
+  },
+  "central_1s/sum/fill_vol": {
+   "mean": 7266.990710725821,
+   "min": 1147.9743267754093,
+   "max": 14695.086370173842,
+   "std": 5190.05871403784
+  },
+  "central_1s/mean/uptime_two_sided": {
+   "mean": 0.031210919936858723,
+   "min": 9.896536263437407e-05,
+   "max": 0.13458052175006402,
+   "std": 0.0519423635505456
+  },
+  "pess_1s/pnl_total": {
+   "mean": -132.4730879035982,
+   "min": -229.05666093551554,
+   "max": -31.33782256937411,
+   "std": 76.14861446723714
+  },
+  "pess_1s/pnl_mean": {
+   "mean": -0.536328291107685,
+   "min": -0.9273549025729374,
+   "max": -0.12687377558451057,
+   "std": 0.3082939856973163
+  },
+  "pess_1s/pnl_median": {
+   "mean": 0.0,
+   "min": 0.0,
+   "max": 0.0,
+   "std": 0.0
+  },
+  "pess_1s/cvar95": {
+   "mean": -21.585664540070745,
+   "min": -38.01681877244337,
+   "max": -4.673365850680268,
+   "std": 14.270979256714568
+  },
+  "pess_1s/max_abs_inv": {
+   "mean": 79.98779525756837,
+   "min": 35.026973724365234,
+   "max": 100.0,
+   "std": 26.245228875733368
+  },
+  "pess_1s/frac_positive": {
+   "mean": 0.31255060728744943,
+   "min": 0.06882591093117409,
+   "max": 0.4534412955465587,
+   "std": 0.14876325263746557
+  },
+  "pess_1s/score_mean": {
+   "mean": -0.536328291107685,
+   "min": -0.9273549025729374,
+   "max": -0.12687377558451057,
+   "std": 0.3082939856973163
+  },
+  "pess_1s/sum/spread_capture": {
+   "mean": 34.702501311936935,
+   "min": 4.774011744961232,
+   "max": 59.62663388459024,
+   "std": 20.54614953322454
+  },
+  "pess_1s/sum/markout_60": {
+   "mean": -202.78429339844007,
+   "min": -344.59382873483264,
+   "max": -38.618040356304846,
+   "std": 123.25215643568409
+  },
+  "pess_1s/sum/inventory_pnl": {
+   "mean": 28.015497936889908,
+   "min": -8.054759437920666,
+   "max": 54.400074712362766,
+   "std": 26.116880344366972
+  },
+  "pess_1s/sum/rebates": {
+   "mean": 7.5932063352142,
+   "min": 0.8246245486243424,
+   "max": 15.846230488079527,
+   "std": 5.7768691321248085
+  },
+  "pess_1s/sum/liq_rewards": {
+   "mean": 0.0,
+   "min": 0.0,
+   "max": 0.0,
+   "std": 0.0
+  },
+  "pess_1s/sum/pnl_trading": {
+   "mean": -140.06629568903008,
+   "min": -244.90289368852973,
+   "max": -32.16244690539315,
+   "std": 81.84902832651598
+  },
+  "pess_1s/sum/fill_vol": {
+   "mean": 3461.983816562407,
+   "min": 398.049482983537,
+   "max": 7176.054848968983,
+   "std": 2661.342371882726
+  },
+  "pess_1s/mean/uptime_two_sided": {
+   "mean": 0.031871401341650854,
+   "min": 9.896536451964243e-05,
+   "max": 0.13607737315660304,
+   "std": 0.05243526384095051
+  }
+ },
+ "note": "cfg = the selected sweep config with total_timesteps set for the final seeds (hence its own cfg_hash); runs = the final seed checkpoints final/make_plan.py uses"
+}
