@@ -98,7 +98,7 @@ class V2:
                        'backend': 'real', 'tag': tag, 'name': name, 'data_dir': os.path.abspath(self.data_dir),
                        'variant': 'central_1s', 'policy_spec': spec, 'derived': derived,
                        'config_hash': hashlib.sha256(json.dumps(spec, sort_keys=True).encode()).hexdigest(),
-                       'val': nan_to_none(res)}, ledger.LEDGER)
+                       'val': nan_to_none(res)}, self.a.ledger or ledger.LEDGER)
 
     def run(self, policy, env_kw, tag, name, spec, filters=True):
         kw = {**env_kw, **HEADLINE_KW, 'data_dir': self.data_dir}
@@ -130,6 +130,8 @@ class V2:
         results = done.get(name, {})
         specs = {os.path.basename(os.path.dirname(p)): {'checkpoints': [p], 'sha256': [sha256(p)]} for p in paths}
         for (sname, spec), pol in zip(specs.items(), mems):
+            if self.a.ensemble_only:
+                break  # the single seeds were already scored by their training runs
             if sname not in results:
                 results[sname] = self.run(pol, kw, tag, f'{name}/{sname}', spec)
         for comb in self.a.combine:
@@ -230,6 +232,8 @@ def main():
     p.add_argument('--data-dir', default=None)
     p.add_argument('--split', type=int, default=1)
     p.add_argument('--no-ledger', action='store_true')
+    p.add_argument('--ensemble-only', action='store_true', help='ckpts: skip the single checkpoints')
+    p.add_argument('--ledger', default=None, help='ledger path (default train/trials.jsonl)')
     p.add_argument('--threads', type=int, default=1)
     p.add_argument('--out', default=None, help='results dir (default runs/v2)')
     a = p.parse_args()

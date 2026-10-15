@@ -24,16 +24,19 @@ Conventions (row t = unix second t, t in [open, end], as data/build.py):
   * book: the Marketlens book (one Up-frame book per market; Down-token events are folded in by the
     dataset) at exchange time t*1000 ms: latest snapshot with collected_at_ms <= t*1000, plus every
     delta of its chain with platform_timestamp_ms <= t*1000 (data/marketlens_book.py). Levels that a
-    Marketlens taker trade at or before t proves empty are hidden (removals that never arrived as
-    deltas, see marketlens_book.py). If the state at t is crossed, the last uncrossed row's book is
-    forward-filled and crossed_raw = 1 (data/build.py rule). book_valid = 0 before the first snapshot.
+    Marketlens taker trade at or before t proves empty, and that were last updated more than 50 ms
+    before that trade, are hidden (removals that never arrived as deltas, see marketlens_book.py;
+    Marketlens trades.parquet is used for nothing else). If the state at t is crossed, the last
+    uncrossed row's book is forward-filled and crossed_raw = 1 (data/build.py rule). book_valid = 0 before the first snapshot.
     book_age = whole seconds since the latest feed message (snapshot or delta) behind the book used.
     book_from_down = 0 (the dataset has no per-token books).
   * trades: data-api fill legs with block timestamp == t, i.e. in (t-1, t] (data/build.py code).
   * underlying: close of the Binance BTCUSDT 1 s kline with open_time t-1 (data/build.py code).
 
-    python data/build_jun15.py                 # ticks + features + verify + lock (~5 min)
-    MM_FINAL=1 python data/build_jun15.py --env-check   # then: constant no-quote stepping only
+    python data/fetch_jun15.py                          # inputs (gamma, data-api, Binance), ~5 min
+    python data/build_jun15.py                          # ticks, features, trade agreement, verify, lock (~5 min)
+    MM_FINAL=1 python data/build_jun15.py --env-check   # C env, constant no-quote action only
+    python data/build_jun15.py --stage lock             # re-hash with env_check.json, rewrite TEST_LOCK.md
 """
 from __future__ import annotations
 
@@ -41,7 +44,6 @@ import argparse
 import hashlib
 import json
 import os
-import subprocess
 import sys
 import time
 from pathlib import Path
@@ -346,8 +348,9 @@ def build_ticks():
     conv["book"] = ("Marketlens replay at exchange time t*1000 ms: latest snapshot with collected_at_ms <= t*1000 "
                     "(re-anchored on every snapshot) plus every delta of its chain with platform_timestamp_ms <= "
                     "t*1000 (time order, ties in file order). Levels proven empty by a Marketlens taker trade at "
-                    "or before t (BUY at p: no ask below p; SELL at p: no bid above p) and not updated since are "
-                    "hidden. If the state at t is crossed, the last uncrossed row's book is forward-filled and "
+                    "or before t (BUY at p: no ask below p; SELL at p: no bid above p) and last updated more than "
+                    f"{mlb.GUARD_MS} ms before that trade are hidden. If the state at t is crossed, the last "
+                    "uncrossed row's book is forward-filled and "
                     "crossed_raw=1. book_valid=0 before the first snapshot. book_age = whole seconds since the "
                     "latest snapshot or delta behind the book used (data/marketlens_book.py, data/build_jun15.py).")
     conv["underlying"] = ("close of the 1s Binance BTCUSDT spot kline with open_time t-1 (the last kline closed "
@@ -484,23 +487,216 @@ def env_check():
     assert out["envs_with_finished_episode"] == n and finite
 
 
+def trade_agreement():
+    """data-api taker fills vs Marketlens trades.parquet: counts, volumes, one-to-one matching.
+    A Marketlens trade is one taker order: exchange time (ms), taker side in the Up frame, size, and the
+    taker's average price rounded to the cent. A data-api taker leg is one tx at block time (s)."""
+    mk = pd.read_parquet(RAW / "markets.parquet")
+    mk["end_ts"] = mk.end.map(lambda x: int(pd.Timestamp(x).timestamp()))
+    mk["open_ts"] = mk.end_ts - 300
+    da = pd.read_parquet(RAW / "trades.parquet")
+    da = da[da.is_taker].copy()
+    da["slug"] = da.slug.astype(str)
+    da["px_up"] = np.where(da.outcome_idx == 0, da.price.astype(np.float64), 1.0 - da.price.astype(np.float64))
+    da_by = {s: g for s, g in da.groupby("slug", sort=False)}
+    ml = pd.read_parquet(ML / "trades.parquet", columns=["market_id", "platform_timestamp_ms", "price", "size", "side"])
+    ml_by = {m: g for m, g in ml.groupby("market_id", sort=False)}
+    first_snap = pd.read_parquet(ML / "snapshots.parquet", columns=["market_id", "collected_at_ms"]) \
+        .groupby("market_id").collected_at_ms.min()
+    tot = {"ml_all": [0, 0.0], "da_all": [0, 0.0], "ml_win": [0, 0.0], "da_win": [0, 0.0], "ml_matched": [0, 0.0],
+           "da_win_matched": [0, 0.0]}
+    lags, ratio_n, ratio_v, unmatched = [], [], [], []
+    for m in mk.itertuples():
+        o, e = int(m.open_ts), int(m.end_ts)
+        a = ml_by.get(m.condition_id, ml.iloc[:0])
+        b = da_by.get(m.slug, da.iloc[:0])
+        at_all = np.sort(a.platform_timestamp_ms.values) / 1000.0
+        tot["ml_all"][0] += len(a); tot["ml_all"][1] += float(a["size"].sum())
+        tot["da_all"][0] += len(b); tot["da_all"][1] += float(b["size"].sum())
+        a = a[(a.platform_timestamp_ms >= o * 1000) & (a.platform_timestamp_ms < (e + 1) * 1000)]
+        bw = b[(b.timestamp >= o) & (b.timestamp <= e)]
+        tot["ml_win"][0] += len(a); tot["ml_win"][1] += float(a["size"].sum())
+        tot["da_win"][0] += len(bw); tot["da_win"][1] += float(bw["size"].sum())
+        if len(bw):
+            ratio_n.append(len(a) / len(bw))
+            ratio_v.append(float(a["size"].sum()) / float(bw["size"].sum()))
+        # one-to-one: same Up-frame side, size within 0.006, price within half a cent, block time in
+        # [match time - 1 s, match time + 30 s]; earliest unmatched candidate
+        used = np.zeros(len(b), bool)
+        bt = b.timestamp.values.astype(np.int64)
+        order = np.argsort(bt, kind="stable")
+        bt, bsz, bpx, bsd = bt[order], b["size"].values[order].astype(np.float64), b.px_up.values[order], b.aggressor_up.values[order]
+        inwin = (bt >= o) & (bt <= e)
+        for ts, px, sz, sd in zip(a.platform_timestamp_ms.values, a.price.values, a["size"].values, a.side.values):
+            s = 1 if sd == "BUY" else -1
+            lo = np.searchsorted(bt, ts // 1000 - 1, side="left")
+            hi = np.searchsorted(bt, ts // 1000 + 30, side="right")
+            for j in range(lo, hi):
+                if not used[j] and bsd[j] == s and abs(bsz[j] - sz) <= 0.006 and abs(bpx[j] - px) <= 0.0051:
+                    used[j] = True
+                    tot["ml_matched"][0] += 1; tot["ml_matched"][1] += float(sz)
+                    lags.append(int(bt[j]) - ts / 1000.0)
+                    break
+        tot["da_win_matched"][0] += int((used & inwin).sum()); tot["da_win_matched"][1] += float(bsz[used & inwin].sum())
+        unmatched.append((bt[~used & inwin], first_snap.get(m.condition_id, np.inf) / 1000.0, at_all))
+    lags = np.array(lags)
+    # where are the data-api fills without a Marketlens trade? exchange time ~ block time - median lag
+    med = float(np.median(lags)) if len(lags) else 0.0
+    why = {"before_first_marketlens_snapshot": 0, "in_marketlens_trade_gap_gt_5s": 0, "inside_marketlens_coverage": 0}
+    for bts, fs, at_all in unmatched:
+        ex = bts - med
+        before = ex < fs
+        if len(at_all):
+            k = np.searchsorted(at_all, ex)
+            prev_t = np.where(k > 0, at_all[np.maximum(k - 1, 0)], -np.inf)
+            next_t = np.where(k < len(at_all), at_all[np.minimum(k, len(at_all) - 1)], np.inf)
+            gap = (next_t - prev_t) > 5
+        else:
+            gap = np.ones(len(ex), bool)
+        why["before_first_marketlens_snapshot"] += int(before.sum())
+        why["in_marketlens_trade_gap_gt_5s"] += int((~before & gap).sum())
+        why["inside_marketlens_coverage"] += int((~before & ~gap).sum())
+    out = {
+        "definitions": {
+            "ml": "Marketlens trades.parquet rows (one per taker order, exchange time in ms)",
+            "da": "data-api taker legs (takerOnly=true rows = one per tx, block time in s)",
+            "win": "inside the market window: Marketlens exchange time in [open, end+1) s; data-api block time in [open, end]",
+            "match": "same Up-frame taker side, |size diff| <= 0.006, |Marketlens price - data-api avg price (Up frame)| "
+                     "<= 0.0051, block time in [exchange time - 1 s, + 30 s], earliest unmatched data-api leg"},
+        "counts_volumes": {k: {"n": int(v[0]), "shares": round(v[1], 2)} for k, v in tot.items()},
+        "matched_frac_of_ml_win": round(tot["ml_matched"][0] / max(tot["ml_win"][0], 1), 4),
+        "matched_frac_of_da_win": round(tot["da_win_matched"][0] / max(tot["da_win"][0], 1), 4),
+        "matched_volume_frac_of_ml_win": round(tot["ml_matched"][1] / max(tot["ml_win"][1], 1e-9), 4),
+        "unmatched_da_win_by_where": why,
+        "unmatched_da_win_note": "exchange time of a data-api fill estimated as block time - median lag; a gap is "
+                                 "> 5 s between consecutive Marketlens trades of the market",
+        "block_minus_exchange_time_s_quantiles": {str(q): round(float(np.quantile(lags, q)), 3)
+                                                  for q in (0.01, 0.1, 0.5, 0.9, 0.99)} if len(lags) else None,
+        "per_market_count_ratio_ml_over_da_win_quantiles": {str(q): round(float(np.quantile(ratio_n, q)), 3)
+                                                            for q in (0.05, 0.5, 0.95)},
+        "per_market_volume_ratio_ml_over_da_win_quantiles": {str(q): round(float(np.quantile(ratio_v, q)), 3)
+                                                             for q in (0.05, 0.5, 0.95)},
+    }
+    write_atomic(OUT / "trade_agreement.json", json.dumps(out, indent=1))
+    print(json.dumps(out, indent=1))
+    return out
+
+
 def lock(integ: dict):
     files = sorted(p.name for p in OUT.iterdir() if p.is_file() and p.name not in ("meta.json", "TEST_LOCK.md")
                    and not p.name.startswith("."))
     files += sorted(f"raw/{p.name}" for p in RAW.iterdir() if p.is_file() and not p.name.startswith("."))
     meta = json.loads((OUT / "meta.json").read_text())
     meta["integrity"] = integ
+    if (OUT / "trade_agreement.json").exists():
+        meta["trade_agreement"] = json.loads((OUT / "trade_agreement.json").read_text())
     meta["file_sha256"] = {f: sha256_file(OUT / f) for f in files}
     meta["file_sha256_note"] = "every file of data/build_jun15 except meta.json and TEST_LOCK.md (see TEST_LOCK.md)"
     meta["inputs_sha256"] = {f"data/raw/marketlens/{k}": v for k, v in ML_SHA256.items()}
     write_atomic(OUT / "meta.json", json.dumps(meta, indent=1))
+    write_atomic(OUT / "TEST_LOCK.md", lock_text(meta, sha256_file(OUT / "meta.json")))
     return meta
+
+
+def trade_line(meta: dict) -> str:
+    if "trade_agreement" not in meta:
+        return ""
+    ta = meta["trade_agreement"]
+    cv = ta["counts_volumes"]
+    lag = ta["block_minus_exchange_time_s_quantiles"]
+    w = ta["unmatched_da_win_by_where"]
+    return (f": inside the market windows, {100 * ta['matched_frac_of_ml_win']:.2f}% of the "
+            f"{cv['ml_win']['n']:,} Marketlens taker trades ({100 * ta['matched_volume_frac_of_ml_win']:.2f}% of their "
+            f"shares) match a data-api taker fill one-to-one (block time - exchange time median {lag['0.5']} s, "
+            f"1-99% {lag['0.01']}-{lag['0.99']} s); the other way, {100 * ta['matched_frac_of_da_win']:.1f}% of the "
+            f"{cv['da_win']['n']:,} data-api taker fills have a Marketlens trade. Of the rest, "
+            f"{w['before_first_marketlens_snapshot']:,} fall before Marketlens' first snapshot of the market, "
+            f"{w['in_marketlens_trade_gap_gt_5s']:,} in gaps of its trade feed and {w['inside_marketlens_coverage']:,} "
+            "inside its covered time, so the trade-implied cleaning above misses some removals")
+
+
+def lock_text(meta: dict, meta_sha: str) -> str:
+    br = meta["book_reconstruction"]
+    tot = br["totals"]
+    an = br["anchor_agreement"]
+    env = json.loads((OUT / "env_check.json").read_text()) if (OUT / "env_check.json").exists() else None
+    rows = "\n".join(f"| `{f}` | {(OUT / f).stat().st_size:,} | `{h}` |" for f, h in meta["file_sha256"].items())
+    ins = "\n".join(f"| `{f}` | `{h}` |" for f, h in meta["inputs_sha256"].items())
+    late = br["first_book_s_of_those"]
+    return f"""# TEST LOCK: `data/build_jun15/` is the untouched v2 test set (DECISIONS D7)
+
+**What.** Every BTC 5-minute up/down market of 2026-06-15 UTC: {meta['n_markets']} markets,
+{meta['N']:,} one-second rows, all split 2 (test), in exactly the `data/build` format (ticks.bin,
+markets.bin, meta.json, splits.json from `data/build_jun15.py`; feat.bin, book.bin, fills.bin,
+fill_index.bin, feat_meta.json from the unmodified `data/features.py`).
+
+**Rule.** Nothing may be run on these files before the v2 plan is frozen and hashed: no policy,
+baseline, learned model or tuning run, and no strategy statistic (spreads, fill rates, P&L, markouts,
+distribution comparisons). The test runs once and every result is reported (D7). The C env refuses
+split 2 unless `allow_test=1` and `MM_FINAL=1` are both set.
+
+**What has touched it so far** (built {meta['built_at_utc']}):
+1. The conversion itself (`data/fetch_jun15.py`, `data/build_jun15.py`, `data/marketlens_book.py`).
+2. Integrity checks only: {'; '.join(meta['integrity']['checks'])}.
+3. {'The C env stepped with a constant no-quote action [0, 0, 0] (allow_test=1, MM_FINAL=1), ' + str(env['num_envs']) + ' envs x ' + str(env['steps']) + ' steps, every market played once, observations finite (env_check.json). No policy, no P&L.' if env else 'C env load check: not run yet.'}
+
+Counts recorded during the conversion (data integrity, not strategy statistics) are in
+`book_recon.json` and `meta.json` (`book_reconstruction`).
+
+## Sources and license
+
+* Order book: Hugging Face `marketlens/polymarket-btc-5m-l2-depth`, revision `{REV}`,
+  **CC BY 4.0** (attribution required): Marketlens, "Polymarket Limit Order Book: 5-Minute Bitcoin
+  Markets, One Complete Day (2026-06-15)", Zenodo, doi:10.5281/zenodo.21933084. Derived from publicly
+  available Polymarket data. Raw files in `data/raw/marketlens/` (git-ignored); the dataset README is
+  kept there.
+* Market metadata: Polymarket gamma API by slug (`closed=true`). Fills: Polymarket data-api
+  `/trades` (`takerOnly=true` and `false`), the same source and code as the training data
+  (`data/fetch_trades.py`). Underlying: Binance BTCUSDT 1 s klines from data.binance.vision.
+
+## Conversion caveats (stated before any result)
+
+* Different capture: Marketlens WebSocket snapshots (about every 60 s) plus millisecond deltas,
+  replayed to 1 s rows, instead of PolyOrderBooks 1 s snapshots. `book_age` is the time since the
+  last feed message, so it is 0 while the feed is live; `book_from_down` is always 0.
+* Not every level removal arrives as a delta. Levels proven empty by a Marketlens taker trade
+  (and last updated more than {mlb.GUARD_MS} ms before it) are hidden (rows with a hidden level:
+  {tot['rows_with_hidden_levels']:,}); Marketlens trades are used for nothing else. Rows crossed and
+  forward-filled (`crossed_raw`): {tot['rows_crossed_raw']:,} with this cleaning,
+  {tot['rows_crossed_raw_without_trade_cleaning']:,} without it.
+* Replay vs the next snapshot (anchors inside the market window; [anchors, best bid and ask equal,
+  top-5 prices equal]): continuous chains {an['with_trade_cleaning']['cont']}, chains ending in a
+  reseed {an['with_trade_cleaning']['reseed']} (without cleaning {an['without_trade_cleaning']['cont']},
+  {an['without_trade_cleaning']['reseed']}). Some snapshots disagree with the deltas and trades around
+  them; snapshots are still treated as authoritative (dataset README), so errors last at most one chain.
+* {len(late)} markets have no Marketlens book at open (first snapshot {min(late) if late else 0}-{max(late) if late else 0} s
+  after open; {tot['rows_no_book']:,} rows with `book_valid = 0`). They are kept, with the same
+  convention as data/build (v1 5m markets: 57 of 471 started without a book). `meta.json`
+  `first_book_s` lists the offset per market.
+* Fills come from data-api maker legs at block time, as in training. Agreement with Marketlens
+  trades.parquet is in `trade_agreement.json`{trade_line(meta)}.
+* No market was dropped.
+
+## sha256
+
+`meta.json`: `{meta_sha}`
+
+| file | bytes | sha256 |
+|---|---:|---|
+{rows}
+
+Inputs:
+
+| file | sha256 |
+|---|---|
+{ins}
+"""
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--env-check", action="store_true", help="only the constant no-quote env load check")
-    ap.add_argument("--stage", choices=["all", "ticks", "features", "lock"], default="all")
+    ap.add_argument("--stage", choices=["all", "ticks", "features", "trades", "lock"], default="all")
     args = ap.parse_args()
     if args.env_check:
         env_check()
@@ -509,6 +705,8 @@ def main():
         build_ticks()
     if args.stage in ("all", "features"):
         run_features()
+    if args.stage in ("all", "trades"):
+        trade_agreement()
     if args.stage in ("all", "lock"):
         integ = integrity()
         print("integrity:", integ)
