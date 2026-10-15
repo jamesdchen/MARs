@@ -1,5 +1,9 @@
 # w4: a learned, toxicity-aware quoter (not pure RL), and RL warm-started from it
 
+Status: final for the crypto v2 line. Per DECISIONS.md D11 crypto tuning has stopped. All w4
+runs finished and are ledgered; the 100M round finished after the coordinator's 21:22 check-in,
+whose freeze used the q2 rows up to then.
+
 Worker w4, protocol v2 (`../PROTOCOL.md`). Env and data hashes were checked against the table in
 PROTOCOL.md and all six matched. Training data is train only (split 0, Aug 21–22). Every
 selection and every number below is on **val v2** (`data/build_v2`, split 1, 374 markets),
@@ -32,9 +36,9 @@ greedy, every market once. The Jun 15 data was never touched. Every val evaluati
   - If F < 0 and the P&L is positive, then inv = P&L − F > P&L, so T6 > 1 and the method is
     "directional".
   - So a method can pass D1.3 with positive P&L only if its 60 s fill P&L F is itself positive.
-  - Across every val evaluation in my ledger: F > 0 in 1 of 475 evaluations (w4_q1 t8_m0, 0.5 fills/market). The inventory
-    term (holding past 60 s) is positive in 456 of 475.
-  - **No evaluation both passes D1.3 and has positive P&L.**
+  - Across every val evaluation in my ledger: F > 0 in 1 of 493 evaluations (w4_q1 t8_m0, 0.5 fills/market). The inventory
+    term (holding past 60 s) is positive in 474 of 493.
+  - **Evaluations that both pass D1.3 and have positive P&L: 0 of 493.**
   - So the D1.3-passing seeds are the ones with negative totals. Under this rule the protocol's
     "best passing method" is the least-negative one.
   - Coordinator: please weigh this when comparing workers. A positive seed mean with "0/3 D1.3"
@@ -216,6 +220,28 @@ Central fills, 2 s latency:
 `T6 per seed` is inventory P&L / total P&L, defined only when the total is > 0; 'nan' means the
 total was negative. Per-length columns are seed-mean P&L per market.
 
+### Round 2: c2 and c8 at 100M steps (3 seeds)
+
+central_1s:
+
+| config | seeds | P&L/market (mean ± SE) | per seed | fills/mkt | T6 per seed | D1.3 pass | 5m | 15m | 4h |
+|---|---|---|---|---|---|---|---|---|---|
+| c8_h60_kl0.1_d0.5_inv1e-3_100M | 3 | -0.190 ± 0.135 | -0.17, +0.04, -0.43 | 19.4 | nan/22.45/nan | 2/3 | -1.44 | +0.21 | +7.06 |
+| c2_h120_kl0.1_d0.5_100M | 3 | -0.234 ± 0.082 | -0.26, -0.08, -0.36 | 18.7 | nan/nan/nan | 3/3 | -1.41 | +0.23 | +6.20 |
+
+pess_1s:
+
+| config | seeds | P&L/market (mean ± SE) | per seed | fills/mkt | T6 per seed | D1.3 pass | 5m | 15m | 4h |
+|---|---|---|---|---|---|---|---|---|---|
+| c2_h120_kl0.1_d0.5_100M | 3 | -0.454 ± 0.060 | -0.57, -0.39, -0.40 | 14.4 | nan/nan/nan | 3/3 | -1.46 | -0.08 | +5.15 |
+| c8_h60_kl0.1_d0.5_inv1e-3_100M | 3 | -0.472 ± 0.059 | -0.53, -0.35, -0.54 | 14.5 | nan/nan/nan | 3/3 | -1.48 | -0.33 | +6.01 |
+
+central_2s:
+
+| config | seeds | P&L/market (mean ± SE) | per seed | fills/mkt | T6 per seed | D1.3 pass | 5m | 15m | 4h |
+|---|---|---|---|---|---|---|---|---|---|
+| c2_h120_kl0.1_d0.5_100M | 3 | +0.120 ± 0.116 | +0.09, +0.34, -0.06 | 16.6 | 10.29/2.52/nan | 1/3 | -1.10 | +0.75 | +6.27 |
+| c8_h60_kl0.1_d0.5_inv1e-3_100M | 3 | +0.033 ± 0.183 | -0.16, +0.40, -0.14 | 17.0 | nan/2.39/nan | 2/3 | -1.28 | +0.57 | +7.20 |
 
 
 ## What worked, what did not
@@ -234,6 +260,9 @@ total was negative. Per-length columns are seed-mean P&L per market.
   - **Per-length thresholds** (q2) found nothing better than q1's.
   - **More RL** (kl 0.03–1.0, decay 0.25–0.9, lr 1e-4, inventory penalty 1e-3, markout 120) moves
     P&L by less than the seed noise (SE 0.07–0.13). It mostly adds fills on 5m.
+  - **Longer RL** (c2 and c8 at 100M steps instead of 30M) is worse at central 1 s (−$0.19 and
+    −$0.23 per market). Fills rise to about 19 per market and the extra fills lose on 5m, while 4h
+    stays around +$6–7.
 * **Observation.** The 60 s label is pessimistic relative to settlement: inventory P&L past 60 s
   is positive in almost every evaluation. Under D1.3 that part counts against a method (T6), so I
   did not optimise for it.
@@ -256,4 +285,4 @@ total was negative. Per-length columns are seed-mean P&L per market.
 | `cv/` | CV results |
 | `trials.jsonl` | ledger (every val v2 evaluation), `runs.jsonl` run index |
 
-Ledger: 475 val v2 evaluations in `trials.jsonl` (all of them, including smoke and killed-trial rows).
+Ledger: 493 val v2 evaluations in `trials.jsonl` (all of them, including smoke and killed-trial rows).

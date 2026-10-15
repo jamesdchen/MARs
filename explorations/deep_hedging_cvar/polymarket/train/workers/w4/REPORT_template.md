@@ -1,5 +1,9 @@
 # w4: a learned, toxicity-aware quoter (not pure RL), and RL warm-started from it
 
+Status: final for the crypto v2 line. Per DECISIONS.md D11 crypto tuning has stopped. All w4
+runs finished and are ledgered; the 100M round finished after the coordinator's 21:22 check-in,
+whose freeze used the q2 rows up to then.
+
 Worker w4, protocol v2 (`../PROTOCOL.md`). Env and data hashes were checked against the table in
 PROTOCOL.md and all six matched. Training data is train only (split 0, Aug 21–22). Every
 selection and every number below is on **val v2** (`data/build_v2`, split 1, 374 markets),
@@ -34,7 +38,7 @@ greedy, every market once. The Jun 15 data was never touched. Every val evaluati
   - So a method can pass D1.3 with positive P&L only if its 60 s fill P&L F is itself positive.
   - Across every val evaluation in my ledger: FPOS_COUNT. The inventory
     term (holding past 60 s) is positive in INVPOS_COUNT.
-  - **No evaluation both passes D1.3 and has positive P&L.**
+  - **Evaluations that both pass D1.3 and have positive P&L: PASSPOS_COUNT.**
   - So the D1.3-passing seeds are the ones with negative totals. Under this rule the protocol's
     "best passing method" is the least-negative one.
   - Coordinator: please weigh this when comparing workers. A positive seed mean with "0/3 D1.3"
@@ -201,6 +205,9 @@ LONG_RUNS
   - **Per-length thresholds** (q2) found nothing better than q1's.
   - **More RL** (kl 0.03–1.0, decay 0.25–0.9, lr 1e-4, inventory penalty 1e-3, markout 120) moves
     P&L by less than the seed noise (SE 0.07–0.13). It mostly adds fills on 5m.
+  - **Longer RL** (c2 and c8 at 100M steps instead of 30M) is worse at central 1 s (−$0.19 and
+    −$0.23 per market). Fills rise to about 19 per market and the extra fills lose on 5m, while 4h
+    stays around +$6–7.
 * **Observation.** The 60 s label is pessimistic relative to settlement: inventory P&L past 60 s
   is positive in almost every evaluation. Under D1.3 that part counts against a method (T6), so I
   did not optimise for it.
