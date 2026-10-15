@@ -210,6 +210,28 @@ positive in both phases.
 | 1–3 h in-play | +0.4 |
 | 3–10 h in-play (long esports/tennis/cricket) | −2.2 |
 
+**D14 pre-game buckets** (`scripts/pregame_buckets.py`, `out/pregame_buckets.txt`). Maker edge at +30 min in bps of
+maker notional, ex-rewards, with a market-cluster bootstrap 95% CI. The rebate adds 23–28 bps in every bucket.
+
+| time before kickoff | markets | maker shares | spread capture | +1 min | +30 min (bps) | 95% CI |
+|---|---|---|---|---|---|---|
+| > 24 h | 183 | 5M | 111 bps | 14 bps | **+251** | [0, +701] |
+| 6–24 h | 230 | 22M | 100 | 31 | **0** | [−19, +20] |
+| 1–6 h | 234 | 39M | 147 | 79 | **+28** | [−7, +64] |
+| last hour | 235 | 78M | 125 | 49 | **−130** | [−463, +178] |
+
+Agreement with w7/w2 (D14):
+- **Agrees on the shape:** >24 h positive, 1–6 h mildly positive, last hour about 0 or negative with a wide CI.
+- **Disagrees on 6–24 h:** we find 0, against their +41/+43.
+- **The last hour is 54% of pre-game maker volume on chain**, so D14's T−1 h cut-off gives up most of the pre-game
+  fill volume, but the noisiest and worst part.
+
+>1 h by league, +30 min (bps, CI):
+- ATP +61 [26, 99]; Valorant +38 [6, 63]; Dota 2 +33 [14, 63]; UNL +88 [−62, 215]; UCL +36 [−40, 86];
+  La Liga +36 [−32, 83]; WTA +31 [−11, 73]; CS2 +27 [−3, 55];
+- LoL +9; NFL −3 [−28, 21]; CFB −12; MLB −26; EPL −28.
+- Last hour: LoL −710 [−1570, −138]. Most others are negative with wide CIs.
+
 **By market type:**
 - Spreads and totals have higher spread capture (0.8¢ pre-game) but are thin.
 - NFL/CFB spreads and totals pay **no fee and no rebate**, so their makers face takers who pay nothing.
