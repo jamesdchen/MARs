@@ -20,8 +20,17 @@
     adjusted mid, 100 shares each, two-sided rule, Q_comp = 100, 0.01 USD per sample), its
     one-sided / ineligible / age variants and the reward observations, in C and in the
     reference; reference3's scorer == analysis/rewards/reward_terms.py on 2000 random books.
+(e) adapt3.py on the build_sports schemas (fixtures3): sports-2 (meta.json segments, sports_x3.bin
+    copied, never recomputed, --rewards ignored, rw_rate_day from segments), --no-legacy-settle and the
+    legacy sports-1 layout (--rewards fallback) adapt the same games to identical markets3.bin /
+    x3.bin; TRADES_TRUNCATED at 1024 (sports-2) / 32 (sports-1); --bucket-segments pieces get
+    event_ts = kickoff (obs 50 = time to kickoff), and C == reference on them with pull_s / flat_c.
+(f) D15 netting / flatten Log fields (net_gross_sh, net_notional, net_end_inv, net_share, net_eps,
+    net_flat_drag) against fill_vol / final_abs_inv / flat_cost, per-episode netted share, a
+    never-quoting policy, and env3.netting's pooled share and drag in bps. (b) compares every one
+    of them with reference3 too.
 Plus: parameter tables (mm3.h == Config3, first 27 == v2), split guard, PufferLib 3.0 binding ==
-core (crypto and a v3 fixture, in subprocesses).
+core (crypto and a v3 fixture, in subprocesses; vec_log carries every Log field).
 """
 from __future__ import annotations
 
@@ -502,6 +511,135 @@ def settlement(h, root, tmp, checks, results):
         kickoff_marks=marks.tolist(), elections_pnl=le["pnl"].tolist())
 
 
+# ------------------------------------------------------------------ (e) adapt3 on the build_sports schemas
+
+def adapt_schemas(h, root, tmp, checks, results):
+    """adapt3.py on build_sports sports-2 (segments, sports_x3.bin, --no-legacy-settle, --bucket-segments)
+    and on the legacy sports-1 layout: same six games -> the same markets3.bin / x3.bin."""
+    from reference3 import EXT_DTYPE
+    b = lambda d, f: (root / d / f).read_bytes()  # noqa: E731
+    for f in ("markets3.bin", "x3.bin"):
+        checks.add(f"(e) {f}: sports-2 == sports-1 (--rewards top-5 fallback) == --no-legacy-settle (1 = differ)",
+                   float(not (b("sports", f) == b("sports1", f) == b("sports2_nolegacy", f))), 0)
+    checks.add("(e) sports-2: x3.bin is a byte copy of sports_x3.bin (1 = not)",
+               float(b("sports", "x3.bin") != b("sports", "sports_x3.bin")), 0)
+    # sports_x3.bin is never recomputed, and --rewards does not override the full-ladder columns or the pools
+    pd = Path(tmp) / "sports_perturbed"
+    shutil.copytree(root / "sports", pd)
+    meta = json.loads((pd / "meta.json").read_text())
+    x = np.fromfile(pd / "sports_x3.bin", np.float32).reshape(-1, len(X_COLS))
+    x[:, 5] *= 2.0
+    x[:, 6] *= 0.5
+    x.tofile(pd / "sports_x3.bin")
+    (pd / "rates999.json").write_text(json.dumps({s["slug"]: 999.0 for s in meta["segments"]}))
+    adapt3.main([str(pd), "--rewards", str(pd / "rates999.json")])
+    ext = np.fromfile(pd / "markets3.bin", EXT_DTYPE)
+    checks.add("(e) sports-2: x3.bin follows sports_x3.bin, not book.bin, with --rewards given (1 = not)",
+               float((pd / "x3.bin").read_bytes() != (pd / "sports_x3.bin").read_bytes()), 0)
+    checks.add("(e) sports-2: rw_rate_day == segments[i].rw.rate_day_last, --rewards ignored (max |diff|)",
+               float(np.max(np.abs(ext["rw_rate_day"] - [s["rw"]["rate_day_last"] for s in meta["segments"]]))), 0)
+    # TRADES_TRUNCATED: 1024 in sports-2 (bit 32 set on game 5 must not count), 32 in sports-1
+    tr = {d: json.loads((root / d / "meta3.json").read_text()).get("trades_truncated_markets")
+          for d in ("sports", "sports1", "sports2_nolegacy")}
+    checks.add("(e) TRADES_TRUNCATED read as 1024 (sports-2) / 32 (sports-1), bit 32 ignored in sports-2 (1 = not)",
+               float(any(v != [3] for v in tr.values())), 0)
+    # --no-legacy-settle: no flag 16, winner_up -1; settles at segments[i].settle_price == the last-row mark
+    nl = Data3(root / "sports2_nolegacy")
+    seg = json.loads((root / "sports2_nolegacy" / "meta.json").read_text())["segments"]
+    last = nl.markets["row_offset"] + nl.markets["n_rows"] - 1
+    checks.add("(e) --no-legacy-settle build: no flag 16, winner_up -1, log_strike 0 (1 = not)",
+               float((nl.markets["flags"] & 16).any() or (nl.markets["winner_up"] != -1).any()
+                     or (nl.markets["log_strike_vs_ul_open"] != 0).any()), 0)
+    checks.add("(e) --no-legacy-settle: settle_price == segments settle_price == last-row mark, mode 1",
+               float(np.max(np.abs(nl.ext["settle_price"] - [s["settle_price"] for s in seg])
+                            + np.abs(nl.ext["settle_price"] - nl.feat[last, nl.col["mark"]]))
+                     + np.any(nl.ext["settle_mode"] != 1)), 0)
+    # a legacy copy that disagrees with meta is refused; a sports-1 build without flag 16 is refused
+    for name, src, edit in (("legacy settle copy != segments settle_price", "sports", "log_strike_vs_ul_open"),
+                            ("sports-1 build without flag 16", "sports1", "flags")):
+        bad = Path(tmp) / f"bad_{src}"
+        shutil.copytree(root / src, bad)
+        mk = np.fromfile(bad / "markets.bin", MARKET_DTYPE)
+        mk[edit][0] = 0.123 if edit == "log_strike_vs_ul_open" else mk["flags"][0] & ~16
+        mk.tofile(bad / "markets.bin")
+        try:
+            adapt3.main([str(bad), "--check"])
+            refused = 0.0
+        except SystemExit:
+            refused = 1.0
+        checks.add(f"(e) adapt3 refuses a {name} (1 = not)", 1 - refused, 0)
+    # --bucket-segments: event_ts = kickoff for every piece, so time to event = time to kickoff
+    bd = Data3(root / "sports2_buckets")
+    bseg = json.loads((root / "sports2_buckets" / "meta.json").read_text())["segments"]
+    mk, ext = bd.markets, bd.ext
+    last = mk["row_offset"] + mk["n_rows"] - 1
+    checks.add("(e) bucket pieces: event_ts == kickoff_ts (not the piece end) (max |diff| s)",
+               float(np.max(np.abs(ext["event_ts"] - [s["kickoff_ts"] for s in bseg]))), 0)
+    checks.add("(e) bucket pieces: pure, end at 1800 / 300 / 0 s before kickoff, settle at their last-row mark",
+               float(np.max(np.abs(ext["settle_price"] - bd.feat[last, bd.col["mark"]])))
+               + float(not set((ext["event_ts"] - mk["end_ts"]).tolist()) <= {0, 300, 1800})
+               + float(not all(s["bucket_pure"] for s in bseg)), 0)
+    n = len(mk)
+    h.open(root / "sports2_buckets")
+    obs = h.run(Config3(obs_size=80), np.arange(n), np.zeros(n), np.zeros((1, n, 3), np.int32))[0]
+    ev = np.expm1(obs[0, :, 50].astype(np.float64) * np.log1p(86400.0))
+    checks.add("(e) bucket pieces: obs 50 at row 0 == seconds to kickoff (rel)",
+               rel(ev, (ext["event_ts"] - mk["open_ts"]).astype(np.float64)), 1e-5)
+    rng = np.random.default_rng(31)
+    starts = np.array([int(rng.integers(0, max(1, int(0.2 * (mk["n_rows"][i] - 1))))) for i in range(n)])
+    out = equivalence(h, bd, checks, replace(Config3(), obs_size=80, liq_rewards=1, size_mode=1, Q=1000,
+                                                 pull_s=600, flat_c=0.5, close_inv_coef=0.05, close_ramp_s=1800),
+                      np.arange(n), starts, np.random.default_rng(32), "sports-buckets-pull600-flat-liq")
+    print(f"(b) {'sports-buckets-pull600-flat-liq':40s} {json.dumps(out)}", flush=True)
+    results["adapt_schemas"] = dict(trades_truncated=tr, buckets=out)
+
+
+# ------------------------------------------------------------------ (f) D15 netting / flatten diagnostics
+
+def netting_checks(h, root, checks, results):
+    """The Log's net_* fields against the fields they summarise, a never-quoting policy, and env3.netting."""
+    import env3
+    sd = root / "sports"
+    data = Data3(sd)
+    mk = data.markets
+    n = len(mk)
+    T = int(mk["n_rows"].max()) + 5
+    acts = random_actions(np.random.default_rng(41), T, n, p_off=0.0)
+    acts[:, :, 2] = 2
+    h.open(sd)
+    lg = h.run(Config3(Q=1000, dt_other=1, flat_c=0.5), np.arange(n), np.zeros(n), acts, seed=5)[4]
+    g, end = lg["net_gross_sh"].astype(np.float64), lg["net_end_inv"].astype(np.float64)
+    checks.add("(f) net_end_inv == final_abs_inv (|inventory| at the settlement row)",
+               float(np.max(np.abs(end - lg["final_abs_inv"]))), 0)
+    checks.add("(f) net_gross_sh == fill_vol == buy_vol + sell_vol (rel)",
+               max(rel(g, lg["fill_vol"]), rel(g, lg["buy_vol"].astype(np.float64) + lg["sell_vol"])), 1e-5)
+    checks.add("(f) net_flat_drag == flat_cost == |end inv| x flat_c / 100 (USD)",
+               float(max(np.max(np.abs(lg["net_flat_drag"] - lg["flat_cost"])),
+                         np.max(np.abs(lg["net_flat_drag"] - end * 0.005)))), 1e-6)
+    has = g > 0
+    want = np.where(has, np.maximum(1 - end / np.where(has, g, 1), 0), 0)
+    checks.add("(f) net_share == 1 - net_end_inv / net_gross_sh per episode, in [0, 1]",
+               float(np.max(np.abs(lg["net_share"] - want)) + np.any((lg["net_share"] < 0) | (lg["net_share"] > 1))),
+               1e-6)
+    checks.add("(f) net_eps == 1 exactly for episodes with fills", float(np.max(np.abs(lg["net_eps"] - has))), 0)
+    checks.add("(f) net_notional / net_gross_sh is a price in (0, 1) (1 = not)",
+               float(not ((lg["net_notional"][has] > 0).all() and (lg["net_notional"][has] < g[has]).all())), 0)
+    tot = {k: float(np.sum(v, dtype=np.float64)) for k, v in lg.items()}
+    nt = env3.netting(tot)
+    checks.add("(f) env3.netting: pooled netted share == 1 - sum |end inv| / sum gross (RECONCILE.md section 6)",
+               abs(nt["netted_share"] - (1 - end.sum() / g.sum())), 1e-6)
+    checks.add("(f) env3.netting: flat_drag_bps == drag / notional x 1e4",
+               abs(nt["flat_drag_bps"] - tot["net_flat_drag"] / tot["net_notional"] * 1e4), 1e-6)
+    off = acts.copy()
+    off[:, :, :2] = 0
+    lo = h.run(Config3(Q=1000, dt_other=1, flat_c=0.5), np.arange(n), np.zeros(n), off, seed=5)[4]
+    checks.add("(f) never quoting: gross, end inventory, netted share, episodes with fills, drag all 0",
+               float(sum(np.abs(lo[k]).sum() for k in ("net_gross_sh", "net_end_inv", "net_share", "net_eps",
+                                                       "net_flat_drag", "net_notional"))), 0)
+    results["netting"] = dict(netted_share_pooled=nt["netted_share"], netted_share_ep=nt["netted_share_ep"],
+                              flat_drag_bps=nt["flat_drag_bps"], gross=g.tolist(), end_inv=end.tolist())
+
+
 # ------------------------------------------------------------------ (d) reward hook
 
 def reward_hook(h, root, checks, results):
@@ -611,14 +749,17 @@ sys.path.insert(0, %(here)r)
 from env3 import MmEnv3
 kw = json.loads(%(kw)r)
 acts = np.load(%(acts)r)
-env = MmEnv3(num_envs=acts.shape[1], seed=%(seed)d, data_dir=%(data)r, **kw)
+import env3
+env = MmEnv3(num_envs=acts.shape[1], seed=%(seed)d, data_dir=%(data)r, log_interval=10**9, **kw)
 env.reset(%(seed)d)
 obs = [env.observations.copy()]; rew = []; term = []
 for t in range(acts.shape[0]):
     o, r, d, _, _ = env.step(acts[t])
     obs.append(o.copy()); rew.append(r.copy()); term.append(d.astype(np.float32))
+log = env._binding.vec_log(env.c_envs)
+log.update(env3.netting(log))
 env.close()
-np.savez(%(out)r, obs=np.array(obs), rew=np.array(rew), term=np.array(term))
+np.savez(%(out)r, obs=np.array(obs), rew=np.array(rew), term=np.array(term), log=json.dumps(log))
 """
 
 
@@ -641,6 +782,11 @@ def binding_matches_core(h, tmp, checks, data_dir, kw, tag, n=32, T=600, seed=3)
     err = max(np.abs(z["obs"] - obs).max(), np.abs(z["rew"] - rew).max(), np.abs(z["term"] - term).max())
     checks.add("PufferLib 3.0 binding3 == core (same seeds and actions)", err, 0)
     checks.add("binding run crossed at least one terminal (1 = no)", float(term.sum() == 0), 0)
+    lg = json.loads(str(z["log"]))
+    missing = [f for f in LOG_FIELDS if f not in lg]
+    checks.add("binding3 vec_log carries every Log field incl. the D15 net_* fields (missing count)", len(missing), 0)
+    ok = (lg.get("net_eps", 0) == 0 or 0 <= lg["netted_share"] <= 1) and lg["end_abs_inv"] == lg["final_abs_inv"]
+    checks.add("binding3 / env3.netting: netted_share in [0, 1], end_abs_inv == final_abs_inv (1 = not)", float(not ok), 0)
 
 
 def builders_selftest(tmp):
@@ -689,6 +835,8 @@ def main():
             lookahead(data, checks, Config3(obs_size=80, liq_rewards=1, size_mode=1, Q=1000, fill_model=j % 3),
                       mi, 0.5, np.random.default_rng(j))
         settlement(h, root, tmp, checks, results)
+        adapt_schemas(h, root, tmp, checks, results)
+        netting_checks(h, root, checks, results)
         reward_hook(h, root, checks, results)
         split_guard(h, checks)
         binding_matches_core(h, tmp, checks, V2_DATA, dict(obs_size=80, liq_rewards=1, size_mult=10, Q=300), "crypto")

@@ -53,7 +53,8 @@ buffers bound, then `puf_reset`. It steps them 1500 times with float actions und
 - `puf_log` puts every name at its offset;
 - split = 2 is refused without `MM_FINAL`.
 
-Result (2026-10-15, both command lines): 159 episode ends, 0 mismatching arrays, 49 / 49 names, and
+Result (2026-10-15, before the six D15 `net_*` Log fields were added; expect 55 / 55 names now): 159
+episode ends, 0 mismatching arrays, 49 / 49 names, and
 the split guard refused.
 
 ## Not ported / open

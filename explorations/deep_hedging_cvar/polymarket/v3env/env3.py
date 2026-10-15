@@ -1,5 +1,5 @@
-"""PufferLib 3.0 env for the v3 replay core (mm3.h), stepped in C through binding3.c. Build first
-with `python setup.py build_ext --inplace` (in this directory). Imports side by side with the v2 env
+"""PufferLib 3.0 env for the v3 replay core (mm3.h), stepped in C through binding3.c. Build first:
+`python v3env/setup.py build_ext --inplace` (from any directory; the .so lands in v3env/, git-ignored). Imports side by side with the v2 env
 (../env.py, extension `binding`): this one loads the extension `binding3` from this directory.
 
     from env3 import MmEnv3
@@ -47,6 +47,22 @@ EXTRA_OBS = ["ev_log", "ep_left", "cat_crypto", "cat_sports", "cat_elections", "
     + [f"rw_ask_share_a{a}" for a in range(1, 7)]
 
 
+def netting(log: dict) -> dict:
+    """D15 netting / flatten lines from a Log dict (averaged over episodes, or summed: only ratios are
+    formed, so both work). netted_share = 1 - sum |end inv| / sum gross filled shares (the pooled
+    definition of analysis/v3_sports_rules/RECONCILE.md section 6); netted_share_ep = the mean of the
+    per-episode share over episodes with fills; flat_drag_usd = the flattening cost already in pnl;
+    flat_drag_bps = flat_drag_usd / filled notional x 1e4."""
+    g, end, nt = (float(log.get(k, 0.0)) for k in ("net_gross_sh", "net_end_inv", "net_notional"))
+    eps = float(log.get("net_eps", 0.0))
+    drag = float(log.get("net_flat_drag", 0.0))
+    nan = float("nan")
+    return {"netted_share": 1.0 - end / g if g > 0 else nan,
+            "netted_share_ep": float(log.get("net_share", 0.0)) / eps if eps > 0 else nan,
+            "flat_drag_usd": drag, "flat_drag_bps": drag / nt * 1e4 if nt > 0 else nan,
+            "end_abs_inv": end, "gross_filled_sh": g}
+
+
 def params(**kw) -> dict:
     """Full parameter dict (floats) from defaults plus overrides; rejects unknown names."""
     bad = set(kw) - set(DEFAULTS)
@@ -61,7 +77,11 @@ def load_binding():
         return sys.modules["binding3"]
     so = sorted(HERE.glob("binding3*.so"))
     if not so:
-        raise ImportError(f"binding3 is not built: cd {HERE} && python setup.py build_ext --inplace")
+        raise ImportError(f"binding3 is not built: python {HERE / 'setup.py'} build_ext --inplace")
+    src = max((HERE / f).stat().st_mtime for f in ("mm3.h", "binding3.c"))
+    if so[0].stat().st_mtime < src:
+        print(f"warning: {so[0].name} is older than mm3.h / binding3.c; rebuild with "
+              f"python {HERE / 'setup.py'} build_ext --inplace", file=sys.stderr, flush=True)
     loader = importlib.machinery.ExtensionFileLoader("binding3", str(so[0]))
     spec = importlib.util.spec_from_file_location("binding3", str(so[0]), loader=loader)
     mod = importlib.util.module_from_spec(spec)
@@ -107,6 +127,7 @@ class MmEnv3(pufferlib.PufferEnv):
                 for k in FLAG_KEYS:
                     log[f"share_{k}"] = log[f"vol_{k}"] / vol if vol > 0 else 0.0
                     log[f"pnl_share_{k}"] = log[f"pnl_{k}"] / fill_pnl if fill_pnl > 0 else float("nan")
+                log.update(netting(log))
                 info.append(log)
         return self.observations, self.rewards, self.terminals, self.truncations, info
 

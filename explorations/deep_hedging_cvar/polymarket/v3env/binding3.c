@@ -117,5 +117,11 @@ static int my_log(PyObject* dict, Log* log) {
     assign_to_dict(dict, "rw_scored", log->rw_scored);
     assign_to_dict(dict, "rw_share", log->rw_share);
     assign_to_dict(dict, "episode_rows", log->episode_rows);
+    assign_to_dict(dict, "net_gross_sh", log->net_gross_sh);
+    assign_to_dict(dict, "net_notional", log->net_notional);
+    assign_to_dict(dict, "net_end_inv", log->net_end_inv);
+    assign_to_dict(dict, "net_share", log->net_share);
+    assign_to_dict(dict, "net_eps", log->net_eps);
+    assign_to_dict(dict, "net_flat_drag", log->net_flat_drag);
     return 0;
 }
