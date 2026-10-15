@@ -70,3 +70,27 @@ artifacts:
 
 The through-the-touch flag is still logged and reported, but it is not an
 exploit detector.
+
+## D3. Training run settings (recorded 2026-10-15, before the main sweep)
+
+- **Sweep.** A fresh sweep named `main` with 64 trials, the same budget as
+  each baseline, at 25M steps per trial. Sweep `s1` was stopped by the user,
+  so it is aborted. Its two finished trials still count towards N.
+- **Selection.** The config with the best mean val score over 3 seeds, among
+  the top 4 sweep configs (`--reseed-top 4`).
+  - Only configs that pass D1.3 can be selected (`--require-mm`): at least 5
+    fills per market, and a T6 directional share of at most 0.5.
+  - There is no CVaR floor. The env enforces the inventory cap Q = 100 shares.
+- **Final seeds.** Seeds 100–104 at 100M steps each.
+- **Conditions.** Central fills, 1 s latency, maker rebate 20%, liquidity
+  rewards off. Every other parameter is an env default from ENV.md.
+- **If PPO underperforms** (task "diagnose and improve"), every follow-up run
+  goes into the same val ledger. The improvements to try, in order:
+  1. fair-value mark;
+  2. warm start from imitating the fair-value baseline, with a decaying KL
+     penalty;
+  3. an "off" prior at initialisation;
+  4. longer runs.
+
+  The test split stays untouched until a single final configuration is
+  frozen.
