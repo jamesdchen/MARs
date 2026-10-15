@@ -52,6 +52,10 @@ TAU_EDGES = np.array([0, 10, 30, 60, 120, 300, 900, 3600, 14401])          # sec
 EXT_EDGES = np.array([0.0, 0.1, 0.2, 0.3, 0.4, 0.45, 0.48, 0.5001])         # |p_model - 0.5|
 GAP_EDGES = np.array([-1.0, -0.1, -0.05, -0.02, -0.01, 0.0, 0.01, 0.02, 0.05, 0.1, 1.0])  # p_model - mid
 NTAU, NEXT, NGAP = len(TAU_EDGES) - 1, len(EXT_EDGES) - 1, len(GAP_EDGES) - 1
+# coin groups for book tables: BTC/ETH books are much tighter and deeper; ZEC books are mostly hollow
+COIN_GROUP = {"btc": 0, "eth": 1, "sol": 2, "xrp": 2, "bnb": 2, "doge": 2, "hype": 2, "zec": 3}
+CG_NAMES = ["btc", "eth", "alt", "zec"]
+NCG = 4
 HOLLOW_SPREAD = 0.3                     # two-sided book with spread > 0.3 = "hollow" (stub quotes only)
 NORMAL, HOLLOW, ONESIDED = 0, 1, 2
 

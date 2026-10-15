@@ -5,15 +5,20 @@
     python final/make_plan.py --best-baseline fv_smart --puffer5 puffer5/selected.json
 
 Reads (paths relative to --root, default polymarket/):
-  baselines/tuned.json   tuned parameter set per baseline (no_quote is always added). Accepted
-                         shapes: {name: {"params": {...}, "val": {"total_pnl": x}, ...}},
-                         {name: {...params...}}, {"baselines": {...} | [{"name", "params"}]}.
-  train/selected.json    the selected PPO config and its seed checkpoints: {"config", "config_sha256",
-                         "kind" ("ppo3"), "seeds": [{"seed", "checkpoint"}, ...]} (also accepted:
-                         "checkpoints": [path, ...] | {seed: path}). >= 5 seeds required.
+  baselines/tuned.json   tuned parameter set per baseline (no_quote is always added), as tune.py
+                         writes it ({name: {"best_params": {...}, "val_pnl_mean": x, ...}}); also
+                         {name: {"params": ..., "val": {"total_pnl": x}}} or {name: {...params...}}.
+  train/selected.json    the selected PPO config and its seed checkpoints, as train/select.py writes
+                         it ({"selected": {"cfg", "cfg_hash", "runs": [{"seed", "ckpt",
+                         "ckpt_sha256"}]}}; checkpoint hashes are verified), or {"config",
+                         "seeds": [{"seed", "checkpoint"}]}. Default path: train/selected.json, else
+                         the only train/runs/sweeps/*/selected.json; --selected overrides.
+                         >= 5 seeds required; checkpoint obs_size must equal the env's.
   puffer5/selected.json  optional 5.0 checkpoints: {"hidden", "layers", "seeds": [{"seed", "checkpoint"}]}
   **/trials.jsonl        every ledger under root (final/ excluded): N = all val evaluations.
   data/build/            file hashes; meta.json test_rows (row range + sha256 of the test rows).
+  mm.h                   (backend cenv) the env parameters, frozen in the plan: MM_DEFAULTS (the
+                         training env) plus --env-params overrides.
 
 The best tuned baseline (the comparator of the primary endpoint) is fixed here: --best-baseline,
 else the tuned baseline with the highest val total P&L recorded in tuned.json.
@@ -33,13 +38,15 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import (BUILD, CODE_ROOT, FINAL, HEADLINE_ID, MARKOUT_HORIZONS, MID_CLOSE_STC,  # noqa: E402
                     PLAN_SCHEMA, PlanError, S, SPLIT_NAMES, Dataset, code_hashes, count_trials,
-                    git_info, make_variants, utcnow, write_json)
+                    git_info, make_variants, resolve, utcnow, write_json)
 from reduce import FLAG_DOCS, MAX_FLAG_SHARE, MAX_INVENTORY_SHARE  # noqa: E402
 
 META_KEYS = {"val", "val_metrics", "metrics", "config_sha256", "params_sha256", "note", "notes",
              "trials", "n_trials", "score", "name", "selected", "best", "val_total_pnl", "val_pnl",
-             "source", "study", "rank"}
+             "source", "study", "rank", "best_trial", "val_pnl_mean", "untuned_params",
+             "untuned_pnl_mean", "sampler", "sampler_seed", "search_space", "objective", "tune_wall_s"}
 VAL_KEYS = ("val_total_pnl", "total_pnl", "val_pnl", "pnl", "score")
+PARAM_KEYS = ("params", "best_params", "tuned_params")
 
 
 def _rel(p: Path, root: Path) -> str:
@@ -51,7 +58,8 @@ def _rel(p: Path, root: Path) -> str:
 
 
 def _val_metric(e: dict):
-    for k in ("val_total_pnl", "val_pnl"):
+    """Val P&L of a tuned baseline (total, or the per-market mean: same ranking on one market set)."""
+    for k in ("val_total_pnl", "val_pnl", "val_pnl_mean"):
         if isinstance(e.get(k), (int, float)):
             return float(e[k])
     for sub in ("val", "val_metrics", "metrics"):
@@ -69,17 +77,22 @@ def parse_tuned(obj) -> list[dict]:
     if isinstance(obj, dict) and "baselines" in obj:
         obj = obj["baselines"]
     items = []
+    def params_of(e):
+        for k in PARAM_KEYS:
+            if isinstance(e.get(k), dict):
+                return e[k]
+        return {k: v for k, v in e.items() if k not in META_KEYS}
+
     if isinstance(obj, list):
         for e in obj:
-            params = e.get("params", {k: v for k, v in e.items() if k not in META_KEYS})
+            params = params_of(e)
             items.append(dict(name=e["name"], params=params, val_metric=_val_metric(e),
                               config_sha256=e.get("config_sha256")))
     elif isinstance(obj, dict):
         for name, e in obj.items():
             if not isinstance(e, dict):
                 raise PlanError(f"tuned.json: entry {name!r} is not an object")
-            params = e["params"] if isinstance(e.get("params"), dict) else \
-                {k: v for k, v in e.items() if k not in META_KEYS}
+            params = params_of(e)
             items.append(dict(name=name, params=params, val_metric=_val_metric(e),
                               config_sha256=e.get("config_sha256")))
     else:
@@ -113,6 +126,10 @@ def baseline_methods(root: Path, code_root: Path) -> tuple[list[dict], dict]:
 
 
 def _seed_entries(obj: dict) -> list[dict]:
+    if isinstance(obj.get("selected"), dict):             # train/select.py document
+        sel = obj["selected"]
+        return [dict(seed=r["seed"], checkpoint=r["ckpt"], expected_sha256=r.get("ckpt_sha256"))
+                for r in sel.get("runs", [])]
     seeds = obj.get("seeds")
     cks = obj.get("checkpoints")
     out = []
@@ -151,12 +168,14 @@ def rl_methods(sel_path: Path, root: Path, group: str, default_kind: str, min_se
             m["standin"] = True
         else:
             ck = Path(e["checkpoint"])
-            cands = [ck] if ck.is_absolute() else [sel_path.parent / ck, root / ck]
+            cands = [ck] if ck.is_absolute() else [sel_path.parent / ck, root / ck, root / "train" / ck]
             hit = next((c for c in cands if c.exists()), None)
             if hit is None:
                 raise PlanError(f"checkpoint {ck} of seed {e['seed']} not found (looked in {cands})")
             m["path"] = _rel(hit, root)
             m["sha256"] = S.sha256_file(hit)
+            if e.get("expected_sha256") and e["expected_sha256"] != m["sha256"]:
+                raise PlanError(f"checkpoint {hit} sha256 differs from the one recorded at selection")
         if kind == "puffer5":
             m["hidden"] = int(e.get("hidden", obj.get("hidden", 128)))
             m["layers"] = int(e.get("layers", obj.get("layers", 4)))
@@ -164,18 +183,60 @@ def rl_methods(sel_path: Path, root: Path, group: str, default_kind: str, min_se
                 if k in e or k in obj:
                     m[k] = int(e.get(k, obj.get(k)))
         out.append(m)
-    cfg = obj.get("config")
+    sel = obj.get("selected") if isinstance(obj.get("selected"), dict) else {}
+    cfg = obj.get("config", obj.get("cfg", sel.get("cfg")))
     info = dict(path=_rel(sel_path, root), sha256=S.sha256_file(sel_path), config=cfg,
-                config_sha256=obj.get("config_sha256") or (S.sha256_json(cfg) if cfg is not None else None),
+                config_sha256=obj.get("config_sha256") or sel.get("cfg_hash")
+                or (S.sha256_json(cfg) if cfg is not None else None),
                 seeds=[m["seed"] for m in out], n_seeds=len(out),
-                selection_rule=obj.get("selection_rule"),
+                selection_rule=obj.get("selection_rule", obj.get("rule")),
+                val_seed_mean=sel.get("mean"), val_seed_std=sel.get("std"),
+                ledger_trials_at_selection=obj.get("n_trials_ledger"),
                 standin=any(m.get("standin") for m in out))
     return out, info
 
 
+def _find_selected(root: Path, selected) -> Path:
+    if selected:
+        p = Path(selected)
+        if not p.exists():
+            raise PlanError(f"--selected {p} not found")
+        return p
+    p = root / "train" / "selected.json"
+    if p.exists():
+        return p
+    sweeps = sorted((root / "train" / "runs" / "sweeps").glob("*/selected.json"))
+    if len(sweeps) == 1:
+        return sweeps[0]
+    if sweeps:
+        raise PlanError(f"several selected.json under train/runs/sweeps ({[str(s) for s in sweeps]}); "
+                        "pass --selected")
+    raise PlanError(f"{p} missing: the selected PPO config and its seeds are needed (--selected PATH)")
+
+
+def _check_obs_size(methods, root, obs):
+    """Fail at plan time if a checkpoint was trained on another observation layout."""
+    for m in methods:
+        if m["kind"] not in ("ppo3", "puffer5"):
+            continue
+        path = resolve(m["path"], root, CODE_ROOT)
+        if m["kind"] == "ppo3":
+            try:
+                import torch
+            except ImportError:
+                continue
+            n = int(torch.load(path, map_location="cpu", weights_only=False)["obs_size"])
+        else:
+            import numpy as np
+            import puffernet_mm as p5
+            n = m.get("obs_size") or p5.infer_obs_size(np.fromfile(path, "<f4").size, m["hidden"], m["layers"])
+        if int(n) != int(obs):
+            raise PlanError(f"{m['id']}: checkpoint obs_size {n} != env obs size {obs}")
+
+
 def build_plan(root=CODE_ROOT, build_dir=BUILD, backend="cenv", backend_options=None,
                best_baseline=None, puffer5=None, min_seeds=5, allow_dirty=False,
-               code_root=CODE_ROOT, n_boot=10_000) -> dict:
+               code_root=CODE_ROOT, n_boot=10_000, selected=None, env_params=None) -> dict:
     root, build_dir, code_root = Path(root), Path(build_dir), Path(code_root)
     methods, tuned_info = baseline_methods(root, code_root)
     tuned = [m for m in methods if m["tuned"]]
@@ -193,9 +254,7 @@ def build_plan(root=CODE_ROOT, build_dir=BUILD, backend="cenv", backend_options=
         top = max(scored, key=lambda m: m["val_metric"])
         best = dict(id=top["id"], rule="highest val total P&L (central fills, 1 s) in tuned.json",
                     val_metric=top["val_metric"])
-    sel = root / "train" / "selected.json"
-    if not sel.exists():
-        raise PlanError(f"{sel} missing: the selected PPO config and its seeds are needed")
+    sel = _find_selected(root, selected)
     rl, rl_info = rl_methods(sel, root, "rl", "ppo3", min_seeds)
     groups = {"baseline": dict(n=len(methods), source=tuned_info), "rl": rl_info}
     methods += rl
@@ -207,6 +266,21 @@ def build_plan(root=CODE_ROOT, build_dir=BUILD, backend="cenv", backend_options=
     elif puffer5:
         raise PlanError(f"--puffer5 {puffer5} not found")
 
+    backend_options = dict(backend_options or {})
+    if backend == "cenv":
+        import cenv
+        try:
+            core = cenv.Core(code_root)
+        except FileNotFoundError as e:
+            raise PlanError(f"C env sources missing: {e}")
+        params = dict(core.defaults)
+        bad = set(env_params or {}) - set(params)
+        if bad:
+            raise PlanError(f"unknown env parameters {sorted(bad)}")
+        params.update({k: float(v) for k, v in (env_params or {}).items()})
+        backend_options["env_params"] = params
+        backend_options["obs_size"] = core.obs
+        _check_obs_size(methods, root, core.obs)
     ds = Dataset(build_dir)
     test_idx = ds.split_markets(2)
     lens = ds.markets["contract_len_s"][test_idx]
@@ -323,6 +397,10 @@ def main(argv=None) -> int:
     ap.add_argument("--backend-options", default="{}", help="JSON object")
     ap.add_argument("--best-baseline", default=None)
     ap.add_argument("--puffer5", default=None, help="selected.json of 5.0 checkpoints (optional)")
+    ap.add_argument("--selected", default=None, help="train/select.py output (default: train/selected.json, "
+                                                     "else the only train/runs/sweeps/*/selected.json)")
+    ap.add_argument("--env-params", default="{}", help="JSON overrides of the C env parameters "
+                                                       "(default: mm.h MM_DEFAULTS, as in training)")
     ap.add_argument("--min-seeds", type=int, default=5)
     ap.add_argument("--n-boot", type=int, default=10_000)
     ap.add_argument("--allow-dirty", action="store_true", help="plan with uncommitted code (recorded)")
@@ -336,7 +414,8 @@ def main(argv=None) -> int:
             return 2
     try:
         plan = build_plan(a.root, a.build_dir, a.backend, json.loads(a.backend_options), a.best_baseline,
-                          a.puffer5, a.min_seeds, a.allow_dirty, n_boot=a.n_boot)
+                          a.puffer5, a.min_seeds, a.allow_dirty, n_boot=a.n_boot, selected=a.selected,
+                          env_params=json.loads(a.env_params))
     except PlanError as e:
         print(f"make_plan: {e}", file=sys.stderr)
         return 1

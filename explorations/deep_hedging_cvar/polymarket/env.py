@@ -8,8 +8,8 @@ comes from data/build.py and data/features.py.
 
 Every keyword in PARAM_NAMES (mm.h MM_PARAM_NAMES; defaults MM_DEFAULTS) can be passed; ENV.md
 documents them. The core owns the whole MDP (auto-reset, the Log); the info list carries the
-Log averaged over the episodes finished since the last report, plus volume shares of the
-exploit flags.
+Log averaged over the episodes finished since the last report, plus, per exploit flag, its
+share of fill volume and of fill P&L (spread capture + 60 s markout; NaN when that is <= 0).
 """
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ DEFAULTS = dict(zip(PARAM_NAMES, [float(x) for x in re.search(
 assert len(DEFAULTS) == len(PARAM_NAMES)
 OBS_SIZE = int(re.search(r"#define MM_OBS (\d+)", _SRC)[1])
 ACT_SIZES = [int(x) for x in re.search(r"#define MM_ACT_SIZES \{([\d, ]+)\}", _SRC)[1].split(",")]
-FLAG_KEYS = ["crossed", "stale", "onesided", "last30", "last10", "inside2", "extreme", "outside"]
+FLAG_KEYS = ["crossed", "stale", "onesided", "last30", "last10", "inside2", "extreme", "outside", "inspread"]
 
 
 def params(**kw) -> dict:
@@ -74,8 +74,10 @@ class MmEnv(pufferlib.PufferEnv):
             log = self._binding.vec_log(self.c_envs)
             if log:
                 vol = log.get("fill_vol", 0.0)
+                fill_pnl = log.get("spread_capture", 0.0) + log.get("markout_60", 0.0)
                 for k in FLAG_KEYS:
                     log[f"share_{k}"] = log[f"vol_{k}"] / vol if vol > 0 else 0.0
+                    log[f"pnl_share_{k}"] = log[f"pnl_{k}"] / fill_pnl if fill_pnl > 0 else float("nan")
                 info.append(log)
         return self.observations, self.rewards, self.terminals, self.truncations, info
 

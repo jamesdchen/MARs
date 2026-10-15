@@ -55,7 +55,7 @@ DEFAULT_CFG = {
     'policy': {'kind': 'mlp', 'hidden': 128, 'layers': 2, 'act': 'tanh', 'shared': True},
     'ppo': {'learning_rate': 3e-4, 'ent_coef': 0.01, 'gamma': 0.995, 'gae_lambda': 0.95,
             'clip_coef': 0.2, 'vf_coef': 0.5, 'vf_clip_coef': 10.0, 'max_grad_norm': 0.5,
-            'update_epochs': 1, 'bptt_horizon': 64, 'minibatch_size': 16384,
+            'update_epochs': 1, 'bptt_horizon': 64, 'minibatch_size': 8192,
             'optimizer': 'adam', 'anneal_lr': True, 'adam_eps': 1e-8},
     'num_envs': 4096,
     'total_timesteps': 50_000_000,
@@ -202,7 +202,7 @@ def main(argv=None):
     p.add_argument('--kl-decay', type=float, default=0.5, help='fraction of training to decay it to 0')
     p.add_argument('--kl-teacher', help='teacher checkpoint (default: --init)')
     p.add_argument('--seed', type=int, default=0)
-    p.add_argument('--threads', type=int, default=int(os.environ.get('TRAIN_THREADS', 4)))
+    p.add_argument('--threads', type=int, default=int(os.environ.get('TRAIN_THREADS', 2)))
     p.add_argument('--eval-every', type=float, default=0, help='agent steps between evaluations (0: final only)')
     p.add_argument('--no-train-eval', action='store_true', help='skip the train-split eval (gap)')
     p.add_argument('--no-val', action='store_true',
@@ -224,6 +224,10 @@ def main(argv=None):
 
     adapter = get_adapter(cfg['env']['backend'])
     cfg['env']['backend'] = adapter.name
+    env_kw = {k: v for k, v in cfg['env']['kw'].items() if v is not None}
+    ident = adapter.identity(env_kw)
+    cfg['env']['resolved'] = ident['params']  # recomputed every run: env drift changes the hash
+    cfg['env']['code_sha256'] = ident['code']
     cfg_hash = ledger.config_hash(cfg)
     ledger_path = args.ledger or (ledger.LEDGER if adapter.name == 'real' else ledger.STANDIN_LEDGER)
     out = args.out or os.path.join(HERE, 'runs', f'{time.strftime("%Y%m%d_%H%M%S")}_{cfg_hash[:8]}_s{args.seed}')
@@ -236,7 +240,6 @@ def main(argv=None):
         log_f.write(json.dumps(nan_to_none(row), default=float) + '\n')
         log_f.flush()
 
-    env_kw = {k: v for k, v in cfg['env']['kw'].items() if v is not None}
     env = adapter.make_train(cfg['num_envs'], seed=args.seed, **env_kw)
 
     if cfg['init']:
@@ -331,7 +334,7 @@ def main(argv=None):
     result = {'kind': 'train_run', 'backend': adapter.name, 'tag': args.tag, 'cfg_hash': cfg_hash,
               'seed': args.seed, 'cfg': cfg, 'steps': trainer.global_step, 'epochs': trainer.epoch,
               'wall_s': wall, 'sps_median': sps, 'run_dir': out, 'ckpt': ck,
-              'ckpt_sha256': sha256_file(ck), 'n_val_evals': n_val_evals, 'headline': headline,
+              'ckpt_sha256': sha256_file(ck), 'n_val_evals': n_val_evals, 'headline': None if args.no_val else headline,
               'val': {n: nan_to_none(r) for n, r in results.items()},
               'train_eval': nan_to_none(tr) if tr else None}
     with open(os.path.join(out, 'result.json'), 'w') as f:

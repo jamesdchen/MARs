@@ -153,9 +153,16 @@ class PufferNetPolicy(nn.Module):
     def initial_state(self, batch, device=None):
         return torch.zeros(batch, self.hidden_size, device=device or self.encoder.weight.device)
 
-    @staticmethod
-    def _gates(comb):
-        a, g, p = comb.chunk(3, dim=-1)
+    def _gates(self, proj, x):
+        """h_tilde, z = sigmoid(g), sigmoid(p) of the three thirds of W x. Three
+        matmuls on row blocks of the one (3H, H) weight (5.0's layout) give
+        contiguous outputs; chunking one (.., 3H) output makes every elementwise
+        op below strided and ~2x slower on CPU."""
+        H = self.width
+        W = proj.weight
+        a = torch.nn.functional.linear(x, W[:H])
+        g = torch.nn.functional.linear(x, W[H:2 * H])
+        p = torch.nn.functional.linear(x, W[2 * H:])
         h_tilde = torch.where(a >= 0, a + 0.5, torch.sigmoid(a))
         return h_tilde, torch.sigmoid(g), torch.sigmoid(p)
 
@@ -174,7 +181,7 @@ class PufferNetPolicy(nn.Module):
             s = s * keep
         new = []
         for l, proj in enumerate(self.mingru):
-            h_tilde, z, p = self._gates(proj(x))
+            h_tilde, z, p = self._gates(proj, x)
             h = torch.lerp(s[:, l], h_tilde, z)
             x = p * h + (1 - p) * x
             new.append(h)
@@ -195,24 +202,27 @@ class PufferNetPolicy(nn.Module):
         if obs.dim() == 2:
             return self.forward_eval(obs, state)
         S, T, _ = obs.shape
-        x = self.encoder(obs.float())                              # (S, T, H)
+        # time-major (T, S, .) so each step's slice is contiguous
+        x = self.encoder(obs.float().transpose(0, 1))              # (T, S, H)
         s0 = state.get('lstm_h')
         s0 = x.new_zeros(S, self.layers, self.width) if s0 is None else s0.view(S, self.layers, self.width)
         term = state.get('terminals')
-        keep = None if term is None else (1.0 - term.to(x.dtype))  # (S, T)
+        keeps = None if term is None else (1.0 - term.to(x.dtype)).t().unsqueeze(-1).unbind(0)
         finals = []
         for l, proj in enumerate(self.mingru):
-            h_tilde, z, p = self._gates(proj(x))                   # (S, T, H) each
+            h_tilde, z, p = self._gates(proj, x)                   # (T, S, H) each
+            # unbind, not x[t]: a slice's backward writes a full (T, S, H)
+            # zero tensor per step (quadratic in T); unbind's is one stack
+            hts, zs = h_tilde.unbind(0), z.unbind(0)
             h, hs = s0[:, l], []
             for t in range(T):
-                if keep is not None:
-                    h = h * keep[:, t, None]
-                h = torch.lerp(h, h_tilde[:, t], z[:, t])
+                if keeps is not None:
+                    h = h * keeps[t]
+                h = torch.lerp(h, hts[t], zs[t])
                 hs.append(h)
-            hseq = torch.stack(hs, 1)
-            x = p * hseq + (1 - p) * x
+            x = torch.lerp(x, torch.stack(hs, 0), p)               # p*h + (1-p)*x
             finals.append(h)
-        logits, v = self._decode(x.reshape(S * T, self.width))
+        logits, v = self._decode(x.transpose(0, 1).reshape(S * T, self.width))
         state['lstm_h'] = torch.stack(finals, 1).reshape(S, self.hidden_size).detach()
         return logits, v.reshape(S, T)
 

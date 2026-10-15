@@ -132,8 +132,9 @@ double mm_h_bench(const double* params, int n, int T, uint64_t seed, double* log
         const int* at = act + (size_t)(t % na) * n * MM_NUM_ATNS;
         for (int i = 0; i < n; i++) {
             if (pipeline) {                 // the same software pipelining as binding.c
-                if (i + 2 * MM_AHEAD < n) mm_prefetch_state(&ms[i + 2 * MM_AHEAD]);
-                if (i + MM_AHEAD < n) mm_prefetch_data(&ms[i + MM_AHEAD]);
+                if (i + 3 * MM_AHEAD < n) mm_prefetch_state(&ms[i + 3 * MM_AHEAD]);
+                if (i + 2 * MM_AHEAD < n) mm_prefetch_data(&ms[i + 2 * MM_AHEAD]);
+                if (i + MM_AHEAD < n) mm_prefetch_legs(&ms[i + MM_AHEAD]);
             }
             mm_step(&ms[i], at + (size_t)i * MM_NUM_ATNS, obs + (size_t)i * MM_OBS, rew + i, term + i, &lg[i]);
         }

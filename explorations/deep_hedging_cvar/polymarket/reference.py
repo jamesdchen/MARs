@@ -28,7 +28,8 @@ SIZES = [1.0, 2.0, 5.0]                       # action -> multiple of min_order_
 DELAY_S = {OPT: 0.0, CENTRAL: 3.5, PESS: 5.0}  # EVALUATION.md T1: print time - match time
 BOOK_VALID, BOOK_CROSSED, BOOK_STALE = 1, 2, 4
 LIQ_V, LIQ_MIN = 1.5, 50.0
-N_FEAT_OBS, OBS = 33, 48
+N_FEAT_OBS, OBS = 33, 50
+FLAGS = ["crossed", "stale", "onesided", "last30", "last10", "inside2", "extreme", "outside", "inspread"]
 
 BOOK_DTYPE = np.dtype([("bid_px", "<i2", 5), ("ask_px", "<i2", 5), ("bid_sz", "<f4", 5),
                        ("ask_sz", "<f4", 5), ("flags", "u1"), ("tick", "u1"), ("tick_alt", "u1"),
@@ -155,8 +156,8 @@ class Episode:
         self.minute_vol = self.minute_fill = self.tx_fill = 0.0
         self.n_fills = 0
         self.fill_vol = self.buy_vol = self.sell_vol = self.max_inv = 0.0
-        self.flags = dict.fromkeys(["crossed", "stale", "onesided", "last30", "last10", "inside2",
-                                    "extreme", "outside"], 0.0)
+        self.flags = dict.fromkeys(FLAGS, 0.0)          # fill volume per exploit flag
+        self.flag_pnl = dict.fromkeys(FLAGS, 0.0)       # spread capture + 60 s markout per flag
         self.rows = self.rows_two = self.rows_any = 0
         self.steps = self.clips = self.rejects = 0
         self.ret = 0.0
@@ -339,15 +340,18 @@ class Episode:
         self.spread += signed * (mid0 - p)
         for h in self.markout:
             self.markout[h] += signed * (self.mid_at(tau + h) - mid0)
+        fill_pnl = float(np.float32(signed * (self.mid_at(tau + 60) - p)))
         tick, bb, ba = self.tick(book), int(book["bid_px"][0]), int(book["ask_px"][0])
         flags = int(book["flags"])
         inside = (bb > 0 and o.px > bb + 2 * tick) if side == 0 else (ba < 1000 and o.px < ba - 2 * tick)
         for name, hit in (("crossed", flags & BOOK_CROSSED), ("stale", flags & BOOK_STALE),
                           ("onesided", bb == 0 or ba == 1000), ("last30", self.r_end - tau < 30),
                           ("last10", self.r_end - tau < 10), ("inside2", inside),
-                          ("extreme", o.px <= 20 or o.px >= 980), ("outside", print_px < bb or print_px > ba)):
+                          ("extreme", o.px <= 20 or o.px >= 980), ("outside", print_px < bb or print_px > ba),
+                          ("inspread", print_px > bb if side == 0 else print_px < ba)):
             if hit:
                 self.flags[name] += qty
+                self.flag_pnl[name] += fill_pnl
         self.fill_log.append((u, tau, side, qty, o.px))
 
     def liquidity(self, tau):
@@ -422,7 +426,9 @@ class Episode:
                          or last[2] != (self.orders[1].px if self.orders[1].live else 0))
         out[a + 12] = pend
         out[a + 13] = math.log1p(self.n_fills) / 5.0
-        out[a + 14] = 1.0
+        out[a + 14] = self.f(t, "bid_minus_p_c")
+        out[a + 15] = self.f(t, "ask_minus_p_c")
+        out[a + 16] = 1.0
         return out.astype(np.float32)
 
     def log(self):
@@ -438,9 +444,9 @@ class Episode:
                     max_abs_inv=self.max_inv, final_abs_inv=abs(self.inv),
                     uptime_two_sided=self.rows_two / self.rows if self.rows else 0.0,
                     uptime_any=self.rows_any / self.rows if self.rows else 0.0,
+                    reward_clip_frac=self.clips / self.steps if self.steps else 0.0, rejects=self.rejects,
                     **{f"vol_{k}": v for k, v in self.flags.items()},
-                    reward_clip_frac=self.clips / self.steps if self.steps else 0.0,
-                    rejects=self.rejects, n=1.0)
+                    **{f"pnl_{k}": v for k, v in self.flag_pnl.items()}, n=1.0)
 
     def state(self):
         """Same layout as record() in mm_harness.c."""

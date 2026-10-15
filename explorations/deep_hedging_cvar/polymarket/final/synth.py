@@ -21,7 +21,7 @@ from pathlib import Path
 
 import numpy as np
 
-from common import S, sha256_bytes, train_policy_module, write_json
+from common import CODE_ROOT, S, sha256_bytes, train_policy_module, write_json
 
 COLS = ["seconds_to_close"] + [f"bid_px_{i}" for i in range(5)] + [f"bid_sz_{i}" for i in range(5)] \
     + [f"ask_px_{i}" for i in range(5)] + [f"ask_sz_{i}" for i in range(5)] \
@@ -52,12 +52,54 @@ def _market_record():
                 flags={"HAS_TRADES": 1, "HAS_UNDERLYING": 2, "UL_PERP_PROXY": 4, "HAS_STRIKE": 8})
 
 
-def build_dataset(out_dir, n_per_split=8, seed=7, lengths=(300, 900)):
-    """Write a synthetic build dir; returns its Path."""
+def _feat_layout(layout):
+    """(columns, n_obs, feat_meta extras). 'cenv': the C core's exact layout, column names and
+    docs taken from the real feat_meta.json (metadata only, no data); 'small': a short list."""
+    if layout == "cenv":
+        real = json.loads((CODE_ROOT / "data" / "build" / "feat_meta.json").read_text())
+        keep = ("columns", "column_index", "column_docs", "n_obs_features", "book_record", "fill_record")
+        return list(real["columns"]), int(real["n_obs_features"]), {k: real[k] for k in keep if k in real}
+    cols = FEAT_OBS + FEAT_AUX
+    return cols, len(FEAT_OBS), {}
+
+
+def _feat_values(name, v):
+    """Synthetic value of feature `name` from the market's raw arrays v (encodings as documented)."""
+    pm, mark, stc, L = v["pm"], v["mark"], v["stc"], v["L"]
+    lg = lambda p: np.log(np.clip(p, 1e-4, 1 - 1e-4) / (1 - np.clip(p, 1e-4, 1 - 1e-4)))  # noqa: E731
+    two = v["bid_ok"] & v["ask_ok"]
+    table = {
+        "p_logit": lg(pm) / 3, "mark_logit": lg(mark) / 3, "gap_c": (pm - mark) * 100 / 5,
+        "z": np.clip(v["rng"].normal(0, 1, stc.size), -5, 5) / 2, "sdv_bp": np.ones(stc.size),
+        "sigma_1m_bp": np.ones(stc.size), "tau_frac": stc / L, "log_tau": np.log1p(stc) / np.log1p(14400),
+        "in_twap": (stc < 60).astype(float), "delta_usd": np.full(stc.size, 0.5),
+        "spread_ticks": np.where(two, np.log(np.maximum(v["ask"] - v["bid"], 0.01) / 0.01) / 2, 0.0),
+        "bid_present": v["bid_ok"].astype(float), "ask_present": v["ask_ok"].astype(float),
+        "imb_l1": v["rng"].uniform(-1, 1, stc.size), "bid_sz0": np.log1p(v["bsz"]) / 5,
+        "ask_sz0": np.log1p(v["asz"]) / 5, "flow5": v["rng"].uniform(-1, 1, stc.size),
+        "ulz5": v["rng"].normal(0, 1, stc.size), "len_5m": float(L == 300) * np.ones(stc.size),
+        "len_15m": float(L == 900) * np.ones(stc.size), "len_4h": float(L == 14400) * np.ones(stc.size),
+        "book_age": np.log1p(v["age"]) / 4, "crossed_raw": v["crossed"].astype(float),
+        "mark_is_fv": (~two).astype(float), "p_model": pm, "mark": mark,
+        "delta_usd_raw": v["rng"].uniform(10, 200, stc.size), "sigma": np.full(stc.size, 1e-4),
+        "sqrt_v": np.full(stc.size, 0.01), "liq_mid": np.full(stc.size, -1.0),
+        "bid_minus_p_c": np.where(v["bid_ok"], (v["bid"] - pm) * 100 / 5, 0.0),
+        "ask_minus_p_c": np.where(v["ask_ok"], (v["ask"] - pm) * 100 / 5, 0.0),
+    }
+    return table.get(name, np.zeros(stc.size))
+
+
+BOOK_FIELDS = [("bid_px", "<i2", (5,)), ("ask_px", "<i2", (5,)), ("bid_sz", "<f4", (5,)),
+               ("ask_sz", "<f4", (5,)), ("flags", "u1"), ("tick", "u1"), ("tick_alt", "u1"), ("pad", "u1")]
+
+
+def build_dataset(out_dir, n_per_split=8, seed=7, lengths=(300, 900), layout="small"):
+    """Write a synthetic build dir; returns its Path. layout 'cenv' matches the C core's files."""
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(seed)
     ci = {c: i for i, c in enumerate(COLS)}
+    fcols, n_obs, fextra = _feat_layout(layout)
     specs = []
     for split in (0, 1, 2):
         for i in range(n_per_split):
@@ -66,7 +108,7 @@ def build_dataset(out_dir, n_per_split=8, seed=7, lengths=(300, 900)):
             open_ts = DAY[split] + 1800 * i + 600
             specs.append((split, open_ts, coin, L))
     specs.sort(key=lambda s: (s[0], s[1], s[2]))
-    rows, feats, legs, mrecs, slugs = [], [], [], [], []
+    rows, feats, books, legs, mrecs, slugs = [], [], [], [], [], []
     off = 0
     for mi, (split, open_ts, coin, L) in enumerate(specs):
         n = L + 1
@@ -77,21 +119,21 @@ def build_dataset(out_dir, n_per_split=8, seed=7, lengths=(300, 900)):
         bid0 = np.round((mid - half) / 0.01) * 0.01
         ask0 = np.round((mid + half) / 0.01) * 0.01
         ask0 = np.where(ask0 <= bid0, bid0 + 0.01, ask0)
+        one = rng.random(n) < 0.03                       # occasional one-sided book (no asks)
         t = np.zeros((n, len(COLS)), np.float32)
         t[:, ci["seconds_to_close"]] = L - np.arange(n)
         for k in range(5):
             t[:, ci[f"bid_px_{k}"]] = np.clip(bid0 - 0.01 * k, 0, 1)
-            t[:, ci[f"ask_px_{k}"]] = np.clip(ask0 + 0.01 * k, 0, 1)
+            t[:, ci[f"ask_px_{k}"]] = np.where(one, 1.0, np.clip(ask0 + 0.01 * k, 0, 1))
             t[:, ci[f"bid_sz_{k}"]] = rng.uniform(5, 80, n)
-            t[:, ci[f"ask_sz_{k}"]] = rng.uniform(5, 80, n)
-        one = rng.random(n) < 0.03                       # occasional one-sided book
-        t[one, ci["ask_px_0"]] = 1.0
-        t[one, ci["ask_sz_0"]] = 0.0
+            t[:, ci[f"ask_sz_{k}"]] = np.where(one, 0.0, rng.uniform(5, 80, n))
         t[:, ci["bid_depth_total"]] = t[:, [ci[f"bid_sz_{k}"] for k in range(5)]].sum(1)
         t[:, ci["ask_depth_total"]] = t[:, [ci[f"ask_sz_{k}"] for k in range(5)]].sum(1)
         t[:, ci["book_valid"]] = 1
-        t[:, ci["crossed_raw"]] = rng.random(n) < 0.02
-        t[:, ci["book_age"]] = rng.exponential(3, n)
+        crossed = rng.random(n) < 0.02
+        t[:, ci["crossed_raw"]] = crossed
+        age = rng.exponential(3, n)
+        t[:, ci["book_age"]] = age
         ul = np.cumsum(rng.normal(0, 1e-4, n))
         t[:, ci["ul_logp_rel_open"]] = ul - ul[0]
         t[:, ci["ul_logret_1s"]] = np.diff(ul, prepend=ul[0])
@@ -103,35 +145,35 @@ def build_dataset(out_dir, n_per_split=8, seed=7, lengths=(300, 900)):
                 side = int(rng.choice([1, -1]))
                 depth = int(rng.random() < 0.3)
                 px = float(ask0[kk] + 0.01 * depth) if side > 0 else float(bid0[kk] - 0.01 * depth)
-                px = min(max(px, 0.01), 0.99)
+                px = round(min(max(px, 0.01), 0.99), 2)
                 sz = float(rng.uniform(5, 60))
                 legs.append((off + k, side, 1, int(round(px * 1000)), px, sz, sz))
                 col = "buy_vol" if side > 0 else "sell_vol"
                 t[k, ci[col]] += sz
                 t[k, ci["trade_count"]] += 1
         winner = int(fv[-1] + rng.normal(0, 0.05) > 0.5)
-        f = np.zeros((n, len(FEAT_OBS) + len(FEAT_AUX)), np.float32)
-        fc = {c: i for i, c in enumerate(FEAT_OBS + FEAT_AUX)}
         pm = np.clip(fv, 1e-4, 1 - 1e-4)
-        f[:, fc["p_logit"]] = np.log(pm / (1 - pm)) / 3
-        f[:, fc["gap_c"]] = (pm - mid) * 100 / 5
-        f[:, fc["tau_frac"]] = (L - np.arange(n)) / L
-        f[:, fc["spread_ticks"]] = np.log(np.maximum(ask0 - bid0, 0.01) / 0.01) / 2
-        f[:, fc["imb_l1"]] = rng.uniform(-1, 1, n)
-        f[:, fc["flow5"]] = rng.uniform(-1, 1, n)
-        f[:, fc["ulz5"]] = rng.normal(0, 1, n)
-        f[:, fc["len_5m"]] = L == 300
-        f[:, fc["len_15m"]] = L == 900
-        f[:, fc["crossed_raw"]] = t[:, ci["crossed_raw"]]
-        f[:, fc["p_model"]] = pm
-        f[:, fc["mark"]] = np.where(one, pm, 0.5 * (bid0 + ask0))
-        f[:, fc["delta_usd_raw"]] = rng.uniform(10, 200, n)
+        bid_ok, ask_ok = bid0 > 0, ~one
+        mark = np.where(ask_ok, 0.5 * (bid0 + ask0), pm)
+        vals = dict(pm=pm, mark=mark, stc=(L - np.arange(n)).astype(float), L=float(L), bid=bid0, ask=ask0,
+                    bid_ok=bid_ok, ask_ok=ask_ok, bsz=t[:, ci["bid_sz_0"]], asz=t[:, ci["ask_sz_0"]],
+                    age=age, crossed=crossed, rng=rng)
+        f = np.stack([_feat_values(c, vals) for c in fcols], 1).astype(np.float32)
+        f[:, :n_obs] = np.clip(f[:, :n_obs], -5, 5)
+        feats.append(f)
+        bk = np.zeros(n, np.dtype(BOOK_FIELDS))
+        bk["bid_px"] = np.round(t[:, [ci[f"bid_px_{k}"] for k in range(5)]] * 1000).astype(np.int16)
+        bk["ask_px"] = np.round(t[:, [ci[f"ask_px_{k}"] for k in range(5)]] * 1000).astype(np.int16)
+        bk["bid_sz"] = t[:, [ci[f"bid_sz_{k}"] for k in range(5)]]
+        bk["ask_sz"] = t[:, [ci[f"ask_sz_{k}"] for k in range(5)]]
+        bk["flags"] = 1 | (crossed.astype(np.uint8) << 1) | ((age > 10).astype(np.uint8) << 2)
+        bk["tick"] = bk["tick_alt"] = 10
+        books.append(bk)
         slug = f"{coin}-updown-{L // 60}m-{open_ts}"
         mrecs.append((off, open_ts, open_ts + L, n, L, COIN_IDS[coin], winner, split, 3, 0.01, 0.07,
                       1.0, 5.0, 0.0, 0.0, 0.0, 0.2, mi, 0.001))
         slugs.append(slug)
         rows.append(t)
-        feats.append(f)
         off += n
     ticks = np.concatenate(rows)
     feat = np.concatenate(feats)
@@ -144,6 +186,7 @@ def build_dataset(out_dir, n_per_split=8, seed=7, lengths=(300, 900)):
     ticks.tofile(out / "ticks.bin")
     markets.tofile(out / "markets.bin")
     feat.tofile(out / "feat.bin")
+    np.concatenate(books).tofile(out / "book.bin")
     test = markets[markets["split"] == 2]
     lo = int(test["row_offset"].min())
     hi = int((test["row_offset"] + test["n_rows"]).max())
@@ -155,12 +198,17 @@ def build_dataset(out_dir, n_per_split=8, seed=7, lengths=(300, 900)):
                                sha256=sha256_bytes(np.ascontiguousarray(ticks[lo:hi]).tobytes())))
     write_json(out / "meta.json", meta)
     write_json(out / "splits.json", {s: int(m["split"]) for s, m in zip(slugs, markets)})
-    cols = FEAT_OBS + FEAT_AUX
     fdt = [("row", "int32_t", 0), ("side", "int8_t", 4), ("first", "uint8_t", 5), ("px", "int16_t", 6),
            ("price", "float", 8), ("size", "float", 12), ("tx_size", "float", 16)]
-    fmeta = dict(features_version=1, synthetic=True, N=int(N), G=len(cols), n_obs_features=len(FEAT_OBS),
-                 columns=cols, column_index={c: i for i, c in enumerate(cols)},
-                 fill_record=dict(itemsize=20, fields=[dict(name=a, type=b, offset=c) for a, b, c in fdt]))
+    fmeta = dict(features_version=1, synthetic=True, layout=layout, N=int(N), G=len(fcols), n_obs_features=n_obs,
+                 columns=fcols, column_index={c: i for i, c in enumerate(fcols)},
+                 fill_record=dict(itemsize=20, fields=[dict(name=a, type=b, offset=c) for a, b, c in fdt]),
+                 book_record=dict(itemsize=64, fields=[
+                     dict(name="bid_px", type="int16_t[5]", offset=0), dict(name="ask_px", type="int16_t[5]", offset=10),
+                     dict(name="bid_sz", type="float[5]", offset=20), dict(name="ask_sz", type="float[5]", offset=40),
+                     dict(name="flags", type="uint8_t", offset=60), dict(name="tick", type="uint8_t", offset=61),
+                     dict(name="tick_alt", type="uint8_t", offset=62), dict(name="pad", type="uint8_t", offset=63)]))
+    fmeta.update({k: v for k, v in fextra.items() if k not in ("fill_record", "book_record")})
     write_json(out / "feat_meta.json", fmeta)
     fdtype = np.dtype({"names": [a for a, _, _ in fdt], "formats": ["<i4", "i1", "u1", "<i2", "<f4", "<f4", "<f4"],
                        "offsets": [c for _, _, c in fdt], "itemsize": 20})

@@ -195,10 +195,12 @@ def headline_rows(R, keys, vid):
         sh = R.sharpe_ci(h)
         mk = R.mk_rows(key, vid)
         nmem = len(R.members(key))
-        mins = R.mins[(R.mins.method.isin(R.members(key))) & (R.mins.variant == vid)]
         port = R.port[(R.port.method.isin(R.members(key))) & (R.port.variant == vid)]
         maxdelta = float(port.groupby("method").max_abs_delta_usd.max().mean()) if len(port) else float("nan")
         qm = mk.quoted_minutes.sum()
+        w = mk.contract_len_s.to_numpy(float)                 # live seconds per market
+        up2 = float((mk.uptime_two * w).sum() / w.sum()) if w.sum() else float("nan")
+        up1 = float((mk.uptime_one * w).sum() / w.sum()) if w.sum() else float("nan")
         rows.append([
             f"**{R.label(key)}**" if key.endswith("/mean") else R.label(key),
             f2(pm.sum()), f2(pm.sum() / n_days), f2(pm.mean(), nd=3), f2(pm.median(), nd=3),
@@ -207,8 +209,7 @@ def headline_rows(R, keys, vid):
             f2(S.cvar(pm.to_numpy(), 0.95), nd=3),
             f"{mk.n_fills.sum() / nmem:,.0f}", f2(mk.n_fills.sum() / qm if qm else float('nan'), False),
             pct(mk.volume.sum() / mk.taker_volume.sum() if mk.taker_volume.sum() > 0 else float("nan"), 2),
-            pct(mins.two_sided_s.sum() / mins.live_s.sum() if mins.live_s.sum() else float("nan"), 1),
-            pct((mins.any_quote_s.sum() - mins.two_sided_s.sum()) / mins.live_s.sum() if mins.live_s.sum() else float("nan"), 1),
+            pct(up2, 1), pct(up1, 1),
             f2(float(mk.groupby("method").max_abs_inv.max().mean()), False, 1), f2(maxdelta, False, 0)])
     return rows
 
@@ -435,6 +436,10 @@ def build(R: Results, fig_dir: Path, out_path: Path, ds: Dataset | None) -> str:
         banner.append("**Stand-in RL methods** (callable stand-ins, not trained checkpoints).")
     if not rep.get("complete_plan", True):
         banner.append("**Partial run**: a subset of methods/variants/markets (dry-run options).")
+    rp = rep.get("replay") or {}
+    if rp.get("failures"):
+        banner.append(f"**Replay mismatch** in {len(rp['failures'])} runs: per-fill detail (attribution "
+                      "split, exploit shares) of those markets is not verified against the C core; see section 13.")
     for b in banner:
         L.append(f"> {b}\n")
     L.append(f"Generated {utcnow()} by `final/report.py` from `{R.dir}`; plan sha256 `{rep['plan_sha256']}`"
@@ -726,6 +731,13 @@ def build(R: Results, fig_dir: Path, out_path: Path, ds: Dataset | None) -> str:
              f"CHANGED {ck['code']['changed']} (accepted: {ck['code']['accepted_reason']})"],
             ["registration", json.dumps(ck.get("registration")) if "registration" in ck else "n/a (dry run)"],
             ["reruns", json.dumps(rep["reruns"]) if rep["reruns"] else "none"],
+            ["data snapshot", json.dumps(ck.get("snapshot")) if ck.get("snapshot") else "n/a"],
+            ["mirrored data (sha256)", ", ".join(f"{k} {v[:12]}" for k, v in (ck.get("mirror_data") or {}).items())
+             or "not built"],
+            ["C replay (harness + reference)",
+             "n/a (stand-in env)" if not rp.get("checked") else
+             f"max |state diff| {rp['state_max_abs_diff']:.1e}, max |C Log P&L - trace| "
+             f"{rp['log_pnl_max_abs_diff']:.1e}, runs with mismatches: {len(rp['failures'])}"],
             ["git commit at plan / now", f"{P['git']['commit']} / "
                                           f"{(runs[-1]['git']['commit'] if runs else 'n/a')}"],
             ["runs", f"{len(rep['methods'])} methods x {len(rep['variants'])} variants in {rep['seconds']} s"]]

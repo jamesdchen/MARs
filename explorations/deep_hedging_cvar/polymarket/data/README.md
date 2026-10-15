@@ -12,6 +12,8 @@ python3 fetch_underlying.py   # Binance 1s prices            -> raw/underlying.p
 python3 build.py              # -> build/ticks.bin, markets.bin, meta.json, splits.json (~25 s)
 python3 load.py               # integrity checks (no NaN, monotone clock, offsets, test sha256)
 python3 coverage.py           # numbers for COVERAGE.md -> build/coverage_stats.json
+/usr/bin/python3 features.py  # env inputs: feat.bin, book.bin, fills.bin, fill_index.bin, feat_meta.json
+                              # (needs scipy for analysis/fair_value; written atomically; see ../ENV.md)
 ```
 
 Downloads are cached in `raw/cache/` (git-ignored), so reruns are incremental. `build/` is

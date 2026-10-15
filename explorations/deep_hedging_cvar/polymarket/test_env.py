@@ -20,6 +20,7 @@ from __future__ import annotations
 
 import ctypes
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -33,12 +34,7 @@ from reference import Config, Data, Episode, OBS
 HERE = Path(__file__).resolve().parent
 DATA_DIR = HERE / "data" / "build"
 NSTATE = 24
-LOG_FIELDS = ["score", "perf", "episode_return", "episode_length", "pnl", "pnl_trading",
-              "spread_capture", "markout_5", "markout_30", "markout_60", "inventory_pnl", "rebates",
-              "liq_rewards", "inv_penalty", "fills", "fill_vol", "buy_vol", "sell_vol", "max_abs_inv",
-              "final_abs_inv", "uptime_two_sided", "uptime_any", "vol_crossed", "vol_stale",
-              "vol_onesided", "vol_last30", "vol_last10", "vol_inside2", "vol_extreme", "vol_outside",
-              "reward_clip_frac", "rejects", "n"]
+LOG_FIELDS = re.findall(r"float (\w+);", re.search(r"struct Log \{(.*?)\n\};", (HERE / "mm.h").read_text(), re.S)[1])
 STATE_NAMES = ["t", "market", "s0", "inv", "cash", "rebates", "liq", "wealth", "penalty", "n_fills",
                "fill_vol", "bid_live", "bid_px", "bid_rem", "bid_q", "ask_live", "ask_px", "ask_rem",
                "ask_q", "spread", "mo5", "mo30", "mo60", "rejects"]
@@ -247,7 +243,7 @@ def split_guard(lib, checks):
         refused = 0.0
     except ValueError as e:
         refused = float("refused" in str(e))
-    checks.add("split guard: split=2 without allow_test refused (1 = refused)", 1 - refused, 0)
+    checks.add("split guard: split=2 without allow_test refused (1 = not)", 1 - refused, 0)
     code = ("import sys; sys.path.insert(0, %r); from env import MmEnv\n"
             "e = MmEnv(num_envs=2, split=2, allow_test=%d); e.reset(); print('OPENED')")
     outcomes = {}

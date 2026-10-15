@@ -46,22 +46,21 @@ an env (pyreplay.ReplayEnv implements it; the C env must expose the same):
         print_px (price of the taker print / maker leg that filled us; NaN if unknown)
     env.settlement() -> (B,) Up-frame payoff of each market (1 - winner_up when mirrored)
 
-The C env (polymarket/env.py, mm.h; ENV.md) is reached through CEnvBackend, which looks for
-`make_eval_env(markets=..., fill_model=int, latency=int, size_mult=float, mirror=bool,
-split=int, allow_test=bool, data_dir=str)` in env.py (function name overridable with
-plan backend.options.factory). Until env.py exists the backend raises BackendUnavailable.
+The C env of record is cenv.CEnvBackend (cenv.py): it does not use the stepper loop above,
+because the core exports no per-step cash/inventory or per-fill records. It runs the policy in
+closed loop through the C core (PufferLib binding), replays the recorded actions in the C harness
+(bit-identical observations; per-market C Logs and per-step C state) and in reference.py (every
+fill, verified step by step against the C state). It returns the same MarketTrace dicts, plus
+`log` (the market's C Log) and `checks` (replay agreement).
 """
 from __future__ import annotations
 
 import importlib
-import importlib.util
-import os
 import sys
-from pathlib import Path
 
 import numpy as np
 
-from common import CODE_ROOT, FILL_MODELS, FINAL, Dataset, resolve, train_policy_module
+from common import CODE_ROOT, FINAL, Dataset, resolve, train_policy_module
 
 TRACE_FIELDS = ("cash", "inv", "reward_cum", "rebate_cum", "fee_cum", "bid_live", "ask_live",
                 "bid_px", "ask_px")
@@ -293,47 +292,12 @@ class PyReplayBackend(StepperBackend):
         return pyreplay.make_env(self.ds, markets, variant, split, allow_test)
 
 
-class CEnvBackend(StepperBackend):
-    """The C env of record (polymarket/env.py over mm.h). See the module docstring for the
-    stepper interface it must expose; `options` may name a different factory function."""
-
-    name = "cenv"
-    of_record = True
-
-    def __init__(self, ds, options=None):
-        super().__init__(ds, options)
-        path = Path(self.options.get("module_path", CODE_ROOT / "env.py"))
-        if not path.exists():
-            raise BackendUnavailable(f"{path} does not exist yet (C env not built)")
-        spec = importlib.util.spec_from_file_location("polymarket_env_final", path)
-        mod = importlib.util.module_from_spec(spec)
-        if str(path.parent) not in sys.path:
-            sys.path.append(str(path.parent))
-        spec.loader.exec_module(mod)
-        fn = self.options.get("factory", "make_eval_env")
-        if not hasattr(mod, fn):
-            raise BackendUnavailable(
-                f"{path} has no `{fn}`: the runner needs make_eval_env(markets, fill_model, "
-                "latency, size_mult, mirror, split, allow_test, data_dir) returning an env with "
-                "reset/step/trace/drain_fills/settlement (final/adapters.py docstring)")
-        self.factory = getattr(mod, fn)
-
-    def make_env(self, markets, variant, split, allow_test):
-        if allow_test and os.environ.get("MM_FINAL") != "1":
-            raise PermissionError("split 2 needs MM_FINAL=1")
-        env = self.factory(markets=[int(m) for m in markets],
-                           fill_model=FILL_MODELS[variant["fill_model"]],
-                           latency=int(variant["latency_s"]), size_mult=float(variant["size_mult"]),
-                           mirror=bool(variant.get("mirror", False)), split=int(split),
-                           allow_test=bool(allow_test), data_dir=str(self.ds.dir))
-        missing = [a for a in ("reset", "step", "trace", "drain_fills", "settlement", "obs_size")
-                   if not hasattr(env, a)]
-        if missing:
-            raise BackendUnavailable(f"C env lacks {missing} (stepper interface, adapters.py)")
-        return env
+def _cenv(ds, options):
+    import cenv
+    return cenv.CEnvBackend(ds, options)
 
 
-BACKENDS = {"pyreplay": PyReplayBackend, "cenv": CEnvBackend}
+BACKENDS = {"pyreplay": PyReplayBackend, "cenv": _cenv}
 
 
 def make_backend(name, ds, options=None):

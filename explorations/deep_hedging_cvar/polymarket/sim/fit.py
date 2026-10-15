@@ -13,7 +13,7 @@ Components (each simple, documented in README.md):
                h: partial adjustment (a0 same-second, phi_h decay)            AR(1) of the residual)
   book         regime {normal, hollow, one-sided}: persistent Markov,        (empirical conditional tables)
                spread / level gaps / log-sizes / depth ratio / refresh rate
-  flow         taker counts: Poisson GLM with market effects + self-excitation (profile MLE)
+  flow         taker counts: linear Hawkes, baseline from a Poisson GLM with market effects (profile MLE);
                direction P(buy | gap bucket), copy prob; size quantiles; sweep depth; legs; tokens
 """
 from __future__ import annotations
@@ -253,9 +253,17 @@ def fit_book(P: dict, mk: pd.DataFrame, reg, mid, spread) -> dict:
     out["tick_switch"] = dict(ext_threshold=float(np.median(pre_max)), n_switched=len(switched), n_markets=len(mk),
                               note="tick 0.01 -> 0.001 (sticky) once |latent mid - 0.5| exceeds ext_threshold")
 
-    # ---- regime table pi*(len, tau_b, ext_b) and persistence per state
+    # ---- regime: P(one-sided | len, tau_b, ext_b) pooled over coins; P(hollow | not one-sided, len, coin group,
+    # tau_b) (hollow books are a coin effect: ZEC); persistence via a Gaussian copula (below)
     v = valid
+    cg = np.array([cm.COIN_GROUP[c] for c in mk.coin.values])[P["m"]]
     tab, cnt = bucket_table((li[v], tb[v], eb[v]), reg[v], 3, (3, cm.NTAU, cm.NEXT), alpha=20.0)
+    vn = v & (reg != cm.ONESIDED)
+    hc = np.zeros((3, cm.NCG, cm.NTAU, 2))
+    np.add.at(hc, (li[vn], cg[vn], tb[vn], (reg[vn] == cm.HOLLOW).astype(int)), 1.0)
+    hpar = hc.sum(2, keepdims=True)
+    hpar = (hpar[..., 1] + 0.5) / (hpar.sum(-1) + 1.0)                        # (len, cg) hollow rate
+    htab = (hc[..., 1] + 50.0 * hpar) / (hc.sum(-1) + 50.0)                   # [3, NCG, NTAU]
     keep = {}
     for k, name in ((cm.NORMAL, "normal"), (cm.HOLLOW, "hollow"), (cm.ONESIDED, "onesided")):
         prev = np.r_[-1, reg[:-1]]
@@ -276,8 +284,7 @@ def fit_book(P: dict, mk: pd.DataFrame, reg, mid, spread) -> dict:
         rows = np.concatenate([np.arange(o[m], o[m + 1]) for m in mis])
         sh = (len(mis), L + 1)
         tO = tab[j][tb[rows], eb[rows], cm.ONESIDED].reshape(sh)
-        tH = (tab[j][tb[rows], eb[rows], cm.HOLLOW]
-              / np.maximum(1 - tab[j][tb[rows], eb[rows], cm.ONESIDED], 1e-9)).reshape(sh)
+        tH = htab[j][cg[rows], tb[rows]].reshape(sh)
         reps = 4
         Z = rng.standard_normal((reps * len(mis), L + 1))
         res_ = {}
@@ -308,9 +315,11 @@ def fit_book(P: dict, mk: pd.DataFrame, reg, mid, spread) -> dict:
     agree_side = float(((P["p"] > 0.5) == noask)[os_].mean())
     hollow_open = [float((reg[o[:-1]][mk.L.values == L] == cm.HOLLOW).mean()) for L in cm.LENS]
     out["regime"] = dict(states=["normal", "hollow", "onesided"], table=tab, counts_total=cnt.sum((0, 1, 2)),
+                         hollow_given_not_onesided=htab, coin_groups=cm.CG_NAMES,
                          p_same_state_observed=keep, copula=cop, onesided_extreme_side_agree=agree_side,
                          p_hollow_at_open=hollow_open,
-                         note="table[len, tau_b, ext_b(p_model)] = P(state); per market Gaussian-copula AR(1) "
+                         note="P(one-sided) = table[len, tau_b, ext_b(p_model)][2]; P(hollow | not one-sided) = "
+                              "hollow_given_not_onesided[len, coin_group, tau_b]; per market Gaussian-copula AR(1) "
                               "thresholds give the persistence (copula half-lives fitted to P(S_t=S|S_t-1=S)); "
                               "one-sided removes the side beyond the extreme (ask if p_model > 0.5)")
 
@@ -335,10 +344,13 @@ def fit_book(P: dict, mk: pd.DataFrame, reg, mid, spread) -> dict:
         okk = si >= 0
         par_cnt = np.zeros((3, cm.NEXT, len(sup)))
         np.add.at(par_cnt, (li[sel][okk], eb[sel][okk], si[okk]), 1.0)
-        par = (par_cnt + 1.0) / (par_cnt + 1.0).sum(-1, keepdims=True)
-        par = np.broadcast_to(par[:, None, :, :], (3, cm.NTAU, cm.NEXT, len(sup)))
-        t_, c_ = bucket_table((li[sel][okk], tb[sel][okk], eb[sel][okk]), si[okk], len(sup),
-                              (3, cm.NTAU, cm.NEXT), alpha=30.0, parent=par)
+        par = (par_cnt + 1.0) / (par_cnt + 1.0).sum(-1, keepdims=True)              # (len, ext)
+        pc_cnt = np.zeros((3, cm.NCG, cm.NEXT, len(sup)))
+        np.add.at(pc_cnt, (li[sel][okk], cg[sel][okk], eb[sel][okk], si[okk]), 1.0)
+        parc = (pc_cnt + 30.0 * par[:, None]) / (pc_cnt.sum(-1, keepdims=True) + 30.0)   # (len, cg, ext)
+        parc = np.broadcast_to(parc[:, :, None], (3, cm.NCG, cm.NTAU, cm.NEXT, len(sup)))
+        t_, c_ = bucket_table((li[sel][okk], cg[sel][okk], tb[sel][okk], eb[sel][okk]), si[okk], len(sup),
+                              (3, cm.NCG, cm.NTAU, cm.NEXT), alpha=30.0, parent=parc)
         spr["fine" if fflag else "coarse"] = dict(support_mils=sup, table=t_, n=int(okk.sum()))
     out["spread"] = spr
 
@@ -407,16 +419,21 @@ def fit_book(P: dict, mk: pd.DataFrame, reg, mid, spread) -> dict:
     rng_l = np.random.default_rng(11)
     for j, L in enumerate(cm.LENS):
         for k in range(cm.NTAU):
-            sel = np.flatnonzero(nr & (li == j) & (tb == k) & (top5b > 0) & (top5a > 0))
-            if len(sel) == 0:
+            pooled = np.flatnonzero(nr & (li == j) & (tb == k) & (top5b > 0) & (top5a > 0))
+            if len(pooled) == 0:
                 continue
-            pick = rng_l.choice(sel, min(4000, len(sel)), replace=False)
-            lib[f"size_{j}_{k}"] = vec[pick]
+            for g in range(cm.NCG):
+                sel = np.flatnonzero(nr & (li == j) & (tb == k) & (cg == g) & (top5b > 0) & (top5a > 0))
+                if len(sel) < 300:                       # thin cell -> pooled over coin groups
+                    sel = pooled
+                pick = rng_l.choice(sel, min(3000, len(sel)), replace=False)
+                lib[f"size_{j}_{g}_{k}"] = vec[pick]
         hsel = np.flatnonzero((reg == cm.HOLLOW) & v & (li == j))
         if len(hsel):
             lib[f"hollow_{j}"] = vec[rng_l.choice(hsel, min(2000, len(hsel)), replace=False)]
     np.savez_compressed(cm.HERE / "params_book.npz", **lib)
-    out["size_library"] = dict(file="params_book.npz", vectors_per_cell=4000, n_cells=len(lib),
+    out["size_library"] = dict(file="params_book.npz", vectors_per_cell=3000, n_cells=len(lib),
+                               key="size_<len_idx>_<coin_group>_<tau_b>, hollow_<len_idx>",
                                keep_prob_note="at an update event the previous vector is kept with prob "
                                               "1 - (1 - acf1)/pi_update, else a fresh one is drawn")
     # depth total / top-5 ratio
@@ -630,6 +647,117 @@ def fit_flow(P: dict, mk: pd.DataFrame, mid, reg) -> dict:
     return out
 
 
+def fit_delay(P: dict, mk: pd.DataFrame, params: dict, dmax: int = 10) -> dict:
+    """Block-time delay distribution p(d), d = 0..dmax s, from the real alignment curve.
+
+    Real: A(k) = share of taker prints at-or-through (and through) the best opposite quote of the book at
+    block-time row T - k, k = 0..dmax. Sim with zero delay gives c(j) = the same shares against the book at
+    match + j. With delay d ~ p, A(k) = sum_d p(d) c(d - k): linear in p -> non-negative least squares with
+    sum(p) = 1, both curves stacked. Train data only."""
+    import copy
+    import metrics as mt
+    import engine as en
+    from scipy.optimize import nnls
+    real = mt.real_dataset(P, mk)
+    ks_r, a_r, t_r = mt.alignment_curve(real, mt.taker_table(real), ks=range(0, dmax + 1))
+    p2 = copy.deepcopy(params)
+    p2["flow"]["stamp_delay"] = dict(values=[0], p=[1.0])
+    model = en.Model(p2)
+    ul = cm.train_underlying()
+    prices = [cm.market_pricing(ul[r.coin][1], ul[r.coin][2], ul[r.coin][0], r.open_ts, r.end_ts)
+              for r in mk.itertuples()]
+    cs_a, cs_t = [], []
+    for dset in mt.sim_datasets(model, mk, prices, 2, 9, 2):
+        js, ca, ct = mt.alignment_curve(dset, mt.taker_table(dset), ks=range(-dmax, dmax + 1))
+        cs_a.append(ca)
+        cs_t.append(ct)
+    ca, ct = np.mean(cs_a, 0), np.mean(cs_t, 0)
+    c_at = dict(zip(js, ca))
+    c_th = dict(zip(js, ct))
+    ds = np.arange(dmax + 1)
+    A = np.array([[c_at[-(int(d) - k)] for d in ds] for k in ks_r] + [[c_th[-(int(d) - k)] for d in ds] for k in ks_r])
+    y = np.r_[a_r, t_r]
+    w = 100.0
+    p, _ = nnls(np.vstack([A, w * np.ones(len(ds))]), np.r_[y, w])
+    p = p / p.sum()
+    fit_a = A[:len(ks_r)] @ p
+    fit_t = A[len(ks_r):] @ p
+    print("  delay p(d):", dict(zip(ds.tolist(), np.round(p, 3).tolist())))
+    print("  real at|through:", np.round(a_r, 3), np.round(t_r, 3))
+    print("  fit  at|through:", np.round(fit_a, 3), np.round(fit_t, 3))
+    keep = p > 1e-4
+    return dict(values=ds[keep].tolist(), p=(p[keep] / p[keep].sum()).tolist(),
+                mean_s=float((ds * p).sum()),
+                real_curve=dict(k=ks_r.tolist(), at_or_through=a_r.tolist(), through=t_r.tolist()),
+                fitted_curve=dict(at_or_through=fit_a.tolist(), through=fit_t.tolist()),
+                note="block time - match time (s), fitted to the real alignment of prints with the book at T-k "
+                     "(convolution of the zero-delay sim curve, NNLS); COVERAGE.md: alignment peaks at 3-4 s")
+
+
+def calibrate_informed(P: dict, mk: pd.DataFrame, params: dict) -> dict:
+    """Informed-taker share w and print impact kappa per length (impact half-life fixed at IMPACT_HL_S), by
+    simulated moments on the train schedule with the full engine: the post-trade markout drift (maker markout of
+    all taker prints at 5/30/60 s minus at 0 s) and the P(buy | p_model - mid) curve. Train data only."""
+    import copy
+    import metrics as mt
+    import engine as en
+    real = mt.real_dataset(P, mk)
+    rs = mt.trade_stats(real, mt.taker_table(real))
+    ul = cm.train_underlying()
+    prices = [cm.market_pricing(ul[r.coin][1], ul[r.coin][2], ul[r.coin][0], r.open_ts, r.end_ts)
+              for r in mk.itertuples()]
+    out_inf, out_imp = {}, {}
+    grids = {300: ([0.0, 0.3], [0.0, 0.005, 0.01, 0.02, 0.04], 2),
+             900: ([0.0, 0.3], [0.0, 0.005, 0.01, 0.02, 0.04], 2),
+             14400: ([0.0, 0.3], [0.0, 0.01, 0.02, 0.04, 0.08], 1)}
+    for L in cm.LENS:
+        name = cm.LEN_NAME[L]
+        sel = np.flatnonzero(mk.L.values == L)
+        sub = mk.iloc[sel].reset_index(drop=True)
+        psub = [prices[i] for i in sel]
+        keys_pb = [k for k, v in rs.items() if k.startswith(f"pbuy|{name}|") and v[1] >= 300]
+        res = []
+        ws, kis, reps = grids[L]
+        for w in ws:
+            for ki in kis:
+                p2 = copy.deepcopy(params)
+                p2["flow"].setdefault("informed", {})[name] = dict(w=w, kappa_noise=1.0)
+                p2["flow"].setdefault("impact", {})[name] = dict(kappa=ki, halflife_s=IMPACT_HL_S,
+                                                                 rise_halflife_s=IMPACT_RISE_S)
+                model = en.Model(p2)
+                st = [mt.trade_stats(d, mt.taker_table(d)) for d in mt.sim_datasets(model, sub, psub, reps, 5, reps)]
+                loss, mom = 0.0, {}
+                for h in (5, 30, 60):
+                    r_ = rs[f"markout|{name}|{h}"] - rs[f"markout|{name}|0"]
+                    s_ = np.mean([s[f"markout|{name}|{h}"] - s[f"markout|{name}|0"] for s in st])
+                    mom[f"drift{h}"] = (r_, float(s_))
+                    loss += ((s_ - r_) / 0.25) ** 2
+                pbl = 0.0
+                for k in keys_pb:
+                    s_ = np.nanmean([s[k][0] for s in st])
+                    pbl += ((s_ - rs[k][0]) / 0.03) ** 2
+                loss += pbl
+                res.append((loss, w, ki, mom, pbl))
+                print(f"  {name}: w={w:.2f} kappa_imp={ki:.3f} loss={loss:.1f} (pbuy {pbl:.1f}) "
+                      + " ".join(f"{k}={v[0]:+.2f}/{v[1]:+.2f}" for k, v in mom.items()), flush=True)
+        best = min(res, key=lambda x: x[0])
+        out_inf[name] = dict(w=best[1], kappa_noise=1.0, loss=float(best[0]), loss_pbuy=float(best[4]),
+                             markout_drift_real_sim={k: list(v) for k, v in best[3].items()},
+                             grid=[dict(w=r[1], kappa_imp=r[2], loss=float(r[0])) for r in res])
+        out_imp[name] = dict(kappa=best[2], halflife_s=IMPACT_HL_S, rise_halflife_s=IMPACT_RISE_S)
+    out_inf["note"] = ("P(buy) = (1-w) * P_fit(buy | gap) + w * 1[staleness > 0], staleness = sigmoid(target + v) - "
+                       "displayed latent mid (what the next book update reveals); w and the impact kappa by grid "
+                       "search on simulated markout drift + P(buy|gap) curve (train)")
+    out_imp["note"] = ("each print adds kappa * sign * sqrt(min(size, 500)/10) to an impact accumulator a (logit "
+                       "units, decays with half-life halflife_s); the mid target carries v, which approaches a with "
+                       "half-life rise_halflife_s")
+    return out_inf, out_imp
+
+
+IMPACT_HL_S = 300.0     # impact decay half-life (s)
+IMPACT_RISE_S = 15.0    # the mid target absorbs a print's impact with this half-life (real drift builds ~20-30 s)
+
+
 def fit_fees(mk: pd.DataFrame) -> dict:
     rw = {}
     for L in cm.LENS:
@@ -650,9 +778,12 @@ RANDOMIZATION = {
     "refresh_rate_mult": {"kind": "log", "lo": 0.5, "hi": 2.0},
     "taker_intensity_mult": {"kind": "log", "lo": 0.5, "hi": 2.0},
     "taker_size_mult": {"kind": "log", "lo": 0.5, "hi": 2.0},
-    "informed_mult": {"kind": "uniform", "lo": 0.5, "hi": 2.0,
-                      "doc": "scales (P(buy|gap) - 0.5) and the |gap| intensity coefficient"},
-    "excitation_mult": {"kind": "uniform", "lo": 0.0, "hi": 1.5},
+    "informed_share": {"kind": "uniform", "lo": 0.1, "hi": 0.6,
+                       "doc": "share of takers trading on the sign of the mid's staleness (fitted value per length "
+                              "in flow.informed.w)"},
+    "impact_mult": {"kind": "log", "lo": 0.5, "hi": 2.0},
+    "hawkes_eta": {"kind": "uniform", "lo": 0.0, "hi": 0.8,
+                   "doc": "branching ratio; the baseline is rescaled by (1-eta)/(1-eta_fit) to keep the mean rate"},
     "depth_mult": {"kind": "log", "lo": 0.3, "hi": 3.0},
     "spread_mult": {"kind": "log", "lo": 0.5, "hi": 2.0},
     "onesided_logit_shift": {"kind": "uniform", "lo": -0.5, "hi": 0.5},
@@ -667,14 +798,14 @@ RANDOMIZATION = {
 def main():
     import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument("--parts", nargs="+", default=["settlement", "book", "mid", "flow", "fees"],
+    ap.add_argument("--parts", nargs="+", default=["settlement", "book", "mid", "flow", "delay", "informed", "fees"],
                     help="refit only these components (others are kept from the existing params.json)")
     a = ap.parse_args()
     t0 = time.time()
     P, mk = cm.train_panel()
     reg, mid, spread = cm.book_state(P)
     print(f"train panel: {len(P['p'])} rows, {len(mk)} markets  {time.time()-t0:.1f}s")
-    params = cm.load_params() if cm.PARAMS.exists() and set(a.parts) != {"settlement", "book", "mid", "flow", "fees"} else {}
+    params = cm.load_params() if cm.PARAMS.exists() and set(a.parts) != {"settlement", "book", "mid", "flow", "delay", "informed", "fees"} else {}
     params["meta"] = dict(
         fitted_on="train split 0 only: %d markets (%s), opens 2026-08-21..22 UTC; Binance < 2026-08-23"
                   % (len(mk), ", ".join(f"{cm.LEN_NAME[L]} {int((mk.L == L).sum())}" for L in cm.LENS)),
@@ -691,8 +822,18 @@ def main():
         params["mid"] = fit_mid(P, mk, reg, mid, fine, np.asarray(params["book"]["book_change_profile"]["p_age0"]))
         print(f"mid done {time.time()-t0:.1f}s")
     if "flow" in a.parts:
+        keep = {k: params.get("flow", {}).get(k) for k in ("informed", "impact", "stamp_delay")}
         params["flow"] = fit_flow(P, mk, mid, reg)
+        params["flow"].update({k: v for k, v in keep.items() if v is not None
+                               and not (k in ("informed", "impact") and "informed" in a.parts)
+                               and not (k == "stamp_delay" and "delay" in a.parts)})
         print(f"flow done {time.time()-t0:.1f}s")
+    if "delay" in a.parts:
+        params["flow"]["stamp_delay"] = fit_delay(P, mk, params)
+        print(f"delay fit done {time.time()-t0:.1f}s")
+    if "informed" in a.parts:
+        params["flow"]["informed"], params["flow"]["impact"] = calibrate_informed(P, mk, params)
+        print(f"informed calibration done {time.time()-t0:.1f}s")
     if "fees" in a.parts:
         params["fees"] = fit_fees(mk)
     params["randomization"] = RANDOMIZATION

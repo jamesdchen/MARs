@@ -33,8 +33,18 @@ class Model:
         b, f, mid = params["book"], params["flow"], params["mid"]
         self.thr_fine = b["tick_switch"]["ext_threshold"]
         self.reg_tab = np.asarray(b["regime"]["table"])                     # [3, NTAU, NEXT, 3]
-        self.keep = {i: np.array([b["regime"]["p_keep"][s][i] for s in ("normal", "hollow", "onesided")])
-                     for i in range(3)}
+        self.copula = {i: b["regime"]["copula"][cm.LEN_NAME[L]] for i, L in enumerate(cm.LENS)}
+        self.hollow_tab = np.asarray(b["regime"]["hollow_given_not_onesided"])  # [3, NCG, NTAU]
+        lib = np.load(cm.HERE / b["size_library"]["file"])
+        self.size_lib = {(i, g, k): lib[f"size_{i}_{g}_{k}"] for i in range(3) for g in range(cm.NCG)
+                         for k in range(cm.NTAU) if f"size_{i}_{g}_{k}" in lib}
+        for i in range(3):                                                  # empty tau cells -> nearest one
+            for g in range(cm.NCG):
+                have = [k for k in range(cm.NTAU) if (i, g, k) in self.size_lib]
+                for k in range(cm.NTAU):
+                    if (i, g, k) not in self.size_lib:
+                        self.size_lib[(i, g, k)] = self.size_lib[(i, g, min(have, key=lambda h: abs(h - k)))]
+        self.hollow_lib = {i: lib[f"hollow_{i}"] for i in range(3) if f"hollow_{i}" in lib}
         self.spread = {}
         for g in ("coarse", "fine"):
             sp = b["spread"][g]
@@ -55,15 +65,15 @@ class Model:
         g = f["glm"]
         self.tau_cell = np.asarray(g["tau_cell"])
         self.b_gap, self.b_z5, self.b_os = g["b_absgap"], g["b_absz5"], g["b_onesided"]
-        self.gamma, self.decay = g["gamma_excite"], np.exp(-1.0 / g["tau_excite_s"])
+        self.eta, self.decay = g["hawkes_eta"], np.exp(-1.0 / g["hawkes_tau_s"])
         me = f["market_effect"]
-        cal = f.get("calibration")                 # simulation-calibrated overrides (fit.py calibrate_flow)
-        shift = cal["a_len_shift"] if cal else {k: 0.0 for k in me["a_len"]}
-        self.a_len = {i: me["a_len"][cm.LEN_NAME[L]] + shift[cm.LEN_NAME[L]] for i, L in enumerate(cm.LENS)}
+        self.a_len = {i: me["a_len"][cm.LEN_NAME[L]] for i, L in enumerate(cm.LENS)}
         self.a_coin = np.array([me["a_coin"][c] for c in cm.COINS])
-        self.a_sd = cal["market_sd"] if cal else me["sd"]
-        if cal:
-            self.gamma = cal["gamma_excite"]
+        self.a_sd = me["sd"]
+        ip = f.get("impact", {})
+        self.impact = {i: ip.get(cm.LEN_NAME[L], {"kappa": 0.0, "halflife_s": 300.0}) for i, L in enumerate(cm.LENS)}
+        inf = f.get("informed", {})
+        self.informed = {i: inf.get(cm.LEN_NAME[L], {"w": 0.0, "kappa_noise": 1.0}) for i, L in enumerate(cm.LENS)}
         d = f["direction"]
         self.p_buy = {i: np.asarray(d[cm.LEN_NAME[L]]["p_buy"]) for i, L in enumerate(cm.LENS)}
         self.rho_copy = {i: d["rho_copy_by_len"][cm.LEN_NAME[L]] for i, L in enumerate(cm.LENS)}
@@ -84,8 +94,8 @@ class Model:
 
 # --------------------------------------------------------------------------------------------- randomisation
 DEFAULT_KNOBS = dict(mid_extra_lag_s=0, passthrough_a0_mult=1.0, lag_halflife_mult=1.0, sigma_u_mult=1.0,
-                     refresh_rate_mult=1.0, taker_intensity_mult=1.0, taker_size_mult=1.0, informed_mult=1.0,
-                     excitation_mult=1.0, depth_mult=1.0, spread_mult=1.0, onesided_logit_shift=0.0,
+                     refresh_rate_mult=1.0, taker_intensity_mult=1.0, taker_size_mult=1.0, informed_share=np.nan,
+                     hawkes_eta=np.nan, impact_mult=1.0, depth_mult=1.0, spread_mult=1.0, onesided_logit_shift=0.0,
                      hollow_logit_shift=0.0, fee_rate_mult=1.0, fee_free=0, rebate_mult=1.0, sigma_basis_mult=0.0)
 
 
@@ -153,33 +163,56 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
     pi_upd = np.clip(np.asarray(mp["update_prob"])[tb_row][None, :] * kn["refresh_rate_mult"][:, None], 0, 1)
     ev = rng.random((B, n)) < pi_upd
     ev[:, 0] = True
-    m_lat = cm.sigmoid(np.take_along_axis(target, _ffill_idx(ev), axis=1))   # displayed latent mid
-    fine = np.maximum.accumulate(np.abs(m_lat - 0.5) > model.thr_fine, axis=1)
+    # the displayed latent mid (and the sticky tick grid) are tracked in the loop: price impact of prints
+    # (state v, logit units) enters the target, and the book re-aligns to target + v at update events
 
-    # ---------------- book regime chain (normal / hollow / one-sided) ----------------
+    # ---------------- book regime: Gaussian-copula thresholds on the conditional table ----------------
+    from scipy.special import ndtr
     tab = model.reg_tab[li][tb_row[None, :], eb]                            # [B, n, 3]
-    shift = np.stack([np.zeros(B), kn["hollow_logit_shift"], kn["onesided_logit_shift"]], 1)[:, None, :]
-    tab = tab * np.exp(shift)
-    tab /= tab.sum(-1, keepdims=True)
-    keep = model.keep[li]
-    tabp = tab * (1 - keep)[None, None, :]
-    cump = np.cumsum(tabp / tabp.sum(-1, keepdims=True), -1)
-    reg = np.empty((B, n), np.int8)
-    reg[:, 0] = _cat(np.cumsum(tab[:, 0], -1), rng.random(B))
-    U1, U2 = rng.random((B, n)), rng.random((B, n))
-    for t in range(1, n):
-        prev = reg[:, t - 1]
-        stay = (U1[:, t] < keep[prev]) & ~((prev == cm.ONESIDED) & (tab[:, t, cm.ONESIDED] < 0.02))
-        reg[:, t] = np.where(stay, prev, _cat(cump[:, t], U2[:, t]))
+    lo_ = lambda q, s: 1.0 / (1.0 + np.exp(-(np.log(q / (1 - q)) + s)))  # noqa: E731  logit shift
+    coin = np.asarray(inp["coin_id"], int)
+    cgm = np.array([cm.COIN_GROUP[cm.COINS[c]] for c in coin])            # coin group per market
+    piO = np.clip(tab[..., cm.ONESIDED], 1e-6, 1 - 1e-6)
+    piH = np.clip(model.hollow_tab[li][cgm[:, None], tb_row[None, :]], 1e-6, 1 - 1e-6)
+    piO = lo_(piO, kn["onesided_logit_shift"][:, None])
+    piH = lo_(piH, kn["hollow_logit_shift"][:, None])
+    states = {}
+    for name, pi in (("onesided", piO), ("hollow", piH)):
+        cp = model.copula[li][name]
+        hp = cp["pi_ewma_halflife_s"]
+        if hp:
+            d_ = 0.5 ** (1.0 / hp)
+            pi = lfilter([1 - d_], [1, -d_], pi, axis=1, zi=d_ * pi[:, :1])[0]
+        z0 = rng.standard_normal((B, 1))
+        if cp["copula_halflife_s"] is None:
+            zz = np.repeat(z0, n, 1)
+        else:
+            ph = 0.5 ** (1.0 / cp["copula_halflife_s"])
+            zz = lfilter([np.sqrt(1 - ph ** 2)], [1, -ph], rng.standard_normal((B, n)), axis=1, zi=ph * z0)[0]
+        states[name] = ndtr(zz) < pi
+    reg = np.where(states["onesided"], cm.ONESIDED, np.where(states["hollow"], cm.HOLLOW, cm.NORMAL)).astype(np.int8)
     rebuild = ev.copy()
-    rebuild[:, 1:] |= (reg[:, 1:] != reg[:, :-1]) | (fine[:, 1:] != fine[:, :-1])
+    rebuild[:, 1:] |= reg[:, 1:] != reg[:, :-1]
 
     # ---------------- per-market flow constants ----------------
-    coin = np.asarray(inp["coin_id"], int)
-    A = np.exp(model.a_len[li] + model.a_coin[coin] + model.a_sd * rng.standard_normal(B)) * kn["taker_intensity_mult"]
-    gam = model.gamma * kn["excitation_mult"]
-    b_gap = model.b_gap * kn["informed_mult"]
+    eta = np.where(np.isnan(kn["hawkes_eta"]), model.eta, kn["hawkes_eta"])
+    # baseline rescaled so the mean rate is unchanged when the branching ratio is randomised
+    A = (np.exp(model.a_len[li] + model.a_coin[coin] + model.a_sd * rng.standard_normal(B))
+         * kn["taker_intensity_mult"] * (1 - eta) / (1 - model.eta))
+    b_gap = model.b_gap
     pbuy = model.p_buy[li]
+    inf = model.informed[li]
+    w_inf = np.where(np.isnan(kn["informed_share"]), inf["w"], kn["informed_share"])
+    kap = inf["kappa_noise"]
+    imp = model.impact[li]
+    k_imp = imp["kappa"] * kn["impact_mult"]
+    d_imp = 0.5 ** (1.0 / imp["halflife_s"])
+    d_rise = 0.5 ** (1.0 / imp.get("rise_halflife_s", 1e-9)) if imp.get("rise_halflife_s", 0) > 0 else 0.0
+    v_imp = np.zeros(B)
+    a_imp = np.zeros(B)
+    m_now = np.full(B, 0.5)
+    fine_now = np.zeros(B, bool)
+    m_hist = np.zeros((B, n), np.float32)
     rho_copy = model.rho_copy[li]
     lnS = np.log(S)
     lnS5 = np.concatenate([np.repeat(lnS[:, :1], 5, 1), lnS[:, :-5]], 1)
@@ -187,8 +220,8 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
     cell = model.tau_cell[li][tb_row]                                      # [n]
     mu_sz, sd_sz = model.size[li]
     pi_bar = float(np.mean(np.asarray(mp["update_prob"])))
-    rho_sz = float(np.clip((model.size_acf1[li] - (1 - pi_bar)) / max(pi_bar, 1e-3), 0.0, 0.98))
-    dr_mu, dr_sd = model.depth_ratio[li]
+    keep_sz = float(np.clip(1 - (1 - model.size_acf1[li]) / max(pi_bar, 1e-3), 0.0, 0.98))
+    hlib = model.hollow_lib.get(li)
     depth_mult = kn["depth_mult"]
     size_v = model.size_v[li]
 
@@ -197,7 +230,7 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
     ask_px = np.full((B, 5), 1000, np.int64)
     bid_sz = np.zeros((B, 5))
     ask_sz = np.zeros((B, 5))
-    zsz = rng.standard_normal((B, 2, 5))
+    szvec = np.zeros((B, 12))
     dratio = np.zeros((B, 2))
     age = np.zeros(B)
     E = np.zeros(B)
@@ -215,17 +248,17 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
         return out
 
     def layout_normal(R, t):
-        fr = fine[R, t]
+        fr = fine_now[R]
         tick = np.where(fr, 1, 10)
         spr = np.empty(len(R), np.int64)
         for g, fl in (("coarse", False), ("fine", True)):
             sel = fr == fl
             if sel.any():
                 sup, cum = model.spread[g]
-                c = cum[li][tb_row[t], eb[R[sel], t]]
+                c = cum[li][cgm[R[sel]], tb_row[t], eb[R[sel], t]]
                 spr[sel] = sup[_cat(c, rng.random(sel.sum()))]
         s = np.maximum(np.round(spr * kn["spread_mult"][R] / tick) * tick, tick).astype(np.int64)
-        c = m_lat[R, t] * 1000.0
+        c = m_now[R] * 1000.0
         b0 = np.round((c - s / 2.0) / tick).astype(np.int64) * tick
         a0 = b0 + s
         hi = 1000 - tick
@@ -246,22 +279,28 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
         ap = np.where(ap <= hi[:, None], ap, 1000)
         return bp, ap
 
-    def redraw_sizes(R):
-        zsz[R] = rho_sz * zsz[R] + np.sqrt(1 - rho_sz ** 2) * rng.standard_normal((len(R), 2, 5))
-        sz = np.exp(mu_sz[None, None, :] + sd_sz[None, None, :] * zsz[R]) * depth_mult[R, None, None]
-        dratio[R] = dr_mu + dr_sd * rng.standard_normal((len(R), 2))
-        return sz[:, 0], sz[:, 1]
+    def redraw_sizes(R, t):
+        """Size vectors from the empirical library of the (len, tau_b) cell; keep the old one w.p. keep_sz."""
+        fresh = (rng.random(len(R)) >= keep_sz) | (t == 0) | (szvec[R, :10].sum(1) <= 0)
+        Rf = R[fresh]
+        for g in np.unique(cgm[Rf]):
+            Rg = Rf[cgm[Rf] == g]
+            lib_ = model.size_lib[(li, int(g), int(tb_row[t]))]
+            szvec[Rg] = lib_[rng.integers(0, len(lib_), len(Rg))]
+        sz = szvec[R, :10] * depth_mult[R, None]
+        dratio[R] = szvec[R, 10:12]
+        return sz[:, :5], sz[:, 5:]
 
-    def compact(px, sz, side, R, t):
+    def compact(px, sz, side, R, t, refill=True):
         """Remove exhausted levels (shift left) and append fresh levels behind the last one."""
         empty = sz <= EPS
         order = np.argsort(empty, axis=1, kind="stable")
         px = np.take_along_axis(px, order, 1)
         sz = np.take_along_axis(sz, order, 1)
         empty = np.take_along_axis(empty, order, 1)
-        fr = fine[R, t]
+        fr = fine_now[R]
         tick = np.where(fr, 1, 10)
-        for k in range(1, 5):
+        for k in range(1, 5 if refill else 1):
             need = empty[:, k] & ~empty[:, k - 1]
             if not need.any():
                 continue
@@ -270,8 +309,10 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
             newp = px[rr, k - 1] - gap if side == 0 else px[rr, k - 1] + gap
             ok = (newp >= tick[rr]) if side == 0 else (newp <= 1000 - tick[rr])
             px[rr, k] = np.where(ok, newp, 0 if side == 0 else 1000)
-            sz[rr, k] = np.where(ok, np.exp(mu_sz[k] + sd_sz[k] * rng.standard_normal(len(rr)))
-                                 * depth_mult[R[rr]], 0.0)
+            lib_ = model.size_lib[(li, 2, int(tb_row[t]))]
+            draw = lib_[rng.integers(0, len(lib_), len(rr)), k + (0 if side == 0 else 5)]
+            draw = np.where(draw > 0, draw, np.exp(mu_sz[k]))
+            sz[rr, k] = np.where(ok, draw * depth_mult[R[rr]], 0.0)
             empty[rr, k] = ~ok
         px = np.where(empty, 0 if side == 0 else 1000, px)
         sz = np.where(empty, 0.0, sz)
@@ -279,20 +320,29 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
 
     hcfg_n = len(model.hollow_cum)
     for t in range(n):
+        # ---- 0. latent mid: decay impact; re-align at update events; sticky fine tick grid ----
+        a_imp *= d_imp
+        v_imp = a_imp + (v_imp - a_imp) * d_rise
+        e_t = ev[:, t]
+        m_now = np.where(e_t, cm.sigmoid(target[:, t] + v_imp), m_now)
+        sw = e_t & ~fine_now & (np.abs(m_now - 0.5) > model.thr_fine)
+        fine_now |= sw
+        m_hist[:, t] = m_now
         # ---- 1. book update ----
         R = np.flatnonzero(rebuild[:, t])
         if len(R):
             rg = reg[R, t]
-            bsz, asz = redraw_sizes(R)
+            bsz, asz = redraw_sizes(R, t)
             bp, ap = layout_normal(R, t)
             hol = rg == cm.HOLLOW
             if hol.any():
                 ci = np.minimum((rng.random(hol.sum())[:, None] > model.hollow_cum).sum(1), hcfg_n - 1)
                 bp[hol] = model.hollow_bid[ci]
                 ap[hol] = model.hollow_ask[ci]
-                hs = np.exp(model.hollow_size[0] + model.hollow_size[1] * rng.standard_normal((hol.sum(), 2, 5)))
-                bsz[hol] = hs[:, 0] * depth_mult[R[hol], None]
-                asz[hol] = hs[:, 1] * depth_mult[R[hol], None]
+                if hlib is not None:
+                    hs = hlib[rng.integers(0, len(hlib), hol.sum())]
+                    bsz[hol] = hs[:, :5] * depth_mult[R[hol], None]
+                    asz[hol] = hs[:, 5:10] * depth_mult[R[hol], None]
             one = rg == cm.ONESIDED
             if one.any():
                 up = p[R, t] > 0.5
@@ -300,9 +350,12 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
                 kill_bid = one & ~up
                 ap[kill_ask] = 1000
                 bp[kill_bid] = 0
-            bid_px[R], ask_px[R] = bp, ap
-            bid_sz[R] = np.where(bp > 0, bsz, 0.0)
-            ask_sz[R] = np.where(ap < 1000, asz, 0.0)
+            # a zero size in the library vector = that level absent in the real snapshot
+            bsz = np.where(bp > 0, bsz, 0.0)
+            asz = np.where(ap < 1000, asz, 0.0)
+            bp_c, bs_c = compact(bp, bsz, 0, R, t, refill=False)
+            ap_c, as_c = compact(ap, asz, 1, R, t, refill=False)
+            bid_px[R], ask_px[R], bid_sz[R], ask_sz[R] = bp_c, ap_c, bs_c, as_c
             age[R] = 0
         nr = ~rebuild[:, t]
         age[nr] += 1
@@ -313,21 +366,32 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
                        np.where(hb, (bid_px[:, 0] / 1000.0 + 1) / 2, np.where(ha, ask_px[:, 0] / 2000.0, 0.5)))
         gap = p[:, t] - mid
         lam = (A * np.exp(cell[t] + b_gap * np.minimum(np.abs(gap), 0.3) + model.b_z5 * z5[:, t]
-                          + model.b_os * (reg[:, t] == cm.ONESIDED)) * (1.0 + E) ** gam)
+                          + model.b_os * (reg[:, t] == cm.ONESIDED)) + eta * E)
         lam = np.where(reg[:, t] == cm.HOLLOW, 0.0, np.minimum(lam, 50.0))
         N = rng.poisson(lam)
-        q = np.clip(0.5 + kn["informed_mult"] * (pbuy[cm.gap_bucket(gap)] - 0.5), 0.02, 0.98)
+        # noise takers: damped fitted P(buy | observed gap); informed takers: sign of the mid's staleness
+        q_noise = 0.5 + kap * (pbuy[cm.gap_bucket(gap)] - 0.5)
+        st = cm.sigmoid(target[:, t] + v_imp) - m_now          # staleness: what the next update reveals
+        q_inf = np.where(st > 1e-4, 1.0, np.where(st < -1e-4, 0.0, 0.5))
+        q = np.clip((1 - w_inf) * q_noise + w_inf * q_inf, 0.0, 1.0)
+        # one-sided book: the GLM rate already counts only executable prints -> all arrivals hit the live side
+        q = np.where(hb & ~ha, 0.0, np.where(ha & ~hb, 1.0, q))
         executed = np.zeros(B)
+        # prints execute against the ACTUAL book: the displayed (captured, sticky) shape translated to the
+        # current mid target; the ticks rows keep showing the snapshot until the next update event
+        tick_now = np.where(fine_now, 1, 10)
+        shift = (np.round((cm.sigmoid(target[:, t] + v_imp) - m_now) * 1000.0 / tick_now) * tick_now).astype(np.int64)
         for k in range(int(N.max()) if N.size else 0):
             R = np.flatnonzero(N > k)
             copy = (rng.random(len(R)) < rho_copy) & (prev_sign[R] != 0)
             sgn = np.where(copy, prev_sign[R], np.where(rng.random(len(R)) < q[R], 1, -1)).astype(np.int8)
             Q = np.exp(np.interp(rng.random(len(R)), model.size_q, size_v)) * kn["taker_size_mult"][R]
-            jlim = np.minimum((rng.random(len(R))[:, None] > model.lim_cum).sum(1), 4)
+            jlim = np.full(len(R), 4)          # no limit cap: the empirical (filled) size sweeps what it needs
             buy = sgn == 1
             szs = np.where(buy[:, None], ask_sz[R], bid_sz[R])
-            pxs = np.where(buy[:, None], ask_px[R], bid_px[R])
-            szs = np.where(np.arange(5)[None, :] <= jlim[:, None], szs, 0.0)
+            pxs = np.where(buy[:, None], ask_px[R], bid_px[R]) + shift[R, None]
+            inb = (pxs >= tick_now[R, None]) & (pxs <= 1000 - tick_now[R, None])
+            szs = np.where((np.arange(5)[None, :] <= jlim[:, None]) & inb, szs, 0.0)
             cum = np.cumsum(szs, 1)
             prevc = cum - szs
             fill = np.clip(Q[:, None] - prevc, 0.0, szs)
@@ -343,6 +407,7 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
             tr_px.append(pxs)
             prev_sign[R] = sgn
             executed[R] += 1
+            a_imp[R] += k_imp[R] * sgn * np.sqrt(np.minimum(fill.sum(1), 500.0) / 10.0)
             age[R] = 0
             for side, Rs in ((1, R[buy]), (0, R[~buy])):
                 if not len(Rs):
@@ -352,7 +417,7 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
                     ask_px[Rs], ask_sz[Rs] = compact(ask_px[Rs], ask_sz[Rs] - f, 1, Rs, t)
                 else:
                     bid_px[Rs], bid_sz[Rs] = compact(bid_px[Rs], bid_sz[Rs] - f, 0, Rs, t)
-        E = model.decay * E + executed
+        E = model.decay * E + (1 - model.decay) * executed
 
         # ---- 3. write row t (book after trades) ----
         row = ticks[:, t]
@@ -410,10 +475,10 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
     eps = rng.standard_normal(B) * model.sigma_basis * kn["sigma_basis_mult"]
     winner = (np.asarray(inp["twap_end"]) * np.exp(eps) >= np.asarray(inp["K"])).astype(np.int32)
     n_in = np.bincount(tb_[inwin], minlength=B)
-    return dict(ticks=ticks, winner_up=winner, fine_final=fine[:, -1], ptb=ptb,
+    return dict(ticks=ticks, winner_up=winner, fine_final=fine_now.copy(), ptb=ptb,
                 log_strike_vs_ul_open=np.log(S[:, 0] / ptb), n_trades_in_window=n_in,
                 trades=dict(b=tb_, t=tt_, stamp=stamp, sign=sg_, fill=fl_, px=px_),
-                regime=reg, m_lat=m_lat)
+                regime=reg, m_lat=m_hist)
 
 
 # --------------------------------------------------------------------------------------------- fill legs

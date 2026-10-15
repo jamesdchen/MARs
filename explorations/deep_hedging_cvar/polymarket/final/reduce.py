@@ -68,9 +68,14 @@ def _tick(ds, rows, bk):
 
 
 class RunAccumulator:
-    def __init__(self, ds: Dataset, split: int, method: str, variant: dict, t_range):
+    """mirror_in_data: the dataset itself is the mirrored copy (mirror.py), so marks and books are
+    read as they are; otherwise a mirror variant is mirrored here (stand-in env flag)."""
+
+    def __init__(self, ds: Dataset, split: int, method: str, variant: dict, t_range,
+                 mirror_in_data: bool = False):
         self.ds, self.split, self.method, self.variant = ds, split, method, variant
-        self.mirror = bool(variant.get("mirror", False))
+        self.mirror = bool(variant.get("mirror", False)) and not mirror_in_data
+        self.checks = []
         self.t0, self.t1 = t_range
         self.mk_rows, self.min_parts, self.fill_parts = [], [], []
         self.port = np.zeros(self.t1 - self.t0)
@@ -170,6 +175,15 @@ class RunAccumulator:
 
         pnl = float(mtm[-1])
         ref = max(n - 1 - MID_CLOSE_STC, 0)
+        up2, up1, upa = float(two[1:].mean()), float(one[1:].mean()), float(anyq[1:].mean())
+        maxinv = float(absinv.max())
+        lg = tr.get("log")
+        cpnl = float("nan")
+        if lg:                                   # the C Log of this market: exact per-second numbers
+            up2, upa = float(lg["uptime_two_sided"]), float(lg["uptime_any"])
+            up1, maxinv, cpnl = upa - up2, max(maxinv, float(lg["max_abs_inv"])), float(lg["pnl"])
+        if tr.get("checks"):
+            self.checks.append(dict(market=m, **tr["checks"]))
         qmin = int((bc(anyq.astype(float)) > 0).sum())
         tv = float(bk["taker_vol"].sum())
         vol = float(qty.sum())
@@ -180,10 +194,9 @@ class RunAccumulator:
             settlement=Sm, winner_up=int(rec["winner_up"]), pnl=pnl, pnl_ex_rr=float(mtm_ex[-1]),
             rewards=float(rew[-1]), rebates=float(reb[-1]), fees=float(fee[-1]), n_fills=nf,
             buy_fills=int((side > 0).sum()), sell_fills=int((side < 0).sum()), volume=vol,
-            notional=float((qty * price).sum()), max_abs_inv=float(absinv.max()),
+            notional=float((qty * price).sum()), max_abs_inv=maxinv,
             final_inv=float(inv[-1]), final_cash=float(cash[-1]), mid_close=float(mark[ref]),
-            uptime_two=float(two[1:].mean()), uptime_one=float(one[1:].mean()),
-            uptime_any=float(anyq[1:].mean()), quoted_minutes=qmin,
+            uptime_two=up2, uptime_one=up1, uptime_any=upa, quoted_minutes=qmin, c_log_pnl=cpnl,
             fill_rate=nf / qmin if qmin else np.nan, taker_volume=tv,
             share_taker_volume=vol / tv if tv > 0 else np.nan))
 
@@ -208,6 +221,13 @@ class RunAccumulator:
                                  minute_ts=self.t0 + 60 * np.arange(pm.shape[0]),
                                  max_abs_delta_usd=np.abs(pm).max(1), mean_delta_usd=pm.mean(1)))
         agg = self.aggregates(mk, fl)
+        if self.checks:
+            ck = pd.DataFrame(self.checks)
+            agg["replay"] = dict(n_markets=int(len(ck)), n_not_ok=int((~ck.replay_ok.astype(bool)).sum()),
+                                 markets_not_ok=[int(x) for x in ck.market[~ck.replay_ok.astype(bool)]],
+                                 state_max_abs_diff=float(ck.state_max_abs_diff.max()),
+                                 log_pnl_max_abs_diff=float(ck.log_pnl_abs_diff.max()),
+                                 obs_bit_identical=bool(ck.obs_bit_identical.all()))
         return dict(markets=mk, minutes=mins, fills=fl, portfolio=port, agg=agg)
 
     def aggregates(self, mk: pd.DataFrame, fl: pd.DataFrame) -> dict:

@@ -23,6 +23,7 @@
 
 #include <fcntl.h>
 #include <math.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -31,7 +32,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-#define MM_OBS 48
+#define MM_OBS 50
 #define MM_NUM_ATNS 3
 #define MM_ACT_SIZES {7, 7, 3}
 #define MM_G 44            // feat.bin columns
@@ -42,6 +43,8 @@
 #define MM_F_LIQ_MID 38
 #define MM_F_LIQ_COMP 39
 #define MM_F_LIQ_PI 40
+#define MM_F_BIDP 41       // (best bid - p_model) cents / 5, observed as obs 47
+#define MM_F_ASKP 42       // (best ask - p_model) cents / 5, observed as obs 48
 #define MM_PEND 16         // pending-decision FIFO (needs latency + D + 2 <= 16)
 #define MM_LIQ_V 1.5       // liquidity-reward max spread (cents) baked into liq_comp
 #define MM_LIQ_MIN 50.0    // liquidity-reward min size baked into liq_comp
@@ -49,9 +52,13 @@
 
 enum { MM_OPT = 0, MM_CENTRAL = 1, MM_PESS = 2 };
 enum { MM_BOOK_VALID = 1, MM_BOOK_CROSSED = 2, MM_BOOK_STALE = 4, MM_BOOK_SAME = 16 };
-// Fill-flag slots of the exploit detectors (EVALUATION.md T5): volume filled while ...
+// Fill-flag slots of the exploit detectors (EVALUATION.md T5), in Log order (vol_* and pnl_*).
+// All judged on the book at the match row tau. OUTSIDE: print outside the snapshot's
+// [best bid, best ask] (every sweep through the touch); INSPREAD: print on the wrong side of the
+// hit touch (a sell print above the best bid, a buy print below the best ask), i.e. a print the
+// snapshot cannot explain.
 enum { MM_FL_CROSSED, MM_FL_STALE, MM_FL_ONESIDED, MM_FL_LAST30, MM_FL_LAST10, MM_FL_INSIDE2,
-       MM_FL_EXTREME, MM_FL_OUTSIDE, MM_NFLAGS };
+       MM_FL_EXTREME, MM_FL_OUTSIDE, MM_FL_INSPREAD, MM_NFLAGS };
 
 typedef struct {
     int64_t row_offset, open_ts, end_ts;
@@ -106,6 +113,8 @@ struct Log {
     float final_abs_inv;
     float uptime_two_sided;   // fraction of match seconds with both quotes live
     float uptime_any;
+    float reward_clip_frac;
+    float rejects;            // quotes rejected at arrival (post-only would cross)
     float vol_crossed;        // fill volume while the book was crossed / forward-filled
     float vol_stale;          // ... book older than 10 s
     float vol_onesided;
@@ -114,10 +123,21 @@ struct Log {
     float vol_inside2;        // ... with our quote > 2 ticks inside the touch
     float vol_extreme;        // ... with our quote <= 0.02 or >= 0.98
     float vol_outside;        // ... with the print outside the snapshot's [bid, ask]
-    float reward_clip_frac;
-    float rejects;            // quotes rejected at arrival (post-only would cross)
+    float vol_inspread;       // ... with the print on the wrong side of the hit touch
+    float pnl_crossed;        // spread capture + 60 s markout of the fills with each flag (USD);
+    float pnl_stale;          // the total over all fills is spread_capture + markout_60
+    float pnl_onesided;
+    float pnl_last30;
+    float pnl_last10;
+    float pnl_inside2;
+    float pnl_extreme;
+    float pnl_outside;
+    float pnl_inspread;
     float n;
 };
+
+typedef char mm_log_layout_check[(sizeof(Log) == 43 * sizeof(float)
+    && offsetof(Log, pnl_crossed) - offsetof(Log, vol_crossed) == MM_NFLAGS * sizeof(float)) ? 1 : -1];
 
 // Parameters: doubles in this order (binding kwargs, harness arrays). ENV.md has the table.
 typedef struct {
@@ -303,6 +323,7 @@ typedef struct {
     double spread, mo5, mo30, mo60;
     float fill_vol, buy_vol, sell_vol, max_inv;
     float vol_flag[MM_NFLAGS];
+    float pnl_flag[MM_NFLAGS];
     uint64_t rng, cycle_pos;
 } Mm;
 
@@ -483,6 +504,7 @@ static inline void mm_begin(Mm* m, int mk, int off) {
     m->minute_vol = m->minute_fill = m->tx_fill = 0.0;
     m->n_fills = m->fill_vol = m->buy_vol = m->sell_vol = m->max_inv = 0.0f;
     memset(m->vol_flag, 0, sizeof(m->vol_flag));
+    memset(m->pnl_flag, 0, sizeof(m->pnl_flag));
     m->rows = m->rows_two = m->rows_any = m->steps = m->clips = m->rejects = m->ret = 0.0f;
 }
 
@@ -618,21 +640,28 @@ static inline void mm_book_fill(Mm* m, int side, double f, int tau, int u, const
     if (ai > m->max_inv) m->max_inv = (float)ai;
     m->last_fill_row = u;
     double mid0 = mm_feat(tau)[MM_F_MARK];
+    double mid60 = mm_mark_at(m, tau + 60);
     m->spread += sq * (mid0 - p);
     m->mo5 += sq * (mm_mark_at(m, tau + 5) - mid0);
     m->mo30 += sq * (mm_mark_at(m, tau + 30) - mid0);
-    m->mo60 += sq * (mm_mark_at(m, tau + 60) - mid0);
+    m->mo60 += sq * (mid60 - mid0);
     int tick = mm_tick(m, B), bb = B->bid_px[0], ba = B->ask_px[0];
-    float ff = (float)f;
-    m->vol_flag[MM_FL_CROSSED] += (B->flags & MM_BOOK_CROSSED) ? ff : 0.0f;
-    m->vol_flag[MM_FL_STALE] += (B->flags & MM_BOOK_STALE) ? ff : 0.0f;
-    m->vol_flag[MM_FL_ONESIDED] += (bb == 0 || ba == 1000) ? ff : 0.0f;
-    m->vol_flag[MM_FL_LAST30] += (m->r_end - tau < 30) ? ff : 0.0f;
-    m->vol_flag[MM_FL_LAST10] += (m->r_end - tau < 10) ? ff : 0.0f;
     int inside = side == 0 ? (bb > 0 && o->px > bb + 2 * tick) : (ba < 1000 && o->px < ba - 2 * tick);
-    m->vol_flag[MM_FL_INSIDE2] += inside ? ff : 0.0f;
-    m->vol_flag[MM_FL_EXTREME] += (o->px <= 20 || o->px >= 980) ? ff : 0.0f;
-    m->vol_flag[MM_FL_OUTSIDE] += (fpx < bb || fpx > ba) ? ff : 0.0f;
+    int hit[MM_NFLAGS];
+    hit[MM_FL_CROSSED] = (B->flags & MM_BOOK_CROSSED) != 0;
+    hit[MM_FL_STALE] = (B->flags & MM_BOOK_STALE) != 0;
+    hit[MM_FL_ONESIDED] = bb == 0 || ba == 1000;
+    hit[MM_FL_LAST30] = m->r_end - tau < 30;
+    hit[MM_FL_LAST10] = m->r_end - tau < 10;
+    hit[MM_FL_INSIDE2] = inside;
+    hit[MM_FL_EXTREME] = o->px <= 20 || o->px >= 980;
+    hit[MM_FL_OUTSIDE] = fpx < bb || fpx > ba;
+    hit[MM_FL_INSPREAD] = side == 0 ? fpx > bb : fpx < ba;
+    float ff = (float)f, pf = (float)(sq * (mid60 - p));     // spread capture + 60 s markout
+    for (int k = 0; k < MM_NFLAGS; k++) {
+        m->vol_flag[k] += hit[k] ? ff : 0.0f;
+        m->pnl_flag[k] += hit[k] ? pf : 0.0f;
+    }
 }
 
 // Liquidity-reward hook (rewards study, AUG_2026 preset): our side only; the competitors' Q
@@ -746,32 +775,50 @@ static inline void mm_row(Mm* m, int u) {
     }
 }
 
-// Rows t+1..tn are quiet if nothing in them can change the order book state: no printed legs,
-// no decision reaching the exchange, no liquidity accrual, and (central model, queue to track)
-// an unchanged ladder. mm_row would then only advance counters and the minute window; mm_skip
-// does that in bulk and leaves exactly the same state (checked by test_env.py).
-static inline int mm_quiet(const Mm* m, int t, int tn) {
+// Rows a..b (print rows) are quiet if nothing in them can change the order book state: no
+// printed legs, no decision reaching the exchange (the caller stops the range before one), no
+// liquidity accrual, and (central model with a queue to track) an unchanged ladder at the match
+// rows. mm_row would then only advance counters and the minute window; mm_skip does that in
+// bulk and leaves exactly the same state (checked against the reference by test_env.py).
+static inline int mm_quiet(const Mm* m, int a, int b) {
     const MmCfg* c = m->cfg;
-    if (MM_DATA.fill_off[t + 1] != MM_DATA.fill_off[tn + 1] || c->liq_on) return 0;
-    int tau0 = t + 1 - c->D, tau1 = tn - c->D;
-    if (m->pn > 0 && m->pend[m->ph].row <= tau1) return 0;
+    if (MM_DATA.fill_off[a] != MM_DATA.fill_off[b + 1] || c->liq_on) return 0;
     if (c->model == MM_CENTRAL && ((m->ord[0].live && m->ord[0].q > 0.0) || (m->ord[1].live && m->ord[1].q > 0.0))
-            && MM_DATA.book[tau0].same_run < tau1 - tau0 + 1) {
+            && MM_DATA.book[a - c->D].same_run < b - a + 1) {
         return 0;
     }
     return 1;
 }
 
-static inline void mm_skip(Mm* m, int t, int tn) {
-    float k = (float)(tn - t);
+static inline void mm_skip(Mm* m, int a, int b) {
+    float k = (float)(b - a + 1);
     int live0 = m->ord[0].live, live1 = m->ord[1].live;
     m->rows += k;
     m->rows_two += k * (float)(live0 & live1);
     m->rows_any += k * (float)(live0 | live1);
-    if (tn >= m->next_min) {
+    if (b >= m->next_min) {
         m->minute_vol = 0.0;
         m->minute_fill = 0.0;
-        m->next_min = tn + 60 - (m->open_mod + tn - m->r0) % 60;
+        m->next_min = b + 60 - (m->open_mod + b - m->r0) % 60;
+    }
+}
+
+// Match the print rows t+1..tn: quiet stretches in bulk, every other row one by one.
+static inline void mm_rows(Mm* m, int t, int tn) {
+    int u = t + 1;
+    while (u <= tn) {
+        int stop = tn;                               // last row before the next activation
+        if (m->pn > 0) {
+            int au = m->pend[m->ph].row + m->cfg->D;
+            if (au - 1 < stop) stop = au - 1;
+        }
+        if (stop >= u && mm_quiet(m, u, stop)) {
+            mm_skip(m, u, stop);
+            u = stop + 1;
+            if (u > tn) break;
+        }
+        mm_row(m, u);
+        u++;
     }
 }
 
@@ -808,7 +855,9 @@ static inline void mm_write_obs(const Mm* m, float* obs) {
     o[12] = (float)pending;
     int nf = (int)m->n_fills;
     o[13] = nf <= MM_NFILL_TAB ? MM_LOG_FILLS[nf] : (float)(log1p((double)nf) / 5.0);
-    o[14] = 1.0f;
+    o[14] = F[MM_F_BIDP];                    // obs 47, 48: present-side touch vs fair value
+    o[15] = F[MM_F_ASKP];
+    o[16] = 1.0f;
 }
 
 static inline void mm_reset(Mm* m, float* obs) {
@@ -851,6 +900,19 @@ static inline void mm_prefetch_data(const Mm* m) {
     MM_PREFETCH((const char*)mm_feat(t) + MM_F_P * sizeof(float));
 }
 
+// Third stage (env i + k/2): the maker legs of the next step's rows (needs fill_off, which the
+// data stage brought in).
+static inline void mm_prefetch_legs(const Mm* m) {
+    if (m->cfg == NULL) return;
+    int t = m->t;
+    int tn = t + m->dt <= m->r_end ? t + m->dt : m->r_end;
+    int lo = MM_DATA.fill_off[t + 1], hi = MM_DATA.fill_off[tn + 1];
+    if (lo < hi) {
+        MM_PREFETCH(&MM_DATA.fills[lo]);
+        MM_PREFETCH(&MM_DATA.fills[hi - 1]);
+    }
+}
+
 static inline void mm_log_episode(Mm* m, Log* log, double pnl) {
     double trading = m->cash + m->inv * m->winner;
     log->score += (float)pnl;
@@ -875,16 +937,14 @@ static inline void mm_log_episode(Mm* m, Log* log, double pnl) {
     log->final_abs_inv += (float)fabs(m->inv);
     log->uptime_two_sided += m->rows > 0 ? m->rows_two / m->rows : 0.0f;
     log->uptime_any += m->rows > 0 ? m->rows_any / m->rows : 0.0f;
-    log->vol_crossed += m->vol_flag[MM_FL_CROSSED];
-    log->vol_stale += m->vol_flag[MM_FL_STALE];
-    log->vol_onesided += m->vol_flag[MM_FL_ONESIDED];
-    log->vol_last30 += m->vol_flag[MM_FL_LAST30];
-    log->vol_last10 += m->vol_flag[MM_FL_LAST10];
-    log->vol_inside2 += m->vol_flag[MM_FL_INSIDE2];
-    log->vol_extreme += m->vol_flag[MM_FL_EXTREME];
-    log->vol_outside += m->vol_flag[MM_FL_OUTSIDE];
     log->reward_clip_frac += m->steps > 0 ? m->clips / m->steps : 0.0f;
     log->rejects += m->rejects;
+    float* fvol = &log->vol_crossed;         // MM_NFLAGS consecutive floats, then the pnl_* ones
+    float* fpnl = &log->pnl_crossed;
+    for (int k = 0; k < MM_NFLAGS; k++) {
+        fvol[k] += m->vol_flag[k];
+        fpnl[k] += m->pnl_flag[k];
+    }
     log->n += 1.0f;
 }
 
@@ -902,11 +962,7 @@ static inline void mm_step(Mm* m, const int* act, float* obs, float* rew, float*
     e->ask = (int16_t)ask;
     m->pn++;
     int tn = t + m->dt < m->r_end ? t + m->dt : m->r_end;
-    if (mm_quiet(m, t, tn)) {
-        mm_skip(m, t, tn);
-    } else {
-        for (int u = t + 1; u <= tn; u++) mm_row(m, u);
-    }
+    mm_rows(m, t, tn);
     m->t = tn;
     int done = tn == m->r_end;
     double mark = done ? (double)m->winner : mm_mark(m, tn);

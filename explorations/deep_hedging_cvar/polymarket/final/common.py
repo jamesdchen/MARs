@@ -206,8 +206,8 @@ def git_log_contains(text: str, path=CODE_ROOT) -> bool:
 # appended to its amendment log after the plan is written.
 CODE_GLOBS = [
     "final/*.py", "eval/stats.py", "baselines/baselines.py", "baselines/obs_spec.py",
-    "train/policy.py", "puffer5/puffernet_mm.py", "env.py", "*.h", "*.c", "*.so", "ENV.md",
-    "data/load.py",
+    "train/policy.py", "puffer5/puffernet_mm.py", "env.py", "reference.py", "*.h", "*.c", "*.so",
+    "ENV.md", "data/load.py",
 ]
 
 

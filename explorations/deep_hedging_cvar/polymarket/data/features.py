@@ -22,6 +22,7 @@ That module imports scipy, so run this with a Python that has scipy, pandas and 
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 from pathlib import Path
@@ -94,6 +95,8 @@ AUX_COLS = [
     ("liq_mid", "liquidity rewards: size-cutoff adjusted mid of the replay book (top 5, without us); -1 = unscorable"),
     ("liq_comp", "liquidity rewards: competitors' Q (reward_terms.competitor_q, 'hi' bound, v = 1.5 c, min 50)"),
     ("liq_pi", "liquidity rewards: USD per sample if row t is this minute's sample second, else 0 (AUG_2026 pools)"),
+    ("bid_minus_p_c", "OBSERVED (obs 47): (best bid - p_model) in cents / 5, 0 if no bid"),
+    ("ask_minus_p_c", "OBSERVED (obs 48): (best ask - p_model) in cents / 5, 0 if no ask"),
 ]
 N_OBS = len(OBS_COLS)
 COLS = [c for c, _ in OBS_COLS] + [c for c, _ in AUX_COLS]
@@ -162,6 +165,17 @@ def liquidity_rows(bp, bs, ap, asz, valid, t, pi_sample, seed):
     sample = (t % 60) == np.repeat(offs, np.diff(np.r_[np.flatnonzero(first), n]))
     pi = np.where(sample & ok, pi_sample, 0.0)
     return mid, np.where(ok, comp, 0.0), pi
+
+
+def write_atomic(path: Path, data):
+    """Write to a temp file in the same directory, then rename over the target. Processes that
+    have the old file memory-mapped keep the old inode (an in-place rewrite would SIGBUS them)."""
+    tmp = path.with_name(f".{path.name}.tmp{os.getpid()}")
+    if isinstance(data, np.ndarray):
+        data.tofile(tmp)
+    else:
+        tmp.write_text(data)
+    os.replace(tmp, path)
 
 
 def underlying():
@@ -383,6 +397,8 @@ def main():
         out[:, CI["liq_mid"]] = liq_mid
         out[:, CI["liq_comp"]] = liq_comp
         out[:, CI["liq_pi"]] = liq_pi
+        out[:, CI["bid_minus_p_c"]] = np.where(has_b, clip((bp[:, 0] - p) * 100 / 5), 0.0)
+        out[:, CI["ask_minus_p_c"]] = np.where(has_a, clip((ap[:, 0] - p) * 100 / 5), 0.0)
         assert np.isfinite(out).all(), slug
         assert np.abs(out[:, :N_OBS]).max() <= CLIP + 1e-9, slug
         feat[r0:r0 + n] = out.astype(np.float32)
@@ -396,10 +412,10 @@ def main():
     sanity["max_abs_row_volume_vs_ticks"] = float(np.abs(vol - tv).max())
     assert sanity["max_abs_row_volume_vs_ticks"] < 1e-2
 
-    feat.tofile(BUILD / "feat.bin")
-    book.tofile(BUILD / "book.bin")
-    fills.tofile(BUILD / "fills.bin")
-    index.tofile(BUILD / "fill_index.bin")
+    write_atomic(BUILD / "feat.bin", feat)
+    write_atomic(BUILD / "book.bin", book)
+    write_atomic(BUILD / "fills.bin", fills)
+    write_atomic(BUILD / "fill_index.bin", index)
     stats["n_fills"] = int(len(fills))
     fmeta = {
         "features_version": FEATURES_VERSION,
@@ -407,8 +423,9 @@ def main():
         "N": int(N), "G": G, "n_obs_features": N_OBS, "dtype": "float32", "order": "row-major [N, G]",
         "columns": COLS, "column_index": CI,
         "column_docs": dict(OBS_COLS + AUX_COLS),
-        "obs_block": f"columns 0..{N_OBS - 1} are copied into the observation; the rest are raw "
-                     "auxiliaries read by the C step (never observed)",
+        "obs_block": f"columns 0..{N_OBS - 1} are copied into observation 0..{N_OBS - 1}; bid_minus_p_c and "
+                     "ask_minus_p_c into observation 47 and 48; the rest are raw auxiliaries read by the C "
+                     "step (never observed)",
         "causality": "row t uses ticks rows <= t of the same market, Binance klines with open_time <= t-1 "
                      "(also from before the market open: vol warm-up, K, lagged returns) and maker fills with "
                      "block time <= t (tick flag only). No outcome information.",
@@ -453,7 +470,7 @@ def main():
         "fill_index": "int32 [N + 1]: legs of row r are fills[fill_index[r]:fill_index[r+1]]",
         "sanity": sanity, "stats": stats,
     }
-    (BUILD / "feat_meta.json").write_text(json.dumps(fmeta, indent=1))
+    write_atomic(BUILD / "feat_meta.json", json.dumps(fmeta, indent=1))
     print(f"feat.bin {N}x{G}, book.bin, fills.bin {len(fills)} legs; {time.time() - t0:.1f}s")
     print("stats:", stats)
 

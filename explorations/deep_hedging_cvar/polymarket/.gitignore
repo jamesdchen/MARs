@@ -8,3 +8,4 @@ sim/cache/
 train/runs/
 train/checkpoints/
 *.pt
+/build/

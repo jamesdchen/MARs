@@ -4,7 +4,9 @@
     python final/run_test.py                     # dry run on val (split 1, the default)
     MM_FINAL=1 python final/run_test.py --split 2   # THE test run: once
 
-Before anything is evaluated:
+Before anything is evaluated (the data checks run on a private copy of the frozen files in
+results/.snapshot/, which is what the env then reads, so a rebuild of data/build/ during the run
+cannot change or crash it):
   1. sha256(TEST_PLAN.json) == plan_sha256.txt                              (both splits)
   2. split 2 only: MM_FINAL=1; the plan hash appears in eval/EVALUATION.md's amendment log
      and in a git commit message (--skip-registration-check REASON overrides, recorded)
@@ -21,7 +23,10 @@ deterministic actions, start offset 0, and results/<split>/ receives
   markets.parquet, minutes.parquet, fills.parquet, portfolio.parquet   (reduce.py)
   runs.json            per-run aggregates (attribution, exploit flags, directional numbers)
   test_report.json     (split 2) / dryrun_report.json (split 1): plan hash, checks, timings, reruns
-and results/runs.jsonl gets a started / completed / crashed record. Completed (method, variant)
+and results/runs.jsonl gets a started / completed / crashed record. The mirror variant runs on
+a mirrored copy of the snapshot (mirror.py). With the C env (cenv.py) every market is also
+replayed in the C harness and in reference.py; their agreement is recorded per market and in
+the report (`replay`). Completed (method, variant)
 shards are kept in results/<split>/shards/ until the end, so a crash restart (which needs
 --force-rerun REASON) can --resume them.
 
@@ -60,6 +65,13 @@ def _shard_name(method, variant):
 
 def preflight(plan, plan_hash, split, args, ds) -> dict:
     """All checks before the first step. Returns the check record (raises RunRefused)."""
+    chk = preflight_meta(plan, plan_hash, split, args, ds.synthetic)
+    chk.update(preflight_data(plan, split, args, ds))
+    return chk
+
+
+def preflight_meta(plan, plan_hash, split, args, synthetic) -> dict:
+    """Checks that read no data: MM_FINAL, dry-run options, registration, env of record."""
     chk = dict(plan_sha256=plan_hash, split=split)
     if split == 2:
         if os.environ.get("MM_FINAL") != "1":
@@ -76,12 +88,16 @@ def preflight(plan, plan_hash, split, args, ds) -> dict:
                                  f"{reg['amendment_log']}, git commit message: {reg['commit_message']}); "
                                  "register it or pass --skip-registration-check REASON")
         chk["registration"] = reg
-        if not plan["backend"].get("of_record") and not ds.synthetic:
+        if not plan["backend"].get("of_record") and not synthetic:
             raise RunRefused(f"backend {plan['backend']['name']!r} is a stand-in: no test run on real data")
     elif split != 1:
         raise RunRefused("--split must be 1 (val dry run) or 2 (test)")
+    return chk
 
-    # data
+
+def preflight_data(plan, split, args, ds) -> dict:
+    """Hashes of the data actually used (the private snapshot), test rows, code."""
+    chk = {}
     want = plan["data"]["file_sha256"]
     have = ds.file_hashes()
     bad = {f: dict(plan=want[f], now=have.get(f)) for f in want if have.get(f) != want[f]}
@@ -133,8 +149,18 @@ def run(args) -> int:
                          "once: --force-rerun REASON to run again (recorded)")
     if args.resume and not args.force_rerun:
         raise RunRefused("--resume restarts a crashed run and needs --force-rerun REASON")
-    ds = Dataset(build_dir)
-    chk = preflight(plan, plan_hash, split, args, ds)
+    chk = preflight_meta(plan, plan_hash, split, args, bool(plan["data"].get("synthetic")))
+    # private copy of the frozen data: hashed and used byte for byte, immune to rebuilds
+    snap_root = results_root / ".snapshot"
+    snap = snap_root / sname
+    if snap.exists():
+        shutil.rmtree(snap)
+    snap.mkdir(parents=True)
+    for f in plan["data"]["file_sha256"]:
+        shutil.copyfile(build_dir / f, snap / f)
+    ds = Dataset(snap)
+    chk.update(preflight_data(plan, split, args, ds))
+    chk["snapshot"] = dict(source=str(build_dir), n_files=len(plan["data"]["file_sha256"]))
 
     methods = plan["methods"]
     variants = plan["variants"]
@@ -162,7 +188,21 @@ def run(args) -> int:
         if shards.exists() and not args.resume:
             shutil.rmtree(shards)
         shards.mkdir(parents=True, exist_ok=True)
-        backend = adapters.make_backend(plan["backend"]["name"], ds, plan["backend"].get("options"))
+        opts = dict(plan["backend"].get("options") or {}, work_dir=str(snap_root / "work"))
+        backend = adapters.make_backend(plan["backend"]["name"], ds, opts)
+        mirror = {}
+
+        def mirrored():
+            """Backend + dataset on the mirrored copy of the snapshot (built once, hashed)."""
+            if not mirror:
+                import mirror as mirror_mod
+                mdir = snap_root / f"{sname}_mirror"
+                if mdir.exists():
+                    shutil.rmtree(mdir)
+                chk["mirror_data"] = mirror_mod.mirror_build(snap, mdir)
+                mds = Dataset(mdir)
+                mirror.update(ds=mds, backend=adapters.make_backend(plan["backend"]["name"], mds, opts))
+            return mirror["ds"], mirror["backend"]
         ctx = dict(spec=lambda: backend.obs_spec(split), obs_size=None, root=root)
         ctx["obs_size"] = backend.obs_size(split)
         t_range = ds.split_time_range(split, 3600)
@@ -185,8 +225,13 @@ def run(args) -> int:
                 if policy is None:
                     policy = adapters.make_policy(m, ctx)
                 t0 = time.time()
-                traces = backend.run(policy, markets, v, split, allow_test=(split == 2))
-                acc = RunAccumulator(ds, split, m["id"], v, t_range)
+                if v.get("mirror"):
+                    mds, mbe = mirrored()
+                    traces = mbe.run(policy, markets, dict(v, mirror=False), split, allow_test=(split == 2))
+                    acc = RunAccumulator(mds, split, m["id"], v, t_range, mirror_in_data=True)
+                else:
+                    traces = backend.run(policy, markets, v, split, allow_test=(split == 2))
+                    acc = RunAccumulator(ds, split, m["id"], v, t_range)
                 for tr in traces:
                     acc.add(tr)
                 res = acc.finish()
@@ -196,8 +241,10 @@ def run(args) -> int:
                 write_json(done, clean_json(dict(plan_sha256=plan_hash, agg=res["agg"], timing=tm)))
                 aggs.append(clean_json(res["agg"]))
                 timings.append(tm)
+                rp = res["agg"].get("replay")
+                warn = f"  REPLAY MISMATCH in {rp['n_not_ok']} markets" if rp and rp["n_not_ok"] else ""
                 print(f"[{i}/{n_runs}] {m['id']} {v['id']}: P&L {res['agg']['pnl']:+.2f} "
-                      f"fills {res['agg']['n_fills']} ({tm['seconds']:.1f}s)", flush=True)
+                      f"fills {res['agg']['n_fills']} ({tm['seconds']:.1f}s){warn}", flush=True)
                 if split == 1 and not args.no_dryrun_ledger:
                     append_jsonl(out_dir / "dryrun_trials.jsonl", dict(
                         run_id=run_id, split=1, kind="final_dry_run", method=m["id"], variant=v["id"],
@@ -211,6 +258,7 @@ def run(args) -> int:
             df = pd.concat(parts, ignore_index=True) if parts else pd.DataFrame()
             df.to_parquet(out_dir / f"{t}.parquet", index=False)
         write_json(out_dir / "runs.json", clean_json(dict(plan_sha256=plan_hash, runs=aggs)))
+        rps = [a["replay"] for a in aggs if a.get("replay")]
         report = dict(
             schema=RESULTS_SCHEMA, run_id=run_id, split=split, split_name=sname, dry_run=split != 2,
             plan_sha256=plan_hash, plan_path=str(plan_path), created_utc=utcnow(),
@@ -222,10 +270,16 @@ def run(args) -> int:
                            and markets.size == ds.split_markets(split).size),
             reruns=[dict(reason=args.force_rerun, prior_runs=rec["prior_runs"], resume=bool(args.resume))]
             if args.force_rerun else [],
+            replay=dict(checked=bool(rps), failures=[dict(method=a["method"], variant=a["variant"], **a["replay"])
+                                                     for a in aggs if a.get("replay") and a["replay"]["n_not_ok"]],
+                        state_max_abs_diff=max((r["state_max_abs_diff"] for r in rps), default=None),
+                        log_pnl_max_abs_diff=max((r["log_pnl_max_abs_diff"] for r in rps), default=None)),
             timings=timings, seconds=round(time.time() - t_start, 1),
             headline={a["method"]: a["pnl"] for a in aggs if a["variant"] == plan["headline_variant"]})
         write_json(out_dir / ("test_report.json" if split == 2 else "dryrun_report.json"), clean_json(report))
         shutil.rmtree(shards)
+        if not args.keep_snapshot:
+            shutil.rmtree(snap_root, ignore_errors=True)
     except BaseException as e:
         append_jsonl(ledger, dict(rec, status="crashed", finished_utc=utcnow(),
                                   error=repr(e), traceback=traceback.format_exc()[-4000:]))
@@ -249,6 +303,7 @@ def main(argv=None) -> int:
     ap.add_argument("--variants", nargs="*", default=None, help="dry run only: variant ids")
     ap.add_argument("--max-markets", type=int, default=None, help="dry run only")
     ap.add_argument("--no-dryrun-ledger", action="store_true")
+    ap.add_argument("--keep-snapshot", action="store_true", help="keep results/.snapshot (data copy)")
     a = ap.parse_args(argv)
     try:
         return run(a)

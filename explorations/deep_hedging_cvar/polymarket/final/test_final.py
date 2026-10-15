@@ -37,23 +37,51 @@ report = common.load_module("pm_final_report", HERE / "report.py")   # baselines
 
 _TMP = Path(tempfile.mkdtemp(prefix="mm_final_test_"))
 _STATE = {}
+_PY = {}
+
+
+def cenv_available():
+    """The C env of record can run here: sources, compiled binding, a C compiler, feat_meta names."""
+    pm = HERE.parent
+    return (all((pm / f).exists() for f in ("mm.h", "mm_harness.c", "reference.py", "env.py"))
+            and bool(list(pm.glob("binding*.so"))) and shutil.which(os.environ.get("CC", "cc")) is not None
+            and (pm / "data" / "build" / "feat_meta.json").exists())
+
+
+BACKEND = os.environ.get("MM_TEST_BACKEND") or ("cenv" if cenv_available() else "pyreplay")
 
 
 def world():
-    """Synthetic build + artifact root + plan (built once per process)."""
+    """Synthetic build (C-core layout when testing the C env) + artifact root + plan, built once."""
     if _STATE:
         return _STATE
-    build = synth.build_dataset(_TMP / "build", n_per_split=8, lengths=(300,))
+    layout = "cenv" if BACKEND == "cenv" else "small"
+    build = synth.build_dataset(_TMP / "build", n_per_split=8, lengths=(300,), layout=layout)
     ds = common.Dataset(build)
-    obs_size = pyreplay.ReplayEnv(ds, ds.split_markets(1)[:1]).obs_size
+    if BACKEND == "cenv":
+        import cenv
+        obs_size = cenv.Core().obs
+    else:
+        obs_size = pyreplay.ReplayEnv(ds, ds.split_markets(1)[:1]).obs_size
     root = synth.build_root(_TMP / "root", obs_size, puffer5=True)
     plan_path = _TMP / "plan" / "TEST_PLAN.json"
     rc = make_plan.main(["--root", str(root), "--build-dir", str(build), "--out", str(plan_path),
-                         "--backend", "pyreplay", "--allow-dirty", "--n-boot", "300"])
+                         "--backend", BACKEND, "--allow-dirty", "--n-boot", "300"])
     assert rc == 0
     _STATE.update(build=build, ds=ds, root=root, plan_path=plan_path, obs_size=obs_size,
                   plan=json.loads(plan_path.read_text()))
     return _STATE
+
+
+def world_py():
+    """Small-layout synthetic data for the stand-in replay env's own tests."""
+    if not _PY:
+        build = synth.build_dataset(_TMP / "build_py", n_per_split=8, lengths=(300,), layout="small")
+        ds = common.Dataset(build)
+        obs_size = pyreplay.ReplayEnv(ds, ds.split_markets(1)[:1]).obs_size
+        root = synth.build_root(_TMP / "root_py", obs_size, puffer5=False)
+        _PY.update(build=build, ds=ds, root=root, obs_size=obs_size)
+    return _PY
 
 
 class Env:
@@ -357,8 +385,9 @@ def _actions(ds, markets, policy, variant, n_steps):
 def test_lookahead():
     """EVALUATION.md T2: perturb all data after t in a copy of an episode; the actions up to t must
     be bit-identical. Optimistic fills (trade delay 0): under central/pessimistic a print stamped up
-    to 3.5/5 s after t was matched before t, so 'after t' is defined on match time there."""
-    w = world()
+    to 3.5/5 s after t was matched before t, so 'after t' is defined on match time there.
+    (Stand-in env; the C env's own lookahead test is test_env.py's.)"""
+    w = world_py()
     ds = w["ds"]
     m = ds.split_markets(1)[:2]
     t_cut = 150
@@ -377,10 +406,8 @@ def test_lookahead():
     variant = dict(fill_model="optimistic", latency_s=0, size_mult=1.0)
     entries = [dict(id="b", kind="baseline", name="fair_value", params={}),
                dict(id="c", kind="callable", target="standins:jittered_fair_value", seed=1)]
-    for method in w["plan"]["methods"]:
-        if method["group"] == "rl":
-            entries.append(method)
-            break
+    if synth.have_torch():
+        entries.append(dict(id="rl", kind="ppo3", path="train/checkpoints/seed0.pt"))
     for e in entries:
         ctx = dict(spec=lambda: pyreplay.ReplayEnv(ds, m).obs_spec(), obs_size=w["obs_size"], root=w["root"])
         a1, _ = _actions(ds, m, adapters.make_policy(e, ctx), variant, t_cut + 1)
@@ -392,7 +419,7 @@ def test_lookahead():
 
 
 def test_latency_and_mirror():
-    w = world()
+    w = world_py()
     ds = w["ds"]
     m = ds.split_markets(1)[:3]
     pol = adapters.FnPolicy(lambda o: np.tile(np.array([[3, 3, 0]], np.int32), (len(o), 1)))
@@ -416,36 +443,67 @@ def test_latency_and_mirror():
         pass
 
 
-def test_cenv_adapter_plumbing():
+def test_mirror_data_matches_internal_mirror():
+    """mirror.py (mirrored data files) against pyreplay's independent in-env mirror."""
+    import mirror
+    w = world_py()
+    mdir = _TMP / "build_py_mirror"
+    if not mdir.exists():
+        mirror.mirror_build(w["build"], mdir)
+    mds = common.Dataset(mdir)
+    m = w["ds"].split_markets(1)
+    v = dict(fill_model="central", latency_s=1, size_mult=1.0)
+    ctx = dict(spec=lambda: pyreplay.ReplayEnv(w["ds"], m[:1]).obs_spec(), obs_size=w["obs_size"])
+    for e in (dict(id="fv", kind="baseline", name="fair_value", params={}),
+              dict(id="st", kind="baseline", name="sym_touch", params={})):
+        a = adapters.PyReplayBackend(w["ds"]).run(adapters.make_policy(e, ctx), m, dict(v, mirror=True), 1, False)
+        b = adapters.PyReplayBackend(mds).run(adapters.make_policy(e, ctx), m, v, 1, False)
+        for x, y in zip(a, b):
+            assert x["settlement"] == y["settlement"]
+            assert np.allclose(x["cash"], y["cash"], atol=1e-9) and np.allclose(x["inv"], y["inv"])
+    meta = json.loads((mdir / "meta.json").read_text())
+    assert meta["mirrored"] and common.Dataset(mdir).test_rows_sha256() == meta["test_rows"]["sha256"]
+
+
+def test_cenv_backend():
+    """The C env of record on the synthetic C-layout data: closed loop, harness replay with
+    bit-identical observations, reference replay equal to the C state, mirror symmetry, guards."""
+    if BACKEND != "cenv":
+        print("     (skipped: C env not available here)")
+        return
+    import cenv
+    import mirror
     w = world()
-    try:
-        adapters.CEnvBackend(w["ds"], {"module_path": str(_TMP / "nope" / "env.py")})
-        raise AssertionError("missing env accepted")
-    except adapters.BackendUnavailable:
-        pass
-    fake = _TMP / "fakeenv" / "env.py"
-    fake.parent.mkdir(exist_ok=True)
-    fake.write_text(
-        "import sys\n"
-        f"sys.path.insert(0, {str(HERE)!r})\n"
-        "import common, pyreplay\n"
-        "def make_eval_env(markets, fill_model, latency, size_mult, mirror, split, allow_test, data_dir):\n"
-        "    return pyreplay.ReplayEnv(common.Dataset(data_dir), markets, fill_model, latency, size_mult,\n"
-        "                              mirror, split, allow_test)\n")
-    be = adapters.CEnvBackend(w["ds"], {"module_path": str(fake)})
-    ref = adapters.PyReplayBackend(w["ds"])
-    m = w["ds"].split_markets(1)[:4]
-    v = dict(fill_model="pessimistic", latency_s=2, size_mult=2.0)
-    pol = adapters.make_policy(dict(id="x", kind="baseline", name="sym_touch", params={}),
-                               dict(spec=lambda: be.obs_spec(1), obs_size=be.obs_size(1)))
-    for x, y in zip(be.run(pol, m, v, 1, False), ref.run(pol, m, v, 1, False)):
-        assert np.array_equal(x["cash"], y["cash"]) and np.array_equal(x["fills"]["qty"], y["fills"]["qty"])
+    ds = w["ds"]
+    be = adapters.make_backend("cenv", ds, {"work_dir": str(_TMP / "cenv_work")})
+    spec = be.obs_spec(1)
+    pol = adapters.make_policy(dict(id="st", kind="baseline", name="sym_touch", params={}),
+                               dict(spec=lambda: spec, obs_size=be.obs_size()))
+    v = dict(fill_model="central", latency_s=1, size_mult=1.0)
+    trs = be.run(pol, ds.split_markets(1), v, 1, False)
+    assert all(t["checks"]["replay_ok"] and t["checks"]["obs_bit_identical"] for t in trs)
+    assert max(t["checks"]["state_max_abs_diff"] for t in trs) < cenv.STATE_TOL
+    assert sum(len(t["fills"]["row"]) for t in trs) > 0
+    for t in trs:                                  # the trace's P&L is the C Log's
+        assert abs(t["cash"][-1] + t["inv"][-1] * t["settlement"] - t["log"]["pnl"]) < 1e-3
+    mdir = _TMP / "build_cenv_mirror"
+    mirror.mirror_build(w["build"], mdir)
+    bm = adapters.make_backend("cenv", common.Dataset(mdir), {"work_dir": str(_TMP / "cenv_work")})
+    tm = bm.run(pol, ds.split_markets(1), v, 1, False)
+    for x, y in zip(trs, tm):                      # a symmetric quoter is mirror-invariant in the C env
+        assert abs((x["cash"][-1] + x["inv"][-1] * x["settlement"]) - (y["cash"][-1] + y["inv"][-1] * y["settlement"])) < 1e-9
     with Env(MM_FINAL=None):
         try:
-            be.make_env(w["ds"].split_markets(2)[:1], v, 2, True)
-            raise AssertionError("cenv split 2 without MM_FINAL")
+            be.run(pol, ds.split_markets(2), v, 2, True)
+            raise AssertionError("C env split 2 without MM_FINAL")
         except PermissionError:
             pass
+    with Env(MM_FINAL="1"):                        # the core itself refuses split 2 without allow_test
+        try:
+            be.run(pol, ds.split_markets(2), v, 2, False)
+            raise AssertionError("C env split 2 without allow_test")
+        except Exception as e:  # noqa: BLE001
+            assert "allow_test" in str(e) or "refused" in str(e), e
 
 
 if __name__ == "__main__":

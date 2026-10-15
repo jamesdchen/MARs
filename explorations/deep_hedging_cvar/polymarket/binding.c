@@ -86,6 +86,8 @@ static int my_log(PyObject* dict, Log* log) {
     assign_to_dict(dict, "final_abs_inv", log->final_abs_inv);
     assign_to_dict(dict, "uptime_two_sided", log->uptime_two_sided);
     assign_to_dict(dict, "uptime_any", log->uptime_any);
+    assign_to_dict(dict, "reward_clip_frac", log->reward_clip_frac);
+    assign_to_dict(dict, "rejects", log->rejects);
     assign_to_dict(dict, "vol_crossed", log->vol_crossed);
     assign_to_dict(dict, "vol_stale", log->vol_stale);
     assign_to_dict(dict, "vol_onesided", log->vol_onesided);
@@ -94,7 +96,15 @@ static int my_log(PyObject* dict, Log* log) {
     assign_to_dict(dict, "vol_inside2", log->vol_inside2);
     assign_to_dict(dict, "vol_extreme", log->vol_extreme);
     assign_to_dict(dict, "vol_outside", log->vol_outside);
-    assign_to_dict(dict, "reward_clip_frac", log->reward_clip_frac);
-    assign_to_dict(dict, "rejects", log->rejects);
+    assign_to_dict(dict, "vol_inspread", log->vol_inspread);
+    assign_to_dict(dict, "pnl_crossed", log->pnl_crossed);
+    assign_to_dict(dict, "pnl_stale", log->pnl_stale);
+    assign_to_dict(dict, "pnl_onesided", log->pnl_onesided);
+    assign_to_dict(dict, "pnl_last30", log->pnl_last30);
+    assign_to_dict(dict, "pnl_last10", log->pnl_last10);
+    assign_to_dict(dict, "pnl_inside2", log->pnl_inside2);
+    assign_to_dict(dict, "pnl_extreme", log->pnl_extreme);
+    assign_to_dict(dict, "pnl_outside", log->pnl_outside);
+    assign_to_dict(dict, "pnl_inspread", log->pnl_inspread);
     return 0;
 }

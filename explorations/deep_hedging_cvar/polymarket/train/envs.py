@@ -30,6 +30,15 @@ sys.path.insert(0, HERE)
 TEST_SPLIT = 2
 
 
+def sha256_file(path):
+    import hashlib
+    h = hashlib.sha256()
+    with open(path, 'rb') as f:
+        for chunk in iter(lambda: f.read(1 << 20), b''):
+            h.update(chunk)
+    return h.hexdigest()
+
+
 def _no_test(split):
     if int(split) == TEST_SPLIT:
         raise PermissionError('train/ never touches the test split (EVALUATION.md section 5)')
@@ -48,6 +57,10 @@ class StandInAdapter:
         self.obs_size = 16
         self.variants = {'central_1s': {}}  # the toy has one fill model
         self.final_variants = ('central_1s',)
+
+    def identity(self, kw):
+        """Resolved env parameters and code hashes (part of the config hash)."""
+        return {'params': dict(kw), 'code': {'standin.py': sha256_file(self.mod.__file__)}}
 
     def make_train(self, num_envs, seed=0, **kw):
         return self.mod.StandInMM(num_envs=num_envs, split=0, seed=seed, eval_mode=False,
@@ -200,8 +213,20 @@ class RealAdapter:
         ci = meta['column_index']
         self.len_cols = [ci['len_5m'], ci['len_15m'], ci['len_4h']]
         self.col = ci
+        import re
+        self.inv_idx = int(re.search(r'#define MM_FEAT_OBS (\d+)', self.mod._SRC)[1])  # ENV.md section 6
         self.group_names = ('5m', '15m', '4h')
         self.markets_all = np.fromfile(os.path.join(PM, 'data', 'build', 'markets.bin'), MARKET_DTYPE)
+
+    def identity(self, kw):
+        """Resolved env parameters (env.params: defaults + overrides, without the
+        per-run split/seed) and sha256 of the env code and binding (part of the
+        config hash, so runs on a changed env never pool with old ones)."""
+        p = self.mod.params(**{k: v for k, v in kw.items() if k != 'split'})
+        p.pop('split', None)
+        files = ['mm.h', 'binding.c', 'env.py'] + [f for f in os.listdir(PM)
+                                                 if f.startswith('binding') and f.endswith('.so')]
+        return {'params': p, 'code': {f: sha256_file(os.path.join(PM, f)) for f in sorted(files)}}
 
     def split_markets(self, split):
         _no_test(split)
@@ -264,7 +289,7 @@ class RealAdapter:
         position beyond half of Q; size 1x."""
         c = self.col
         gap_c = obs[:, c['gap_c']] * 5.0              # cents
-        inv = obs[:, self.mod.OBS_SIZE - 15]          # inventory / Q (first state slot)
+        inv = obs[:, self.inv_idx]                    # inventory / Q (first agent-block slot)
         a = np.zeros((obs.shape[0], 3), np.int32)
         a[:, 0] = np.where(obs[:, c['bid_present']] > 0.5, 3, 0)
         a[:, 1] = np.where(obs[:, c['ask_present']] > 0.5, 3, 0)
