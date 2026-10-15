@@ -1,0 +1,4477 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "PolyOrderbooks API",
+    "description": "# PolyOrderbooks API\n\nHistorical Polymarket **crypto** and **sports** market data — discovery, prices, liquidity metrics, and L2 order books. Read paths query our historical data store; they never call Polymarket live.\n\n## Categories\n\n`api.polyorderbooks.com` serves **crypto** and **sports** from one API. Pass `category=crypto`\nor `category=sports` to pin a request to one archive, or omit it for the union of both,\nordered by `updated_at` across archives.\n\n## Base URL\n\n`https://api.polyorderbooks.com`\n\n## Authentication\n\nAll `/v1/*` data routes require an API key.\n\nSend `X-API-Key: pob_…` or `Authorization: Bearer pob_…`. Dashboard JWT session tokens are **not** accepted on data routes.\n\n## Plans (hosted)\n\n| Plan | Req/min | Req/day | Finest resolution | History |\n| --- | --- | --- | --- | --- |\n| Starter | 60 | 1,000 | 250ms | 3 days |\n| Pro | 300 | 50,000 | 250ms | 30 days |\n\n## Workflow\n\n1. `GET /v1/markets` — discover\n2. `GET /v1/markets/{id_or_slug}` — detail\n3. `GET /v1/markets/{id_or_slug}/books` — history\n",
+    "version": "0.1.0"
+  },
+  "servers": [
+    {
+      "url": "https://api.polyorderbooks.com",
+      "description": "Production"
+    }
+  ],
+  "paths": {
+    "/v1/usage": {
+      "get": {
+        "tags": [
+          "Utility"
+        ],
+        "summary": "Get usage information",
+        "description": "Get current usage information for the authenticated API key.\n\nReturns plan and organization details, rate-limit usage, and plan capabilities. Covers Polymarket crypto and sports markets from the PolyOrderbooks historical archive.",
+        "operationId": "get_usage_v1_usage_get",
+        "responses": {
+          "200": {
+            "description": "Usage information including plan and limits",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UsageResponse"
+                },
+                "example": {
+                  "plan": "starter",
+                  "organization": "Acme Research",
+                  "limits": {
+                    "requests_per_minute": 60,
+                    "requests_remaining": 58,
+                    "granularity_allowed": "250ms",
+                    "max_history_days": 3,
+                    "data_points": {
+                      "metrics": true,
+                      "prices": true,
+                      "books": true
+                    }
+                  },
+                  "reset_at": 1754140860
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "API key is missing, invalid, or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "missing": {
+                    "value": {
+                      "error": "unauthorized",
+                      "message": "Authentication required."
+                    }
+                  },
+                  "invalid": {
+                    "value": {
+                      "error": "unauthorized",
+                      "message": "Invalid API key."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded for the current API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": "rate_limited",
+                  "message": "Rate limit exceeded. Please try again later."
+                }
+              }
+            }
+          }
+        },
+        "x-mint": {
+          "metadata": {
+            "title": "Polymarket API Usage & Quota"
+          }
+        }
+      }
+    },
+    "/v1/ai/backtest": {
+      "post": {
+        "summary": "Backtest AI",
+        "operationId": "backtest_ai_v1_ai_backtest_post",
+        "description": "Turn a plain-English crypto up/down strategy, or a fully specified Strategy Builder spec, into a replayed backtest over resolved Polymarket markets from the archive. The `strategy` block in the response is the exact specification the engine executed.\n\nAuth: `X-API-Key: pob_...` (or `Authorization: Bearer pob_...`). Available to any authenticated plan; plans differ in monthly run quotas and the history window. Over-quota calls return `429 limit_reached`.",
+        "tags": [
+          "Backtest AI"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BacktestAiRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Backtest completed. `report` holds the replayed trades and aggregate statistics; `analysis` is a plain-text post-run review.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BacktestAiResponse"
+                },
+                "example": {
+                  "prompt": "Buy DOWN when the DOWN token price falls below 0.45 within the first 5 minutes of BTC 15m markets.",
+                  "strategy": {
+                    "market": {
+                      "coin": "btc",
+                      "market_type": "15m"
+                    },
+                    "side": "down",
+                    "entry": [
+                      {
+                        "type": "price",
+                        "token": "down",
+                        "comparator": "<",
+                        "threshold": 0.45,
+                        "within_seconds": 300
+                      }
+                    ],
+                    "exit": {
+                      "take_profit": null,
+                      "stop_loss": null,
+                      "hold_to_expiry": true
+                    },
+                    "budget_per_trade": 50,
+                    "sample_size": 3,
+                    "taker_fee": 0.0,
+                    "trade_lag_seconds": 0,
+                    "max_trades_per_market": 1
+                  },
+                  "generated_at": "2026-09-10T12:00:00Z",
+                  "report": {
+                    "sample_size": 3,
+                    "markets_found": 3,
+                    "markets_traded": 1,
+                    "trade_count": 1,
+                    "trades_per_market": 1.0,
+                    "fees_paid": 0.0,
+                    "win_rate": 0.0,
+                    "wins": 0,
+                    "losses": 1,
+                    "total_pnl": -2.27,
+                    "avg_return_pct": -0.0454,
+                    "profit_factor": 0.0,
+                    "max_drawdown": 2.27,
+                    "avg_win": 0.0,
+                    "avg_loss": 2.27,
+                    "best_trade": 0.0,
+                    "worst_trade": -2.27,
+                    "equity_curve": [
+                      -2.27
+                    ],
+                    "exit_reasons": {
+                      "expiry": 1
+                    },
+                    "fill_sources": {
+                      "last_price": 1
+                    },
+                    "trades": [
+                      {
+                        "entered_at": "2026-09-05T10:00:00Z",
+                        "exited_at": "2026-09-05T10:15:00Z",
+                        "entry_price": 0.44,
+                        "exit_price": 0.42,
+                        "shares": 113.64,
+                        "pnl": -2.27,
+                        "return_pct": -0.0454,
+                        "fees": 0.0,
+                        "exit_reason": "expiry",
+                        "fill_source": "last_price",
+                        "partial_fill": false
+                      }
+                    ]
+                  },
+                  "analysis": "Summary:\nThe DOWN-on-BTC 15m strategy closed 1 trade across 1 of 3 sampled markets for a net P&L of -$2.27.\n\nKey Observations:\n- The single trade exited at expiry for a -$2.27 loss.\n\nActionable Takeaway:\n- Tighten the entry threshold or add a stop loss, then rerun to compare."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "The request could not be turned into a strategy.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "unsupported_signal": {
+                    "value": {
+                      "error": "unsupported_signal",
+                      "message": "Buy signals must be token prices in (0,1]; percentages and external asset prices are unsupported."
+                    }
+                  },
+                  "validation": {
+                    "value": {
+                      "error": "bad_request",
+                      "message": "Describe a strategy in words, or pass a structured strategy spec for the Strategy Builder."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "API key is missing, invalid, or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "missing": {
+                    "value": {
+                      "error": "unauthorized",
+                      "message": "Authentication required."
+                    }
+                  },
+                  "invalid": {
+                    "value": {
+                      "error": "unauthorized",
+                      "message": "Invalid API key."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The plan does not meet the tier required for Backtest AI.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": "plan_required",
+                  "message": "Backtest AI is a pro+ feature. Upgrade on the dashboard to unlock it."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Monthly Backtest AI quota reached, or the API rate limit exceeded.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "limit_reached": {
+                    "value": {
+                      "error": "limit_reached",
+                      "message": "Your plan allows up to 1 Backtest AI runs per month. Upgrade for unlimited backtesting and full history."
+                    }
+                  },
+                  "rate_limited": {
+                    "value": {
+                      "error": "rate_limited",
+                      "message": "Rate limit exceeded. Please try again later."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "x-mint": {
+          "metadata": {
+            "title": "Backtest AI"
+          }
+        }
+      }
+    },
+    "/v1/series": {
+      "get": {
+        "tags": [
+          "Discovery"
+        ],
+        "summary": "List series",
+        "description": "List broad categories of prediction markets (e.g., \"NBA\", \"US Politics\").\n\nSupports filtering by date ranges, text search, tags, and pagination.\nResults are sorted by the selected field (default: `updated_at desc`).\n\n**Pagination:** Use the `next_cursor` value from the response to fetch the next page. Covers Polymarket crypto and sports markets from the PolyOrderbooks historical archive.",
+        "operationId": "list_series_v1_series_get",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Optional case-insensitive text match for series title or slug.",
+              "examples": [
+                "nba"
+              ],
+              "title": "Search"
+            },
+            "description": "Optional case-insensitive text match for series title or slug."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "description": "Maximum number of items returned in this page.",
+              "examples": [
+                100
+              ],
+              "default": 100,
+              "title": "Limit"
+            },
+            "description": "Maximum number of items returned in this page."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Opaque cursor from a previous `metadata.next_cursor` value.",
+              "title": "Cursor"
+            },
+            "description": "Opaque cursor from a previous `metadata.next_cursor` value."
+          },
+          {
+            "name": "start_date_min",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Filter for series with `start_date` greater than or equal to this ISO 8601 timestamp.",
+              "examples": [
+                "2026-01-01T00:00:00Z"
+              ],
+              "title": "Start Date Min"
+            },
+            "description": "Filter for series with `start_date` greater than or equal to this ISO 8601 timestamp."
+          },
+          {
+            "name": "start_date_max",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Filter for series with `start_date` less than or equal to this ISO 8601 timestamp.",
+              "examples": [
+                "2026-12-31T23:59:59Z"
+              ],
+              "title": "Start Date Max"
+            },
+            "description": "Filter for series with `start_date` less than or equal to this ISO 8601 timestamp."
+          },
+          {
+            "name": "end_date_min",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Filter for series with `end_date` greater than or equal to this ISO 8601 timestamp.",
+              "examples": [
+                "2026-01-01T00:00:00Z"
+              ],
+              "title": "End Date Min"
+            },
+            "description": "Filter for series with `end_date` greater than or equal to this ISO 8601 timestamp."
+          },
+          {
+            "name": "end_date_max",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Filter for series with `end_date` less than or equal to this ISO 8601 timestamp.",
+              "examples": [
+                "2026-12-31T23:59:59Z"
+              ],
+              "title": "End Date Max"
+            },
+            "description": "Filter for series with `end_date` less than or equal to this ISO 8601 timestamp."
+          },
+          {
+            "name": "tags",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by event tags. Supports repeated params and comma-separated values.",
+              "examples": [
+                "crypto"
+              ],
+              "title": "Tags"
+            },
+            "description": "Filter by event tags. Supports repeated params and comma-separated values."
+          },
+          {
+            "name": "tags_match",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/TagsMatchMode",
+              "description": "Tag matching strategy: any (OR) or all (AND).",
+              "default": "any"
+            },
+            "description": "Tag matching strategy: any (OR) or all (AND)."
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortField",
+              "description": "Field used to sort the response rows.",
+              "default": "updated_at"
+            },
+            "description": "Field used to sort the response rows."
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder",
+              "description": "Sort direction.",
+              "default": "desc"
+            },
+            "description": "Sort direction."
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "crypto",
+                "sports"
+              ],
+              "description": "Restrict results to one category. Omit to search every category this deployment holds.",
+              "title": "Category"
+            },
+            "description": "Restrict results to one category. Omit to search every category this deployment holds."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of market series.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed date range or invalid pagination cursor.",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalid_cursor": {
+                    "summary": "Invalid cursor",
+                    "value": {
+                      "error": "bad_request",
+                      "message": "Invalid pagination cursor"
+                    }
+                  },
+                  "invalid_date_range": {
+                    "summary": "Invalid date range",
+                    "value": {
+                      "error": "bad_request",
+                      "message": "start_date_min must be <= start_date_max"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "API key is missing, invalid, or expired.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "unauthorized",
+                  "message": "Invalid or expired API key."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded for the current API key.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "rate_limited",
+                  "message": "Rate limit exceeded. Please try again later."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server-side error.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "internal_error",
+                  "message": "Failed to fetch data."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error for one or more request parameters.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "query",
+                        "limit"
+                      ],
+                      "msg": "Input should be less than or equal to 1000",
+                      "type": "less_than_equal"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-mint": {
+          "metadata": {
+            "title": "Polymarket Series API — List Series"
+          }
+        }
+      }
+    },
+    "/v1/events": {
+      "get": {
+        "tags": [
+          "Discovery"
+        ],
+        "summary": "List events",
+        "description": "List specific events within series (e.g., \"Lakers vs Bulls\", \"Iowa Caucus\").\n\nSupports filtering by date ranges, text search, tags, and pagination.\nResults are sorted by the selected field (default: `updated_at desc`).\n\n**Pagination:** Use the `next_cursor` value from the response to fetch the next page. Covers Polymarket crypto and sports markets from the PolyOrderbooks historical archive.",
+        "operationId": "list_events_v1_events_get",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Optional case-insensitive text match for event title or slug.",
+              "examples": [
+                "debate"
+              ],
+              "title": "Search"
+            },
+            "description": "Optional case-insensitive text match for event title or slug."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "description": "Maximum number of items returned in this page.",
+              "examples": [
+                100
+              ],
+              "default": 100,
+              "title": "Limit"
+            },
+            "description": "Maximum number of items returned in this page."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Opaque cursor from a previous `metadata.next_cursor` value.",
+              "title": "Cursor"
+            },
+            "description": "Opaque cursor from a previous `metadata.next_cursor` value."
+          },
+          {
+            "name": "series_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Optional filter to only events belonging to this series (by internal series id).",
+              "examples": [
+                "s_abc123"
+              ],
+              "title": "Series Id"
+            },
+            "description": "Optional filter to only events belonging to this series (by internal series id)."
+          },
+          {
+            "name": "series_slug",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Optional filter to only events belonging to this series (by series slug).",
+              "examples": [
+                "crypto-up-down"
+              ],
+              "title": "Series Slug"
+            },
+            "description": "Optional filter to only events belonging to this series (by series slug)."
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortField",
+              "description": "Field used to sort the response rows.",
+              "default": "updated_at"
+            },
+            "description": "Field used to sort the response rows."
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder",
+              "description": "Sort direction.",
+              "default": "desc"
+            },
+            "description": "Sort direction."
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "crypto",
+                "sports"
+              ],
+              "description": "Restrict results to one category. Omit to search every category this deployment holds.",
+              "title": "Category"
+            },
+            "description": "Restrict results to one category. Omit to search every category this deployment holds."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of events.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed date range or invalid pagination cursor.",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalid_cursor": {
+                    "summary": "Invalid cursor",
+                    "value": {
+                      "error": "bad_request",
+                      "message": "Invalid pagination cursor"
+                    }
+                  },
+                  "invalid_date_range": {
+                    "summary": "Invalid date range",
+                    "value": {
+                      "error": "bad_request",
+                      "message": "end_date_min must be <= end_date_max"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "API key is missing, invalid, or expired.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "unauthorized",
+                  "message": "Invalid or expired API key."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded for the current API key.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "rate_limited",
+                  "message": "Rate limit exceeded. Please try again later."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server-side error.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "internal_error",
+                  "message": "Failed to fetch data."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error for one or more request parameters.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "query",
+                        "limit"
+                      ],
+                      "msg": "Input should be less than or equal to 1000",
+                      "type": "less_than_equal"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-mint": {
+          "metadata": {
+            "title": "Polymarket Events API — List Events"
+          }
+        }
+      }
+    },
+    "/v1/markets": {
+      "get": {
+        "tags": [
+          "Discovery"
+        ],
+        "summary": "List markets",
+        "description": "List bettable contracts/markets (e.g., \"Winner\", \"Total Points Over/Under\").\n\nSupports filtering by date ranges, text search, tags, and pagination.\nResults are sorted by the selected field (default: `updated_at desc`).\n\n**Pagination:** Use the `next_cursor` value from the response to fetch the next page. Covers Polymarket crypto and sports markets from the PolyOrderbooks historical archive.",
+        "operationId": "list_markets_v1_markets_get",
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200,
+              "description": "Optional case-insensitive text match for market question or slug.",
+              "examples": [
+                "trump"
+              ],
+              "title": "Search"
+            },
+            "description": "Optional case-insensitive text match for market question or slug."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "description": "Maximum number of items returned in this page.",
+              "examples": [
+                100
+              ],
+              "default": 100,
+              "title": "Limit"
+            },
+            "description": "Maximum number of items returned in this page."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Opaque cursor from a previous `metadata.next_cursor` value.",
+              "title": "Cursor"
+            },
+            "description": "Opaque cursor from a previous `metadata.next_cursor` value."
+          },
+          {
+            "name": "event_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Optional filter to only markets belonging to this event (by internal event id).",
+              "examples": [
+                "e_abc123"
+              ],
+              "title": "Event Id"
+            },
+            "description": "Optional filter to only markets belonging to this event (by internal event id)."
+          },
+          {
+            "name": "event_slug",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Optional filter to only markets belonging to this event (by event slug).",
+              "examples": [
+                "bitcoin-hits-a-million"
+              ],
+              "title": "Event Slug"
+            },
+            "description": "Optional filter to only markets belonging to this event (by event slug)."
+          },
+          {
+            "name": "include_closed",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean",
+              "description": "When true, include closed markets. Defaults to open (active) markets only.",
+              "default": false,
+              "title": "Include Closed"
+            },
+            "description": "When true, include closed markets. Defaults to open (active) markets only."
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortField",
+              "description": "Field used to sort the response rows.",
+              "default": "updated_at"
+            },
+            "description": "Field used to sort the response rows."
+          },
+          {
+            "name": "order",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/SortOrder",
+              "description": "Sort direction.",
+              "default": "desc"
+            },
+            "description": "Sort direction."
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "crypto",
+                "sports"
+              ],
+              "description": "Restrict results to one category. Omit to search every category this deployment holds.",
+              "title": "Category"
+            },
+            "description": "Restrict results to one category. Omit to search every category this deployment holds."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Paginated list of markets.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketListResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Malformed date range or invalid pagination cursor.",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalid_cursor": {
+                    "summary": "Invalid cursor",
+                    "value": {
+                      "error": "bad_request",
+                      "message": "Invalid pagination cursor"
+                    }
+                  },
+                  "invalid_date_range": {
+                    "summary": "Invalid date range",
+                    "value": {
+                      "error": "bad_request",
+                      "message": "start_date_min must be <= start_date_max"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "API key is missing, invalid, or expired.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "unauthorized",
+                  "message": "Invalid or expired API key."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded for the current API key.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "rate_limited",
+                  "message": "Rate limit exceeded. Please try again later."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server-side error.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "internal_error",
+                  "message": "Failed to fetch data."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error for one or more request parameters.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "query",
+                        "limit"
+                      ],
+                      "msg": "Input should be less than or equal to 1000",
+                      "type": "less_than_equal"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-mint": {
+          "metadata": {
+            "title": "Polymarket Markets API — List Markets"
+          }
+        }
+      }
+    },
+    "/v1/tags": {
+      "get": {
+        "tags": [
+          "Discovery"
+        ],
+        "summary": "List available tags",
+        "description": "List all unique event tags available for discovery filtering.\n\nTags are normalized to lowercase and sorted alphabetically.\nUse the returned tags with the `tags` parameter on series, events, and markets endpoints. Covers Polymarket crypto and sports markets from the PolyOrderbooks historical archive.",
+        "operationId": "list_tags_v1_tags_get",
+        "parameters": [
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "crypto",
+                "sports"
+              ],
+              "description": "Restrict results to one category. Omit to search every category this deployment holds.",
+              "title": "Category"
+            },
+            "description": "Restrict results to one category. Omit to search every category this deployment holds."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "All unique tags sorted alphabetically.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagListResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "API key is missing, invalid, or expired.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": "unauthorized",
+                  "message": "Invalid or expired API key."
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded for the current API key.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": "rate_limited",
+                  "message": "Rate limit exceeded. Please try again later."
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server-side error.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "error": "internal_error",
+                  "message": "Failed to fetch data."
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error for one or more request parameters.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "query",
+                        "limit"
+                      ],
+                      "msg": "Input should be less than or equal to 1000",
+                      "type": "less_than_equal"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-mint": {
+          "metadata": {
+            "title": "Polymarket Market Tags API"
+          }
+        }
+      }
+    },
+    "/v1/markets/{id_or_slug}": {
+      "get": {
+        "tags": [
+          "Discovery"
+        ],
+        "summary": "Get market details",
+        "description": "Get detailed information about a specific market by ID or slug.\n\nReturns full market information, including tokens, description, and resolution status. Covers Polymarket crypto and sports markets from the PolyOrderbooks historical archive.",
+        "operationId": "get_market_detail_v1_markets__id_or_slug__get",
+        "parameters": [
+          {
+            "name": "id_or_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Market ID or market slug.",
+              "examples": [
+                "618831"
+              ],
+              "title": "Id Or Slug"
+            },
+            "description": "Market ID or market slug."
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "crypto",
+                "sports"
+              ],
+              "description": "Restrict results to one category. Omit to search every category this deployment holds.",
+              "title": "Category"
+            },
+            "description": "Restrict results to one category. Omit to search every category this deployment holds."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Detailed market object with tokens and resolution metadata.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarketDetailResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Market ID/slug does not exist.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "not_found",
+                  "message": "Market not found: nonexistent_market_id"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "API key is missing, invalid, or expired.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "unauthorized",
+                  "message": "Invalid or expired API key."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded for the current API key.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "rate_limited",
+                  "message": "Rate limit exceeded. Please try again later."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server-side error.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "internal_error",
+                  "message": "Failed to fetch data."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error for one or more request parameters.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "query",
+                        "limit"
+                      ],
+                      "msg": "Input should be less than or equal to 1000",
+                      "type": "less_than_equal"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-mint": {
+          "metadata": {
+            "title": "Polymarket Market Details API"
+          }
+        }
+      }
+    },
+    "/v1/markets/{id_or_slug}/metrics": {
+      "get": {
+        "tags": [
+          "History"
+        ],
+        "summary": "Get market metrics history",
+        "description": "Get historical market-level metrics including volume, liquidity, and spread.\n\n**Pagination limits:**\n- Default `limit`: 100 points per page\n- Maximum `limit`: 200 points per page\n- Use `cursor` from `metadata.next_cursor` to fetch the next page\n\n**Aggregation:** All metrics are averaged when aggregating to higher resolutions.\n\n**Format:** JSON only. Covers Polymarket crypto and sports markets from the PolyOrderbooks historical archive.",
+        "operationId": "get_market_metrics_v1_markets__id_or_slug__metrics_get",
+        "parameters": [
+          {
+            "name": "id_or_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Market ID or market slug.",
+              "examples": [
+                "618831"
+              ],
+              "title": "Id Or Slug"
+            },
+            "description": "Market ID or market slug."
+          },
+          {
+            "name": "start_ts",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Inclusive range start. Accepts ISO 8601 timestamp or Unix seconds.",
+              "examples": [
+                "2025-09-01T00:00:00Z",
+                "1756684800"
+              ],
+              "title": "Start Ts"
+            },
+            "description": "Inclusive range start. Accepts ISO 8601 timestamp or Unix seconds."
+          },
+          {
+            "name": "end_ts",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Exclusive range end. Accepts ISO 8601 timestamp or Unix seconds.",
+              "examples": [
+                "2025-09-05T00:00:00Z",
+                "1757030400"
+              ],
+              "title": "End Ts"
+            },
+            "description": "Exclusive range end. Accepts ISO 8601 timestamp or Unix seconds."
+          },
+          {
+            "name": "resolution",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Resolution",
+              "description": "Aggregation bucket size."
+            },
+            "description": "Aggregation bucket size."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Maximum number of points to return in this page. Default: 100, max: 200.",
+              "examples": [
+                100
+              ],
+              "default": 100,
+              "title": "Limit"
+            },
+            "description": "Maximum number of points to return in this page. Default: 100, max: 200."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous response metadata.next_cursor.",
+              "title": "Cursor"
+            },
+            "description": "Opaque cursor from a previous response metadata.next_cursor."
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "crypto",
+                "sports"
+              ],
+              "description": "Restrict results to one category. Omit to search every category this deployment holds.",
+              "title": "Category"
+            },
+            "description": "Restrict results to one category. Omit to search every category this deployment holds."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Historical market-level metrics in the requested resolution.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MetricsResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid timestamp format, date range, limit, or cursor.",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalid_timestamp": {
+                    "value": {
+                      "error": "bad_request",
+                      "message": "Invalid timestamp format. Expected ISO 8601 string or Unix timestamp: could not convert string to float: 'invalid-timestamp'"
+                    }
+                  },
+                  "invalid_limit": {
+                    "value": {
+                      "error": "bad_request",
+                      "message": "limit too large. Requested: 250, Maximum: 200"
+                    }
+                  },
+                  "invalid_cursor": {
+                    "value": {
+                      "error": "bad_request",
+                      "message": "Invalid pagination cursor"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "API key is missing, invalid, or expired.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "unauthorized",
+                  "message": "Invalid or expired API key."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Plan does not allow the requested data point, granularity, or date range.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "forbidden",
+                  "message": "Your plan does not allow historical order books."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource (market or token) was not found.",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "market": {
+                    "value": {
+                      "error": "not_found",
+                      "message": "Market not found: 618831"
+                    }
+                  },
+                  "token": {
+                    "value": {
+                      "error": "not_found",
+                      "message": "Token not found: 12345"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded for the current API key.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "rate_limited",
+                  "message": "Rate limit exceeded. Please try again later."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server-side error.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "internal_error",
+                  "message": "Failed to fetch data."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error for one or more request parameters.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "query",
+                        "resolution"
+                      ],
+                      "msg": "Unsupported resolution '2m'. Allowed: 250ms, 1s, 60s, 1m, 5m, 10m, 15m, 1h, 6h, 1d",
+                      "type": "enum"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-mint": {
+          "metadata": {
+            "title": "Polymarket Liquidity & Volume Metrics API"
+          }
+        }
+      }
+    },
+    "/v1/markets/{id_or_slug}/prices": {
+      "get": {
+        "tags": [
+          "History"
+        ],
+        "summary": "Get price history for every token in a market",
+        "description": "Get the full price history (probabilities from 0.0 to 1.0) for **all** outcomes of one market in a single request.\n\nUse this when you want a market-wide price series — for example charting how a Yes/No market repriced over its life. One call returns every token, so you do not need to know token IDs in advance.\n\n**When to use the token-scoped route instead:** if you already hold a CLOB token id and want only that one series, use `/v1/tokens/{token_id}/prices`. It returns a single token and is the cheaper call for that case.\n\n**Pagination limits:**\n- Default `limit`: 100 points per page\n- Maximum `limit`: 200 points per page\n- Use `cursor` from `metadata.next_cursor` to fetch the next page\n\n**Aggregation:** Prices are averaged when aggregating to higher resolutions.\n\n**Format:** JSON only. Covers Polymarket crypto and sports markets from the PolyOrderbooks historical archive.",
+        "operationId": "get_market_prices_v1_markets__id_or_slug__prices_get",
+        "parameters": [
+          {
+            "name": "id_or_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Market ID or market slug.",
+              "examples": [
+                "618831"
+              ],
+              "title": "Id Or Slug"
+            },
+            "description": "Market ID or market slug."
+          },
+          {
+            "name": "start_ts",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Inclusive range start. Accepts ISO 8601 timestamp or Unix seconds.",
+              "examples": [
+                "2025-09-01T00:00:00Z",
+                "1756684800"
+              ],
+              "title": "Start Ts"
+            },
+            "description": "Inclusive range start. Accepts ISO 8601 timestamp or Unix seconds."
+          },
+          {
+            "name": "end_ts",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Exclusive range end. Accepts ISO 8601 timestamp or Unix seconds.",
+              "examples": [
+                "2025-09-05T00:00:00Z",
+                "1757030400"
+              ],
+              "title": "End Ts"
+            },
+            "description": "Exclusive range end. Accepts ISO 8601 timestamp or Unix seconds."
+          },
+          {
+            "name": "resolution",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Resolution",
+              "description": "Aggregation bucket size."
+            },
+            "description": "Aggregation bucket size."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Maximum number of points to return in this page. Default: 100, max: 200.",
+              "examples": [
+                100
+              ],
+              "default": 100,
+              "title": "Limit"
+            },
+            "description": "Maximum number of points to return in this page. Default: 100, max: 200."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous response metadata.next_cursor.",
+              "title": "Cursor"
+            },
+            "description": "Opaque cursor from a previous response metadata.next_cursor."
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "crypto",
+                "sports"
+              ],
+              "description": "Restrict results to one category. Omit to search every category this deployment holds.",
+              "title": "Category"
+            },
+            "description": "Restrict results to one category. Omit to search every category this deployment holds."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Historical prices for all tokens in the market.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PricesResponseAllTokens"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid timestamp format, limit, cursor, or market point constraints.",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalid_limit": {
+                    "value": {
+                      "error": "bad_request",
+                      "message": "limit too large. Requested: 250, Maximum: 200"
+                    }
+                  },
+                  "small_limit": {
+                    "value": {
+                      "error": "bad_request",
+                      "message": "limit too small for this market. Minimum required: 3"
+                    }
+                  },
+                  "many_tokens": {
+                    "value": {
+                      "error": "bad_request",
+                      "message": "Market has more than 200 tokens. Use /v1/tokens/{token_id}/prices instead."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "API key is missing, invalid, or expired.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "unauthorized",
+                  "message": "Invalid or expired API key."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Plan does not allow the requested data point, granularity, or date range.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "forbidden",
+                  "message": "Your plan does not allow historical order books."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource (market or token) was not found.",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "market": {
+                    "value": {
+                      "error": "not_found",
+                      "message": "Market not found: 618831"
+                    }
+                  },
+                  "token": {
+                    "value": {
+                      "error": "not_found",
+                      "message": "Token not found: 12345"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded for the current API key.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "rate_limited",
+                  "message": "Rate limit exceeded. Please try again later."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server-side error.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "internal_error",
+                  "message": "Failed to fetch data."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error for one or more request parameters.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "query",
+                        "resolution"
+                      ],
+                      "msg": "Unsupported resolution '2m'. Allowed: 250ms, 1s, 60s, 1m, 5m, 10m, 15m, 1h, 6h, 1d",
+                      "type": "enum"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-mint": {
+          "metadata": {
+            "title": "Polymarket Market Price History API — All Tokens in One Market"
+          }
+        }
+      }
+    },
+    "/v1/tokens/{token_id}/prices": {
+      "get": {
+        "tags": [
+          "History"
+        ],
+        "summary": "Get price history for one token by CLOB token id",
+        "description": "Get the historical price series (probabilities from 0.0 to 1.0) for a **single** token, addressed by its Polymarket CLOB token id.\n\nUse this when you already know the token id — a persisted outcome id from your own catalog, or the `Yes` / `No` token returned by `/v1/markets/{id_or_slug}`.\n\n**When to use the market-scoped route instead:** to pull every outcome of a market without knowing any token ids, use `/v1/markets/{id_or_slug}/prices`.\n\n**Pagination limits:**\n- Default `limit`: 100 points per page\n- Maximum `limit`: 200 points per page\n- Use `cursor` from `metadata.next_cursor` to fetch the next page\n\n**Aggregation:** Prices are averaged when aggregating to higher resolutions.\n\n**Format:** JSON only. Covers Polymarket crypto and sports markets from the PolyOrderbooks historical archive.",
+        "operationId": "get_token_prices_v1_tokens__token_id__prices_get",
+        "parameters": [
+          {
+            "name": "token_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Token ID.",
+              "examples": [
+                "12345"
+              ],
+              "title": "Token Id"
+            },
+            "description": "Token ID."
+          },
+          {
+            "name": "start_ts",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Inclusive range start. Accepts ISO 8601 timestamp or Unix seconds.",
+              "examples": [
+                "2025-09-01T00:00:00Z",
+                "1756684800"
+              ],
+              "title": "Start Ts"
+            },
+            "description": "Inclusive range start. Accepts ISO 8601 timestamp or Unix seconds."
+          },
+          {
+            "name": "end_ts",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Exclusive range end. Accepts ISO 8601 timestamp or Unix seconds.",
+              "examples": [
+                "2025-09-05T00:00:00Z",
+                "1757030400"
+              ],
+              "title": "End Ts"
+            },
+            "description": "Exclusive range end. Accepts ISO 8601 timestamp or Unix seconds."
+          },
+          {
+            "name": "resolution",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Resolution",
+              "description": "Aggregation bucket size."
+            },
+            "description": "Aggregation bucket size."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Maximum number of points to return in this page. Default: 100, max: 200.",
+              "examples": [
+                100
+              ],
+              "default": 100,
+              "title": "Limit"
+            },
+            "description": "Maximum number of points to return in this page. Default: 100, max: 200."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous response metadata.next_cursor.",
+              "title": "Cursor"
+            },
+            "description": "Opaque cursor from a previous response metadata.next_cursor."
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "crypto",
+                "sports"
+              ],
+              "description": "Restrict results to one category. Omit to search every category this deployment holds.",
+              "title": "Category"
+            },
+            "description": "Restrict results to one category. Omit to search every category this deployment holds."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Historical prices for a single token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PricesResponseSingleToken"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid timestamp format, limit, or cursor.",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "invalid_limit": {
+                    "value": {
+                      "error": "bad_request",
+                      "message": "limit too large. Requested: 201, Maximum: 200"
+                    }
+                  },
+                  "invalid_cursor": {
+                    "value": {
+                      "error": "bad_request",
+                      "message": "Invalid pagination cursor"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "API key is missing, invalid, or expired.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "unauthorized",
+                  "message": "Invalid or expired API key."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Plan does not allow the requested data point, granularity, or date range.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "forbidden",
+                  "message": "Your plan does not allow historical order books."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource (market or token) was not found.",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "market": {
+                    "value": {
+                      "error": "not_found",
+                      "message": "Market not found: 618831"
+                    }
+                  },
+                  "token": {
+                    "value": {
+                      "error": "not_found",
+                      "message": "Token not found: 12345"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded for the current API key.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "rate_limited",
+                  "message": "Rate limit exceeded. Please try again later."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server-side error.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "internal_error",
+                  "message": "Failed to fetch data."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error for one or more request parameters.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "query",
+                        "resolution"
+                      ],
+                      "msg": "Unsupported resolution '2m'. Allowed: 250ms, 1s, 60s, 1m, 5m, 10m, 15m, 1h, 6h, 1d",
+                      "type": "enum"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-mint": {
+          "metadata": {
+            "title": "Polymarket Single Token Price History API — By Token ID"
+          }
+        }
+      }
+    },
+    "/v1/markets/{id_or_slug}/books": {
+      "get": {
+        "tags": [
+          "History"
+        ],
+        "summary": "Get market order book history",
+        "description": "Get historical order book snapshots for market tokens.\n\nThis endpoint always returns order books for all tokens in the market.\nUse `/v1/tokens/{token_id}/books` for single-token queries.\n\n**Pagination limits:**\n- Default `limit`: 100 points per page\n- Maximum `limit`: 200 points per page\n- Use `cursor` from `metadata.next_cursor` to fetch the next page\n\n**Aggregation:** The last (most recent) order book in each interval is returned.\n\n**Format:** JSON only. Covers Polymarket crypto and sports markets from the PolyOrderbooks historical archive.",
+        "operationId": "get_market_books_v1_markets__id_or_slug__books_get",
+        "parameters": [
+          {
+            "name": "id_or_slug",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Market ID or market slug.",
+              "examples": [
+                "618831"
+              ],
+              "title": "Id Or Slug"
+            },
+            "description": "Market ID or market slug."
+          },
+          {
+            "name": "start_ts",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Inclusive range start. Accepts ISO 8601 timestamp or Unix seconds.",
+              "examples": [
+                "2025-09-04T00:00:00Z",
+                "1756944000"
+              ],
+              "title": "Start Ts"
+            },
+            "description": "Inclusive range start. Accepts ISO 8601 timestamp or Unix seconds."
+          },
+          {
+            "name": "end_ts",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Exclusive range end. Accepts ISO 8601 timestamp or Unix seconds.",
+              "examples": [
+                "2025-09-05T00:00:00Z",
+                "1757030400"
+              ],
+              "title": "End Ts"
+            },
+            "description": "Exclusive range end. Accepts ISO 8601 timestamp or Unix seconds."
+          },
+          {
+            "name": "resolution",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Resolution",
+              "description": "Aggregation bucket size."
+            },
+            "description": "Aggregation bucket size."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Maximum number of points to return in this page. Default: 100, max: 200.",
+              "examples": [
+                100
+              ],
+              "default": 100,
+              "title": "Limit"
+            },
+            "description": "Maximum number of points to return in this page. Default: 100, max: 200."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous response metadata.next_cursor.",
+              "title": "Cursor"
+            },
+            "description": "Opaque cursor from a previous response metadata.next_cursor."
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "crypto",
+                "sports"
+              ],
+              "description": "Restrict results to one category. Omit to search every category this deployment holds.",
+              "title": "Category"
+            },
+            "description": "Restrict results to one category. Omit to search every category this deployment holds."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Historical order book snapshots for all market tokens.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooksResponseAllTokens"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid timestamp format, limit, cursor, or market point constraints.",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "small_limit": {
+                    "value": {
+                      "error": "bad_request",
+                      "message": "limit too small for this market. Minimum required: 3"
+                    }
+                  },
+                  "many_tokens": {
+                    "value": {
+                      "error": "bad_request",
+                      "message": "Market has more than 200 tokens. Use /v1/tokens/{token_id}/books instead."
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "API key is missing, invalid, or expired.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "unauthorized",
+                  "message": "Invalid or expired API key."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Plan does not allow the requested data point, granularity, or date range.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "forbidden",
+                  "message": "Your plan does not allow historical order books."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource (market or token) was not found.",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "market": {
+                    "value": {
+                      "error": "not_found",
+                      "message": "Market not found: 618831"
+                    }
+                  },
+                  "token": {
+                    "value": {
+                      "error": "not_found",
+                      "message": "Token not found: 12345"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded for the current API key.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "rate_limited",
+                  "message": "Rate limit exceeded. Please try again later."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server-side error.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "internal_error",
+                  "message": "Failed to fetch data."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error for one or more request parameters.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "query",
+                        "resolution"
+                      ],
+                      "msg": "Unsupported resolution '2m'. Allowed: 250ms, 1s, 60s, 1m, 5m, 10m, 15m, 1h, 6h, 1d",
+                      "type": "enum"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-mint": {
+          "metadata": {
+            "title": "Polymarket Order Book API — L2 History"
+          }
+        }
+      }
+    },
+    "/v1/tokens/{token_id}/books": {
+      "get": {
+        "tags": [
+          "History"
+        ],
+        "summary": "Get token order book history",
+        "description": "Get historical order book snapshots for a specific token.\n\n**Pagination limits:**\n- Default `limit`: 100 points per page\n- Maximum `limit`: 200 points per page\n- Use `cursor` from `metadata.next_cursor` to fetch the next page\n\n**Aggregation:** The last (most recent) order book in each interval is returned.\n\n**Format:** JSON only. Covers Polymarket crypto and sports markets from the PolyOrderbooks historical archive.",
+        "operationId": "get_token_books_v1_tokens__token_id__books_get",
+        "parameters": [
+          {
+            "name": "token_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200,
+              "description": "Token ID.",
+              "examples": [
+                "12345"
+              ],
+              "title": "Token Id"
+            },
+            "description": "Token ID."
+          },
+          {
+            "name": "start_ts",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Inclusive range start. Accepts ISO 8601 timestamp or Unix seconds.",
+              "examples": [
+                "2025-09-04T00:00:00Z",
+                "1756944000"
+              ],
+              "title": "Start Ts"
+            },
+            "description": "Inclusive range start. Accepts ISO 8601 timestamp or Unix seconds."
+          },
+          {
+            "name": "end_ts",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Exclusive range end. Accepts ISO 8601 timestamp or Unix seconds.",
+              "examples": [
+                "2025-09-05T00:00:00Z",
+                "1757030400"
+              ],
+              "title": "End Ts"
+            },
+            "description": "Exclusive range end. Accepts ISO 8601 timestamp or Unix seconds."
+          },
+          {
+            "name": "resolution",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Resolution",
+              "description": "Aggregation bucket size."
+            },
+            "description": "Aggregation bucket size."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Maximum number of points to return in this page. Default: 100, max: 200.",
+              "examples": [
+                100
+              ],
+              "default": 100,
+              "title": "Limit"
+            },
+            "description": "Maximum number of points to return in this page. Default: 100, max: 200."
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Opaque cursor from a previous response metadata.next_cursor.",
+              "title": "Cursor"
+            },
+            "description": "Opaque cursor from a previous response metadata.next_cursor."
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "crypto",
+                "sports"
+              ],
+              "description": "Restrict results to one category. Omit to search every category this deployment holds.",
+              "title": "Category"
+            },
+            "description": "Restrict results to one category. Omit to search every category this deployment holds."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Historical order book snapshots for a single token.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BooksResponseSingleToken"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid timestamp format, limit, or cursor.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "bad_request",
+                  "message": "Invalid pagination cursor"
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "API key is missing, invalid, or expired.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "unauthorized",
+                  "message": "Invalid or expired API key."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Plan does not allow the requested data point, granularity, or date range.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "forbidden",
+                  "message": "Your plan does not allow historical order books."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Requested resource (market or token) was not found.",
+            "content": {
+              "application/json": {
+                "examples": {
+                  "market": {
+                    "value": {
+                      "error": "not_found",
+                      "message": "Market not found: 618831"
+                    }
+                  },
+                  "token": {
+                    "value": {
+                      "error": "not_found",
+                      "message": "Token not found: 12345"
+                    }
+                  }
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Rate limit exceeded for the current API key.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "rate_limited",
+                  "message": "Rate limit exceeded. Please try again later."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server-side error.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "error": "internal_error",
+                  "message": "Failed to fetch data."
+                },
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation error for one or more request parameters.",
+            "content": {
+              "application/json": {
+                "example": {
+                  "detail": [
+                    {
+                      "loc": [
+                        "query",
+                        "resolution"
+                      ],
+                      "msg": "Unsupported resolution '2m'. Allowed: 250ms, 1s, 60s, 1m, 5m, 10m, 15m, 1h, 6h, 1d",
+                      "type": "enum"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "x-mint": {
+          "metadata": {
+            "title": "Polymarket Token Order Book API — L2 History"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "BooksResponseAllTokens": {
+        "properties": {
+          "market_id": {
+            "type": "string",
+            "title": "Market Id",
+            "description": "Canonical market ID.",
+            "examples": [
+              "618831"
+            ]
+          },
+          "resolution": {
+            "type": "string",
+            "title": "Resolution",
+            "description": "Applied resolution.",
+            "examples": [
+              "1h"
+            ]
+          },
+          "tokens": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Tokens",
+            "description": "Mapping of token label to token ID.",
+            "examples": [
+              {
+                "No": "12346",
+                "Yes": "12345"
+              }
+            ]
+          },
+          "data": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/OrderBookSnapshot"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Data",
+            "description": "Order book snapshots grouped by token label."
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/HistoryPageMetadata",
+            "description": "Pagination metadata for this history page."
+          }
+        },
+        "type": "object",
+        "title": "BooksResponseAllTokens",
+        "description": "Response for `GET /markets/{id_or_slug}/books`.",
+        "example": {
+          "data": {
+            "No": [
+              {
+                "asks": [
+                  [
+                    0.29,
+                    133.0
+                  ],
+                  [
+                    0.3,
+                    281.0
+                  ]
+                ],
+                "bids": [
+                  [
+                    0.28,
+                    142.0
+                  ],
+                  [
+                    0.27,
+                    298.0
+                  ]
+                ],
+                "t": "2025-09-05T10:00:00Z"
+              }
+            ],
+            "Yes": [
+              {
+                "asks": [
+                  [
+                    0.73,
+                    140.0
+                  ],
+                  [
+                    0.74,
+                    300.0
+                  ]
+                ],
+                "bids": [
+                  [
+                    0.72,
+                    150.0
+                  ],
+                  [
+                    0.71,
+                    320.0
+                  ]
+                ],
+                "t": "2025-09-05T10:00:00Z"
+              }
+            ]
+          },
+          "market_id": "618831",
+          "metadata": {
+            "count": 2,
+            "limit": 100
+          },
+          "resolution": "1h",
+          "tokens": {
+            "No": "12346",
+            "Yes": "12345"
+          }
+        }
+      },
+      "BooksResponseSingleToken": {
+        "properties": {
+          "market_id": {
+            "type": "string",
+            "title": "Market Id",
+            "description": "Canonical market ID.",
+            "examples": [
+              "618831"
+            ]
+          },
+          "token_id": {
+            "type": "string",
+            "title": "Token Id",
+            "description": "Requested token ID.",
+            "examples": [
+              "12345"
+            ]
+          },
+          "token_label": {
+            "type": "string",
+            "title": "Token Label",
+            "description": "Human-readable token label.",
+            "examples": [
+              "Yes"
+            ]
+          },
+          "resolution": {
+            "type": "string",
+            "title": "Resolution",
+            "description": "Applied resolution.",
+            "examples": [
+              "1h"
+            ]
+          },
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/OrderBookSnapshot"
+            },
+            "type": "array",
+            "title": "Data",
+            "description": "Chronological order book snapshots for the selected token."
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/HistoryPageMetadata",
+            "description": "Pagination metadata for this history page."
+          }
+        },
+        "type": "object",
+        "title": "BooksResponseSingleToken",
+        "description": "Response for `GET /tokens/{token_id}/books`.",
+        "example": {
+          "data": [
+            {
+              "asks": [
+                [
+                  0.73,
+                  140.0
+                ],
+                [
+                  0.74,
+                  300.0
+                ]
+              ],
+              "bids": [
+                [
+                  0.72,
+                  150.0
+                ],
+                [
+                  0.71,
+                  320.0
+                ]
+              ],
+              "t": "2025-09-05T10:00:00Z"
+            }
+          ],
+          "market_id": "618831",
+          "metadata": {
+            "count": 1,
+            "limit": 100
+          },
+          "resolution": "1h",
+          "token_id": "12345",
+          "token_label": "Yes"
+        }
+      },
+      "ErrorResponse": {
+        "properties": {
+          "error": {
+            "type": "string",
+            "title": "Error",
+            "description": "Stable machine-readable code. Branch on this, not on `message`.",
+            "examples": [
+              "bad_request",
+              "unauthorized",
+              "forbidden",
+              "not_found",
+              "rate_limited"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "description": "Human-readable explanation, usually naming the offending value.",
+            "examples": [
+              "Unsupported resolution '30s'. Allowed: 250ms, 1s, 60s, 1m, 5m, 10m, 15m, 1h, 6h, 1d"
+            ]
+          }
+        },
+        "required": [
+          "error",
+          "message"
+        ],
+        "type": "object",
+        "title": "ErrorResponse",
+        "description": "Error envelope returned for every 4xx and 5xx response."
+      },
+      "EventItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Unique event identifier.",
+            "examples": [
+              "201"
+            ]
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug",
+            "description": "Stable URL-friendly event slug.",
+            "examples": [
+              "lakers-vs-bulls-2025-09-15"
+            ]
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title",
+            "description": "Display title of the event.",
+            "examples": [
+              "Lakers vs Bulls"
+            ]
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Tags",
+            "description": "Event tags."
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Current event status.",
+            "examples": [
+              "open"
+            ]
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date",
+            "description": "Event start timestamp in ISO 8601 format.",
+            "examples": [
+              "2025-09-15T01:00:00Z"
+            ]
+          },
+          "end_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date",
+            "description": "Event end timestamp in ISO 8601 format.",
+            "examples": [
+              "2025-09-15T04:00:00Z"
+            ]
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "crypto",
+              "sports"
+            ],
+            "title": "Category",
+            "description": "Which archive this row belongs to: `crypto` or `sports`."
+          }
+        },
+        "type": "object",
+        "title": "EventItem",
+        "description": "Event object returned by `GET /events`."
+      },
+      "EventListResponse": {
+        "properties": {
+          "metadata": {
+            "$ref": "#/components/schemas/PaginationMetadata",
+            "description": "Pagination metadata."
+          },
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/EventItem"
+            },
+            "type": "array",
+            "title": "Data",
+            "description": "Event results for this page."
+          }
+        },
+        "type": "object",
+        "title": "EventListResponse",
+        "description": "Paginated response for `GET /events`.",
+        "example": {
+          "data": [
+            {
+              "end_date": "2025-09-15T04:00:00Z",
+              "id": "201",
+              "slug": "lakers-vs-bulls-2025-09-15",
+              "category": "crypto",
+              "start_date": "2025-09-15T01:00:00Z",
+              "status": "open",
+              "tags": [
+                "basketball",
+                "nba"
+              ],
+              "title": "Lakers vs Bulls"
+            }
+          ],
+          "metadata": {
+            "count": 1,
+            "limit": 100
+          }
+        }
+      },
+      "HistoryPageMetadata": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "title": "Count",
+            "description": "Number of points returned in this page."
+          },
+          "limit": {
+            "type": "integer",
+            "title": "Limit",
+            "description": "Effective page limit used for this response."
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor",
+            "description": "Opaque cursor for the next page. Null when the page is complete."
+          }
+        },
+        "type": "object",
+        "title": "HistoryPageMetadata",
+        "description": "Pagination metadata for history responses."
+      },
+      "MarketDetailResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Unique market identifier.",
+            "examples": [
+              "618831"
+            ]
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug",
+            "description": "Stable URL-friendly market slug.",
+            "examples": [
+              "will-candidate-x-win-2025"
+            ]
+          },
+          "question": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question",
+            "description": "Human-readable market question.",
+            "examples": [
+              "Will Candidate X win the 2025 election?"
+            ]
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description",
+            "description": "Long-form market description, if available.",
+            "examples": [
+              "Resolves to YES if Candidate X wins the 2025 election."
+            ]
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Current market status.",
+            "examples": [
+              "open"
+            ]
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date",
+            "description": "Market start timestamp in ISO 8601 format.",
+            "examples": [
+              "2025-09-01T00:00:00Z"
+            ]
+          },
+          "end_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date",
+            "description": "Market end timestamp in ISO 8601 format.",
+            "examples": [
+              "2025-11-05T23:59:59Z"
+            ]
+          },
+          "closed_at": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closed At",
+            "description": "Timestamp when the market was closed.",
+            "examples": [
+              "2025-11-06T03:00:00Z"
+            ]
+          },
+          "resolved_token_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved Token Id",
+            "description": "Winning token identifier when market is resolved.",
+            "examples": [
+              "12345"
+            ]
+          },
+          "resolved_token_label": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Resolved Token Label",
+            "description": "Winning token label when market is resolved.",
+            "examples": [
+              "Yes"
+            ]
+          },
+          "tokens": {
+            "items": {
+              "$ref": "#/components/schemas/TokenInfo"
+            },
+            "type": "array",
+            "title": "Tokens",
+            "description": "All tokens for the market."
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "crypto",
+              "sports"
+            ],
+            "title": "Category",
+            "description": "Which archive this row belongs to: `crypto` or `sports`."
+          }
+        },
+        "type": "object",
+        "title": "MarketDetailResponse",
+        "description": "Detailed response for `GET /markets/{id_or_slug}`.",
+        "example": {
+          "description": "Resolves to YES if Candidate X wins the 2025 election.",
+          "end_date": "2025-11-05T23:59:59Z",
+          "id": "618831",
+          "question": "Will Candidate X win the 2025 election?",
+          "slug": "will-candidate-x-win-2025",
+          "start_date": "2025-09-01T00:00:00Z",
+          "status": "open",
+          "category": "crypto",
+          "tokens": [
+            {
+              "id": "12345",
+              "label": "Yes"
+            },
+            {
+              "id": "12346",
+              "label": "No"
+            }
+          ]
+        }
+      },
+      "MarketItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Unique market identifier.",
+            "examples": [
+              "618831"
+            ]
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug",
+            "description": "Stable URL-friendly market slug.",
+            "examples": [
+              "will-candidate-x-win-2025"
+            ]
+          },
+          "question": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Question",
+            "description": "Human-readable market question.",
+            "examples": [
+              "Will Candidate X win the 2025 election?"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Current market status.",
+            "examples": [
+              "open"
+            ]
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date",
+            "description": "Market start timestamp in ISO 8601 format.",
+            "examples": [
+              "2025-09-01T00:00:00Z"
+            ]
+          },
+          "end_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date",
+            "description": "Market end timestamp in ISO 8601 format.",
+            "examples": [
+              "2025-11-05T23:59:59Z"
+            ]
+          },
+          "tokens": {
+            "items": {
+              "$ref": "#/components/schemas/TokenInfo"
+            },
+            "type": "array",
+            "title": "Tokens",
+            "description": "Token list for this market."
+          },
+          "category": {
+            "type": "string",
+            "enum": [
+              "crypto",
+              "sports"
+            ],
+            "title": "Category",
+            "description": "Which archive this row belongs to: `crypto` or `sports`."
+          }
+        },
+        "type": "object",
+        "title": "MarketItem",
+        "description": "Market object returned by `GET /markets`."
+      },
+      "MarketListResponse": {
+        "properties": {
+          "metadata": {
+            "$ref": "#/components/schemas/PaginationMetadata",
+            "description": "Pagination metadata."
+          },
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/MarketItem"
+            },
+            "type": "array",
+            "title": "Data",
+            "description": "Market results for this page."
+          }
+        },
+        "type": "object",
+        "title": "MarketListResponse",
+        "description": "Paginated response for `GET /markets`.",
+        "example": {
+          "data": [
+            {
+              "end_date": "2025-11-05T23:59:59Z",
+              "id": "618831",
+              "question": "Will Candidate X win the 2025 election?",
+              "slug": "will-candidate-x-win-2025",
+              "start_date": "2025-09-01T00:00:00Z",
+              "status": "open",
+              "category": "crypto",
+              "tokens": [
+                {
+                  "id": "12345",
+                  "label": "Yes"
+                },
+                {
+                  "id": "12346",
+                  "label": "No"
+                }
+              ]
+            }
+          ],
+          "metadata": {
+            "count": 1,
+            "limit": 100
+          }
+        }
+      },
+      "MetricDataPoint": {
+        "properties": {
+          "t": {
+            "type": "string",
+            "format": "date-time",
+            "title": "T",
+            "description": "Bucket timestamp in ISO 8601 format.",
+            "examples": [
+              "2025-09-05T12:00:00Z"
+            ]
+          },
+          "volume": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Volume",
+            "description": "Aggregated traded volume during the bucket.",
+            "examples": [
+              1024.5
+            ]
+          },
+          "liquidity": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Liquidity",
+            "description": "Aggregated available liquidity during the bucket.",
+            "examples": [
+              50000.0
+            ]
+          },
+          "spread": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Spread",
+            "description": "Aggregated bid/ask spread during the bucket.",
+            "examples": [
+              0.0125
+            ]
+          }
+        },
+        "type": "object",
+        "title": "MetricDataPoint",
+        "description": "Single market metrics data point."
+      },
+      "MetricsResponse": {
+        "properties": {
+          "market_id": {
+            "type": "string",
+            "title": "Market Id",
+            "description": "Canonical market ID.",
+            "examples": [
+              "618831"
+            ]
+          },
+          "resolution": {
+            "type": "string",
+            "title": "Resolution",
+            "description": "Applied resolution.",
+            "examples": [
+              "1h"
+            ]
+          },
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/MetricDataPoint"
+            },
+            "type": "array",
+            "title": "Data",
+            "description": "Chronological time series points for the requested range."
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/HistoryPageMetadata",
+            "description": "Pagination metadata for this history page."
+          }
+        },
+        "type": "object",
+        "title": "MetricsResponse",
+        "description": "Response body for `GET /markets/{id_or_slug}/metrics`.",
+        "example": {
+          "data": [
+            {
+              "liquidity": 45678.0,
+              "spread": 0.015,
+              "t": "2025-09-05T10:00:00Z",
+              "volume": 1200.5
+            },
+            {
+              "liquidity": 47010.0,
+              "spread": 0.012,
+              "t": "2025-09-05T11:00:00Z",
+              "volume": 980.0
+            }
+          ],
+          "market_id": "618831",
+          "metadata": {
+            "count": 2,
+            "limit": 100
+          },
+          "resolution": "1h"
+        }
+      },
+      "OrderBookSnapshot": {
+        "properties": {
+          "t": {
+            "type": "string",
+            "format": "date-time",
+            "title": "T",
+            "description": "Bucket timestamp in ISO 8601 format.",
+            "examples": [
+              "2025-09-05T12:00:00Z"
+            ]
+          },
+          "bids": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Bids",
+            "description": "Bid levels as `[price, size]` pairs, best bid first.",
+            "examples": [
+              [
+                [
+                  0.72,
+                  150.0
+                ],
+                [
+                  0.71,
+                  320.0
+                ]
+              ]
+            ]
+          },
+          "asks": {
+            "items": {
+              "items": {
+                "type": "number"
+              },
+              "type": "array"
+            },
+            "type": "array",
+            "title": "Asks",
+            "description": "Ask levels as `[price, size]` pairs, best ask first.",
+            "examples": [
+              [
+                [
+                  0.73,
+                  140.0
+                ],
+                [
+                  0.74,
+                  300.0
+                ]
+              ]
+            ]
+          }
+        },
+        "type": "object",
+        "title": "OrderBookSnapshot",
+        "description": "Single token order book snapshot."
+      },
+      "PaginationMetadata": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Count",
+            "description": "Number of items returned in this page."
+          },
+          "limit": {
+            "type": "integer",
+            "maximum": 1000.0,
+            "minimum": 1.0,
+            "title": "Limit",
+            "description": "Requested maximum number of items for this page."
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor",
+            "description": "Opaque cursor to request the next page. Null when there are no more results."
+          }
+        },
+        "type": "object",
+        "title": "PaginationMetadata",
+        "description": "Pagination metadata returned by list endpoints."
+      },
+      "PriceDataPoint": {
+        "properties": {
+          "t": {
+            "type": "string",
+            "format": "date-time",
+            "title": "T",
+            "description": "Bucket timestamp in ISO 8601 format.",
+            "examples": [
+              "2025-09-05T12:00:00Z"
+            ]
+          },
+          "p": {
+            "type": "number",
+            "title": "P",
+            "description": "Token price/probability between 0.0 and 1.0.",
+            "examples": [
+              0.73
+            ]
+          }
+        },
+        "type": "object",
+        "title": "PriceDataPoint",
+        "description": "Single token price data point."
+      },
+      "PricesResponseAllTokens": {
+        "properties": {
+          "market_id": {
+            "type": "string",
+            "title": "Market Id",
+            "description": "Canonical market ID.",
+            "examples": [
+              "618831"
+            ]
+          },
+          "resolution": {
+            "type": "string",
+            "title": "Resolution",
+            "description": "Applied resolution.",
+            "examples": [
+              "1h"
+            ]
+          },
+          "tokens": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "type": "object",
+            "title": "Tokens",
+            "description": "Mapping of token label to token ID.",
+            "examples": [
+              {
+                "No": "12346",
+                "Yes": "12345"
+              }
+            ]
+          },
+          "data": {
+            "additionalProperties": {
+              "items": {
+                "$ref": "#/components/schemas/PriceDataPoint"
+              },
+              "type": "array"
+            },
+            "type": "object",
+            "title": "Data",
+            "description": "Time series points grouped by token label."
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/HistoryPageMetadata",
+            "description": "Pagination metadata for this history page."
+          }
+        },
+        "type": "object",
+        "title": "PricesResponseAllTokens",
+        "description": "Response for `GET /markets/{id_or_slug}/prices`.",
+        "example": {
+          "data": {
+            "No": [
+              {
+                "p": 0.29,
+                "t": "2025-09-05T10:00:00Z"
+              },
+              {
+                "p": 0.27,
+                "t": "2025-09-05T11:00:00Z"
+              }
+            ],
+            "Yes": [
+              {
+                "p": 0.71,
+                "t": "2025-09-05T10:00:00Z"
+              },
+              {
+                "p": 0.73,
+                "t": "2025-09-05T11:00:00Z"
+              }
+            ]
+          },
+          "market_id": "618831",
+          "metadata": {
+            "count": 4,
+            "limit": 100
+          },
+          "resolution": "1h",
+          "tokens": {
+            "No": "12346",
+            "Yes": "12345"
+          }
+        }
+      },
+      "PricesResponseSingleToken": {
+        "properties": {
+          "market_id": {
+            "type": "string",
+            "title": "Market Id",
+            "description": "Canonical market ID.",
+            "examples": [
+              "618831"
+            ]
+          },
+          "token_id": {
+            "type": "string",
+            "title": "Token Id",
+            "description": "Requested token ID.",
+            "examples": [
+              "12345"
+            ]
+          },
+          "token_label": {
+            "type": "string",
+            "title": "Token Label",
+            "description": "Human-readable token label.",
+            "examples": [
+              "Yes"
+            ]
+          },
+          "resolution": {
+            "type": "string",
+            "title": "Resolution",
+            "description": "Applied resolution.",
+            "examples": [
+              "1h"
+            ]
+          },
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/PriceDataPoint"
+            },
+            "type": "array",
+            "title": "Data",
+            "description": "Chronological time series points for the selected token."
+          },
+          "metadata": {
+            "$ref": "#/components/schemas/HistoryPageMetadata",
+            "description": "Pagination metadata for this history page."
+          }
+        },
+        "type": "object",
+        "title": "PricesResponseSingleToken",
+        "description": "Response for `GET /tokens/{token_id}/prices`.",
+        "example": {
+          "data": [
+            {
+              "p": 0.71,
+              "t": "2025-09-05T10:00:00Z"
+            },
+            {
+              "p": 0.73,
+              "t": "2025-09-05T11:00:00Z"
+            }
+          ],
+          "market_id": "618831",
+          "metadata": {
+            "count": 2,
+            "limit": 100
+          },
+          "resolution": "1h",
+          "token_id": "12345",
+          "token_label": "Yes"
+        }
+      },
+      "Resolution": {
+        "type": "string",
+        "enum": [
+          "250ms",
+          "1s",
+          "1m",
+          "5m",
+          "10m",
+          "15m",
+          "1h",
+          "6h",
+          "1d"
+        ],
+        "title": "Resolution",
+        "description": "Supported time resolutions for historical endpoints."
+      },
+      "SeriesItem": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Unique series identifier.",
+            "examples": [
+              "101"
+            ]
+          },
+          "slug": {
+            "type": "string",
+            "title": "Slug",
+            "description": "Stable URL-friendly series slug.",
+            "examples": [
+              "nba"
+            ]
+          },
+          "title": {
+            "type": "string",
+            "title": "Title",
+            "description": "Display title of the series.",
+            "examples": [
+              "NBA"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "description": "Current series status.",
+            "examples": [
+              "open"
+            ]
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date",
+            "description": "Series start timestamp in ISO 8601 format.",
+            "examples": [
+              "2025-09-01T00:00:00Z"
+            ]
+          },
+          "end_date": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End Date",
+            "description": "Series end timestamp in ISO 8601 format, if closed.",
+            "examples": [
+              "2025-10-31T23:59:59Z"
+            ]
+          }
+        },
+        "type": "object",
+        "title": "SeriesItem",
+        "description": "Series object returned by `GET /series`."
+      },
+      "SeriesListResponse": {
+        "properties": {
+          "metadata": {
+            "$ref": "#/components/schemas/PaginationMetadata",
+            "description": "Pagination metadata."
+          },
+          "data": {
+            "items": {
+              "$ref": "#/components/schemas/SeriesItem"
+            },
+            "type": "array",
+            "title": "Data",
+            "description": "Series results for this page."
+          }
+        },
+        "type": "object",
+        "title": "SeriesListResponse",
+        "description": "Paginated response for `GET /series`.",
+        "example": {
+          "data": [
+            {
+              "id": "101",
+              "slug": "nba",
+              "start_date": "2025-09-01T00:00:00Z",
+              "status": "open",
+              "title": "NBA"
+            },
+            {
+              "id": "102",
+              "slug": "us-politics",
+              "start_date": "2025-09-01T00:00:00Z",
+              "status": "open",
+              "title": "US Politics"
+            }
+          ],
+          "metadata": {
+            "count": 2,
+            "limit": 100,
+            "next_cursor": "eyJ2IjoiMjAyNS0wNi0wNVQxMjozNDo1NiswMDowMCIsImlkIjoiMTAxIn0="
+          }
+        }
+      },
+      "SortField": {
+        "type": "string",
+        "enum": [
+          "updated_at",
+          "start_date",
+          "end_date"
+        ],
+        "title": "SortField",
+        "description": "Field to sort by. `updated_at` orders by when the market row was last refreshed; `start_date` and `end_date` order by the parent event window.",
+        "default": "updated_at"
+      },
+      "SortOrder": {
+        "type": "string",
+        "enum": [
+          "asc",
+          "desc"
+        ],
+        "title": "SortOrder",
+        "description": "Sort direction for discovery listings."
+      },
+      "TagListResponse": {
+        "properties": {
+          "count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Count",
+            "description": "Number of unique tags."
+          },
+          "data": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array",
+            "title": "Data",
+            "description": "Sorted list of unique tag strings."
+          }
+        },
+        "type": "object",
+        "title": "TagListResponse",
+        "description": "Response for `GET /tags`.\n\nReturns all unique event tags available for discovery filtering.\nTags are normalized to lowercase and sorted alphabetically.",
+        "example": {
+          "count": 4,
+          "data": [
+            "bitcoin",
+            "crypto",
+            "politics",
+            "sports"
+          ]
+        }
+      },
+      "TagsMatchMode": {
+        "type": "string",
+        "enum": [
+          "any",
+          "all"
+        ],
+        "title": "TagsMatchMode",
+        "description": "Tag match behavior for filtering."
+      },
+      "TokenInfo": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "title": "Id",
+            "description": "Unique token identifier.",
+            "examples": [
+              "12345"
+            ]
+          },
+          "label": {
+            "type": "string",
+            "title": "Label",
+            "description": "Human-readable token label shown to users.",
+            "examples": [
+              "Yes"
+            ]
+          }
+        },
+        "type": "object",
+        "title": "TokenInfo",
+        "description": "Token metadata for a market."
+      },
+      "UsageDataPointsResponse": {
+        "properties": {
+          "metrics": {
+            "type": "boolean",
+            "title": "Metrics",
+            "description": "Whether historical market metrics are allowed."
+          },
+          "prices": {
+            "type": "boolean",
+            "title": "Prices",
+            "description": "Whether historical prices are allowed."
+          },
+          "books": {
+            "type": "boolean",
+            "title": "Books",
+            "description": "Whether historical order books are allowed."
+          }
+        },
+        "type": "object",
+        "title": "UsageDataPointsResponse",
+        "description": "Data point access controls for the current plan."
+      },
+      "UsageLimitsResponse": {
+        "properties": {
+          "requests_per_minute": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Requests Per Minute",
+            "description": "Plan rate limit in requests per minute, or `unlimited` for uncapped plans."
+          },
+          "requests_remaining": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Requests Remaining",
+            "description": "Remaining requests in the current rate-limit window."
+          },
+          "granularity_allowed": {
+            "type": "string",
+            "title": "Granularity Allowed",
+            "description": "Finest historical resolution allowed by plan."
+          },
+          "max_history_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Max History Days",
+            "description": "Maximum rolling lookback window in days, or `unlimited` if uncapped."
+          },
+          "data_points": {
+            "$ref": "#/components/schemas/UsageDataPointsResponse",
+            "description": "Data point categories available under the current plan."
+          }
+        },
+        "type": "object",
+        "title": "UsageLimitsResponse",
+        "description": "Rate limit and granularity allowance for the current API key."
+      },
+      "UsageResponse": {
+        "properties": {
+          "plan": {
+            "type": "string",
+            "title": "Plan",
+            "description": "Plan name for the current API key."
+          },
+          "organization": {
+            "type": "string",
+            "title": "Organization",
+            "description": "Organization name associated with the API key."
+          },
+          "limits": {
+            "$ref": "#/components/schemas/UsageLimitsResponse",
+            "description": "Rate-limit and plan capability information."
+          },
+          "reset_at": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reset At",
+            "description": "Unix timestamp (seconds) when the rate-limit window resets. Null for unlimited plans."
+          }
+        },
+        "type": "object",
+        "title": "UsageResponse",
+        "description": "Response body for `GET /usage`.",
+        "example": {
+          "limits": {
+            "data_points": {
+              "books": true,
+              "metrics": true,
+              "prices": true
+            },
+            "granularity_allowed": "250ms",
+            "max_history_days": 3,
+            "requests_per_minute": 60,
+            "requests_remaining": 58
+          },
+          "organization": "Acme Research",
+          "plan": "starter",
+          "reset_at": 1754140860
+        }
+      },
+      "BacktestAiRequest": {
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "title": "Prompt",
+            "description": "Natural-language strategy description, up to 1000 characters. Required unless `strategy` is provided.",
+            "examples": [
+              "Buy DOWN when the DOWN token price falls below 0.45 within the first 5 minutes of BTC 15m markets."
+            ]
+          },
+          "sampleSize": {
+            "type": "integer",
+            "title": "Sample Size",
+            "description": "Number of markets to sample (default 25).",
+            "examples": [
+              100
+            ]
+          },
+          "budget": {
+            "type": "number",
+            "title": "Budget",
+            "description": "Budget per trade in USDC, 5-10000 (default 50).",
+            "examples": [
+              50
+            ]
+          },
+          "days": {
+            "type": "integer",
+            "title": "Days",
+            "description": "Backtest history window in days (1-30), capped by the plan (Starter: 1; paid plans: 30).",
+            "examples": [
+              7
+            ]
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/BacktestAiStrategy",
+            "description": "Structured Strategy Builder spec. Required unless `prompt` is provided."
+          }
+        },
+        "type": "object",
+        "title": "BacktestAiRequest",
+        "description": "Request body for `POST /v1/ai/backtest`. Provide a natural-language `prompt` or a structured `strategy` spec."
+      },
+      "BacktestAiStrategy": {
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name",
+            "description": "Optional human-readable name for the strategy."
+          },
+          "market": {
+            "type": "object",
+            "title": "Market",
+            "description": "Market to backtest.",
+            "properties": {
+              "coin": {
+                "type": "string",
+                "title": "Coin",
+                "description": "Crypto asset, e.g. btc, eth, sol.",
+                "examples": [
+                  "btc"
+                ]
+              },
+              "market_type": {
+                "type": "string",
+                "title": "Market Type",
+                "description": "Up/down round length: 5m, 15m, or 4h.",
+                "examples": [
+                  "15m"
+                ]
+              }
+            },
+            "required": [
+              "coin",
+              "market_type"
+            ]
+          },
+          "side": {
+            "type": "string",
+            "title": "Side",
+            "description": "Position side.",
+            "enum": [
+              "up",
+              "down"
+            ]
+          },
+          "entry": {
+            "type": "array",
+            "title": "Entry",
+            "description": "Entry conditions, discriminated by `type` (`price`, `time`, or `or`).",
+            "items": {
+              "$ref": "#/components/schemas/BacktestAiEntryCondition"
+            }
+          },
+          "exit": {
+            "$ref": "#/components/schemas/BacktestAiExit",
+            "description": "Exit rules."
+          },
+          "taker_fee": {
+            "type": "number",
+            "title": "Taker Fee",
+            "description": "Taker fee fraction applied per trade (optional).",
+            "examples": [
+              0.0
+            ]
+          },
+          "trade_lag_seconds": {
+            "type": "integer",
+            "title": "Trade Lag Seconds",
+            "description": "Seconds to wait after an entry signal before filling (optional).",
+            "examples": [
+              0
+            ]
+          },
+          "max_trades_per_market": {
+            "type": "integer",
+            "title": "Max Trades Per Market",
+            "description": "Cap on trades opened per market (optional).",
+            "examples": [
+              1
+            ]
+          }
+        },
+        "type": "object",
+        "title": "BacktestAiStrategy",
+        "description": "Structured Strategy Builder spec for `POST /v1/ai/backtest`, also the exact spec form returned in the response."
+      },
+      "BacktestAiEntryCondition": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "price"
+              },
+              "token": {
+                "type": "string",
+                "enum": [
+                  "up",
+                  "down"
+                ]
+              },
+              "comparator": {
+                "type": "string",
+                "enum": [
+                  "<",
+                  ">",
+                  "<=",
+                  ">="
+                ]
+              },
+              "threshold": {
+                "type": "number",
+                "description": "Token price threshold in (0, 1]."
+              },
+              "within_seconds": {
+                "type": "integer",
+                "description": "Only while the market is less than this many seconds old."
+              }
+            },
+            "required": [
+              "type",
+              "token",
+              "comparator",
+              "threshold"
+            ],
+            "title": "Price condition"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "time"
+              },
+              "after_seconds": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "type",
+              "after_seconds"
+            ],
+            "title": "Time condition"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "type": {
+                "const": "or"
+              },
+              "options": {
+                "type": "array",
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/BacktestAiEntryCondition"
+                  }
+                }
+              }
+            },
+            "required": [
+              "type",
+              "options"
+            ],
+            "title": "OR condition"
+          }
+        ],
+        "title": "BacktestAiEntryCondition",
+        "description": "Entry condition, discriminated by `type`: `price`, `time`, or `or`."
+      },
+      "BacktestAiExit": {
+        "properties": {
+          "take_profit": {
+            "type": "number",
+            "title": "Take Profit",
+            "description": "Exit when the owned token's price crosses this level (optional)."
+          },
+          "stop_loss": {
+            "type": "number",
+            "title": "Stop Loss",
+            "description": "Exit when the owned token's price drops to this level (optional)."
+          },
+          "hold_to_expiry": {
+            "type": "boolean",
+            "title": "Hold To Expiry",
+            "description": "Hold through settlement when no exit triggers (default true)."
+          },
+          "trailing_stop_distance": {
+            "type": "number",
+            "title": "Trailing Stop Distance",
+            "description": "Distance of the trailing stop (optional)."
+          },
+          "trailing_stop_activation": {
+            "type": "number",
+            "title": "Trailing Stop Activation",
+            "description": "Price level at which the trailing stop activates (optional)."
+          },
+          "max_hold_seconds": {
+            "type": "integer",
+            "title": "Max Hold Seconds",
+            "description": "Force exit after this many seconds in the trade (optional)."
+          },
+          "exit_before_close_seconds": {
+            "type": "integer",
+            "title": "Exit Before Close Seconds",
+            "description": "Force exit this many seconds before market close (optional)."
+          }
+        },
+        "type": "object",
+        "title": "BacktestAiExit",
+        "description": "Exit rules for a backtest strategy."
+      },
+      "BacktestAiTrade": {
+        "properties": {
+          "entered_at": {
+            "type": "string",
+            "title": "Entered At"
+          },
+          "exited_at": {
+            "type": "string",
+            "title": "Exited At"
+          },
+          "entry_price": {
+            "type": "number",
+            "title": "Entry Price"
+          },
+          "exit_price": {
+            "type": "number",
+            "title": "Exit Price"
+          },
+          "shares": {
+            "type": "number",
+            "title": "Shares"
+          },
+          "pnl": {
+            "type": "number",
+            "title": "Pnl"
+          },
+          "return_pct": {
+            "type": "number",
+            "title": "Return Pct"
+          },
+          "fees": {
+            "type": "number",
+            "title": "Fees"
+          },
+          "exit_reason": {
+            "type": "string",
+            "title": "Exit Reason"
+          },
+          "fill_source": {
+            "type": "string",
+            "title": "Fill Source"
+          },
+          "partial_fill": {
+            "type": "boolean",
+            "title": "Partial Fill"
+          }
+        },
+        "type": "object",
+        "title": "BacktestAiTrade",
+        "description": "A single replayed trade."
+      },
+      "BacktestAiReport": {
+        "properties": {
+          "sample_size": {
+            "type": "integer",
+            "title": "Sample Size"
+          },
+          "markets_found": {
+            "type": "integer",
+            "title": "Markets Found"
+          },
+          "markets_traded": {
+            "type": "integer",
+            "title": "Markets Traded"
+          },
+          "trade_count": {
+            "type": "integer",
+            "title": "Trade Count"
+          },
+          "trades_per_market": {
+            "type": "number",
+            "title": "Trades Per Market"
+          },
+          "fees_paid": {
+            "type": "number",
+            "title": "Fees Paid"
+          },
+          "win_rate": {
+            "type": "number",
+            "title": "Win Rate"
+          },
+          "wins": {
+            "type": "integer",
+            "title": "Wins"
+          },
+          "losses": {
+            "type": "integer",
+            "title": "Losses"
+          },
+          "total_pnl": {
+            "type": "number",
+            "title": "Total Pnl"
+          },
+          "avg_return_pct": {
+            "type": "number",
+            "title": "Avg Return Pct"
+          },
+          "profit_factor": {
+            "type": "number",
+            "title": "Profit Factor"
+          },
+          "max_drawdown": {
+            "type": "number",
+            "title": "Max Drawdown"
+          },
+          "avg_win": {
+            "type": "number",
+            "title": "Avg Win"
+          },
+          "avg_loss": {
+            "type": "number",
+            "title": "Avg Loss"
+          },
+          "best_trade": {
+            "type": "number",
+            "title": "Best Trade"
+          },
+          "worst_trade": {
+            "type": "number",
+            "title": "Worst Trade"
+          },
+          "equity_curve": {
+            "type": "array",
+            "items": {
+              "type": "number"
+            },
+            "title": "Equity Curve",
+            "description": "Cumulative P&L after each trade."
+          },
+          "exit_reasons": {
+            "type": "object",
+            "title": "Exit Reasons",
+            "description": "Count of closes by reason."
+          },
+          "fill_sources": {
+            "type": "object",
+            "title": "Fill Sources",
+            "description": "Count of entries by fill source."
+          },
+          "trades": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BacktestAiTrade"
+            },
+            "title": "Trades"
+          },
+          "skips": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            },
+            "title": "Skips",
+            "description": "Sampled markets that produced no trade (first 50, present only when non-empty)."
+          },
+          "skipped_total": {
+            "type": "integer",
+            "title": "Skipped Total",
+            "description": "Total count of skipped markets when `skips` is present."
+          }
+        },
+        "type": "object",
+        "title": "BacktestAiReport",
+        "description": "Backtest statistics and replayed trades."
+      },
+      "BacktestAiResponse": {
+        "properties": {
+          "prompt": {
+            "type": "string",
+            "title": "Prompt",
+            "description": "The prompt the strategy was derived from."
+          },
+          "strategy": {
+            "$ref": "#/components/schemas/BacktestAiStrategy",
+            "description": "The exact specification the engine executed (snake_case response form)."
+          },
+          "generated_at": {
+            "type": "string",
+            "title": "Generated At",
+            "description": "ISO-8601 timestamp of the run."
+          },
+          "report": {
+            "$ref": "#/components/schemas/BacktestAiReport",
+            "description": "Replayed trades and aggregate statistics."
+          },
+          "analysis": {
+            "type": "string",
+            "title": "Analysis",
+            "description": "Plain-text post-run review."
+          }
+        },
+        "type": "object",
+        "title": "BacktestAiResponse",
+        "description": "Response body for `POST /v1/ai/backtest`."
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "Discovery",
+      "description": "Discover series, events, and markets. Use returned ids or slugs in History endpoints."
+    },
+    {
+      "name": "History",
+      "description": "Historical metrics, prices, and L2 order book snapshots."
+    },
+    {
+      "name": "Utility",
+      "description": "Usage and account metadata."
+    },
+    {
+      "name": "Backtest AI",
+      "description": "Natural-language and Strategy Builder backtesting over resolved markets."
+    }
+  ]
+}
