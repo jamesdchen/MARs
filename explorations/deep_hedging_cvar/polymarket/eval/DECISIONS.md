@@ -195,7 +195,7 @@ market. That is below D1.3's threshold of 5, so they cannot be selected.
 Their teacher is itself directional (D1). We will report them as "RL matches
 the low-activity fair-value baseline", not as market making.
 
-## D7. Protocol v2: improvement continues, with a new untouched test set (recorded 2026-10-15 ~15:05 UTC)
+## D7. Protocol v2: improvement continues, with a new untouched test set (recorded 2026-10-15 ~19:15 UTC)
 
 The v1 test day (Aug 24) has been used once (final/RESULTS.md, verdict FAIL). The user asked for
 further improvement. Aug 24 can no longer serve as a test, so v2 sets up a new test.
