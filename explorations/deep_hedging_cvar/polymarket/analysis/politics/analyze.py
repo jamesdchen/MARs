@@ -1,6 +1,8 @@
 """Book-free maker-edge analysis on on-chain fills (politics universe or crypto up/down train days).
 
   python analyze.py politics      # onchain/data/politics + out/universe.json + data/prices_history.parquet
+  python analyze.py politics_live # fills during the polyrec recording (validates the proxy vs the recorded L2 mid)
+  python analyze.py crypto_more    # onchain/data/crypto_more: crypto up/down Aug 15-20 (pre-train days)
   python analyze.py crypto        # onchain/data/crypto_train (Aug 21-22, train only) + data/raw/markets.parquet
 
 Every price is put in the frame of outcome 0 (Yes / Up): a leg on outcome 1 at price p is a leg on
@@ -29,9 +31,15 @@ QUOTE_AGE = 600.0                                     # s
 H = {"1m": 60, "5m": 300, "30m": 1800, "2h": 7200}
 
 
-def load_fills(src):
+COLS = ["block_time", "tx_hash", "log_index", "exchange", "maker", "side", "token_id", "fee", "price", "size", "role"]
+
+
+def load_fills(src, tokens=None):
     fs = sorted((PM / "onchain/data" / src / "fills").glob("date=*/day.parquet"))
-    f = pd.concat([pd.read_parquet(p) for p in fs], ignore_index=True)
+    if not fs:      # partial day (live window): segment part files
+        fs = sorted((PM / "onchain/data" / src / "fills").glob("date=*/part-*.parquet"))
+    flt = [("token_id", "in", sorted(tokens))] if tokens is not None else None
+    f = pd.concat([pd.read_parquet(p, columns=COLS, filters=flt) for p in fs], ignore_index=True)
     return f.drop_duplicates(["tx_hash", "log_index"])
 
 
@@ -49,7 +57,7 @@ def event_end(slug, _c={}):
 
 
 def setup():
-    if SET == "politics":
+    if SET.startswith("politics"):
         U = json.load(open(OUT / "universe.json"))
         res = json.load(open(OUT / "resolution.json"))
         rows = []
@@ -76,7 +84,31 @@ def setup():
         ph = ph.merge(tm[["token_id", "slug", "outcome_idx"]], on="token_id")
         ph["p0"] = np.where(ph.outcome_idx == 0, ph.p, 1 - ph.p)
         ph = ph[ph.outcome_idx == 0][["slug", "t", "p0"]].sort_values(["slug", "t"])
-        fills = load_fills("politics")
+        fills = load_fills("politics" if SET == "politics" else "politics_live")
+    elif SET == "crypto_more":       # Aug 15-20 (before the train days; never val/test): metadata from gamma cache
+        sys.path.insert(0, str(PM / "onchain"))
+        import markets as MK
+        tm = pd.concat([pd.read_parquet(p) for p in sorted((PM / "onchain/data/crypto_more/markets").glob("date=*.parquet"))])
+        tm = tm.drop_duplicates("token_id")
+        # memory: same coins as the train data, and a deterministic third of the markets (~15M legs in total)
+        coins = set(pd.read_parquet(PM / "data/raw/markets.parquet", columns=["coin"]).coin)
+        tm = tm[tm.coin.isin(coins) & (tm.condition_id.str[-2:].apply(lambda x: int(x, 16) % 3 == 0))]
+        tm = tm[(tm.event_start_ts >= pd.Timestamp("2026-08-15", tz="UTC").timestamp())
+                & (tm.end_ts <= pd.Timestamp("2026-08-21", tz="UTC").timestamp())]
+        raw = MK.Gamma().raw(sorted(tm.slug.unique()))
+        pay = {}
+        for sl, g in raw.items():
+            try:
+                op = [float(x) for x in json.loads(g.get("outcomePrices") or "[]")]
+                pay[sl] = op[0] if len(op) == 2 and max(op) > 0.99 else np.nan
+            except (TypeError, ValueError):
+                pay[sl] = np.nan
+        tm = pd.DataFrame(dict(token_id=tm.token_id.astype(str), slug=tm.slug, outcome_idx=tm.outcome_idx,
+                               category="crypto-" + tm.contract_length.astype(str), end=tm.end_ts.astype(float),
+                               pay0=tm.slug.map(pay).astype(float), fee_rate=0.07, rebate_rate=0.20, resolved_flag=True,
+                               start=tm.event_start_ts.astype(float)))
+        ph = None
+        fills = load_fills("crypto_more", set(tm.token_id))
     else:
         mk = pd.read_parquet(PM / "data/raw/markets.parquet")
         mk = mk[(mk.event_start >= pd.Timestamp("2026-08-21", tz="UTC")) & (mk.end < pd.Timestamp("2026-08-23", tz="UTC"))]
@@ -92,7 +124,7 @@ def setup():
         fills = load_fills("crypto_train")
     fills["token_id"] = fills.token_id.astype(str)
     fills = fills.merge(tm, on="token_id")
-    if SET == "crypto":   # train markets only, fills inside the market window
+    if SET.startswith("crypto"):   # crypto: fills inside the market window only, fills inside the market window
         fills = fills[(fills.block_time >= fills.start - 3600) & (fills.block_time <= fills.end + 600)]
     return fills, tm, ph
 
@@ -121,7 +153,7 @@ MATCH_LAG = 3
 
 
 def l2_books():
-    if SET == "crypto":
+    if SET.startswith("crypto"):
         fr = []
         for cl in ("5m", "15m", "4h"):
             b = pd.read_parquet(PM / f"data/raw/updown_{cl}.parquet", columns=["market_slug", "outcome", "captured_at", "best_bid", "best_ask"],
@@ -215,7 +247,8 @@ def main():
         M["mid_l2"] = l2
         M["edge_l2_c"] = 100 * M.side0 * (M.mid_l2 - M.p0)
         for k, h in H.items():
-            M[f"mo_l2_{k}_c"] = 100 * M.side0 * (np.where(M.block_time + h >= M.end, M.pay0, l2_mid(M, h)) - M.p0)
+            mo = 100 * M.side0 * (np.where(M.block_time + h >= M.end, M.pay0, l2_mid(M, h)) - M.p0)
+            M[f"mo_l2_{k}_c"] = np.where(np.isfinite(M.mid_l2), mo, np.nan)
     for k in list(H) + ["res"]:
         M[f"mo_{k}_c"] = 100 * M.side0 * (M[f"mid_{k}"] - M.p0)
     for k in H:
@@ -289,7 +322,7 @@ def main():
     W["maker_share"] = W.maker_shares / (W.maker_shares + W.taker_shares)
     W["direction_usd"] = W.maker_pnl_mark - W.spread_usd       # maker legs: mark-to-end minus spread at fill
     W = W.sort_values("maker_shares", ascending=False)
-    W.to_csv(OUT / f"{SET}_wallets.csv")
+    W.head(3000).to_csv(OUT / f"{SET}_wallets.csv")          # top 3000 makers by maker shares
     top = W.head(25)
     with pd.option_context("display.width", 250, "display.max_columns", 30, "display.float_format", "{:.4g}".format):
         print(f"== {SET}: top 25 makers by maker shares")

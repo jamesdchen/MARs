@@ -13,7 +13,8 @@ per decision) and the skewed edge per share > edge_min (cents); otherwise that s
 Above |inv| / Q > cap the side that would grow the position is off. Several models (data seeds)
 can be averaged (ensemble) but the 3-seed rule uses one model per seed.
 
-Knobs (tuned on val v2): thr, edge_min, k_inv, cap, max_size, mode.
+Knobs (tuned on val v2): thr, edge_min, k_inv, cap, max_size, mode; optionally per contract length
+thr_<L> and edge_min_<L> (L in 5m, 15m, 4h), which override thr / edge_min on that length.
 """
 import os
 import sys
@@ -63,7 +64,13 @@ class Quoter:
         best = flat.argmax(-1)                                  # (B, 2)
         bs = np.take_along_axis(flat, best[..., None], -1)[..., 0]
         be = np.take_along_axis(edge.reshape(B, 2, 18), best[..., None], -1)[..., 0]
-        on = (bs > P['thr']) & (be * 100.0 > P['edge_min'])
+        thr = np.full(B, P['thr'], np.float64)
+        emin = np.full(B, P['edge_min'], np.float64)
+        for j, L in enumerate(('5m', '15m', '4h')):      # optional per-length knobs (obs 26-28 one-hot)
+            m = obs[:, 26 + j] > 0.5
+            thr[m] = P.get(f'thr_{L}', P['thr'])
+            emin[m] = P.get(f'edge_min_{L}', P['edge_min'])
+        on = (bs > thr[:, None]) & (be * 100.0 > emin[:, None])
         on[:, 0] &= ~(inv > P['cap'])
         on[:, 1] &= ~(inv < -P['cap'])
         level = best // 3 + 1

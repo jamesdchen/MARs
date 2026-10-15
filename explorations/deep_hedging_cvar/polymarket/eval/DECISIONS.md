@@ -311,3 +311,111 @@ v1.**
   not changed, so the frozen hash stays the same.
 - `book_age` on Jun 15 measures time since the last feed message. That differs from the v1
   capture and is part of the source-shift caveat in D7.
+
+## D11. Protocol v3: pivot to pre-game sports and election reward farming (recorded 2026-10-15 ~20:25 UTC, before any v3 tuning)
+
+The user chose to pivot to both tracks named by the census (`analysis/census/REPORT.md`,
+`train/PIVOT.md`). Crypto v2 tuning stops: the local sweep in flight finishes, and the crypto v2
+freeze and Jun 15 test still run as pre-registered.
+
+### Track S: pre-game sports
+
+- **Data:** PolyOrderBooks sports L2 (the user is getting an API key), plus on-chain fills, gamma
+  `gameStartTime`, and our recorder from now on.
+- **Episode:** from listing to kickoff. Quotes are forced off at kickoff and inventory is
+  flattened or marked there. Holding into the game is not allowed.
+- **Split by game date.** The oldest ~60% of days are train, the next ~20% val, and the newest
+  ~20% test, untouched. Exact dates are fixed once the backfill range is known, and before any
+  model is evaluated on them. Days recorded after that form an extra forward test.
+
+### Track E: election reward farming (US midterms, Nov 3)
+
+- **Data:** no vendor has historical L2 for elections, so books must be recorded from now on with
+  our recorder. Liquidity rewards are modelled with the env's reward hook, using the current reward
+  configs.
+- **Split by date** over the recorded days. The last recorded days before Nov 3 are the untouched
+  test.
+- Election night is out of scope: it is a jump event.
+
+### Shared rules
+
+- Same comparators logic as D1: no-quote plus tuned classical quoters.
+- Same D1.3 market-making rule, same T5/T6 detectors.
+- Every val evaluation goes in a ledger.
+- Each track's test is run once.
+
+## D12. Sub-second Binance order-flow features: evaluated, not adopted (recorded 2026-10-15 ~20:35 UTC)
+
+Study and code: `analysis/orderflow/`. The sha256 values of `mm.h`, `feat.bin` and `build_v2` are
+unchanged.
+
+- **Data:** 28 candidate features built from aggTrades: sub-second returns, activity, staleness, a
+  BTC-lead feature and the predicted fair-value change.
+- **Method:** fit on train only (6 purged 8-hour blocks). Then a single confirmation on val v2.
+- **Rule, fixed before val was looked at:** a candidate counts only if it adds at least +0.01 AUC
+  or +0.005 R² on a fill-toxicity or taker-flow target, with the same sign on train and val.
+  **Nothing passes.**
+- **Why:** Polymarket takers react to Binance moves 2–3.5 s before their print's block time. Under
+  central fills with 1 s latency, the quote facing that print is decided 5 s before it, so the
+  move hasn't happened yet. The AUC of last-second Binance for taker side, by decision time:
+
+  | decision time (s before print) | 5 | 4 | 3 | 2 |
+  |---|---:|---:|---:|---:|
+  | AUC | 0.53 | 0.54 | 0.61 | 0.69 |
+
+- **Consequence:** the lever is decision timing (latency, match delay), not features. Any timing
+  change must be validated against real fills first (live shadow quoting).
+- **Flag for the env owner:**
+  - Raw book `captured_at` values are whole seconds. Book rows may therefore reflect the market up
+    to about 1 s later than the Binance features, roughly 0.5 s of optimism on average.
+  - This may already be absorbed by the 3.5 s central match-delay calibration. Not acted on.
+
+## D13. How D1.3 is judged when selecting a multi-seed method, and the v2 freeze settings (recorded 2026-10-15 ~21:10 UTC, after val v2 results were visible, before any Jun 15 strategy result)
+
+**Stated plainly: this entry was written after the val v2 results of every ledger were visible.**
+It changes no data, env or evaluation code. The test split has not been touched.
+
+**What happened.**
+- The training agent changed how `train/rounds.py` and `train/v2search.py` compute T6 for a
+  multi-seed method. The old code took the mean of the per-seed T6 shares. The new code computes
+  T6 on seed-pooled attribution: mean inventory P&L over mean P&L.
+- The change was made after the v2s1 val results were seen, and went into commit `4f17e3a`
+  together with the ledger rows.
+- The reason it gave: under per-seed averaging a losing seed counts as T6 = 0. For example,
+  `v2s1/c29` quoting 15m+4h (seeds +236 / −71 / −84, mean +27) had a per-seed-mean T6 of 0.41,
+  but all of its seed-mean profit is inventory P&L (pooled share 4.19).
+
+**Decision for the v2 freeze (coordinator, 21:10 UTC).**
+1. **D1.3 for a multi-seed method is judged on seed-pooled attribution, with the directional
+   rule of `final/reduce.py` `directional_verdict`.** That rule is frozen in the v1
+   TEST_PLAN.json, and the test applies it to the RL seed mean. A method is directional if its
+   inventory P&L is > 0 and is either:
+   - more than 50% of a positive total; or
+   - more than 50% of the sum of the positive components (spread capture, 60 s markout,
+     inventory, rebates, rewards).
+
+   The T5 artifact share is also pooled, and the fills rule is mean fills/market ≥ 5. This is
+   "reading C" in `final/v2/SELECTION.md`. Readings A (per-seed mean) and B (pooled total share
+   only, the 4f17e3a code) are reported next to it, with their winners.
+2. **Single ensemble evaluations are not D8 candidates.** An ensemble evaluated once has no seed
+   mean. Picking the best of the ~200 ensemble × length-filter evaluations would select a single
+   draw, which T4 forbids ("never select the best seed"). D8's "pre-specified ensemble" remains a
+   way to deploy a method that was selected on its seed mean.
+3. **Comparators.** D7 keeps D1 unchanged, and no baseline was re-tuned on val v2. The v1 tuned
+   parameter sets are therefore kept: `baselines/tuned.json` (primary candidates) and
+   `baselines/tuned_active.json` (D1.2 secondary). The comparator is the best tuned baseline,
+   `fair_value`. It is also the best tuned baseline when re-scored on val v2 (+101 against
+   as_logit +24 and no-quote 0; `train/runs/v2/baselines.json`).
+4. **Env parameters of the plan: `mark_mode = 1`.** This is the env the selected config was
+   trained and val-scored with. `mark_mode` changes only the wealth observation and the training
+   reward. P&L, attribution and the baselines' inputs do not depend on it.
+   - A dry run on Aug 23 reproduces the ledger exactly: seed 0, −387.65 over 5,409 fills on both
+     paths.
+   - The v1 plan used the `mm.h` default `mark_mode = 0` for R7 `c02_h120`, which had been trained
+     with `mark_mode = 1`. So in v1 the RL policies saw a mid-marked wealth input that they were
+     not trained on. This is recorded here and not re-run.
+5. **D10 sensitivity.** `final/v2/d10_book_valid.py` is a post-hoc script that reads the frozen
+   outputs. It is committed before the test.
+6. **Cosmetic, not fixed.** `make_plan.py` writes `test_split.dates = "2026-08-24 UTC"`, which is
+   hard-coded. The v2 plan's data block (`data/build_jun15`, its file and test-row hashes, and the
+   288 market slugs) is what defines the test.

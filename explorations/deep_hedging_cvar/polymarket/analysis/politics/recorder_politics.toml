@@ -61,6 +61,7 @@ enabled = false
 [output]
 raw_enabled = true
 raw_zstd_level = 9
+raw_keep_order_hashes = true   # per-order hashes in price_change: join with on-chain order_hash for queue reconstruction
 
 [health]
 min_free_disk_mb = 2000

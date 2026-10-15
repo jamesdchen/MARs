@@ -1,6 +1,6 @@
 # Protocol v2 progress (train/)
 
-Updated 2026-10-15 19:43 UTC. Protocol: eval/DECISIONS.md D7. v2 validation =
+Updated (step 3 done) 2026-10-15 19:43 UTC. Protocol: eval/DECISIONS.md D7. v2 validation =
 `data/build_v2` split 1 = Aug 23 + Aug 24, 374 markets (223 5m, 119 15m, 32 4h); its train split is
 byte-identical to data/build's (checked). Greedy actions, central fills, 1 s latency, every market once.
 The Jun 15 test build is refused by `envs.no_jun15` everywhere in train/. Every evaluation below is a row
@@ -115,12 +115,60 @@ Baselines, length filters (best filter per baseline):
 R1 tuned-BC configs (8 configs x 3 seeds + ensembles; all fills/market ~4, T6 1.0-34, none pass D1.3):
 see `runs/v2/report_step12.md` (`python v2eval.py report`).
 
-## Step 3: reward_mode-2 search `v2s1` (32 configs x 3 seeds, 25M steps each)
+## Step 3: reward_mode-2 search `v2s1` (32 configs x 3 seeds, 25M steps each): DONE
 
-Running since 19:31 UTC (detached, resumable; 4 processes x 1 torch thread; ~110 min). Space: markout_h
-{60,120,300}, inv_penalty log [1e-6,1e-2], lr log [1e-4,3e-3], ent_coef log [1e-4,3e-2], hidden {64,128},
-close-inventory penalty (off / coef log [1e-5,3e-3] over the last 20% of the window), training len_mask
-{all, 4h only, 15m only}; base = the R7 final config (off prior 0.5, fair-value mark). Each run is
-scored on v2 val and every length filter is derived from its per-market records (each ledgered).
-Selection: best seed mean (3 seeds) of v2 val P&L among D1.3-passing (config, filter) pairs.
-Live table: `runs/v2/v2s1/progress.md`.
+96/96 runs, 19:31-20:52 UTC, 4 processes x 1 torch thread. Space: markout_h {60,120,300}, inv_penalty
+log [1e-6,1e-2], lr log [1e-4,3e-3], ent_coef log [1e-4,3e-2], hidden {64,128}, close-inventory penalty
+(off / coef log [1e-5,3e-3] over the last 20% of the window; `train_ppo.py --close-inv-coef`), training
+len_mask {all, 4h only, 15m only}; base = the R7 final config. Each run scored on v2 val (central +
+pessimistic), each length filter derived from its per-market records; then 3-seed ensembles (logits,
+probs) of the top configs. Ledger: 780 rows tagged v2s1* (total N now 1651).
+
+**Result: no market-making edge on v2 val.**
+- **Selection rule** (best 3-seed mean among D1.3-passing (config, filter) pairs, with T6 on seed-pooled
+  attribution, as final/ judges a seed mean): **c00, all lengths, -35.0 +- 98.1** (fills 17.5/market).
+  0 of 120 D1.3-passing pairs has a positive mean. No-quote (0) is better, so on v2 val PPO does not
+  clear the D1 bar.
+- **Every positive result is directional 4h resolution P&L.** Quoting 4h only: c00 +222 +- 9, c05 +219 +- 42,
+  c31 +190, c17 +176, c19 +165, but fills 1-2/market and T6 1.0-1.2. Ensemble c05 (probs) +245 overall
+  = +315 on 4h, T6 1.54.
+- **Best unfiltered:** c20 +14.9 +- 8.7, but 2.5 fills/market (no-quote-like; its ensembles quote nothing).
+- **Factors** (mean over configs of unfiltered seed means; every level negative overall, 4h positive):
+  len_mask 15m-only -248 / 4h-only -837 (OOD on 5m: -615) / all -225; markout_h 60 -458, 120 -458,
+  300 -406; hidden 64 -337, 128 -576; close penalty off -395, on -489. Pessimistic fills: -308 on average.
+- **Bookkeeping fix:** D1.3's T6 was first averaged per seed (losing seeds counting as 0), which let c29
+  15m+4h (+27 +- 104: seeds +236, -71, -84) pass with "T6 0.41"; its pooled T6 is 4.19. Selection now
+  uses pooled T6 (`v2search.py`, and the same fix in `rounds.py group_stats`).
+
+Selected (for the record): `runs/v2/v2s1_selected.json`. Full table: `python v2search.py status --name v2s1`.
+
+3-seed ensembles of the top configs (v2 val; P&L 5m / 15m / 4h; best length filter):
+
+| config | combine | P&L | fills/mkt | T6 | D1.3 | 5m / 15m / 4h | best filter |
+|---|---|---|---|---|---|---|---|
+| c20 | logits | +0.0 | 0.0 | - | no | +0 / +0 / +0 | 4h: +0.0, 0.0 fills, T6 - |
+| c20 | probs | +0.0 | 0.0 | - | no | +0 / +0 / +0 | 4h: +0.0, 0.0 fills, T6 - |
+| c00 | logits | -14.6 | 12.7 | - | yes | -218 / -14 / +218 | 4h: +217.6, 0.6 fills, T6 1.02 |
+| c00 | probs | -34.6 | 10.8 | - | yes | -241 / -25 / +232 | 4h: +231.7, 0.5 fills, T6 1.01 |
+| c07 | logits | +0.0 | 0.0 | - | no | +0 / +0 / +0 | 4h: +0.0, 0.0 fills, T6 - |
+| c07 | probs | +0.0 | 0.0 | - | no | +0 / +0 / +0 | 4h: +0.0, 0.0 fills, T6 - |
+| c02 | logits | +0.0 | 0.0 | - | no | +0 / +0 / +0 | 4h: +0.0, 0.0 fills, T6 - |
+| c02 | probs | -0.0 | 0.0 | - | no | +0 / -0 / +0 | 4h: +0.0, 0.0 fills, T6 - |
+| c18 | logits | -174.5 | 7.2 | - | yes | -139 / -75 / +39 | 4h: +39.2, 0.1 fills, T6 1.00 |
+| c18 | probs | -158.0 | 7.4 | - | yes | -142 / -59 / +43 | 4h: +42.7, 0.1 fills, T6 0.98 |
+| c28 | logits | -300.6 | 9.2 | - | yes | -293 / -71 / +63 | 4h: +62.9, 0.2 fills, T6 1.02 |
+| c28 | probs | -145.4 | 7.4 | - | yes | -178 / -27 / +60 | 4h: +60.2, 0.2 fills, T6 1.02 |
+| c05 | logits | +133.6 | 29.0 | 3.70 | no | -188 / -1 / +323 | 4h: +322.5, 1.1 fills, T6 1.03 |
+| c05 | probs | +244.5 | 22.6 | 1.54 | no | -57 / -14 / +315 | 4h: +315.4, 0.9 fills, T6 1.01 |
+| c31 | logits | -499.1 | 33.9 | - | yes | -371 / -316 / +188 | 4h: +188.0, 1.8 fills, T6 1.17 |
+| c31 | probs | -563.5 | 32.8 | - | yes | -358 / -357 / +151 | 4h: +151.2, 1.6 fills, T6 1.18 |
+| c17 | logits | -202.0 | 24.0 | - | yes | -386 / -13 / +197 | 4h: +196.9, 1.8 fills, T6 1.00 |
+| c17 | probs | -109.1 | 23.6 | - | yes | -368 / +48 / +210 | 15m+4h: +258.7, 9.2 fills, T6 0.83 |
+
+**What I'd try next.** The data say the replay's spread capture never covers the 60 s markout on 5m/15m,
+and the only profits are 4h resolution bets. (1) Wait for the Binance sub-second order-flow features
+(feat v2): adverse selection is the loss, and the policy cannot see the order flow that predicts it;
+re-run `v2search.py run --name v2f1` with the same plan seed on the new build as the separate comparison.
+(2) A 4h-only market maker with an explicit cap on resolution exposure (close-inventory penalty applied
+to 4h, and T6 measured on 4h alone). (3) Quote-width actions: the policy mostly sits behind the touch;
+a constraint to quote only when the fair-value edge exceeds the expected markout.

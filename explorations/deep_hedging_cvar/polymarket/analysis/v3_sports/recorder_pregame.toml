@@ -1,0 +1,47 @@
+# polyrec config, track S (DECISIONS.md D11): pre-game sports moneylines, top leagues by census volume.
+# Sports gamma endDate == game start (kickoff). Subscribe on discovery (pre_open 48 h before the
+# event start), write book rows until 5 min after kickoff (the clearBookOnStart wipe), stay
+# subscribed 10 min; trades/markets are finalized up to 30 min after kickoff (in-play legs included,
+# build_sports.py cuts at kickoff). New games rotate in at every discovery pass.
+out_dir = "/home/user/MARs/explorations/deep_hedging_cvar/polymarket/analysis/v3_sports/rec_out"
+discovery_interval_s = 300
+
+[[source]]
+name = "sports-pregame"
+params = { tag_id = "100639" }
+slug_regex = '^(nfl|cfb|nba|nhl|mlb|wnba|epl|lal|ucl|uel|uecl|bun|sea|fl1|ere|por|mls|arg|bra|unl|fif|atp|wta)-[a-z0-9]+-[a-z0-9]+-\d{4}-\d{2}-\d{2}(-[a-z0-9]+)?$'
+exclude_regex = '-(game\d+|map\d+|total|spread|btts|pt5|1h|2h|ht|overtime|safety)\b'
+window = "end_date"
+horizon_s = 172800
+pre_open_s = 172800
+post_close_s = 300
+linger_s = 600
+max_pages = 80
+
+# Esports (cs2, lol, dota2, val): gamma endDate = gameStartTime + 6 h, so the window offsets are
+# shifted by -6 h. Book rows stop 5 min after the scheduled start and the subscription 10 min after,
+# instead of recording up to 6 h of in-play books (v3 data rule: episode cut = scheduled gameStartTime).
+[[source]]
+name = "esports-pregame"
+params = { tag_id = "100639" }
+slug_regex = '^(cs2|lol|dota2|val)-[a-z0-9]+-[a-z0-9]+-\d{4}-\d{2}-\d{2}(-[a-z0-9]+)?$'
+exclude_regex = '-(game\d+|map\d+|total|spread|btts|pt5|1h|2h|ht|overtime|safety)\b'
+window = "end_date"
+horizon_s = 194400               # endDate within 54 h = start within 48 h
+pre_open_s = 172800
+post_close_s = -21300            # endDate - 6 h + 5 min
+linger_s = -21000                # endDate - 6 h + 10 min (also the discovery lower bound)
+max_pages = 80
+
+[ws]
+markets_per_conn = 10            # pre-game sports books are quiet (crypto needs 2)
+
+[reconcile]
+interval_s = 300
+mode = "books"
+batch = 40
+concurrency = 2
+
+[output]
+raw_enabled = true
+raw_retention_days = 3

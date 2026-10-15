@@ -1,0 +1,107 @@
+{
+  "version": "1.0.0",
+  "run_id": "20261015T202226-f7b0cd",
+  "pid": 3094,
+  "time": 1792099547.702632,
+  "time_utc": "2026-10-15T21:25:47Z",
+  "uptime_s": 3801.4,
+  "process": {
+    "rss_mb": 352.7,
+    "cpu_s": 105.5,
+    "cpu_pct_avg": 2.8,
+    "loop_lag_ms": 0.8
+  },
+  "ws": {
+    "shards": 20,
+    "connected": 20,
+    "connects": 52,
+    "disconnects": 32,
+    "disconnects_unexpected": 32,
+    "last_frame_age_s": 0.0,
+    "max_server_lag_s": 13.436
+  },
+  "markets": {
+    "tracked": 40,
+    "subscribed": 40,
+    "live": 40,
+    "tokens": 80,
+    "pending": 0,
+    "awaiting_finalize": 0,
+    "finalized": 0,
+    "finalize_failed": 0
+  },
+  "rates_per_s": {
+    "frames": 146.88,
+    "bytes": 73338.45,
+    "price_change": 92.89,
+    "pc_items": 185.78,
+    "book": 0.4,
+    "best_bid_ask": 51.39,
+    "last_trade_price": 0.2,
+    "rows": 19.0,
+    "reconcile": 1.2,
+    "reconcile_mismatch": 0.0,
+    "bba_mismatch": 0.0
+  },
+  "totals": {
+    "subscribed_markets": 40,
+    "connects": 52,
+    "frames": 207689,
+    "bytes": 231240877,
+    "book": 1014,
+    "rows": 62174,
+    "mirror_checks": 31087,
+    "price_change": 138763,
+    "pc_items": 277526,
+    "bba_checks": 277526,
+    "mirror_mismatch": 5,
+    "best_bid_ask": 16230,
+    "pong": 7538,
+    "new_market": 43896,
+    "last_trade_price": 403,
+    "reconcile": 4873,
+    "disconnects": 32,
+    "disconnects_unexpected": 32,
+    "bba_mismatch": 48,
+    "bba_pruned_levels": 82
+  },
+  "quality": {
+    "reconcile_checks": 4873,
+    "reconcile_mismatch": 0,
+    "reconcile_mismatch_rate": 0.0,
+    "reconcile_mismatch_top_of_book": 0,
+    "reconcile_errors": 0,
+    "bba_checks": 277526,
+    "bba_mismatch": 48,
+    "bba_mismatch_rate": 0.00017295676801452837,
+    "bba_pruned_levels": 82,
+    "bba_missing": 0,
+    "mirror_checks": 31087,
+    "mirror_mismatch_rate": 0.00016083893588960015,
+    "rows": 62174,
+    "rows_crossed_rate": 0.0,
+    "parse_errors": 0
+  },
+  "output": {
+    "book_rows_written": 61330,
+    "book_bytes_parts": 6480341,
+    "raw_lines": 205271,
+    "raw_bytes_in": 239227254,
+    "raw_bytes_out": 11891861,
+    "raw_paused": false,
+    "buffered_rows": 844
+  },
+  "disk": {
+    "free_mb": 28823,
+    "used_pct": 4.3
+  },
+  "discovery": {
+    "last_ok_age_s": 281.3,
+    "errors": 0
+  },
+  "http": {
+    "requests": 5276,
+    "errors": 0
+  },
+  "last_error": ""
+}

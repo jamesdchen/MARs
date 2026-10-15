@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-"""Fetch Binance aggTrades (tick-level taker trades) for the sub-second order-flow features
-of data/features_v2.py.
+"""Fetch Binance aggTrades (tick-level taker trades) for the sub-second order-flow study
+(analysis/orderflow/; parsed by analysis/orderflow/binance_flow.py).
 
 Source: https://data.binance.vision daily dumps, sha256-checked against the .CHECKSUM files.
   * btc eth sol xrp bnb doge zec: spot  data/spot/daily/aggTrades/<SYM>USDT/<SYM>USDT-aggTrades-<day>.zip
@@ -15,7 +15,7 @@ Cache: data/raw/aggtrades/ (git-ignored). Existing files are reused, so reruns a
 Columns of every CSV (spot has no header, futures has one):
   agg_trade_id, price, quantity, first_trade_id, last_trade_id, transact_time, is_buyer_maker[, is_best_match]
 is_buyer_maker = true means the taker SOLD. Spot transact_time is in microseconds (since 2025),
-futures in milliseconds; features_v2.py normalises both.
+futures in milliseconds; binance_flow.py normalises both.
 """
 from __future__ import annotations
 

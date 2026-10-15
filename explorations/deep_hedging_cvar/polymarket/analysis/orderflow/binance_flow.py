@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
-"""Sub-second Binance order-flow features from aggTrades (protocol v2, DECISIONS.md D7).
+"""Sub-second Binance order flow from aggTrades: the library of the order-flow study
+(analysis/orderflow/, protocol v2 feature candidates, DECISIONS.md D7).
 
-Library part (used by analysis/orderflow/ and by the writer below):
+Outcome: the study found no incremental predictive power for fill toxicity at the env's
+decision time (train and val), so NO feat.bin columns or env observations were added; this
+module is analysis code only.
+
   * aggtrades(path)          parse one data.binance.vision aggTrades zip (spot or USD-M)
   * buckets(coin, day)       250 ms bucket aggregates of one UTC day (cached as .npz)
   * CoinGrid(coin, t0, t1)   per-second causal order-flow quantities on the unix-second grid
 
 Causality: the value at row t (unix second t) uses only trades with transact_time < t (strictly
 before the second boundary), the same convention as the 1 s kline with open_time t - 1 that
-feat.bin's Binance columns use. A 250 ms bucket k of a day covers [day0 + k/4, day0 + (k+1)/4);
-row t reads buckets that end at or before t.
+feat.bin's Binance columns use (checked: the last trade price before t equals that kline's close
+for all 8 coins). A 250 ms bucket k of a day covers [day0 + k/4, day0 + (k+1)/4); row t reads
+buckets that end at or before t.
 
-Inputs are cached zips in data/raw/aggtrades/ (data/fetch_aggtrades.py, git-ignored).
+Inputs are the cached zips in data/raw/aggtrades/ (data/fetch_aggtrades.py, git-ignored).
 """
 from __future__ import annotations
 
@@ -24,7 +29,8 @@ import numpy as np
 import pandas as pd
 
 HERE = Path(__file__).resolve().parent
-AGG = HERE / "raw" / "aggtrades"
+POLY = HERE.parents[1]
+AGG = POLY / "data" / "raw" / "aggtrades"
 BCACHE = AGG / "buckets250"
 PERP = {"hype"}
 BPS = 4                     # buckets per second (250 ms)
@@ -96,7 +102,7 @@ def buckets(coin: str, day: str) -> dict:
 
 def _fv():
     import sys
-    sys.path.insert(0, str(HERE.parent / "analysis" / "fair_value"))
+    sys.path.insert(0, str(POLY / "analysis" / "fair_value"))
     import fair_value
     return fair_value
 
