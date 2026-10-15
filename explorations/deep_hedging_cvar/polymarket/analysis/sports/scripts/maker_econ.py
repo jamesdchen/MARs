@@ -30,7 +30,7 @@ def load():
     mk = pd.concat([pd.read_parquet(p) for p in sorted((SRC / "markets").glob("*.parquet"))]).drop_duplicates("token_id")
     cen = pd.read_parquet(OUT / "census_markets.parquet").drop_duplicates("slug").set_index("slug")
     f = f.merge(mk[["token_id", "slug", "outcome_idx"]], on="token_id", how="inner")
-    f = f[f.size > 0]
+    f = f[f["size"] > 0]
     f["t"] = f.block_time.astype(np.int64)
     f["p_yes"] = np.where(f.outcome_idx == 0, f.price, 1 - f.price)
     buy = f.side.eq("BUY")
@@ -99,6 +99,8 @@ def main():
             mk[k] = md[k]
         rows.append(mk)
     M = pd.concat(rows, ignore_index=True)
+    A = f.copy(); A["y"] = A.slug.map({k: v["y"] for k, v in meta.items()})
+    A[["maker", "slug", "role", "dir", "p_yes", "size", "fee", "y", "t"]].to_parquet(OUT / "all_legs.parquet")
     M["phase"] = np.where(M.t < M.gs, "pre", "live")
     M["sc"] = M["dir"] * (M.mid0 - M.p_yes)
     for k in H:
@@ -110,7 +112,7 @@ def main():
     M["pbin"] = pd.cut(M.fav, [0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1.0001], right=False)
     M["is_jump"] = M.jump >= JUMP
     M["hrs_to_start"] = (M.gs - M.t) / 3600
-    M.to_parquet(OUT / "maker_legs.parquet")
+    M.drop(columns="pbin").to_parquet(OUT / "maker_legs.parquet")
     return M
 
 
@@ -134,6 +136,7 @@ def table(M, by):
 
 if __name__ == "__main__":
     M = main() if "--reuse" not in sys.argv else pd.read_parquet(OUT / "maker_legs.parquet")
+    M["pbin"] = pd.cut(M.fav, [0.5, 0.6, 0.7, 0.8, 0.9, 0.95, 1.0001], right=False)
     pd.set_option("display.width", 250)
     res = {}
     res["all"] = table(M.assign(all="all"), "all")
@@ -144,6 +147,42 @@ if __name__ == "__main__":
     M["hbin"] = pd.cut(M.hrs_to_start, [-10, -3, -1, 0, 0.5, 2, 6, 24, 1e4], right=False)
     res["time_to_start"] = table(M, "hbin")
     res["jump_live"] = table(M[M.phase == "live"], "is_jump")
+    # market-clustered standard errors of the size-weighted means (cents/share), by phase
+    se = []
+    for ph, d in M.groupby("phase"):
+        per = d.groupby("slug").apply(lambda x: pd.Series({c: np.nansum(x[c] * x["size"]) for c in COLS} | {"w": x["size"].sum()}), include_groups=False)
+        n = len(per); tot = per.w.sum()
+        r = {"phase": ph, "markets": n}
+        for c in COLS:
+            mu = per[c].sum() / tot
+            r[c] = mu * 100
+            r[c + "_se"] = np.sqrt(n / max(n - 1, 1) * (((per[c] - mu * per.w) / tot) ** 2).sum()) * 100
+        se.append(r)
+    res["clustered_se"] = pd.DataFrame(se).set_index("phase").round(2).T
+    # wallets: maker-leg P&L to resolution and rebates, plus all legs (maker + taker) to resolution
+    W = M[M.y.notna()].assign(pnl_res=lambda d: d.mo_res * d["size"], reb=lambda d: d.rebate_ps * d["size"],
+                               sc_usd=lambda d: d.sc * d["size"], m30=lambda d: d.mo_30m * d["size"])
+    w = W.groupby("maker").agg(maker_shares=("size", "sum"), markets=("slug", "nunique"), sc_usd=("sc_usd", "sum"),
+                               mo30_usd=("m30", "sum"), pnl_res_usd=("pnl_res", "sum"), rebate_usd=("reb", "sum"))
+    F = pd.read_parquet(OUT / "all_legs.parquet")
+    F = F[F.y.notna()]
+    F["cash"] = -F["dir"] * F.p_yes * F["size"]; F["pos"] = F["dir"] * F["size"]
+    F["fee_usd"] = np.where(F.role.eq("taker"), F.fee / 1e6, 0)
+    a = F.groupby(["maker", "slug"]).agg(cash=("cash", "sum"), pos=("pos", "sum"), y=("y", "first"), fee=("fee_usd", "sum"),
+                                         taker_sh=("size", lambda x: x[F.loc[x.index, "role"].eq("taker")].sum()))
+    a["pnl"] = a.cash + a.pos * a.y - a.fee
+    aw = a.groupby("maker").agg(all_legs_pnl_usd=("pnl", "sum"), taker_shares=("taker_sh", "sum"), fees_paid=("fee", "sum"))
+    w = w.join(aw, how="left")
+    w["net_maker_usd"] = w.pnl_res_usd + w.rebate_usd
+    w["net_c_per_sh"] = 100 * w.net_maker_usd / w.maker_shares
+    w = w.sort_values("maker_shares", ascending=False)
+    top = w.head(25).copy(); top.index = [i[:10] for i in top.index]
+    res["top25_maker_wallets"] = top.round(1)
+    tot = w.maker_shares.sum()
+    res["maker_concentration"] = pd.Series({"wallets": len(w), "top5_share": w.maker_shares.head(5).sum() / tot,
+        "top25_share": w.maker_shares.head(25).sum() / tot,
+        "top25_net_usd": w.net_maker_usd.head(25).sum(), "top25_all_legs_usd": w.all_legs_pnl_usd.head(25).sum(),
+        "all_net_usd": w.net_maker_usd.sum()}).round(3).to_frame("value")
     with open(OUT / "maker_econ.txt", "w") as fh:
         fh.write(__doc__ + "\nUnits: cents per maker share, size-weighted. net = markout + rebate.\n")
         for k, v in res.items():

@@ -1,3 +1,4 @@
 out/census_markets.parquet
 out/maker_legs.parquet
 out/*.big.parquet
+out/all_legs.parquet
