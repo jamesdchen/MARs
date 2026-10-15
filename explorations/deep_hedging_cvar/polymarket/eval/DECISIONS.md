@@ -311,3 +311,35 @@ v1.**
   not changed, so the frozen hash stays the same.
 - `book_age` on Jun 15 measures time since the last feed message. That differs from the v1
   capture and is part of the source-shift caveat in D7.
+
+## D11. Protocol v3: pivot to pre-game sports and election reward farming (recorded 2026-10-15 ~20:25 UTC, before any v3 tuning)
+
+The user chose to pivot to both tracks named by the census (`analysis/census/REPORT.md`,
+`train/PIVOT.md`). Crypto v2 tuning stops: the local sweep in flight finishes, and the crypto v2
+freeze and Jun 15 test still run as pre-registered.
+
+### Track S: pre-game sports
+
+- **Data:** PolyOrderBooks sports L2 (the user is getting an API key), plus on-chain fills, gamma
+  `gameStartTime`, and our recorder from now on.
+- **Episode:** from listing to kickoff. Quotes are forced off at kickoff and inventory is
+  flattened or marked there. Holding into the game is not allowed.
+- **Split by game date.** The oldest ~60% of days are train, the next ~20% val, and the newest
+  ~20% test, untouched. Exact dates are fixed once the backfill range is known, and before any
+  model is evaluated on them. Days recorded after that form an extra forward test.
+
+### Track E: election reward farming (US midterms, Nov 3)
+
+- **Data:** no vendor has historical L2 for elections, so books must be recorded from now on with
+  our recorder. Liquidity rewards are modelled with the env's reward hook, using the current reward
+  configs.
+- **Split by date** over the recorded days. The last recorded days before Nov 3 are the untouched
+  test.
+- Election night is out of scope: it is a jump event.
+
+### Shared rules
+
+- Same comparators logic as D1: no-quote plus tuned classical quoters.
+- Same D1.3 market-making rule, same T5/T6 detectors.
+- Every val evaluation goes in a ledger.
+- Each track's test is run once.
