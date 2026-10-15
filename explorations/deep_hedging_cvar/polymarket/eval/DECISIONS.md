@@ -267,3 +267,47 @@ The coordinator then trains or collects 5 seeds of that method, or uses a pre-sp
 of them, and freezes the plan.
 
 **Unchanged:** D7's stopping rule and the 03:00 UTC deadline.
+
+## D9. Exploring a pivot to other market categories (recorded 2026-10-15 ~19:35 UTC)
+
+The user asked whether market making might work better outside crypto up/down, e.g. in sports
+or politics. Three workers study this using keyless data: complete on-chain fills, price history,
+live books and reward configs.
+
+| Worker | Scope |
+|---|---|
+| w6 | politics, economics, geopolitics |
+| w7 | census of maker economics across every category |
+| w8 | sports deep-dive |
+
+This is exploratory analysis. It selects no model, and it does not affect the crypto v2 protocol
+(D7/D8), which continues as planned.
+
+**If we pivot.** If the census shows a category with clearly positive maker economics and we
+pivot to it, a new protocol v3 will be pre-registered **before** any model is tuned for that
+category. It will fix:
+- that category's data;
+- its train/validation/test split by date;
+- a test set that nobody has touched.
+
+Nothing learned from the census is reported as a test result.
+
+## D10. Rows of the v2 test with no book (recorded 2026-10-15 ~20:00 UTC, before any Jun 15 strategy result)
+
+**What the build found.** 58 of the 288 Jun 15 markets have no order book for the first 3–201 s
+after open: 2,987 rows (3.4%) with `book_valid=0`. v1 had the same pattern in 57 of its 471 5m
+markets (1.8% of 5m rows), and the env treats both data sets identically.
+
+**Decision: no change to the data or the env, so treatment stays consistent with train, val and
+v1.**
+- The existing T5 detector already covers fills on these rows through its `onesided` and
+  `crossed_or_stale` artifact flags. A result where flagged fills carry more than 25% of the fill
+  edge is invalid.
+- In addition, the v2 report will show the method's P&L once more with every fill on a
+  `book_valid=0` row removed, as a sensitivity check. This is reported, not used to judge.
+
+**Two cosmetic leftovers, not fixed:**
+- The env's test banner still mentions "Aug 24", because the text is hard-coded in `mm.h`. It is
+  not changed, so the frozen hash stays the same.
+- `book_age` on Jun 15 measures time since the last feed message. That differs from the v1
+  capture and is part of the source-shift caveat in D7.

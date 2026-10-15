@@ -27,8 +27,12 @@ Read these first:
    `git add -A`. Never edit shared code (`mm.h`, `train/*.py`, `data/*`, `final/*`,
    `baselines/*`). If you need a code change, copy the module into your folder and change the copy.
 5. **Push safely.** Push to branch `claude/eloquent-feynman-n78cn1` with
-   `git pull --rebase origin claude/eloquent-feynman-n78cn1 && git push origin HEAD:claude/eloquent-feynman-n78cn1`,
-   retrying on rejection. Never force-push and never rewrite history.
+   `git pull --no-rebase --no-edit origin claude/eloquent-feynman-n78cn1 && git push origin HEAD:claude/eloquent-feynman-n78cn1`,
+   retrying on rejection.
+   - Use a merge pull, not a rebase. Your ledger is appended to while you push, and a rebase or
+     autostash can set rows aside.
+   - Never force-push and never rewrite history.
+   - Never commit a `.gitattributes` containing `filter=lfs`: GitHub refuses LFS on this fork.
 6. **CPU.** 4 cores. Run at most 4 training processes, with `--threads 1` and
    `OMP_WAIT_POLICY=passive OMP_NUM_THREADS=1`.
 7. **Stay alive while runs are in flight.** The container is reclaimed when your session is idle,
