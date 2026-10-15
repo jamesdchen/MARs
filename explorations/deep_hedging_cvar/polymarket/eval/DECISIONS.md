@@ -194,3 +194,37 @@ i.e. about +$0.45–0.58 per market. They fill only about 4.0–4.7 times per
 market. That is below D1.3's threshold of 5, so they cannot be selected.
 Their teacher is itself directional (D1). We will report them as "RL matches
 the low-activity fair-value baseline", not as market making.
+
+## D7. Protocol v2: improvement continues, with a new untouched test set (recorded 2026-10-15 ~15:05 UTC)
+
+The v1 test day (Aug 24) has been used once (final/RESULTS.md, verdict FAIL). The user asked for
+further improvement. Aug 24 can no longer serve as a test, so v2 sets up a new test.
+
+**Data roles in v2:**
+
+| Role | Data | Notes |
+|---|---|---|
+| Train | Aug 21–22 (431 markets), as before | |
+| Validation | Aug 23 + Aug 24 (374 markets) | Aug 24 counts as validation from now on. Its v1 test result is already public, and it is never again called a test. |
+| v2 test (untouched) | Marketlens `polymarket-btc-5m-l2-depth` on Hugging Face: every BTC 5-minute up/down market of 2026-06-15 (288 markets) | Converted to our format in `data/build_jun15/`. No policy, baseline or tuning run may touch it before the v2 plan is frozen. It is evaluated once. |
+
+**Caveats on the v2 test, stated before any result exists:**
+- It covers BTC 5-minute markets only.
+- It comes from a different capture: Marketlens millisecond deltas instead of PolyOrderBooks
+  1-second snapshots.
+- It is out-of-period, two months before training, rather than walk-forward.
+
+The v2 test therefore measures robustness under a shift in data source and time period. It does
+not measure the full portfolio.
+
+**What may change in v2 (selected on validation only, with every evaluation in the ledgers):**
+- features (Binance sub-second order flow);
+- seed ensembling;
+- per-contract-length specialisation;
+- reward and objective (fill markout, CVaR).
+
+**Unchanged:** the comparators (D1), the T5 rules (D2) and the D1.3 rule for what counts as
+making markets.
+
+**Stopping and freezing:** the v2 plan is frozen and hashed before the Jun 15 evaluation, in the
+same way as v1. The test runs once, and every result is reported.
