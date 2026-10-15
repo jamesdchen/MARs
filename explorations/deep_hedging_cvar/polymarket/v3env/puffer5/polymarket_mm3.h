@@ -55,7 +55,7 @@ static const char* PMM3_LOG_NAMES[] = {
     "vol_extreme", "vol_outside", "vol_inspread", "pnl_crossed", "pnl_stale", "pnl_onesided",
     "pnl_last30", "pnl_last10", "pnl_inside2", "pnl_extreme", "pnl_outside", "pnl_inspread",
     "close_penalty", "flat_cost", "settle_px", "rw_samples", "rw_scored", "rw_share",
-    "episode_rows",
+    "episode_rows", "net_gross_sh", "net_notional", "net_end_inv", "net_share", "net_eps", "net_flat_drag",
 };
 #define PMM3_LOG_N (int)(sizeof(PMM3_LOG_NAMES) / sizeof(PMM3_LOG_NAMES[0]))
 typedef char pmm3_log_layout_check[sizeof(Mm3Log) == (PMM3_LOG_N + 1) * sizeof(float)

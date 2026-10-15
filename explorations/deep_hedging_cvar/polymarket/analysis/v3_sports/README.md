@@ -5,6 +5,7 @@
 | Live recorder | `recorder_pregame.toml` (polyrec) | Running since 2026-10-15 20:22 UTC in w1's container. ~290 pre-game moneylines (top leagues by census volume) with kickoff in the next 48 h, rotating new games in every 5 min. Book rows run until kickoff + 5 min; trades and markets are finalized after kickoff. Output goes to `rec_out/` (git-ignored). |
 | Compact daily files | `export_daily.py` → `rec_daily/<day>/` (committed hourly) | Outcome-0 book only (outcome 1 is its mirror), top 10 levels, zstd 19. Also trades, markets and coverage. About 40 MB/day. |
 | Env binaries | `build_sports.py`, `README_build.md`, `env_sports/` | Raw data (recorder / backfill) becomes ticks/feat/fills/book/markets in the `data/build` schema. Episodes end at kickoff, and inventory settles at the last pre-kickoff mid. That settlement needs the patched env copy in `env_sports/` (fractional settlement, 3 lines). |
+| Reward programs | `rewards_snapshot.py` → `rewards/rewards_<day>.json` (git-tracked, small) | Daily CLOB `/rewards/markets/current` snapshot of the recorded markets (rate/day, max spread, min size); `build_sports.py --rewards-dir` turns it into per-row reward columns (feat `liq_*`, `sports_x3.bin`). First run 2026-10-15 21:24 UTC: 5 of 313 recorded markets in a program. Run it once a day. |
 | Historical backfill | `backfill_pob.py`, `README_backfill.md`, `pob_openapi.json` | Ready for `POLYORDERBOOKS_API_KEY`. Run `--probe` first, then e.g. `--start 2026-09-16 --end 2026-10-14 --mirror --min-volume 50000`. It is resumable and writes `raw_pob/` in the recorder layout. Trades come from data-api, keyless (`--stage meta` works now). |
 
 ## v3 data rule: episode cut (recorded 2026-10-15 ~21:15 UTC, before any v3 result)
@@ -42,6 +43,15 @@ python baseline_pregame.py --rec rec_out --out /tmp/bt --test --slugs '^(nhl|nba
 finalized trades in `rec_out/trades`. Trades come from the recorder only (`--no-fetch-trades`).
 Esports slugs in the recorder (cs2/dota2/lol/val) mostly have a `gameStartTime` before the recorder
 started (series already live), so their books are all "after kickoff" and the build drops them.
+
+**Update 2026-10-15 ~22:40 UTC (D15)**: the grid is now `no_quote` + {join, inside} x {10, 100 sh} x pull_s
+{0, 300, 900, 1800, 3600} (pull = quotes off pull_s before kickoff; a val-selected hyperparameter, not a build
+cut). Headline `pnl_flat`: the inventory left is crossed out at the pull (or the episode end if earlier),
+marked at the mid there minus half the spread x |inv|; `pnl` is the env's kickoff-mid mark. Default
+`--max-hours 24` (4 h segments tiling back from kickoff); every segment carries its majority time-to-kickoff
+bucket (>24h, 6-24h, 1-6h, 1h-30m, 30-5m, 5-0m) from build_sports meta.json, and summary.md reports overall,
+P&L flat by pull_s x bucket, by bucket and by league. The text below describes the first (pull {0, 5} min)
+version.
 
 **Build**: dt 1 s, one 4 h segment ending at kickoff (`--seg 14400 --max-hours 4`), `--min-cover 0.05`
 (the recorder started 20:22 UTC, so most of tonight's games have 0.5-4 h of book; rows before the first
@@ -106,7 +116,7 @@ These are open games via `build_sports --allow-open`: each game is cut at its la
 - **Rebates**: modelled as a share of the pool (above); the $1 daily minimum is ignored.
 - **Gamma refetch**: `build_sports.py` refetches gamma for every slug that has no `closed` gamma cache, at
   about 0.5 s per slug. In `--test`, filter with `--slugs`, because otherwise all ~300 slugs are fetched (~2.5 min).
-- **build_sports.py bug** (not edited, it is w1's file): with `--allow-open`, a market whose data-api trade
+- **build_sports.py bug** (fixed in sports-2): with `--allow-open`, a market whose data-api trade
   history is empty crashes `api_trades` (`'DataFrame' object has no attribute 'outcome_idx'`). Seen in a 12-market test run (`--max-markets 12`, the first slugs alphabetically).
   Real mode uses `--no-fetch-trades` and does not hit it.
 

@@ -14,17 +14,22 @@ the recorder output (the slug appears in rec_out/trades). Trades come from the r
 (build_sports --no-fetch-trades). --test (TESTING ONLY) uses build_sports --allow-open: open games
 are cut at their last book row ("kickoff" = last book row) and trades come from data-api.
 
-Strategy grid (fixed, no tuning; the full list is STRATEGIES below):
+Strategy grid (fixed, no tuning; the full list is STRATEGIES below), pull_s in {0, 300, 900, 1800, 3600}:
   no_quote
-  join_s{10,100}_pull{0,5}     join best bid and best ask
-  inside_s{10,100}_pull{0,5}   one tick inside each touch when the spread is >= 3 ticks; at exactly
-                               2 ticks only the side that reduces |inventory| improves (both one
-                               tick inside would lock), with zero inventory both join; 1 tick: join
+  join_s{10,100}_pull{pull_s}     join best bid and best ask
+  inside_s{10,100}_pull{pull_s}   one tick inside each touch when the spread is >= 3 ticks; at exactly
+                                  2 ticks only the side that reduces |inventory| improves (both one
+                                  tick inside would lock), with zero inventory both join; 1 tick: join
 Every strategy quotes only on a two-sided book, holds at most Q = 100 shares (env cap), and pulls
-all quotes N minutes before kickoff (N = 0: at kickoff = the episode end). Terminal inventory is
-marked at the last pre-kickoff mid (env_sports settlement). Sizes: 10 shares = size head 1 (2 x
-min size 5), 100 shares = size head 2 x size_mult 4 (5 x 5 x 4); the effective size is reported
-per market (gamma orderMinSize may differ from 5).
+all quotes pull_s seconds before kickoff (obs-8 kickoff clock; 0 = at kickoff). The pull time is a
+val-selected hyperparameter (DECISIONS.md D15), not a build cut. Headline P&L ("pnl_flat"): the
+inventory left is crossed out at the pull (or at the episode end, if earlier): marked at the mid
+there minus half the spread x |inv|. "pnl" is the env's (marked at the kickoff mid, no crossing).
+Sizes: 10 shares = size head 1 (2 x min size 5), 100 shares = size head 2 x size_mult 4 (5 x 5 x 4);
+the effective size is reported per market (gamma orderMinSize may differ from 5).
+Episodes: 4 h segments tiling [kickoff - max_hours, kickoff] (default 24 h); each is reported in
+its majority time-to-kickoff bucket (>24h, 6-24h, 1-6h, 1h-30m, 30-5m, 5-0m; build_sports meta.json),
+plus overall and by league.
 
 Env: dt = 1 s decisions for every length, latency 1 s, fill model central (headline) and
 pessimistic (sensitivity), Q 100, rebates from markets.bin (gamma feeSchedule rate x rebateRate),
@@ -61,11 +66,14 @@ LOG_TAU_DEN = math.log1p(14400.0)             # obs 8 = log1p(seconds to kickoff
 # obs indices (ENV.md section 6)
 O_LOG_TAU, O_SPREAD, O_BID, O_ASK, O_INV = 8, 11, 12, 13, 33
 
-# name -> (kind, shares, pull minutes)
+PULLS_S = (0, 300, 900, 1800, 3600)            # D15: the pull before kickoff is a val-selected hyperparameter
+BUCKET_ORDER = [">24h", "6-24h", "1-6h", "1h-30m", "30-5m", "5-0m"]   # build_sports.BUCKETS
+
+# name -> (kind, shares, pull seconds before kickoff)
 STRATEGIES = {"no_quote": ("off", 10, 0)}
 for _k in ("join", "inside"):
     for _s in (10, 100):
-        for _n in (0, 5):
+        for _n in PULLS_S:
             STRATEGIES[f"{_k}_s{_s}_pull{_n}"] = (_k, _s, _n)
 SIZE_ACT = {10: (1, 1.0), 100: (2, 4.0)}      # shares -> (size head, size_mult) at min size 5
 
@@ -145,7 +153,7 @@ def core_defaults() -> dict:
 
 
 # ----------------------------------------------------------------------------- policies
-def make_policy(kind: str, shares: int, pull_min: float):
+def make_policy(kind: str, shares: int, pull_s: float):
     size_head = SIZE_ACT[shares][0]
 
     def pol(obs: np.ndarray) -> np.ndarray:
@@ -156,7 +164,7 @@ def make_policy(kind: str, shares: int, pull_min: float):
             return act
         two = (obs[:, O_BID] > 0.5) & (obs[:, O_ASK] > 0.5)
         secs = np.expm1(obs[:, O_LOG_TAU].astype(np.float64) * LOG_TAU_DEN)
-        on = two & (secs > pull_min * 60.0 + 1e-6)
+        on = two & (secs > pull_s + 1e-6)
         bid = np.full(n, 3, np.int32)
         ask = np.full(n, 3, np.int32)
         if kind == "inside":
@@ -190,6 +198,11 @@ class Runner:
         self.feat = np.memmap(bdir / "feat.bin", np.float32, "r", shape=(fm["N"], fm["G"]))
         self.mark_col = 34
         self.sko = np.fromfile(bdir / "sports_feat.bin", np.float32).reshape(fm["N"], -1)[:, 0]  # s to kickoff
+        tk = np.memmap(bdir / "ticks.bin", np.float32, "r", shape=(meta["N"], meta["F"]))
+        ci = meta["column_index"]
+        bb, aa = np.asarray(tk[:, ci["bid_px_0"]], np.float64), np.asarray(tk[:, ci["ask_px_0"]], np.float64)
+        two = (np.asarray(tk[:, ci["book_valid"]]) > 0) & (bb > 0) & (aa < 1)
+        self.half_spread = np.where(two, 0.5 * (aa - bb), np.nan)     # forward-filled per market in flatten()
         p = {**core_defaults(), "split": 1, "fill_model": fill_model, "latency": 1, "dt": 1, "Q": 100,
              "size_mult": size_mult, "fixed_start": 0, "cycle_stride": n, "fixed_market": -1,
              "liq_rewards": 0, **(extra or {})}
@@ -213,6 +226,27 @@ class Runner:
         bad = np.flatnonzero(~(self.obs[:, :k] == want).all(1))
         if bad.size:
             raise RuntimeError(f"envs {bad[:10].tolist()} are not on their expected markets at offset 0")
+
+    def flatten(self, recs: list[dict], pull_s: float) -> None:
+        """D15 flatten cost: the inventory is crossed out at the pull (pull_s before kickoff; the episode end if that
+        comes first): marked at the mid there minus half the spread x |inv| (the last two-sided spread, else 1 c)."""
+        off = self.markets["row_offset"][self.idx].astype(np.int64)
+        nrows = self.markets["n_rows"][self.idx].astype(np.int64)
+        for i, rec in enumerate(recs):
+            o, n = int(off[i]), int(nrows[i])
+            sk = self.sko[o:o + n]
+            fr = int(np.argmax(sk <= pull_s + 1e-6)) if (sk <= pull_s + 1e-6).any() else n - 1
+            hs = self.half_spread[o:o + fr + 1]
+            hs = hs[np.isfinite(hs)]
+            h = float(hs[-1]) if len(hs) else 0.005
+            mid_f = float(self.feat[o + fr, self.mark_col])
+            settle = float(self.feat[o + n - 1, self.mark_col])
+            inv = float(rec["final_inv"])
+            rec["flat_row"] = fr
+            rec["flat_half_spread_c"] = 100 * h
+            rec["flat_cost"] = abs(inv) * h
+            rec["inv_mark_shift"] = inv * (mid_f - settle)        # re-mark from the kickoff mid to the pull mid
+            rec["pnl_flat"] = rec["pnl"] + rec["inv_mark_shift"] - rec["flat_cost"]
 
     def run(self, policy) -> list[dict]:
         b, n = self.b, self.n
@@ -266,7 +300,7 @@ class Runner:
 
 
 # ----------------------------------------------------------------------------- report
-SUMK = ["pnl", "pnl_trading", "spread_capture", "markout_30", "markout_60", "markout_300", "inventory_pnl",
+SUMK = ["pnl", "pnl_flat", "flat_cost", "pnl_trading", "spread_capture", "markout_30", "markout_60", "markout_300", "inventory_pnl",
         "rebates", "fills", "fill_vol", "buy_vol", "sell_vol", "rejects"]
 
 
@@ -306,7 +340,8 @@ def table(rows: list[dict], cols: list[tuple[str, str, int]]) -> str:
     return head + "".join("| " + " | ".join(fmt(r.get(c[0]), c[2]) for c in cols) + " |\n" for r in rows)
 
 
-COLS = [("strategy", "strategy", 0), ("group", "group", 0), ("n", "n", 0), ("pnl_total", "P&L $", 2),
+COLS = [("strategy", "strategy", 0), ("group", "group", 0), ("n", "n", 0), ("pnl_flat_total", "P&L flat $", 2),
+        ("pnl_total", "P&L KO-mark $", 2), ("flat_cost_total", "flat cost $", 2),
         ("spread_capture_total", "spread $", 2), ("markout_60_total", "mo60 $", 2),
         ("inventory_pnl_total", "inv $", 2), ("rebates_total", "rebates $", 3), ("fills_per_mkt", "fills/mkt", 1),
         ("vol_per_mkt", "vol/mkt", 0), ("spread_per_sh_c", "spread c/sh", 2), ("mo30_per_sh_c", "mo30 c/sh", 2),
@@ -318,7 +353,8 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--rec", action="append", required=True, help="recorder out dir (repeatable)")
     ap.add_argument("--out", default=str(HERE / "baseline_out"))
-    ap.add_argument("--max-hours", type=float, default=4.0, help="window before kickoff (4 h = one segment)")
+    ap.add_argument("--max-hours", type=float, default=24.0, help="window before kickoff (4 h segments tiling it "
+                    "backwards from kickoff; each is reported in its majority time-to-kickoff bucket)")
     ap.add_argument("--min-cover", type=float, default=0.05,
                     help="keep a 4 h segment if this fraction has a book (recording may start < 4 h before KO)")
     ap.add_argument("--settle-wait", type=int, default=1800)
@@ -346,16 +382,20 @@ def main(argv=None):
     leagues = {v: k for k, v in meta["coin_ids"].items()}
     sfeat = np.fromfile(bdir / "sports_feat.bin", np.float32).reshape(meta["N"], -1)
     idx = np.flatnonzero(markets["split"] == 1)
+    segm = meta.get("segments")                   # build_sports sports-2: per segment kickoff_ts, bucket, settle
     base = []
     for j, i in enumerate(idx):
         m = markets[i]
         o, nr = int(m["row_offset"]), int(m["n_rows"])
         sid = meta["slugs"][i]
-        assert int(sfeat[o + nr - 1, 0]) == 0 or not (int(m["flags"]) & 128), sid   # AT_KICKOFF ends at KO
+        sm = segm[i]
+        assert sm["sid"] == sid and int(round(float(sfeat[o + nr - 1, 0]))) == sm["kickoff_ts"] - int(m["end_ts"]), sid
         base.append(dict(market=sid, game=sid.split("#")[0], league=leagues[int(m["coin_id"])],
-                         kickoff_utc=pd.Timestamp(int(m["end_ts"]), unit="s", tz="UTC").strftime("%m-%d %H:%M"),
+                         kickoff_utc=pd.Timestamp(sm["kickoff_ts"], unit="s", tz="UTC").strftime("%m-%d %H:%M"),
+                         bucket=sm["bucket"], bucket_pure=sm["bucket_pure"], at_kickoff=bool(sm["at_cut"]),
+                         to_ko_start_h=sm["to_kickoff_start_s"] / 3600, to_ko_end_h=sm["to_kickoff_end_s"] / 3600,
                          min_size=float(m["min_order_size"]), fee_rate=float(m["taker_fee_rate"]),
-                         rebate_rate=float(m["maker_rebate_rate"]), settle=float(m["log_strike_vs_ul_open"]),
+                         rebate_rate=float(m["maker_rebate_rate"]), settle=float(sm["settle_price"]),
                          book_hours=float(sfeat[o + nr - 1, 3])))
     assert len(meta["slugs"]) == len(markets)
     print(f"{len(idx)} markets ({len(set(r['game'] for r in base))} games), leagues "
@@ -370,19 +410,23 @@ def main(argv=None):
                     continue
                 ts = time.time()
                 recs = r.run(make_policy(kind, shares, pull))
+                r.flatten(recs, pull)
                 for bm, rec in zip(base, recs):
-                    rows.append({"strategy": name, "fill_model": fm_name, **bm,
+                    rows.append({"strategy": name, "fill_model": fm_name, "kind": kind, "shares": shares,
+                                 "pull_s": pull, **bm,
                                  "size_shares": SIZE_ACT[shares][1] * bm["min_size"] * (1, 2, 5)[SIZE_ACT[shares][0]],
                                  **rec})
                 d = np.array([x["markout_30_rebuilt"] - x["markout_30"] for x in recs])
                 checks[f"{fm_name}/{name}"] = {
                     "max_abs_mo30_rebuild_err": float(np.abs(d).max()) if len(d) else 0.0,
                     "max_abs_kickoff_clock_err_s": r.ko_err,
-                    "vol_last30": float(sum(x["vol_last30"] for x in recs)),   # must be 0 when pull >= 1 min
+                    # fills in the last 30 s of the episodes ending at kickoff: must be 0 when pull >= 60 s
+                    "vol_last30_at_kickoff": float(sum(x["vol_last30"] for x, bm in zip(recs, base) if bm["at_kickoff"])),
                     "wall_s": round(time.time() - ts, 2)}
-                if pull >= 1 and checks[f"{fm_name}/{name}"]["vol_last30"] > 0:
-                    raise RuntimeError(f"{name}: fills in the last 30 s despite pulling {pull} min before kickoff")
-                print(f"  {fm_name:11s} {name:18s} pnl {sum(x['pnl'] for x in recs):9.2f}  fills "
+                if pull >= 60 and checks[f"{fm_name}/{name}"]["vol_last30_at_kickoff"] > 0:
+                    raise RuntimeError(f"{name}: fills in the last 30 s despite pulling {pull} s before kickoff")
+                print(f"  {fm_name:11s} {name:18s} pnl {sum(x['pnl'] for x in recs):9.2f} flat "
+                      f"{sum(x['pnl_flat'] for x in recs):9.2f}  fills "
                       f"{sum(x['fills'] for x in recs):6.0f}  mo30 rebuild err {checks[f'{fm_name}/{name}']['max_abs_mo30_rebuild_err']:.2e}  KO clock err "
                       f"{r.ko_err:.3f}s"
                       f"  {time.time() - ts:.1f}s", flush=True)
@@ -394,6 +438,11 @@ def main(argv=None):
         summ.append({"fill_model": fm_name, "strategy": st, "group": "ALL", **aggregate(g)})
         for lg, gl in g.groupby("league"):
             summ.append({"fill_model": fm_name, "strategy": st, "group": lg, **aggregate(gl)})
+        for bk, gb in g.groupby("bucket"):
+            summ.append({"fill_model": fm_name, "strategy": st, "group": "bucket " + bk, **aggregate(gb)})
+    for x in summ:
+        k_, s_, p_ = STRATEGIES[x["strategy"]]
+        x.update(kind=k_, shares=s_, pull_s=p_)
     sdf = pd.DataFrame(summ)
     sdf.to_csv(out / "summary.csv", index=False)
     res = {"mode": "TEST (--allow-open: open games cut at the last book row; data-api trades)" if args.test
@@ -401,7 +450,11 @@ def main(argv=None):
            "n_markets": len(idx), "n_games": len(set(r["game"] for r in base)), "build": str(bdir),
            "env": {"fill_models": args.fill_models, "latency_s": 1, "dt_s": 1, "Q": 100,
                    "rebates": "markets.bin taker_fee_rate x maker_rebate_rate x q x p(1-p)", "liq_rewards": 0},
-           "strategies": {k: {"kind": v[0], "shares": v[1], "pull_min": v[2]} for k, v in STRATEGIES.items()},
+           "flatten": "pnl_flat = pnl (inventory marked at the kickoff mid) + inv x (mid at the pull - kickoff mid) - "
+                      "|inv| x half spread at the pull (last two-sided spread, else 1 c); pull = pull_s before kickoff "
+                      "or the episode end, whichever first (D15)",
+           "buckets": "each episode in its majority time-to-kickoff bucket (meta.json segments[i].bucket)",
+           "strategies": {k: {"kind": v[0], "shares": v[1], "pull_s": v[2]} for k, v in STRATEGIES.items()},
            "checks": checks, "wall_s": round(time.time() - t0, 1),
            "build_stats": sp.get("stats")}
     (out / "results.json").write_text(json.dumps(res, indent=1, default=str))
@@ -409,18 +462,31 @@ def main(argv=None):
           f"{len(idx)} markets, {res['n_games']} games, built {meta.get('built_at_utc')}. "
           f"Env: env_sports central/pessimistic, latency 1 s, dt 1 s, Q 100, rebates per markets.bin.\n"]
     for fm_name in df.fill_model.unique():
-        md.append(f"\n## {fm_name}: overall\n")
+        md.append(f"\n## {fm_name}: overall (P&L flat = crossed out at the pull, half spread)\n")
         md.append(table([x for x in summ if x["fill_model"] == fm_name and x["group"] == "ALL"], COLS))
+        md.append(f"\n## {fm_name}: P&L flat $ by pull_s x bucket\n")
+        sub = [x for x in summ if x["fill_model"] == fm_name and x["strategy"] != "no_quote"
+               and (x["group"] == "ALL" or x["group"].startswith("bucket "))]
+        if sub:
+            pv = pd.DataFrame(sub).pivot_table(index=["kind", "shares", "pull_s"], columns="group",
+                                               values="pnl_flat_total", aggfunc="sum")
+            order = ["ALL"] + [f"bucket {b}" for b in BUCKET_ORDER if f"bucket {b}" in pv.columns]
+            pr = pv[order].reset_index()
+            md.append(table(pr.to_dict("records"), [("kind", "kind", 0), ("shares", "shares", 0), ("pull_s", "pull_s", 0)]
+                            + [(c, c.replace("bucket ", ""), 2) for c in order]))
+        md.append(f"\n## {fm_name}: by bucket\n")
+        md.append(table([x for x in summ if x["fill_model"] == fm_name and x["group"].startswith("bucket ")
+                         and x["strategy"] != "no_quote"], COLS))
         md.append(f"\n## {fm_name}: by league\n")
         md.append(table([x for x in summ if x["fill_model"] == fm_name and x["group"] != "ALL"
-                         and x["strategy"] != "no_quote"], COLS))
+                         and not x["group"].startswith("bucket ") and x["strategy"] != "no_quote"], COLS))
     pm = df[(df.fill_model == df.fill_model.iloc[0])]
-    md.append("\n## per market (first fill model; join_s10_pull0 and inside_s10_pull0)\n")
-    cols = [("market", "market", 0), ("league", "lg", 0), ("kickoff_utc", "KO", 0), ("book_hours", "book h", 1),
-            ("strategy", "strategy", 0), ("pnl", "P&L", 2), ("spread_capture", "spread", 2),
+    md.append("\n## per market (first fill model; join_s10_pull0 and join_s10_pull900)\n")
+    cols = [("market", "market", 0), ("league", "lg", 0), ("kickoff_utc", "KO", 0), ("bucket", "bucket", 0),
+            ("book_hours", "book h", 1), ("strategy", "strategy", 0), ("pnl_flat", "P&L flat", 2), ("pnl", "P&L", 2), ("spread_capture", "spread", 2),
             ("markout_60", "mo60", 2), ("inventory_pnl", "inv", 2), ("rebates", "reb", 3), ("fills", "fills", 0),
             ("fill_vol", "vol", 0), ("final_inv", "inv KO", 1), ("settle", "settle", 3)]
-    md.append(table(pm[pm.strategy.isin(["join_s10_pull0", "inside_s10_pull0"])].sort_values(
+    md.append(table(pm[pm.strategy.isin(["join_s10_pull0", "join_s10_pull900"])].sort_values(
         ["market", "strategy"]).to_dict("records"), cols))
     (out / "summary.md").write_text("".join(md))
     print("".join(md[:3]))

@@ -258,6 +258,7 @@ class Episode3:
         self.close_pen = self.flat_cost = 0.0
         self.rw_samples = self.rw_scored = 0
         self.rw_share = 0.0
+        self.gross = self.notional = 0.0                 # D15 netting diagnostics (Log only)
         self.spread = 0.0
         self.markout = {5: 0.0, 30: 0.0, 60: 0.0}
         self.minute = None
@@ -485,6 +486,8 @@ class Episode3:
         self.minute_fill += qty
         self.n_fills += 1
         self.fill_vol += qty
+        self.gross += qty
+        self.notional += qty * p
         if side == 0:
             self.buy_vol += qty
         else:
@@ -682,7 +685,16 @@ class Episode3:
                     **{f"pnl_{k}": v for k, v in self.flag_pnl.items()},
                     close_penalty=self.close_pen, flat_cost=self.flat_cost, settle_px=self.settle,
                     rw_samples=self.rw_samples, rw_scored=self.rw_scored, rw_share=self.rw_share,
-                    episode_rows=self.r_end - self.s0, n=1.0)
+                    episode_rows=self.r_end - self.s0, **self.netting(), n=1.0)
+
+    def netting(self):
+        """D15 (RECONCILE.md section 6): gross filled shares, notional, |inventory| at the episode's end,
+        the netted share 1 - |end inv| / gross (episodes with fills), the flattening cost charged."""
+        end = abs(self.inv)
+        has = self.gross > 0
+        return dict(net_gross_sh=self.gross, net_notional=self.notional, net_end_inv=end,
+                    net_share=max(1.0 - end / self.gross, 0.0) if has else 0.0, net_eps=float(has),
+                    net_flat_drag=self.flat_cost)
 
     def state(self):
         """Same layout as m3_record() in harness3.c."""

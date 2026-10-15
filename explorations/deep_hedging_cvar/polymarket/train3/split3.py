@@ -16,7 +16,7 @@ made loadable or not by adapt3.py), per track, and assigns them by D11's rule:
   2026-11-03, election night, out of scope) are excluded; of the rest, the LAST recorded days are
   test with the same 60 / 20 / 20 arithmetic (oldest train, then val, newest test).
 D14 (sports): the quote window is listing to kickoff - 1 h, so a game day is kept only if at least
---min-markets of its episodes start more than --min-pre-hours (default 1) before kickoff; the file
+--min-markets of its episodes start more than --min-pre-hours (default 0 under D15; D14 used 1) before kickoff; the file
 records per day how many episodes are quotable and how many reach into each time-to-kickoff bucket
 (> 24 h, 6-24 h, 1-6 h), the buckets D14 reports by.
 `--exclude DAY ...` drops days (e.g. a partial first recording day) before the rule is applied;
@@ -138,7 +138,7 @@ def main(argv=None):
     ap.add_argument('--exclude', nargs='*', default=[], help='days to drop before the rule')
     ap.add_argument('--cutoff', default='2026-11-03', help='elections: days at or after this are dropped')
     ap.add_argument('--min-markets', type=int, default=1)
-    ap.add_argument('--min-pre-hours', type=float, default=1.0,
+    ap.add_argument('--min-pre-hours', type=float, default=0.0,
                     help='sports (D14): a game day needs --min-markets episodes starting more than this many hours '
                          'before kickoff; 0 disables')
     a = ap.parse_args(argv)

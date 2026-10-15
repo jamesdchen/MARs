@@ -1283,7 +1283,10 @@ def verify(out: Path) -> None:
         assert set(mk["contract_len_s"]) <= set(SEG_LENS)
     else:
         games = [s.split("#")[0] for s in meta["slugs"]]
-        assert ((mk["flags"] & FLAG_AT_CUT) > 0).sum() == len(set(games)), "one AT_CUT episode per game"
+        at = [g_ for g_, f_ in zip(games, mk["flags"]) if f_ & FLAG_AT_CUT]
+        assert len(at) == len(set(at)), "more than one AT_CUT episode per game"
+        if not sp.get("buckets", {}).get("bucket_segments"):     # (a bucket piece can be dropped, e.g. no book)
+            assert len(at) == len(set(games)), "one AT_CUT episode per game"
         if not sp.get("buckets", {}).get("bucket_segments"):
             assert len(set(games)) == len(games)
     assert (mk["end_ts"] - mk["open_ts"] == mk["contract_len_s"] * sp["dt_s"]).all()
@@ -1668,7 +1671,7 @@ def selftest(args) -> None:
         if args.no_env:
             return
         # ---- v3env: adapt3.py (today's sports branch) + env3, and the proposed x3 = sports_x3.bin variant
-        v3 = Path(args.v3env)
+        v3 = Path(args.v3env).resolve()
         if (v3 / "adapt3.py").exists():
             r = subprocess.run([sys.executable, str(v3 / "adapt3.py"), str(ow)], capture_output=True, text=True,
                                cwd=str(v3), timeout=600)
@@ -1686,8 +1689,8 @@ def selftest(args) -> None:
                     assert x["rows"] == sm["n_rows"] - 1 and abs(x["settle"] - sm["settle_price"]) < 1e-6, (x, sm)
                     assert (x["liq"] > 0) == sm["rw"]["in_program_any"], (x, sm["rw"])
                     assert abs(x["liq"] - y["liq"]) < 1e-6 and x["fills"] == y["fills"]
-                    assert x["rw_active"] == 0 and y["rw_active"] == float(sm["rw"]["in_program_any"])
-                print("env3 (adapt3 as is): every episode runs to kickoff, settles at settle_price, liq rewards "
+                    assert x["rw_active"] == y["rw_active"] == float(sm["rw"]["in_program_any"])  # adapt3 copies sports_x3.bin
+                print("env3 (adapt3 sports-2): every episode runs to kickoff, settles at settle_price, liq rewards "
                       "paid only in program:", json.dumps([{k: round(v, 4) if isinstance(v, float) else v
                                                             for k, v in x.items()} for x in p0]))
                 print("env3 with x3.bin = sports_x3.bin (proposed adapt3): same rewards and fills, rw_active "

@@ -58,7 +58,7 @@ def main():
     con.execute("CREATE TABLE mk AS SELECT * FROM mk_df")
     con.execute(f"""
       CREATE TABLE f AS
-      SELECT f.block, f.block_time AS t, f.log_index AS li, f.tx_hash AS tx, f.role, f.side, f.size, f.price,
+      SELECT f.block, f.block_time AS t, f.log_index AS li, f.tx_hash AS tx, f.maker AS wallet, f.role, f.side, f.size, f.price,
              mk.condition_id AS cond, mk.outcome_idx AS oi,
              CASE WHEN mk.outcome_idx = 0 THEN f.price ELSE 1 - f.price END AS p0,
              CASE WHEN (f.side = 'BUY') = (mk.outcome_idx = 0) THEN 1 ELSE -1 END AS s0
@@ -77,7 +77,7 @@ def main():
       SELECT cond, block, t, arg_max(mid, li) AS mid FROM y GROUP BY cond, block, t""")
     con.execute("""
       CREATE TABLE ml AS
-      SELECT f.block, f.t, f.tx, f.cond, f.oi, f.price AS q, f.size, CASE WHEN f.side = 'BUY' THEN 1 ELSE -1 END AS s,
+      SELECT f.block, f.t, f.tx, f.wallet, f.cond, f.oi, f.price AS q, f.size, CASE WHEN f.side = 'BUY' THEN 1 ELSE -1 END AS s,
              f.s0, mk.game_ts, mk.close_ts, mk.resolved, mk.final0, mk.league, mk.ev_slug AS ev, mk.sports_type,
              mk.rebate_rate * mk.fee_rate * f.price * (1 - f.price) AS rebate_ps
       FROM f JOIN (SELECT DISTINCT ON (condition_id) * FROM mk) mk ON f.cond = mk.condition_id
@@ -93,7 +93,7 @@ def main():
     own = lambda c: f"CASE WHEN oi = 0 THEN {c} ELSE 1 - {c} END"  # noqa: E731
     con.execute(f"""
       COPY (
-        SELECT t, block, tx, cond, oi, q, size, s, s0, pre_age, rebate_ps, league, ev, sports_type, game_ts,
+        SELECT t, block, tx, wallet, cond, oi, q, size, s, s0, pre_age, rebate_ps, league, ev, sports_type, game_ts,
                game_ts - t AS ttk_s, pre0 AS m0,
                {own('pre0')} AS mid_pre,
                CASE WHEN resolved AND close_ts <= t + 1800 THEN {own('final0')}
