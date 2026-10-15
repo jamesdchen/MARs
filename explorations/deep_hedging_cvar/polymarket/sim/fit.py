@@ -267,30 +267,41 @@ def fit_book(P: dict, mk: pd.DataFrame, reg, mid, spread) -> dict:
     # the table exactly and the state follows the conditions immediately; the AR half-lives are chosen so the
     # simulated P(S_t = S | S_{t-1} = S) on the real train p-paths matches the observed one.
     from scipy.special import ndtr
-    hl_grid = np.array([2, 5, 10, 20, 40, 80, 160, 320, 640, 1280, 2560, 5120, 10240, 20480])
+    hl_grid = [20, 80, 320, 1280, 5120, np.inf]           # copula AR half-life (inf = fixed per market)
+    hp_grid = [0, 3, 10, 30, 100, 300]                      # EWMA half-life applied to pi(cell_t)
     rng = np.random.default_rng(3)
     cop = {}
     for j, L in enumerate(cm.LENS):
         mis = np.flatnonzero(mk.L.values == L)
         rows = np.concatenate([np.arange(o[m], o[m + 1]) for m in mis])
         sh = (len(mis), L + 1)
-        piO = tab[j][tb[rows], eb[rows], cm.ONESIDED].reshape(sh)
-        piH = (tab[j][tb[rows], eb[rows], cm.HOLLOW] / np.maximum(1 - tab[j][tb[rows], eb[rows], cm.ONESIDED],
-                                                                  1e-9)).reshape(sh)
+        tO = tab[j][tb[rows], eb[rows], cm.ONESIDED].reshape(sh)
+        tH = (tab[j][tb[rows], eb[rows], cm.HOLLOW]
+              / np.maximum(1 - tab[j][tb[rows], eb[rows], cm.ONESIDED], 1e-9)).reshape(sh)
         reps = 4
         Z = rng.standard_normal((reps * len(mis), L + 1))
-        best = {}
-        for name, pi, target in (("onesided", piO, keep["onesided"][j]), ("hollow", piH, keep["hollow"][j])):
-            pi = np.tile(pi, (reps, 1))
-            errs = []
-            for hl in hl_grid:
-                ph = 0.5 ** (1.0 / hl)
-                z = lfilter([np.sqrt(1 - ph ** 2)], [1, -ph], Z, axis=1, zi=ph * Z[:, :1] / 1.0)[0]
-                s = ndtr(z) < pi
-                pss = (s[:, 1:] & s[:, :-1]).sum() / max(s[:, :-1].sum(), 1)
-                errs.append(abs(pss - target))
-            best[name] = float(hl_grid[int(np.argmin(errs))])
-        cop[cm.LEN_NAME[L]] = dict(halflife_onesided_s=best["onesided"], halflife_hollow_s=best["hollow"])
+        res_ = {}
+        for name, pi0, target in (("onesided", tO, keep["onesided"][j]), ("hollow", tH, keep["hollow"][j])):
+            real_frac = float((reg[rows] == (cm.ONESIDED if name == "onesided" else cm.HOLLOW)).mean())
+            best = None
+            for hp in hp_grid:
+                pi = pi0 if hp == 0 else lfilter([1 - 0.5 ** (1 / hp)], [1, -0.5 ** (1 / hp)], pi0, axis=1,
+                                                 zi=0.5 ** (1 / hp) * pi0[:, :1])[0]
+                pi = np.tile(pi, (reps, 1))
+                for hl in hl_grid:
+                    if np.isinf(hl):
+                        z = np.repeat(Z[:, :1], L + 1, 1)
+                    else:
+                        ph = 0.5 ** (1.0 / hl)
+                        z = lfilter([np.sqrt(1 - ph ** 2)], [1, -ph], Z, axis=1, zi=ph * Z[:, :1])[0]
+                    s = ndtr(z) < pi
+                    pss = (s[:, 1:] & s[:, :-1]).sum() / max(s[:, :-1].sum(), 1)
+                    err = abs(pss - target) + 0.5 * abs(s.mean() - real_frac)
+                    if best is None or err < best[0]:
+                        best = (err, hp, hl, float(pss), float(s.mean()))
+            res_[name] = dict(pi_ewma_halflife_s=best[1], copula_halflife_s=(None if np.isinf(best[2]) else best[2]),
+                              p_same_sim=best[3], frac_sim=best[4], p_same_real=target, frac_real=real_frac)
+        cop[cm.LEN_NAME[L]] = res_
     # side that is empty when one-sided: the extreme side (ask empty when p > 0.5)?
     os_ = v & (reg == cm.ONESIDED)
     noask = P["ask_px_0"] >= 1
@@ -697,7 +708,7 @@ def summary(p):
               f"hl_u={d['halflife_u_s']:.0f}s sigma_u={d['sigma_u']:.4f} upd_mult={d['update_prob_mult']:.2f} "
               f"b_tau={np.round(d['b_tau'], 3)} loss={d['smm_loss']:.2f}")
     b = p["book"]
-    print("tick switch", b["tick_switch"]["ext_threshold"], "keep", b["regime"]["p_keep"],
+    print("tick switch", b["tick_switch"]["ext_threshold"], "copula", b["regime"]["copula"],
           "extreme-side agree", b["regime"]["onesided_extreme_side_agree"])
     print("p_age0", np.round(np.array(b["book_change_profile"]["p_age0"]), 3))
     print("size", {k: (np.round(v["mu"], 2) if isinstance(v, dict) else v) for k, v in b["size"].items()})

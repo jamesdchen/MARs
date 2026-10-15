@@ -1,7 +1,7 @@
 {
  "meta": {
   "fitted_on": "train split 0 only: 431 markets (5m 248, 15m 146, 4h 37), opens 2026-08-21..22 UTC; Binance < 2026-08-23",
-  "created_utc": "2026-10-15T04:47:07.314637+00:00",
+  "created_utc": "2026-10-15T04:55:13.810751+00:00",
   "n_rows": 739031,
   "pricer": {
    "halflife_s": 300,
@@ -1153,7 +1153,7 @@
     61337.0,
     41277.0
    ],
-   "p_keep": {
+   "p_same_state_observed": {
     "normal": [
      0.9939,
      0.994723,
@@ -1170,13 +1170,27 @@
      0.998105
     ]
    },
+   "copula": {
+    "5m": {
+     "halflife_onesided_s": 20480.0,
+     "halflife_hollow_s": 20480.0
+    },
+    "15m": {
+     "halflife_onesided_s": 20480.0,
+     "halflife_hollow_s": 320.0
+    },
+    "4h": {
+     "halflife_onesided_s": 20480.0,
+     "halflife_hollow_s": 20480.0
+    }
+   },
    "onesided_extreme_side_agree": 0.985028,
    "p_hollow_at_open": [
     0.141129,
     0.178082,
     0.27027
    ],
-   "note": "per second: keep current state w.p. p_keep[state], else redraw from pi'(s) ~ table(s) * (1 - p_keep[s]) (so the marginal matches the table); one-sided removes the side beyond the extreme (ask if p_model > 0.5)"
+   "note": "table[len, tau_b, ext_b(p_model)] = P(state); per market Gaussian-copula AR(1) thresholds give the persistence (copula half-lives fitted to P(S_t=S|S_t-1=S)); one-sided removes the side beyond the extreme (ask if p_model > 0.5)"
   },
   "spread": {
    "coarse": {
@@ -24088,6 +24102,12 @@
     ]
    ],
    "note": "P(book_age == 0) per (len, tau_b) in train ticks"
+  },
+  "size_library": {
+   "file": "params_book.npz",
+   "vectors_per_cell": 4000,
+   "n_cells": 22,
+   "keep_prob_note": "at an update event the previous vector is kept with prob 1 - (1 - acf1)/pi_update, else a fresh one is drawn"
   },
   "depth_ratio": {
    "5m": {
