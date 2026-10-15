@@ -171,3 +171,75 @@ Own price; Sep 24 – Oct 7; micro-price in [0.05, 0.95].
 - **My REPORT.md (rules) is superseded.** "No simple rule makes money" came from a fill model that credited
   sweep volume at the touch price. Its other parts stand: the anchor survey, ENV_SPEC.md, and the per-day
   instability of 30 min numbers.
+
+## 6. Follow-up (D15): how much pre-game inventory nets out before kickoff, and the flatten drag
+
+`netting.py` → `out/netting.csv` and `.txt`.
+
+**Unit:** one maker wallet × one condition, in the outcome-0 frame, so trades on both tokens net as a merge
+would.
+- netted share = 1 − Σ|net at kickoff| / Σ gross shares;
+- drag = 0.5¢ × Σ|net| / notional (D15: half a spread);
+- edge = own price, to kickoff (C3).
+
+Only conditions whose kickoff falls in the window are included. The CI is on the edge after drag (event
+bootstrap).
+
+| group | Sep 24 – Oct 7: netted | drag bps | edge bps | after drag [CI] | Oct 8–14: netted | drag | edge | after drag [CI] |
+|---|---|---|---|---|---|---|---|---|
+| **all** | **19%** | **83** | +31 | **−52 [−74, −34]** | **14%** | 86 | +17 | **−69 [−104, −23]** |
+| soccer | 24% | 80 | +53 | −27 [−61, 7] | 15% | 84 | −12 | −96 [−137, −58] |
+| NFL | 21% | 79 | +12 | −67 [−84, −50] | 9% | 94 | −3 | −97 [−143, −49] |
+| esports | 10% | 90 | +31 | −59 [−142, 6] | 10% | 90 | +53 | −37 [−105, 5] |
+| CFB | 14% | 86 | −7 | −93 [−117, −72] | 9% | 93 | +6 | −87 [−133, −46] |
+| MLB | 11% | 93 | +20 | −73 [−113, −36] | 7% | 94 | +85 | −9 [−37, 34] |
+| tennis | 25% | 77 | +100 | +23 [−53, 94] | 22% | 79 | −125 | −204 [−362, −44] |
+| NHL | 6% | 94 | −25 | −119 [−243, −43] | 11% | 88 | −0 | −88 [−121, −56] |
+
+Same quantities by the size of the wallet's position in one condition (gross shares):
+
+| gross shares | Sep 24 – Oct 7: netted | drag bps | edge bps | after drag [CI] | Oct 8–14: netted | drag | edge | after drag [CI] |
+|---|---|---|---|---|---|---|---|---|
+| < 50 | 14% | 86 | +50 | −37 [−51, −25] | 11% | 88 | +64 | −24 [−50, 5] |
+| 50–250 | 21% | 78 | +97 | +19 [5, 33] | 18% | 80 | +30 | −50 [−61, −39] |
+| 250–1k | 22% | 77 | +27 | −50 [−63, −38] | 20% | 78 | +12 | −67 [−81, −53] |
+| 1k–5k | 21% | 80 | +4 | −76 [−96, −59] | 19% | 81 | −7 | −88 [−105, −68] |
+| 5k–25k | 23% | 79 | +7 | −72 [−106, −42] | 17% | 82 | −4 | −86 [−114, −59] |
+| > 25k | 16% | 87 | +50 | −38 [−65, −8] | 8% | 93 | +40 | −53 [−130, 57] |
+
+By wallet tier (total pre-game notional), Sep 24 – Oct 7 then Oct 8–14:
+
+| tier | netted | edge after drag, Sep 24 – Oct 7 | edge after drag, Oct 8–14 |
+|---|---|---|---|
+| top 20 | 18–19% | −35 | −58 |
+| 21–200 | 10–20% | −61 | −80 |
+| 201–2000 | 12–15% | −77 | −73 |
+| rest | 9–10% | +59 [−25, 143] | +5 |
+
+**Reading.**
+- **Passive pre-game makers barely net their inventory before kickoff.** Only 10–25% of filled shares net out
+  per wallet and condition, in every league, size and tier. Most makers carry their position into the game.
+  That is consistent with the census finding that the edge to resolution is ±700 bps of noise.
+- **At half a spread, the flatten drag is 80–90 bps. It is larger than the whole pre-game edge** (+17 to +31
+  bps to kickoff), so the pool is negative after drag in both periods:
+  - −52 bps [−74, −34] on Sep 24 – Oct 7;
+  - −69 [−104, −23] on Oct 8–14.
+  - No league or size bucket is positive after drag in both periods.
+- **The pool's netting is a lower bound for a quoter that controls inventory.** Netting is measured per
+  condition. Cross-condition hedges inside one game are not counted:
+  - soccer 1X2 is three neg-risk conditions;
+  - moneyline against spread.
+  - Makers that skew or pull the side that adds to inventory would net more. The pool is mostly makers who
+    don't try.
+- **Break-even.** With a +20 to +30 bps pre-game edge and a 100 bps flatten cost per un-netted share, a quoter
+  must net about 70–80% of its fills before kickoff. Unconditionally, the pool nets 15–20%.
+
+**Implications for the replay (ENV_SPEC.md, D15).**
+1. Inventory control is the core problem of the sports env, not an add-on. The close-inventory penalty
+   ramping over the last 30 min, and one-sided pulls, must be in the action space and the reward.
+2. Report netted share and drag as standard Log fields next to the D1.3 detectors.
+3. A game-level book (ENV_SPEC.md §7) may be needed to reach the 70–80% netting. Cross-condition netting
+   within a game is the next measurement. It needs a neg-risk outcome map per event, from gamma `negRisk`
+   events, which this analysis did not build.
+4. Alternative to flattening: carrying inventory into the game is ±700 bps of noise per week of data (census),
+   and D11 rules it out.

@@ -68,6 +68,7 @@ HORIZONS = {"1m": 60, "5m": 300, "1h": 3600}
 INV_CAP_MULT = 5.0
 RATE_BUCKETS = [20, 50, 100, 250, 500, np.inf]
 EPS = 5e-4
+BLOCK_S = 1800                     # bootstrap block (30 min)
 RCFG = RT.RewardConfig(name="elections", reward_enabled=True)   # only band / c / competitor bound are used
 
 
@@ -125,18 +126,22 @@ def snap_file(f: Path, tokmap: dict, cfgs: dict) -> pd.DataFrame:
             paq = np.where(paq <= bbY + EPS, bbY + TICK, paq)
         pbq = np.round(pbq, 4)
         paq = np.round(paq, 4)
-        okb = np.isfinite(pbq) & (pbq >= TICK - EPS)
-        oka = np.isfinite(paq) & (paq <= 1 - TICK + EPS)
-        # displayed size at our price: Yes bid at p is the Yes bid ladder at p, or the No ask ladder at 1 - p
-        tgt_bidlad = np.where(up, pbq, 1 - paq)     # target on this token's bid ladder
-        tgt_asklad = np.where(up, paq, 1 - pbq)
-        sz_bl = np.bincount(rb, weights=sb * (np.abs(pb - tgt_bidlad[rb]) < EPS), minlength=n) if len(rb) else np.zeros(n)
-        sz_al = np.bincount(ra, weights=sa * (np.abs(pa_ - tgt_asklad[ra]) < EPS), minlength=n) if len(ra) else np.zeros(n)
-        tag = f"{int(f_ * 100)}"
-        Y[f"pb{tag}"] = np.where(okb, pbq, np.nan)
-        Y[f"pa{tag}"] = np.where(oka, paq, np.nan)
-        Y[f"qab{tag}"] = np.where(up, sz_bl, sz_al)
-        Y[f"qaa{tag}"] = np.where(up, sz_al, sz_bl)
+        # 'join' mode: never improve the visible touch (join the best or stay behind it)
+        pbj = np.where(np.isfinite(Y.bb.values), np.minimum(pbq, np.round(bbY, 4)), pbq)
+        paj = np.where(np.isfinite(Y.ba.values), np.maximum(paq, np.round(baY, 4)), paq)
+        for pre, pbx, pax in (("", pbq, paq), ("J", pbj, paj)):
+            okb = np.isfinite(pbx) & (pbx >= TICK - EPS)
+            oka = np.isfinite(pax) & (pax <= 1 - TICK + EPS)
+            # displayed size at our price: Yes bid at p is the Yes bid ladder at p, or the No ask ladder at 1 - p
+            tgt_bidlad = np.where(up, pbx, 1 - pax)     # target on this token's bid ladder
+            tgt_asklad = np.where(up, pax, 1 - pbx)
+            sz_bl = np.bincount(rb, weights=sb * (np.abs(pb - tgt_bidlad[rb]) < EPS), minlength=n) if len(rb) else np.zeros(n)
+            sz_al = np.bincount(ra, weights=sa * (np.abs(pa_ - tgt_asklad[ra]) < EPS), minlength=n) if len(ra) else np.zeros(n)
+            tag = f"{pre}{int(f_ * 100)}"
+            Y[f"pb{tag}"] = np.where(okb, pbx, np.nan)
+            Y[f"pa{tag}"] = np.where(oka, pax, np.nan)
+            Y[f"qab{tag}"] = np.where(up, sz_bl, sz_al)
+            Y[f"qaa{tag}"] = np.where(up, sz_al, sz_bl)
     return Y
 
 
@@ -219,12 +224,12 @@ class Market:
 
 
 def run_market(M: Market, sample_off: np.ndarray, frac: float, mult: float, fills_on: bool, queue: str, moas: float,
-               lag: int = 3):
+               lag: int = 3, mode: str = ""):
     """Simulate one market for one variant. Returns (summary dict, fills list)."""
-    tag = f"{int(frac * 100)}"
+    tag = f"{mode}{int(frac * 100)}"
     S = M.s
     out = dict(rewards=0.0, rewards_samples=0, samples_quoted=0, samples_scorable=0, minutes=0, minutes_quoted=0,
-               mid_moved_by_us=0, capital=0.0, rewards_inside=0.0, samples_inside=0)
+               mid_moved_by_us=0, capital=0.0, rewards_inside=0.0, samples_inside=0, rew_blk={}, ntx_inside={})
     fills = []
     inv = 0.0
     orders = {1: None, -1: None}           # side -> dict(px, size, rem, t_place, queue)
@@ -251,6 +256,10 @@ def run_market(M: Market, sample_off: np.ndarray, frac: float, mult: float, fill
                 if o is not None and abs(o["px"] - px) < EPS and o["rem"] >= o["size"] - 1e-9 and abs(o["size"] - size) < 1e-9:
                     continue                                    # unchanged, unfilled: keep queue and age
                 orders[side] = dict(px=px, size=size, rem=size, t_place=tk, queue=float(S[qcol][j]))
+            for side, best in ((1, S["bb"][j]), (-1, S["ba"][j])):
+                o = orders[side]
+                if o is not None:
+                    o["inside"] = (not np.isfinite(best)) or (o["px"] > best + EPS if side == 1 else o["px"] < best - EPS)
             out["minutes_quoted"] += 1
         else:
             orders = {1: None, -1: None}
@@ -272,7 +281,10 @@ def run_market(M: Market, sample_off: np.ndarray, frac: float, mult: float, fill
             nxt_t = M.tr_ts[ti] if ti < ntr else None
             if not sampled and (nxt_t is None or nxt_t > ts_s or nxt_t > te):
                 if ts_s <= te:
-                    _sample(M, out, orders, ts_s, m_, rate, inprog, moas)
+                    usd = _sample(M, out, orders, ts_s, m_, rate, inprog, moas)
+                    if usd:
+                        b_ = ts_s // BLOCK_S
+                        out["rew_blk"][b_] = out["rew_blk"].get(b_, 0.0) + usd
                 sampled = True
             if nxt_t is None or nxt_t > te:
                 break
@@ -281,8 +293,14 @@ def run_market(M: Market, sample_off: np.ndarray, frac: float, mult: float, fill
             tj = ti
             while tj < ntr and M.tr_ts[tj] == nxt_t and M.tr_tx[tj] == tx:
                 tj += 1
+            ag = M.tr_ag[ti]
+            # diagnostic: taker txs on the side of a resting order of ours that improves the visible touch
+            oo = orders.get(-ag) if ag != 0 else None
+            if oo is not None and oo.get("inside"):
+                hit = (M.tr_px[ti:tj] <= oo["px"] + EPS) if -ag == 1 else (M.tr_px[ti:tj] >= oo["px"] - EPS)
+                key = "at_or_through" if hit.any() else "other_side_px"
+                out["ntx_inside"][key] = out["ntx_inside"].get(key, 0) + 1
             if fills_on:
-                ag = M.tr_ag[ti]
                 side = -ag                      # sell aggressor hits bids (we buy), buy aggressor lifts asks
                 o = orders.get(side)
                 # block time lags matching by ~2 s: a leg can only hit an order placed > lag s before its block
@@ -314,14 +332,14 @@ def run_market(M: Market, sample_off: np.ndarray, frac: float, mult: float, fill
 
 def _sample(M: Market, out, orders, ts_s, m_, rate, inprog, moas):
     if not inprog or rate <= 0:
-        return
+        return 0.0
     j = M.snap_idx(ts_s)
     if j < 0 or not np.isfinite(M.s["amid"][j]):
-        return
+        return 0.0
     out["samples_scorable"] += 1
     ob, oa = orders[1], orders[-1]
     if ob is None and oa is None:
-        return
+        return 0.0
     v = M.s["v"][j]
     cb, ca = M.s["cb"][j], M.s["ca"][j]
     live_b = ob is not None and ob["rem"] >= m_ - 1e-9
@@ -348,6 +366,8 @@ def _sample(M: Market, out, orders, ts_s, m_, rate, inprog, moas):
         if inside:
             out["rewards_inside"] += usd
             out["samples_inside"] += 1
+        return usd
+    return 0.0
 
 
 # ----------------------------------------------------------------------------- P&L of fills
@@ -452,17 +472,25 @@ def main(argv=None):
     variants = [(f, k) for f in FRACS for k in MULTS] if not a.quick else [BASE]
     runs = []
     for f, k in variants:
-        runs.append((f"f{f:g}_x{k}", f, k, True, "back", a.moas))
-        runs.append((f"f{f:g}_x{k}_nofills", f, k, False, "back", a.moas))
-    runs.append((f"f{BASE[0]:g}_x{BASE[1]}_frontq", BASE[0], BASE[1], True, "front", a.moas))
-    runs.append((f"f{BASE[0]:g}_x{BASE[1]}_moas0", BASE[0], BASE[1], True, "back", 0.0))
+        runs.append((f"f{f:g}_x{k}", f, k, True, "back", a.moas, ""))
+        runs.append((f"f{f:g}_x{k}_nofills", f, k, False, "back", a.moas, ""))
+    for f, k in variants:
+        runs.append((f"f{f:g}_x{k}_join", f, k, True, "back", a.moas, "J"))
+    runs.append((f"f{BASE[0]:g}_x{BASE[1]}_frontq", BASE[0], BASE[1], True, "front", a.moas, ""))
+    runs.append((f"f{BASE[0]:g}_x{BASE[1]}_moas0", BASE[0], BASE[1], True, "back", 0.0, ""))
 
     hours = (hi - lo) / 3600.0
     per_market, summary, all_fills = [], [], []
-    for name, f, k, fon, q, moas in runs:
+    blk_rows = []
+    for name, f, k, fon, q, moas, mode in runs:
         rows, fl = [], []
         for slug, M in markets.items():
-            o, fills = run_market(M, sample_offs[slug], f, k, fon, q, moas, a.lag)
+            o, fills = run_market(M, sample_offs[slug], f, k, fon, q, moas, a.lag, mode)
+            for b_, u_ in o.pop("rew_blk").items():
+                blk_rows.append((name, slug, int(b_), u_, 0.0))
+            nti = o.pop("ntx_inside")
+            o["ntx_inside_hit"] = nti.get("at_or_through", 0)
+            o["ntx_inside_other"] = nti.get("other_side_px", 0)
             me = M.mid_at(t_end[slug])
             o.update(slug=slug, n_tx_window=M.n_tx, mid_end=me,
                      inv_end_notional=o["inv_end"] * me if o["inv_end"] > 0 else -o["inv_end"] * (1 - me),
@@ -473,6 +501,8 @@ def main(argv=None):
         P = pd.DataFrame(rows)
         F = pd.DataFrame(fl, columns=["slug", "ts", "side", "px", "size", "mid_f"])
         F = fill_pnl(F, markets, t_end)
+        for r in F.itertuples():
+            blk_rows.append((name, r.slug, int(r.ts // BLOCK_S), 0.0, r.spread + r.mo_end))
         agg = F.groupby("slug")[["spread", "mo_1m", "mo_5m", "mo_1h", "mo_end", "size"]].sum() if len(F) else \
             pd.DataFrame(columns=["spread", "mo_1m", "mo_5m", "mo_1h", "mo_end", "size"])
         nf = F.groupby("slug").size() if len(F) else pd.Series(dtype=float)
@@ -507,6 +537,40 @@ def main(argv=None):
               f"  fills {s['n_fills']:5d}  cap {cap:10.0f}  ({time.time() - t0:.0f}s)", flush=True)
 
     S_ = pd.DataFrame(summary)
+    # ---- bootstrap CIs of $/hour and of net per $ capital per hour: 30-min clock blocks, and markets
+    BK = pd.DataFrame(blk_rows, columns=["variant", "slug", "blk", "rew", "fill_pnl"])
+    blks = np.arange(lo // BLOCK_S, (hi - 1) // BLOCK_S + 1)
+    dur = np.array([min(hi, (b + 1) * BLOCK_S) - max(lo, b * BLOCK_S) for b in blks]) / 3600.0
+    rng = np.random.default_rng(20261016)
+    NB = 4000
+    it = rng.integers(0, len(blks), (NB, len(blks)))
+    PMall = pd.concat(per_market, ignore_index=True)
+    ci = []
+    for name in S_.variant:
+        P = PMall[PMall.variant == name].set_index("slug")
+        cap = P.capital.sum()
+        b = BK[BK.variant == name]
+        row = {"variant": name, "capital": cap, "block_hours": list(np.round(dur, 3))}
+        for what, col in (("rewards", b.rew), ("net", b.rew + b.fill_pnl)):
+            per_blk = col.groupby(b.blk).sum().reindex(blks, fill_value=0.0).values
+            rate = per_blk.sum() / dur.sum()
+            bt = per_blk[it].sum(1) / dur[it].sum(1)
+            pm = (P.rewards if what == "rewards" else P.net).values
+            mi = rng.integers(0, len(P), (NB, len(P)))
+            bm = pm[mi].sum(1) / hours / np.maximum(P.capital.values[mi].sum(1), 1e-9)
+            row.update({f"{what}_per_h": rate, f"{what}_per_h_blk_lo": np.percentile(bt, 2.5),
+                        f"{what}_per_h_blk_hi": np.percentile(bt, 97.5),
+                        f"{what}_per_h_per_cap_pct": 100 * rate / cap if cap > 0 else np.nan,
+                        f"{what}_per_h_per_cap_pct_blk_lo": 100 * np.percentile(bt, 2.5) / cap if cap > 0 else np.nan,
+                        f"{what}_per_h_per_cap_pct_blk_hi": 100 * np.percentile(bt, 97.5) / cap if cap > 0 else np.nan,
+                        f"{what}_per_h_per_cap_pct_mkt_lo": 100 * np.percentile(bm, 2.5),
+                        f"{what}_per_h_per_cap_pct_mkt_hi": 100 * np.percentile(bm, 97.5),
+                        f"{what}_blocks": list(np.round(per_blk / dur, 3))})
+        ci.append(row)
+    CI = pd.DataFrame(ci)
+    CI.to_csv(HERE / "baseline_ci.csv", index=False, float_format="%.6g")
+    CI_small = CI.drop(columns=[c for c in CI.columns if c.endswith("blocks") or c == "block_hours"])
+    S_ = S_.merge(CI_small.drop(columns=["capital"]), on="variant", how="left")
     S_ = pd.concat([pd.DataFrame([dict(variant="no_quote", hours=round(hours, 2), markets=len(markets), rewards=0.0,
                                        spread=0.0, mo_1m=0.0, mo_5m=0.0, mo_1h=0.0, mo_end=0.0, net=0.0, n_fills=0,
                                        capital=0.0, rewards_per_day=0.0, net_per_day=0.0)]), S_], ignore_index=True)
@@ -523,7 +587,15 @@ def main(argv=None):
     PM_.to_csv(out / "per_market.csv", index=False, float_format="%.6g")
     if all_fills:
         pd.concat(all_fills, ignore_index=True).to_csv(out / "fills.csv", index=False, float_format="%.6g")
-    meta = dict(window=[BE.iso(lo), BE.iso(hi)], hours=hours, markets_simulated=len(markets), skipped=skipped,
+    pools = {}
+    selc = set(mk.condition_id)
+    for f_ in reward_files:
+        r_ = pd.read_parquet(rec / f_, columns=["taken_at", "condition_id", "in_program", "total_daily_rate"])
+        r_ = r_[r_.condition_id.isin(selc)]
+        pools[str(r_.taken_at.iloc[0])] = dict(selected_pool_per_day=float(r_.total_daily_rate.where(r_.in_program, 0).sum()),
+                                               in_program=int(r_.in_program.sum()))
+    meta = dict(reward_pool_by_snapshot=pools, bootstrap=dict(block_s=BLOCK_S, n=NB, blocks=len(blks)),
+                window=[BE.iso(lo), BE.iso(hi)], hours=hours, markets_simulated=len(markets), skipped=skipped,
                 books_up_to=BE.iso(book_hi), fills_complete_to=BE.iso(fills_hi), reward_snapshots=reward_files,
                 trades_legs=int(len(trades)),
                 taker_txs_in_window=int(sum(M.n_tx for M in markets.values())),
