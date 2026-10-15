@@ -34,8 +34,10 @@ BUILD = HERE / "build"
 RAW = HERE / "raw"
 sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE.parent / "analysis" / "fair_value"))
+sys.path.insert(0, str(HERE.parent / "analysis" / "rewards"))
 from load import load  # noqa: E402
 import fair_value as fv  # noqa: E402  (pricer of the fair-value study)
+import reward_terms as rt  # noqa: E402  (fee / rebate / liquidity-reward reference of the rewards study)
 
 FEATURES_VERSION = 1
 NU = 4.0                 # Student-t dof (REPORT.md section 2)
@@ -64,7 +66,6 @@ OBS_COLS = [
     ("bid_present", "best bid exists (book valid and bid_px_0 > 0)"),
     ("ask_present", "best ask exists (book valid and ask_px_0 < 1)"),
     ("imb_l1", "(bid_sz_0 - ask_sz_0) / (bid_sz_0 + ask_sz_0), 0 if both empty"),
-    ("imb_l5", "same over the top-5 sizes"),
     ("bid_sz0", "log1p(bid_sz_0) / 5"),
     ("ask_sz0", "log1p(ask_sz_0) / 5"),
     ("flow5", "signed taker flow over (t-5, t]: (buy - sell) / (buy + sell + 5)"),
@@ -83,7 +84,6 @@ OBS_COLS = [
     ("book_age", "log1p(book_age s) / 4"),
     ("crossed_raw", "latest raw snapshot crossed (last uncrossed book forward-filled)"),
     ("mark_is_fv", "1 if the mark fell back to p_model (one-sided or no valid book)"),
-    ("gross120", "log1p(taker volume over 120 s, shares) / 6"),
 ]
 AUX_COLS = [
     ("p_model", "fair value of Up (probability), raw"),
@@ -91,6 +91,9 @@ AUX_COLS = [
     ("delta_usd_raw", "dp/dlnS: USD notional of underlying per Up share"),
     ("sigma", "EWMA vol per sqrt(second)"),
     ("sqrt_v", "sqrt(V): sd of ln(TWAP_end / F)"),
+    ("liq_mid", "liquidity rewards: size-cutoff adjusted mid of the replay book (top 5, without us); -1 = unscorable"),
+    ("liq_comp", "liquidity rewards: competitors' Q (reward_terms.competitor_q, 'hi' bound, v = 1.5 c, min 50)"),
+    ("liq_pi", "liquidity rewards: USD per sample if row t is this minute's sample second, else 0 (AUG_2026 pools)"),
 ]
 N_OBS = len(OBS_COLS)
 COLS = [c for c, _ in OBS_COLS] + [c for c, _ in AUX_COLS]
@@ -102,6 +105,8 @@ BOOK_DTYPE = np.dtype([("bid_px", "<i2", 5), ("ask_px", "<i2", 5), ("bid_sz", "<
                        ("ask_sz", "<f4", 5), ("flags", "u1"), ("tick", "u1"), ("pad", "u1", 2)])
 assert BOOK_DTYPE.itemsize == 64
 BOOK_VALID, BOOK_CROSSED, BOOK_STALE, BOOK_FROM_DOWN = 1, 2, 4, 8
+LIQ = rt.AUG_2026          # liquidity-reward preset baked into liq_* (v = 1.5 c, min size 50, c = 3)
+LIQ_SEED = 20260821        # sample-second draws (one uniform second per UTC minute)
 FILL_DTYPE = np.dtype([("row", "<i4"), ("side", "i1"), ("first", "u1"), ("px", "<i2"),
                        ("price", "<f4"), ("size", "<f4"), ("tx_size", "<f4")])
 assert FILL_DTYPE.itemsize == 20
@@ -127,6 +132,35 @@ def window_sum(x, k):
     c = np.concatenate([[0.0], np.cumsum(x)])
     i = np.arange(1, len(x) + 1)
     return c[i] - c[np.maximum(i - k, 0)]
+
+
+def liquidity_rows(bp, bs, ap, asz, valid, t, pi_sample, seed):
+    """Adjusted mid, competitor Q and per-row USD of the liquidity-reward sample (rewards study,
+    reward_terms.py, AUG_2026 preset), from the top-5 replay book without our orders."""
+    n = len(t)
+    nb = (valid[:, None] & (bp > 0) & (bs > 0)).sum(1)       # ladders are contiguous from the touch
+    na = (valid[:, None] & (ap < 1) & (asz > 0)).sum(1)
+    k_b = np.minimum((np.cumsum(bs, 1) < LIQ.reward_min_size).sum(1), np.maximum(nb - 1, 0))
+    k_a = np.minimum((np.cumsum(asz, 1) < LIQ.reward_min_size).sum(1), np.maximum(na - 1, 0))
+    rows = np.arange(n)
+    ok = (nb > 0) & (na > 0)
+    mid = np.where(ok, 0.5 * (bp[rows, k_b] + ap[rows, k_a]), -1.0)
+    lv_b = np.arange(5)[None, :] < nb[:, None]
+    lv_a = np.arange(5)[None, :] < na[:, None]
+    q1 = (rt.S(np.abs(mid[:, None] - bp) * 100, LIQ.reward_max_spread_c) * bs
+          * (bs >= LIQ.reward_min_size) * lv_b).sum(1)
+    q2 = (rt.S(np.abs(ap - mid[:, None]) * 100, LIQ.reward_max_spread_c) * asz
+          * (asz >= LIQ.reward_min_size) * lv_a).sum(1)
+    lo, hi = LIQ.two_sided_band
+    inside = (mid >= lo) & (mid <= hi)
+    comp = np.minimum(q1, q2) + np.where(inside, np.abs(q1 - q2) / LIQ.reward_c, 0.0)  # competitor_q 'hi'
+    rng = np.random.default_rng([LIQ_SEED, seed])
+    minute = t // 60
+    first = np.r_[True, minute[1:] != minute[:-1]]
+    offs = rng.integers(0, 60, first.sum())
+    sample = (t % 60) == np.repeat(offs, np.diff(np.r_[np.flatnonzero(first), n]))
+    pi = np.where(sample & ok, pi_sample, 0.0)
+    return mid, np.where(ok, comp, 0.0), pi
 
 
 def underlying():
@@ -175,6 +209,10 @@ def main():
     slugs = meta["slugs"]
     coins = {v: k for k, v in meta["coin_ids"].items()}
     ul = underlying()
+    mkp = pd.read_parquet(RAW / "markets.parquet", columns=["slug", "created_start", "end"]).set_index("slug")
+    life_min = ((pd.to_datetime(mkp.end, utc=True) - pd.to_datetime(mkp.created_start, utc=True))
+                .dt.total_seconds() / 60.0)
+    lens = {300: "5m", 900: "15m", 14400: "4h"}
     sig = {k: fv.ewma_sigma(a, HALFLIFE_S, sample_s=SAMPLE_S) for k, (a, _) in ul.items()}
     print(f"underlying + EWMA vol {time.time() - t0:.1f}s")
 
@@ -233,6 +271,10 @@ def main():
             stats["legs_after_end"] += int((g.timestamp > e).sum())
             stats["legs_before_open"] += int((g.timestamp < o).sum())
             g = g[(g.timestamp >= o) & (g.timestamp <= e)]
+        pool = LIQ.pool_usd_by_len_coin.get(lens[L], {}).get(coin, 0.0)
+        pi_sample = pool / float(life_min[slug]) * (LIQ.sample_period_s / 60.0)
+        liq_mid, liq_comp, liq_pi = liquidity_rows(bp, bs, ap, asz, valid, np.arange(o, e + 1),
+                                                   pi_sample, int(m["market_idx"]))
         legs = None
         sub_trade_row = np.zeros(n, bool)
         if g is not None and len(g):
@@ -263,6 +305,10 @@ def main():
         sub_book = (((bm % 10) != 0) & (bm > 0)).any(1) | (((am % 10) != 0) & (am < 1000)).any(1)
         fine = np.maximum.accumulate(sub_book | sub_trade_row)
         tick = np.where(fine, 0.001, 0.01)
+        # alternative (tick_rule 1): also fine once the two-sided mid leaves [0.04, 0.96], sticky
+        two_ = valid & (bp[:, 0] > 0) & (ap[:, 0] < 1)
+        mid_ = 0.5 * (bp[:, 0] + ap[:, 0])
+        fine_alt = np.maximum.accumulate(fine | (two_ & ((mid_ < 0.04) | (mid_ > 0.96))))
         stats["rows_tick_fine"] += int(fine.sum())
         stats["markets_tick_fine"] += int(fine.any())
 
@@ -275,6 +321,7 @@ def main():
         rec["flags"] = (valid * BOOK_VALID | crossed * BOOK_CROSSED | (age > STALE_S) * BOOK_STALE
                         | (X[:, c["book_from_down"]] > 0) * BOOK_FROM_DOWN)
         rec["tick"] = np.where(fine, 1, 10)
+        rec["pad"][:, 0] = np.where(fine_alt, 1, 10)
 
         # ---- mark, gap
         has_b = valid & (bp[:, 0] > 0)
@@ -303,14 +350,11 @@ def main():
         out[:, CI["ask_present"]] = has_a
         s1 = bs[:, 0] + asz[:, 0]
         out[:, CI["imb_l1"]] = np.where(s1 > 0, (bs[:, 0] - asz[:, 0]) / np.where(s1 > 0, s1, 1), 0)
-        s5b, s5a = bs.sum(1), asz.sum(1)
-        out[:, CI["imb_l5"]] = np.where(s5b + s5a > 0, (s5b - s5a) / np.maximum(s5b + s5a, 1e-12), 0)
         out[:, CI["bid_sz0"]] = np.log1p(bs[:, 0]) / 5
         out[:, CI["ask_sz0"]] = np.log1p(asz[:, 0]) / 5
         for k in (5, 30, 120):
             b, s_ = window_sum(bvol, k), window_sum(svol, k)
             out[:, CI[f"flow{k}"]] = (b - s_) / (b + s_ + 5)
-        out[:, CI["gross120"]] = np.log1p(window_sum(bvol + svol, 120)) / 6
         out[:, CI["mret5_c"]] = clip((mark - lag(mark, 5)) * 100 / 2)
         out[:, CI["mret30_c"]] = clip((mark - lag(mark, 30)) * 100 / 5)
         out[:, CI["mret120_c"]] = clip((mark - lag(mark, 120)) * 100 / 5)
@@ -329,6 +373,9 @@ def main():
         out[:, CI["delta_usd_raw"]] = dusd
         out[:, CI["sigma"]] = sg
         out[:, CI["sqrt_v"]] = sdv
+        out[:, CI["liq_mid"]] = liq_mid
+        out[:, CI["liq_comp"]] = liq_comp
+        out[:, CI["liq_pi"]] = liq_pi
         assert np.isfinite(out).all(), slug
         assert np.abs(out[:, :N_OBS]).max() <= CLIP + 1e-9, slug
         feat[r0:r0 + n] = out.astype(np.float32)
@@ -364,6 +411,10 @@ def main():
                    "K": "Binance TWAP60 at open (mean of closes of klines open_time open-60..open-1)",
                    "twap_window_s": TWAP_S, "shift_s": 0,
                    "note": "settings fixed by the fair-value study on train only (REPORT.md section 2)"},
+        "liquidity_rewards": {"preset": LIQ.name, "v_cents": LIQ.reward_max_spread_c, "min_size": LIQ.reward_min_size,
+                              "c": LIQ.reward_c, "band": list(LIQ.two_sided_band), "sample_seed": LIQ_SEED,
+                              "source": "analysis/rewards/reward_terms.py (S, competitor_q 'hi', AUG_2026 pools)",
+                              "approximations": "top-5 levels only; adjusted mid without our orders"},
         "tick_rule": "0.01 until the first row whose top-5 book or a maker fill (block time <= t) shows a sub-cent "
                      "price, then 0.001 for the rest of the market (sticky)",
         "book_record": {"itemsize": 64, "fields": [
@@ -374,7 +425,9 @@ def main():
             {"name": "flags", "type": "uint8_t", "offset": 60,
              "doc": f"bit0 book_valid, bit1 crossed_raw, bit2 book_age > {STALE_S:g} s, bit3 book_from_down"},
             {"name": "tick", "type": "uint8_t", "offset": 61, "doc": "tick in mils: 10 or 1"},
-            {"name": "pad", "type": "uint8_t[2]", "offset": 62}]},
+            {"name": "tick_alt", "type": "uint8_t", "offset": 62,
+             "doc": "tick (mils) under tick_rule 1: also 1 once the two-sided mid left [0.04, 0.96] (sticky)"},
+            {"name": "pad", "type": "uint8_t", "offset": 63}]},
         "fill_record": {"itemsize": 20, "fields": [
             {"name": "row", "type": "int32_t", "offset": 0, "doc": "global row in ticks.bin = block timestamp"},
             {"name": "side", "type": "int8_t", "offset": 4,
