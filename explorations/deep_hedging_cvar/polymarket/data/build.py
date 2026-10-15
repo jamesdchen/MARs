@@ -31,6 +31,7 @@ RAW = HERE / "raw"
 OUT = HERE / "build"
 BUILD_VERSION = 1
 NLEV = 5
+BASE_TICK = 0.01   # Polymarket base tick; shrinks to 0.001 once price goes extreme (see README)
 COINS = ["btc", "eth", "sol", "xrp", "bnb", "doge", "hype", "zec"]
 CLEN = {"5m": 300, "15m": 900, "4h": 14400}
 SPLIT_DAYS = {"2026-08-20": 0, "2026-08-21": 0, "2026-08-22": 0, "2026-08-23": 1, "2026-08-24": 2}
@@ -52,7 +53,7 @@ MARKET_DTYPE = np.dtype([
     ("split", "<i4"), ("flags", "<i4"),
     ("tick_size", "<f4"), ("taker_fee_rate", "<f4"), ("fee_exponent", "<f4"), ("min_order_size", "<f4"),
     ("rewards_min_size", "<f4"), ("rewards_max_spread", "<f4"), ("log_strike_vs_ul_open", "<f4"),
-    ("maker_rebate_rate", "<f4"), ("market_idx", "<i4"), ("_pad", "<i4"),
+    ("maker_rebate_rate", "<f4"), ("market_idx", "<i4"), ("tick_size_final", "<f4"),
 ])
 assert MARKET_DTYPE.itemsize == 88
 FLAG_HAS_TRADES, FLAG_HAS_UNDERLYING, FLAG_UL_PERP_PROXY, FLAG_HAS_STRIKE = 1, 2, 4, 8
@@ -139,17 +140,17 @@ def mirror_stats(books: pd.DataFrame) -> dict:
 def merged_snapshots(mb: pd.DataFrame):
     """Per captured timestamp pick one Up-frame book: Up if uncrossed, else mapped
     Down if uncrossed, else the timestamp is 'crossed' (no valid book)."""
+    num = [f"{a}{k}" for k in range(NLEV) for a in ("bp", "bs", "ap", "as")] + ["bdep", "adep"]
     up = mb[mb.is_up].set_index("ts")
     dn = to_up_frame(mb[~mb.is_up]).set_index("ts")
     ts = np.union1d(up.index.values, dn.index.values)
-    up = up.reindex(ts)
-    dn = dn.reindex(ts)
-    up_ok = up.crossed.eq(False).values
-    dn_ok = dn.crossed.eq(False).values
+    up_ok = up.crossed.reindex(ts).eq(False).values
+    dn_ok = dn.crossed.reindex(ts).eq(False).values
+    U = up[num].astype(np.float64).reindex(ts)
+    D = dn[num].astype(np.float64).reindex(ts)
     use_dn = ~up_ok & dn_ok
     valid = up_ok | dn_ok
-    book = up.copy()
-    book.loc[use_dn] = dn.loc[use_dn].values if use_dn.any() else book.loc[use_dn]
+    book = pd.DataFrame(np.where(use_dn[:, None], D.values, U.values), index=ts, columns=num)
     book["from_down"] = use_dn
     book["valid"] = valid
     book["raw_crossed"] = ~valid
@@ -189,7 +190,6 @@ def main():
     if missing_meta:
         print("WARNING: markets without gamma metadata (skipped):", len(missing_meta))
     mk["contract_len_s"] = mk.contract_length.map(CLEN).astype(int)
-    mk["end_ts"] = (mk.end.astype("int64") // 10**9) if mk.end.dtype.kind == "M" else mk.end.map(lambda x: int(pd.Timestamp(x).timestamp()))
     mk["end_ts"] = mk.end.map(lambda x: int(pd.Timestamp(x).timestamp()))
     mk["open_ts"] = mk.end_ts - mk.contract_len_s
     ev_open = mk.event_start.map(lambda x: int(pd.Timestamp(x).timestamp()))
@@ -291,8 +291,8 @@ def main():
                  | (FLAG_UL_PERP_PROXY if m.coin == "hype" else 0)
                  | (FLAG_HAS_STRIKE if np.isfinite(m.price_to_beat) and m.price_to_beat > 0 else 0))
         recs[i] = (offsets[i], o, e, n, L, m.coin_id, int(m.winner_up), int(m.split), flags,
-                   m.tick_size, m.fee_rate if m.fees_enabled else 0.0, m.fee_exponent, m.min_size,
-                   m.rewards_min_size, m.rewards_max_spread, strike_rel, m.fee_rebate_rate, i, 0)
+                   BASE_TICK, m.fee_rate if m.fees_enabled else 0.0, m.fee_exponent, m.min_size,
+                   m.rewards_min_size, m.rewards_max_spread, strike_rel, m.fee_rebate_rate, i, m.tick_size)
         per_market.append({"slug": m.slug, "n_tx_window": n_tx_window})
     assert np.isfinite(ticks).all()
     ticks.tofile(OUT / "ticks.bin")
