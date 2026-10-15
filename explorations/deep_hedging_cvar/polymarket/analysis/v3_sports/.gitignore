@@ -6,3 +6,4 @@ cache/
 *.parquet
 env_sports/resources
 env_sports/build/
+!rec_daily/**/*.parquet
