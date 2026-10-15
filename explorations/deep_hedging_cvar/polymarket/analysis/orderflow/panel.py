@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Panels for the order-flow study: decision rows and touch fills, with every candidate
-sub-second Binance feature (data/features_v2.py) and the targets that make fills toxic.
+sub-second Binance feature (binance_flow.py) and the targets that make fills toxic.
 
 LEAKAGE RULES (DECISIONS.md D7, task brief):
   * `train` panels read only train markets (split 0, Aug 21-22) and Binance trades before
@@ -29,9 +29,9 @@ import pandas as pd
 
 HERE = Path(__file__).resolve().parent
 POLY = HERE.parents[1]
-sys.path.insert(0, str(POLY / "data"))
+sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(POLY))
-import features_v2 as f2  # noqa: E402
+import binance_flow as f2  # noqa: E402
 from reference import Data  # noqa: E402
 
 CACHE = HERE / "cache"
