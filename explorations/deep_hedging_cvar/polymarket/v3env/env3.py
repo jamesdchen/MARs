@@ -26,13 +26,18 @@ import pufferlib
 
 HERE = Path(__file__).resolve().parent
 DATA_DIR = HERE.parent / "data" / "build"
-_SRC = (HERE / "mm3.h").read_text()
+# _SRC carries a v2-style MM_FEAT_OBS line so train/envs.py RealAdapter (which greps it) can use this module.
+_SRC = (HERE / "mm3.h").read_text() + "\n#define MM_FEAT_OBS 33   /* env3.py: v2 name of M3_FEAT_OBS */\n"
 PARAM_NAMES = re.findall(r'"(\w+)"', re.search(r"M3_PARAM_NAMES\[\] = \{(.*?)\};", _SRC, re.S)[1])
 DEFAULTS = dict(zip(PARAM_NAMES, [float(x) for x in re.search(
     r"M3_DEFAULTS\[\] = \{(.*?)\};", _SRC, re.S)[1].split(",") if x.strip()]))
 assert len(DEFAULTS) == len(PARAM_NAMES)
 OBS_V2 = int(re.search(r"#define M3_OBS_V2 (\d+)", _SRC)[1])
 OBS_FULL = int(re.search(r"#define M3_OBS_FULL (\d+)", _SRC)[1])
+# Module-level observation width for trainers that read mod.OBS_SIZE (train/envs.py): the environment
+# variable MM3_OBS_SIZE sets it and the obs_size default together (50 = the v2 observation).
+OBS_SIZE = int(os.environ.get("MM3_OBS_SIZE", DEFAULTS["obs_size"]))
+DEFAULTS["obs_size"] = float(OBS_SIZE)
 ACT_SIZES = [int(x) for x in re.search(r"#define M3_ACT_SIZES \{([\d, ]+)\}", _SRC)[1].split(",")]
 LOG_FIELDS = re.findall(r"float (\w+);", re.search(r"struct Mm3Log \{(.*?)\n\};", _SRC, re.S)[1])
 FLAG_KEYS = ["crossed", "stale", "onesided", "last30", "last10", "inside2", "extreme", "outside", "inspread"]
@@ -107,6 +112,9 @@ class MmEnv3(pufferlib.PufferEnv):
 
     def close(self):
         self._binding.vec_close(self.c_envs)
+
+
+MmEnv = MmEnv3          # drop-in name for adapters written against ../env.py
 
 
 def make(num_envs=4096, **kw):
