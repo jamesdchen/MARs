@@ -144,14 +144,14 @@ typedef struct {
     double split, allow_test, fill_model, latency, match_delay, dt, dt_5m, dt_15m, dt_4h;
     double Q, inv_penalty, reward_scale, size_mult, part_cap, fee_rate, rebate_rate;
     double liq_rewards, liq_moas, mark_mode, reward_mode, tick_rule, len_mask;
-    double fixed_market, fixed_start, cycle_stride, start_frac;
+    double fixed_market, fixed_start, cycle_stride, start_frac, markout_h;
 } MmParams;
 
 static const char* MM_PARAM_NAMES[] = {
     "split", "allow_test", "fill_model", "latency", "match_delay", "dt", "dt_5m", "dt_15m", "dt_4h",
     "Q", "inv_penalty", "reward_scale", "size_mult", "part_cap", "fee_rate", "rebate_rate",
     "liq_rewards", "liq_moas", "mark_mode", "reward_mode", "tick_rule", "len_mask",
-    "fixed_market", "fixed_start", "cycle_stride", "start_frac",
+    "fixed_market", "fixed_start", "cycle_stride", "start_frac", "markout_h",
 };
 #define MM_NUM_PARAMS (int)(sizeof(MM_PARAM_NAMES) / sizeof(MM_PARAM_NAMES[0]))
 
@@ -159,7 +159,7 @@ static const double MM_DEFAULTS[] = {
     0, 0, 1, 1, -1, 0, 1, 1, 5,
     100, 0.001, 0, 1, -1, -1, -1,
     0, 1, 0, 0, 0, 7,
-    -1, -1, 0, 0.2,
+    -1, -1, 0, 0.2, 60,
 };
 
 // ------------------------------------------------------------------ shared data
@@ -303,7 +303,7 @@ typedef struct {
 
 typedef struct {
     int split, model, L, D, dt_len[3], mark_mode, reward_mode, tick_rule, liq_on, cycle_stride;
-    int fixed_market, fixed_start, n_list;
+    int fixed_market, fixed_start, n_list, markout_h;
     const int* list;
     double Q, inv_penalty, reward_scale, size_mult, part_cap, fee_rate, rebate_rate, liq_moas,
         start_frac;
@@ -315,7 +315,7 @@ typedef struct {
     int t, dt, r0, r_end, next_min, ph, pn, winner;
     int last_fill_row, market, s0, open_mod;
     double inv, cash, rebates, liq, wealth, penalty;
-    double minute_vol, minute_fill, tx_fill;
+    double minute_vol, minute_fill, tx_fill, credit;
     MmOrder ord[2];                    // 0 bid, 1 ask
     float rows, rows_two, rows_any, steps, clips, ret, n_fills, rejects;
     MmPend pend[MM_PEND];
@@ -453,11 +453,13 @@ static int mm_config(MmCfg* c, const MmParams* p, char* err, int n) {
     c->fixed_start = (int)p->fixed_start;
     c->cycle_stride = (int)p->cycle_stride;
     c->start_frac = p->start_frac;
+    c->markout_h = (int)p->markout_h;
     int mask = (int)p->len_mask;
     if (c->Q <= 0 || c->size_mult <= 0 || mask < 1 || mask > 7 || c->mark_mode < 0 || c->mark_mode > 2
-            || c->reward_mode < 0 || c->reward_mode > 1 || c->tick_rule < 0 || c->tick_rule > 1
-            || c->start_frac < 0 || c->start_frac >= 1) {
-        snprintf(err, n, "mm: bad Q / size_mult / len_mask / mark_mode / reward_mode / tick_rule / start_frac");
+            || c->reward_mode < 0 || c->reward_mode > 2 || c->tick_rule < 0 || c->tick_rule > 1
+            || c->start_frac < 0 || c->start_frac >= 1 || c->markout_h < 0) {
+        snprintf(err, n, "mm: bad Q / size_mult / len_mask / mark_mode / reward_mode / tick_rule / start_frac"
+            " / markout_h");
         return -1;
     }
     c->list = MM_DATA.lists[c->split][mask];
@@ -501,7 +503,7 @@ static inline void mm_begin(Mm* m, int mk, int off) {
     memset(m->ord, 0, sizeof(m->ord));
     m->inv = m->cash = m->rebates = m->liq = m->wealth = m->penalty = 0.0;
     m->spread = m->mo5 = m->mo30 = m->mo60 = 0.0;
-    m->minute_vol = m->minute_fill = m->tx_fill = 0.0;
+    m->minute_vol = m->minute_fill = m->tx_fill = m->credit = 0.0;
     m->n_fills = m->fill_vol = m->buy_vol = m->sell_vol = m->max_inv = 0.0f;
     memset(m->vol_flag, 0, sizeof(m->vol_flag));
     memset(m->pnl_flag, 0, sizeof(m->pnl_flag));
@@ -645,6 +647,10 @@ static inline void mm_book_fill(Mm* m, int side, double f, int tau, int u, const
     m->mo5 += sq * (mm_mark_at(m, tau + 5) - mid0);
     m->mo30 += sq * (mm_mark_at(m, tau + 30) - mid0);
     m->mo60 += sq * (mid60 - mid0);
+    if (m->cfg->reward_mode == 2) {          // training credit: markout to fair value at tau + H
+        int rh = tau + m->cfg->markout_h <= m->r_end ? tau + m->cfg->markout_h : m->r_end;
+        m->credit += sq * ((double)mm_feat(rh)[MM_F_P] - p);
+    }
     int tick = mm_tick(m, B), bb = B->bid_px[0], ba = B->ask_px[0];
     int inside = side == 0 ? (bb > 0 && o->px > bb + 2 * tick) : (ba < 1000 && o->px < ba - 2 * tick);
     int hit[MM_NFLAGS];
@@ -962,14 +968,22 @@ static inline void mm_step(Mm* m, const int* act, float* obs, float* rew, float*
     e->ask = (int16_t)ask;
     m->pn++;
     int tn = t + m->dt < m->r_end ? t + m->dt : m->r_end;
+    double c0 = m->rebates + m->liq;
+    m->credit = 0.0;
     mm_rows(m, t, tn);
     m->t = tn;
     int done = tn == m->r_end;
     double mark = done ? (double)m->winner : mm_mark(m, tn);
     double w = m->cash + m->rebates + m->liq + m->inv * mark;
     double pen = m->cfg->inv_penalty * m->inv * m->inv * mark * (1.0 - mark) * (tn - t) / m->len_s;
-    double r = m->cfg->reward_mode == 0 ? (w - m->wealth - pen) * m->cfg->reward_scale
-                                       : (act[0] == 3 && act[1] == 3 ? 1.0 : 0.0);
+    double r;
+    if (m->cfg->reward_mode == 0) {          // mark-to-market P&L
+        r = (w - m->wealth - pen) * m->cfg->reward_scale;
+    } else if (m->cfg->reward_mode == 1) {   // learnability probe
+        r = act[0] == 3 && act[1] == 3 ? 1.0 : 0.0;
+    } else {                                 // fill markouts + rebates + rewards, no mark-to-market
+        r = (m->credit + ((m->rebates + m->liq) - c0) - pen) * m->cfg->reward_scale;
+    }
     m->wealth = w;
     m->penalty += pen;
     float rf = (float)r;

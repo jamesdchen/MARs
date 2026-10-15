@@ -157,6 +157,10 @@ def equivalence(lib, data, checks, cfg: Config, markets, starts, rng, tag, extra
         for f in LOG_FIELDS:
             tol = 2e-4 if f in ("episode_return",) else 1e-4
             checks.add(f"Log {f} (rel)", rel(log[f][i], ref_log[f]), tol)
+        if cfg.reward_mode == 2 and ref_log["reward_clip_frac"] == 0:
+            checks.add("reward_mode 2: sum r/scale + penalty == fill credits + rebates + rewards ($)",
+                       abs(np.sum(np.asarray(rew[:k_end + 1, i], np.float64)) / scale + ep.penalty
+                           - (ep.credit_total + ep.rebates + ep.liq)), 2e-4)
         if cfg.reward_mode == 0 and ref_log["reward_clip_frac"] == 0:
             pnl = ref_log["pnl"]
             checks.add(f"telescoping: sum r/scale + penalty == P&L, mark_mode {int(cfg.mark_mode)} ($)",
@@ -236,6 +240,22 @@ def lookahead(data, checks, cfg, market, start, cut_frac, rng):
     checks.add("lookahead: perturbation is visible after the cut (1 = not)", float(changed == 0), 0)
 
 
+def mode2_changes_only_the_reward(lib, checks, markets, starts, rng):
+    """reward_mode 2 changes the reward and nothing else: same observations, terminals, state and
+    Log (except episode_return and reward_clip_frac) as reward_mode 0 on the same actions."""
+    T = 400
+    actions = random_actions(rng, T, len(markets))
+    for model in (0, 1, 2):
+        a = run_c(lib, Config(fill_model=model), markets, starts, actions, seed=5)
+        b = run_c(lib, Config(fill_model=model, reward_mode=2), markets, starts, actions, seed=5)
+        checks.add("reward_mode 2 vs 0: observations, terminals, state identical",
+                   max(np.abs(a[0] - b[0]).max(), np.abs(a[2] - b[2]).max(), np.abs(a[3] - b[3]).max()), 0)
+        diff = max(np.abs(a[4][f] - b[4][f]).max() for f in LOG_FIELDS
+                   if f not in ("episode_return", "reward_clip_frac"))
+        checks.add("reward_mode 2 vs 0: Log P&L and attribution identical", diff, 0)
+        checks.add("reward_mode 2 vs 0: rewards differ (1 = identical)", float(np.array_equal(a[1], b[1])), 0)
+
+
 def split_guard(lib, checks):
     cfg = Config(split=2)
     try:
@@ -302,6 +322,12 @@ def main():
         ("liq-on-size10-Q300", replace(base, liq_rewards=1, size_mult=10, Q=300, dt_4h=2)),
         ("opt-size0.5-Q20", replace(base, fill_model=0, size_mult=0.5, Q=20, inv_penalty=0.05)),
         ("fee0-reb0-dt15m=2", replace(base, fee_rate=0.0, rebate_rate=0.0, dt_15m=2)),
+        ("credit-H60", replace(base, reward_mode=2)),
+        ("credit-H5-pess-penalty", replace(base, reward_mode=2, markout_h=5, fill_model=2, inv_penalty=0.01)),
+        ("credit-H30-opt-mark2-L0", replace(base, reward_mode=2, markout_h=30, fill_model=0, latency=0,
+                                            mark_mode=2, inv_penalty=0.003)),
+        ("credit-liq-size10-Q300", replace(base, reward_mode=2, liq_rewards=1, size_mult=10, Q=300)),
+        ("credit-H0-dt3", replace(base, reward_mode=2, markout_h=0, dt=3)),
     ]
     with tempfile.TemporaryDirectory() as tmp:
         lib = build(tmp)
@@ -311,13 +337,14 @@ def main():
             print(f"{tag:24s} C fills over {len(markets)} envs: {fills[tag]:.0f}", flush=True)
         checks.add("every config produced fills (1 = some config had none)",
                    float(min(fills.values()) == 0), 0)
-        liq = run_c(lib, configs[-3][1], markets, starts,
+        liq = run_c(lib, dict(configs)["liq-on-size10-Q300"], markets, starts,
                     random_actions(np.random.default_rng(7), 400, len(markets)))[4]["liq_rewards"]
         print("liquidity rewards (liq-on config, USD summed over envs):", float(np.sum(liq)))
         for j in range(4):
             mi = int(markets[j])
             lookahead(data, checks, replace(base, fill_model=j % 3, latency=1), mi, int(starts[j]),
                       0.5, np.random.default_rng(j))
+        mode2_changes_only_the_reward(lib, checks, markets, starts, np.random.default_rng(77))
         split_guard(lib, checks)
         binding_matches_core(lib, checks)
     checks.report()

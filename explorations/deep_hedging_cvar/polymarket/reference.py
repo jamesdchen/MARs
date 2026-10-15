@@ -67,6 +67,7 @@ class Config:
     fixed_start: float = -1
     cycle_stride: float = 0
     start_frac: float = 0.2
+    markout_h: float = 60          # reward_mode 2: fill credit horizon (s)
 
     def values(self):
         return np.array([float(getattr(self, f.name)) for f in fields(self)])
@@ -154,6 +155,8 @@ class Episode:
         self.markout = {5: 0.0, 30: 0.0, 60: 0.0}
         self.minute = None
         self.minute_vol = self.minute_fill = self.tx_fill = 0.0
+        self.credit = 0.0                    # reward_mode 2: fill credits of the current step
+        self.credit_total = 0.0
         self.n_fills = 0
         self.fill_vol = self.buy_vol = self.sell_vol = self.max_inv = 0.0
         self.flags = dict.fromkeys(FLAGS, 0.0)          # fill volume per exploit flag
@@ -341,6 +344,11 @@ class Episode:
         for h in self.markout:
             self.markout[h] += signed * (self.mid_at(tau + h) - mid0)
         fill_pnl = float(np.float32(signed * (self.mid_at(tau + 60) - p)))
+        if self.cfg.reward_mode == 2:        # markout to fair value at tau + H (last row at most)
+            rh = min(tau + int(self.cfg.markout_h), self.r_end)
+            c = signed * (self.f(rh, "p_model") - p)
+            self.credit += c
+            self.credit_total += c
         tick, bb, ba = self.tick(book), int(book["bid_px"][0]), int(book["ask_px"][0])
         flags = int(book["flags"])
         inside = (bb > 0 and o.px > bb + 2 * tick) if side == 0 else (ba < 1000 and o.px < ba - 2 * tick)
@@ -378,6 +386,8 @@ class Episode:
         bid, ask = self.targets(t, act)
         self.pending.append([t + self.L, bid, ask, min(max(int(act[2]), 0), 2)])
         t_next = min(t + self.dt, self.r_end)
+        income0 = self.rebates + self.liq
+        self.credit = 0.0
         for u in range(t + 1, t_next + 1):
             self.match_row(u)
         self.t = t_next
@@ -385,10 +395,12 @@ class Episode:
         mark = float(self.winner) if done else self.mark(t_next)
         wealth = self.cash + self.rebates + self.liq + self.inv * mark
         pen = self.cfg.inv_penalty * self.inv ** 2 * mark * (1 - mark) * (t_next - t) / self.len_s
-        if self.cfg.reward_mode == 0:
+        if self.cfg.reward_mode == 0:                        # mark-to-market
             r = (wealth - self.wealth - pen) * self.scale
-        else:
+        elif self.cfg.reward_mode == 1:                      # probe
             r = 1.0 if (act[0] == 3 and act[1] == 3) else 0.0
+        else:                                                # fill markouts + rebates + rewards
+            r = (self.credit + ((self.rebates + self.liq) - income0) - pen) * self.scale
         self.wealth = wealth
         self.penalty += pen
         r = float(np.float32(r))

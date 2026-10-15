@@ -58,7 +58,7 @@ from obs_spec import load_spec  # noqa: E402
 from runner import PM, Runner, config_hash, core_params  # noqa: E402
 
 VAL = 1
-FROZEN_MM_H = "746dd7dea250eee035a8cb08a7be479eacf2d44ac1b7251503bc0d0e468566a9"   # DECISIONS.md D1.4
+FROZEN_MM_H = "9189f83adbb3f42ab803aca998ff97954c7cc092ffd65401d2b835abaa98a8e9"  # was 746dd7de... (D5: adds reward_mode 2; modes 0/1 bit-identical)
 OBJECTIVE = {"split": VAL, "fill_model": "central", "latency": 1, "metric": "pnl_mean"}
 PHASES = {
     "primary": {"out": "tuned.json", "constraints": {}},

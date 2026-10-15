@@ -958,6 +958,8 @@ def main():
     ap.add_argument("--pre-trades", nargs=2, metavar=("START", "END"), default=None,
                     help="also pool on-chain pre-period trades (onchain/, days START..END <= 2026-08-20) into the "
                          "book-free flow parameters (sizes, tokens, legs, sweep depth)")
+    ap.add_argument("--pre-frac", type=float, default=0.03,
+                    help="share of pre-period markets used (deterministic slug-hash sample; ~1.2 M taker txs/day)")
     a = ap.parse_args()
     t0 = time.time()
     P, mk = cm.train_panel()
@@ -986,7 +988,7 @@ def main():
                                                            "lookahead_calibration")}
         keep_shift = params.get("flow", {}).get("market_effect", {}).get("a_len_shift")
         keep_cell = params.get("flow", {}).get("glm", {}).get("tau_cell_shift")
-        pre = cm.pre_period_trades(*a.pre_trades) if a.pre_trades else None
+        pre = cm.pre_period_trades(*a.pre_trades, frac=a.pre_frac) if a.pre_trades else None
         if pre is not None:
             print(f"pre-period trades: {len(pre)} legs, {int(pre.is_taker.sum())} taker txs, "
                   f"{pre.slug.nunique()} markets")

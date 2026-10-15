@@ -190,6 +190,8 @@ def grid(name: str, base: dict) -> list[dict]:
             c = {f"flow.lookahead.{L}": {**la0[L], "kappa": la0[L]["kappa"] * mult[L]} for L in LENS}
             c.update({f"flow.impact.{L}.kappa": 0.0 for L in LENS})
             cands.append(c)
+    elif name == "refill2":
+        cands = [{"flow.refill_prob": rf} for rf in (0.95, 1.0)]
     elif name == "copy5m":
         for k5, c5 in ((1.0, 0.0), (0.5, 0.0), (1.0, 0.1)):
             cands.append({"flow.direction.rho_copy_by_len.5m": c5, "flow.direction.rho_copy_by_len.15m": 0.1,
@@ -250,7 +252,8 @@ def main():
                  if k.endswith(".5m") or k.endswith("5m.kappa") or k.endswith("tracking") or k.endswith("refill_prob")}
         top = sorted(parts.items(), key=lambda kv: -kv[1])[:4]
         short = {k.replace("flow.", "").replace("direction.rho_copy_by_len", "copy"): v for k, v in cand.items()}
-        short = {k.replace("flow.", ""): (v if not isinstance(v, dict) else v.get("kappa", v)) for k, v in cand.items() if "5m" in k}
+        short = {k.replace("flow.", ""): (v if not isinstance(v, dict) else v.get("kappa", v)) for k, v in cand.items()
+                 if "5m" in k or "refill" in k}
         print(f"[{i}] loss {L:7.1f} {short} inv {sim['fair_value|inv']:.2f}/{real['fair_value|inv']:.2f} 4h at0/at4 {sim['align4h|at0']:.3f}/{sim['align4h|at4']:.3f} acf {sim['acf|5m']:.3f}/{sim['acf|15m']:.3f}/{sim['acf|4h']:.3f} | fv mk {sim['fair_value|mk5']:.2f}/{sim['fair_value|mk30']:.2f}/"
               f"{sim['fair_value|mk60']:.2f} st vol {sim['sym_touch|fill_vol']:.0f} cap {sim['sym_touch|capture']:.2f} "
               f"tot {sim['sym_touch|total']:.0f}/{sim['fair_value|total']:.0f} at0 {sim['align|at0']:.3f} "

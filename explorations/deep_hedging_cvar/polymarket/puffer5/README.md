@@ -6,7 +6,7 @@ trainer, pinned to `ea7f989` on the 5.0 branch (`6ffa5b1` plus per-stream cuBLAS
 env API, `ini.h`, `puffercpu.c` and `build.sh` are identical). The rules the core follows for
 this are in `../PUFFER5.md`; the bates port in `../../bates/puffer5/` is the prior art.
 
-Checked against the frozen core: `mm.h` sha256 `746dd7dea250eee035a8cb08a7be479eacf2d44ac1b7251503bc0d0e468566a9`
+Checked against the frozen core: `mm.h` sha256 `9189f83adbb3f42ab803aca998ff97954c7cc092ffd65401d2b835abaa98a8e9` (D5 added reward_mode 2 and markout_h; modes 0/1 bit-identical to `746dd7dea250`)
 (`MM_OBS = 50`, a Log of 43 floats, 9 exploit flags; model in `../ENV.md`). The wrapper's
 compile-time checks fail if the Log or the flags change shape, and `make_ini.py` reads the
 knobs from `mm.h`, so after a core change rerun `make_ini.py` and the tests below.

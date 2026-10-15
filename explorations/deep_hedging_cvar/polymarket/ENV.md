@@ -198,6 +198,23 @@ order as it stood at tau = u - D. Asks are symmetric.
     mark_mode (tested).
   - The inventory penalty is training shaping only. It is in the reward, but not in `pnl`.
 * `reward_mode = 1` is a learnability probe: r = 1 if both heads chose "join" (3), else 0.
+* `reward_mode = 2` is the fill-markout training signal of DECISIONS.md D5. It is a surrogate
+  for training only; selection and every reported number use the true P&L in the Log, which is
+  unchanged.
+  - Each of our fills (signed size sq, price p, match row tau) earns
+    `sq * (p_model[min(tau + markout_h, last row)] - p)` in that step.
+  - The step also adds the change in rebates and liquidity rewards, and subtracts the same
+    inventory penalty as mode 0.
+  - So `r = reward_scale * (sum of fill credits + d rebates + d rewards - penalty)`.
+  - There is no per-step mark-to-market and no settlement term at the terminal.
+  - The credit reads `p_model` up to `markout_h` s after the fill (60 by default). This is
+    data after t, which is allowed because it is a reward, never an observation.
+  - Same scale, clamp and clip logging as mode 0. Identity, tested:
+    `sum(r) / reward_scale + inv_penalty_sum = sum(fill credits) + rebates + rewards`.
+  - Modes 0 and 1 are bit-identical to the build before mode 2 (`mm.h` sha256 `746dd7de...`).
+    This was checked on 32 runs of 3000 steps over every fill model, latency and mark mode.
+  - Mode 2 changes only the reward. Observations, terminals, state and every Log field except
+    `episode_return` and `reward_clip_frac` are identical to mode 0 on the same actions (tested).
 
 ## 6. Observation: 50 float32, O(1), clipped to [-5, 5], last = 1
 
@@ -321,13 +338,14 @@ use the match-row book (tau = u - D), which is the pre-trade book. Under the lit
 | liq_rewards | 0 | 1 turns the liquidity-reward hook on |
 | liq_moas | 1 | min order age (s) for rewards |
 | mark_mode | 0 | 0 mid (p_model when one-sided), 1 p_model, 2 blend |
-| reward_mode | 0 | 1 = join-probe reward |
+| reward_mode | 0 | 0 mark-to-market P&L; 1 join probe; 2 fill-markout credit (training surrogate, D5) |
 | tick_rule | 0 | 0 data-observed tick, 1 also price rule |
 | len_mask | 7 | 1 5m, 2 15m, 4 4h |
 | fixed_market | -1 | global market index (tests and debugging) |
 | fixed_start | -1 | start offset in seconds |
 | cycle_stride | 0 | > 0: deterministic market cycling (evaluation) |
 | start_frac | 0.2 | random start within this fraction of the market |
+| markout_h | 60 | reward_mode 2: horizon H (s) of the fill credit, on p_model |
 
 The binding also takes `data_dir` (str), and env_binding passes `seed`.
 
@@ -367,6 +385,9 @@ change results between builds. The binding and the harness then match bit for bi
     relative) and the first-episode Log (1e-4 relative). The auto-reset episode is compared
     too.
 * Reward telescoping for mark_mode 0/1/2, and the P&L identity.
+* reward_mode 2: C vs reference in 5 configs (H 60/5/30/0, every fill model, latency 0/1,
+  mark_mode 2, penalty, liquidity rewards, dt 3). The mode-2 identity holds. Against mode 0 on
+  the same actions, observations, terminals, state and Log P&L are identical.
 * Lookahead: perturbing the data after the cut changes nothing before it (and does change things after).
 * Split guard: refused without allow_test, refused without MM_FINAL, opens with a banner when
   both are set.

@@ -41,7 +41,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 PM = os.path.dirname(HERE)
 PY = sys.executable
 STAGES = ('preflight', 'probes', 'sweep', 'select', 'seeds', 'publish')
-FROZEN_MM_H = '746dd7dea250eee035a8cb08a7be479eacf2d44ac1b7251503bc0d0e468566a9'  # DECISIONS.md D1.4
+FROZEN_MM_H = '9189f83adbb3f42ab803aca998ff97954c7cc092ffd65401d2b835abaa98a8e9'  # DECISIONS.md D1.4, D5 (reward_mode 2 added; modes 0/1 bit-identical to 746dd7dea250)
 
 
 def sha256(path):

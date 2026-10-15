@@ -153,3 +153,10 @@ noise swamp the per-action signal, across episodes of 300–14,400 steps.
 
 **Order.** R7 runs right after R2 (R1, R2, R7, R3, R4, R5, R6). It follows the
 same improvement test and the same stopping rule as D4.
+
+**D5 follow-up (09:36 UTC):** reward_mode 2 was installed by atomic swap. The
+new `mm.h` sha256 is `9189f83adbb3f42ab803aca998ff97954c7cc092ffd65401d2b835abaa98a8e9`;
+it was `746dd7de…`. Reward modes 0 and 1 are bit-identical to the frozen core:
+32 of 32 runs matched exactly, with maximum difference 0. Baseline and main-sweep
+results obtained on `746dd7de` therefore stay valid. Hash references are updated
+in train/run_all.py, baselines/tune.py and puffer5/README.md.
