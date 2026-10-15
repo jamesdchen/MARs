@@ -97,3 +97,31 @@ the mean of 3 seeds among D1.3-passing configs, then trained on 5 seeds at
 - **Fix (12:40):** the chain was relaunched; rounds resume from their run
   dirs. A harness-tracked background task now waits on the chain to keep the
   session alive, and it is re-armed at every hourly check-in.
+
+### R7: fill-markout reward (finished ~13:00 UTC). Not improved, but the best D1.3-passing result overall.
+- 16 configs × 3 seeds. Each fill is credited with its fair-value markout at
+  30/60/120 s, plus the rebate.
+- **Best D1.3-passing config: `c02_h120`**, at −$61 ± 61 total, about
+  −$0.25 per market. It makes 17 fills per market and T6 ≈ 0, so it is not
+  directional.
+  - This beats the earlier best (−$69 ± 109), but the gap is within the seed
+    SE, so the round does not count as an improvement.
+  - It is roughly level with the best active baseline (−$0.30 per market) and
+    still below no-quote (≈ $0).
+- Seed variance is large: single seeds range from −$449 to +$136. The
+  profitable seeds are mostly directional.
+
+### R3: mark_mode 1/2 on the best configs (finished ~13:15). Not improved.
+- The best is R2's config with mark 2: −$66 ± 73.
+
+### R4: 200M-step runs of the top 2 configs (finished ~13:30). Not improved.
+- Longer training made things worse: −$77 ± 151 (directional) and
+  −$437 ± 219.
+
+### R5: refused, because the sim gate fails.
+
+### D6 stopping rule met (13:45 UTC)
+- R7 and R3 were both non-improving, and R4 was too. R6 (recurrent policy)
+  was stopped while running; its partial runs stay in the ledger.
+- **Finalize** trains 5 seeds of R7 `c02_h120`. After that, the test split is
+  run once.
