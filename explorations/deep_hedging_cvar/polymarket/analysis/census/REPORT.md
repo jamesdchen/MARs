@@ -16,7 +16,7 @@ with an event-clustered bootstrap 95% CI; "ex-rewards" means spread + markout + 
    - The top-20 continuous quoters lose in both periods: −23 bps (Oct), −12 bps (OOS). The spread does not
      cover adverse selection for an always-on maker. This is our study's finding, and the pivot away from
      crypto stands.
-2. **Pre-game sports replicates once the mark is capped at kickoff** (§6d; correction of 22:45 UTC, after w2's
+2. **Pre-game sports replicates once the mark is capped at kickoff** (§6d; correction of 22:40 UTC, after w2's
    `analysis/v3_sports_rules/RECONCILE.md`).
    - **Why the earlier numbers were noisy.** The census marked a pre-game leg at t + 30 min even when that
      falls after kickoff. Legs in the last 30 min before kickoff then carry in-game price moves.
@@ -53,6 +53,9 @@ with an event-clustered bootstrap 95% CI; "ex-rewards" means spread + markout + 
      Positive on 16 of 28 days.
    - Within elections, ex-rewards is ≈ 0 at prices 0.15–0.85, which is where the rewards pay. It is +43 bps
      [18, 73] above 0.85.
+   - **New-maker capture (§7):** on live books for the top 300 midterm markets, $36 per $1k per day at $10k,
+     $22 at $25k, $10 at $100k and $6 at $250k (contested markets, conservative bound). That reconciles w3's
+     2.5%/day (small book) with w6's 0.12%/day (very large book or stiffer competition).
    - **Caveat:** rewards for the older weeks use today's (Oct 15) rewards snapshot, so they are uncertain. The
      wallet REWARD payouts of the top makers ran at 2.0× (Oct) and 2.7× (OOS) the proxy. The proxy looks
      conservative, but its per-market split is not observable.
@@ -479,7 +482,7 @@ How to read it:
   hour, since the last 30 min is the best bucket on capped marks. PolyOrderBooks (sports, keyed) can backfill. Elections
   need our recorder, starting now.
 
-### 6d. Pre-game sports with marks capped at kickoff (added 22:45 UTC)
+### 6d. Pre-game sports with marks capped at kickoff (added 22:40 UTC)
 
 `kickoff_cap.py` → `out*/sports_kickoff_capped.csv` and `out_pooled/sports_kickoff_capped_all_periods.csv`.
 
@@ -556,7 +559,7 @@ How to read it:
 
 The replay should measure P&L to kickoff, including the flatten cost.
 
-### 6e. Geopolitics: regime or noise? (added 22:45 UTC)
+### 6e. Geopolitics: regime or noise? (added 22:40 UTC)
 
 `geo_note.py` → `out_pooled/geo_note.csv`. Values are ex-rewards, bps, event-bootstrap 95% CI.
 
@@ -582,6 +585,105 @@ The replay should measure P&L to kickoff, including the flatten cost.
   week once the event draw is quiet.
 
 Not a track.
+
+## 7. Election reward capture for a new maker (added 23:00 UTC)
+
+`election_rewards.py` → `out_pooled/election_rewards_curve.csv`, `election_rewards.csv` and
+`election_rewards_markets.csv`. This answers the coordinator's question (a): reconcile w6's 0.12%/day with w3's
+2.5%/day.
+
+### Setup
+
+- **Markets:** the top 300 open midterm markets (gamma tag `midterms`) by CLOB `rate_per_day`. Their pools
+  total **$25,960/day**; median min_size is 50 and median max_spread 6.5¢.
+- **Competitor depth:** the real live CLOB books, YES token, polled **6 times, 10 min apart**
+  (2026-10-15 22:10–23:00 UTC), giving 1,800 books.
+- **Our quote:** one bid and one ask of `rewards_min_size` shares each, at the largest tick distance below
+  max_spread/2 from the size-cutoff-adjusted mid (3¢ at max_spread 6.5¢).
+- **Score:** `analysis/rewards/reward_terms.py`. S = ((v−d)/v)²·size, and the two-sided Q_min rule applies
+  inside [0.10, 0.90].
+- **Competitors:**
+  - every resting price level counts as one order;
+  - the bound is **conservative** ("hi": competitor liquidity as two-sided as possible);
+  - the "lo" bound treats every competitor as one-sided and gives them 0 outside the band, which hands us
+    whole pools; it is shown only as an unrealistic ceiling.
+- **Reward:** rate_per_day × our average share across snapshots.
+- **Capital:** size × (bid + 1 − ask), i.e. YES-bid collateral plus NO-bid collateral for the ask.
+- **Allocation:** capital goes out greedily, one min-size lot at a time, to the market with the highest
+  marginal reward per $. Our k lots score k·q against the competitors' Q.
+- **CI:** bootstrap over markets (200 replicates of the whole allocation).
+
+### Results (conservative bound)
+
+**All 300 markets.** 6 of them had less than min_size of competing depth inside the band, so a first
+quoter takes most of their pool:
+
+| capital deployed   |   markets used |   reward $/day | $/day per $1k [95% CI]   |   %/day |
+|:-------------------|---------------:|---------------:|:-------------------------|--------:|
+| $500               |             13 |            241 | 495.5 [232.3, 791.3]     |   49.55 |
+| $1,000             |             21 |            279 | 283.8 [155.5, 437.4]     |   28.38 |
+| $2,500             |             30 |            342 | 137.4 [84.6, 198.9]      |   13.74 |
+| $5,000             |             40 |            416 | 83.4 [57.4, 115.3]       |    8.34 |
+| $10,000            |             52 |            521 | 52.2 [38.6, 67.6]        |    5.22 |
+| $25,000            |             61 |            719 | 28.8 [23.1, 35.3]        |    2.88 |
+| $50,000            |             68 |            913 | 18.3 [15.2, 21.8]        |    1.83 |
+| $100,000           |             73 |           1167 | 11.7 [9.9, 13.6]         |    1.17 |
+| $250,000           |             96 |           1654 | 6.6 [5.7, 7.5]           |    0.66 |
+
+**"Contested" markets only**, those with at least min_size of competing depth inside the band (the more
+realistic case, since empty bands attract competitors):
+
+| capital deployed   |   markets used |   reward $/day | $/day per $1k [95% CI]   |   %/day |
+|:-------------------|---------------:|---------------:|:-------------------------|--------:|
+| $500               |              9 |             92 | 186.3 [109.8, 290.0]     |   18.63 |
+| $1,000             |             16 |            125 | 125.8 [79.9, 191.6]      |   12.58 |
+| $2,500             |             25 |            185 | 74.2 [52.9, 103.8]       |    7.42 |
+| $5,000             |             36 |            258 | 51.6 [39.5, 68.2]        |    5.16 |
+| $10,000            |             46 |            361 | 36.2 [29.4, 45.9]        |    3.62 |
+| $25,000            |             55 |            559 | 22.4 [18.9, 27.2]        |    2.24 |
+| $50,000            |             62 |            752 | 15.0 [12.7, 17.9]        |    1.5  |
+| $100,000           |             67 |           1006 | 10.1 [8.6, 11.7]         |    1.01 |
+| $250,000           |             90 |           1492 | 6.0 [5.2, 6.8]           |    0.6  |
+
+**Equal allocation**, one min-size lot in each of the 298 scorable markets ($17.4k): **$17.6
+per $1k per day [9.7, 26.9]**, about 1.8%/day. The median market yields only
+$1.58 per $1k per day. A few thin markets carry the average.
+
+### Reconciling w6 and w3
+
+The yield is **a steep function of capital**, because each market's pool is fixed and our share saturates.
+- **w3's 2.5%/day** (= $25/$1k/day) matches a **≈ $15–25k book** spread over the best 50–60 markets: the
+  contested curve gives 2.2%/day [1.9, 2.7] at $25k and 3.6%/day at $10k.
+- **w6's 0.12%/day** (= $1.2/$1k/day) is below our curve even at $250k (0.6%/day [0.52, 0.68]). It
+  corresponds to roughly $1M+ spread over these 300 markets, or to a competition model stiffer than the live
+  book.
+- At $250k we would take about $1.5k/day, about 6% of the $26k/day pool.
+- The ceiling ("lo" bound) is 32%/day at $25k. It is not credible: it assumes no competitor
+  is two-sided.
+
+### What this leaves out (all of it pushes realised yield down)
+
+- **Fills.**
+  - Quotes about 3¢ from the mid do get hit.
+  - The census average elections maker at prices 0.15–0.85 loses about 17 bps of filled notional before
+    rewards (§6b).
+  - At a turnover of 10–100% of capital per day, that costs $0.2–1.7 per $1k per day. It is small next to the
+    $6–36 reward yields at $10k–$250k.
+  - The real risk is jumps: news, polls, and **Nov 3 election night**. A two-sided min-size quote can be swept
+    for a 20–50¢ loss per share. Pull quotes before the first returns.
+- **Competition reacts.** The 6 empty-band markets would draw competitors within days. The contested-only
+  curve is the safer planning number.
+- **Sampling.** Six snapshots in one evening hour. Depth varies by time of day, and the scorer samples once a
+  minute at random times. The sampling CI is not in the bootstrap.
+- **Rate changes.** Rates are today's and can change, and the program could stop.
+- **Order size.** Price levels aggregate several orders. Some competitor orders below min_size don't score,
+  which makes our competitor Q an overstatement, i.e. conservative.
+
+### Planning number
+
+For a new maker with **$10–25k** on contested midterm markets: **$22–36 per $1k per day** (CI about 19–46),
+before fill costs of $0.2–2. That is **about 2–3.5%/day** for the 19 days to Nov 3, falling to about 1%/day
+at $100k.
 
 ## Files
 
