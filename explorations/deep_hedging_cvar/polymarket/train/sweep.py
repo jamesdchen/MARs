@@ -66,11 +66,22 @@ def run_args(params):
                 ['--mark', str(params['mark_mode'])] if 'mark_mode' in params else [])
 
 
+def set_aside(run_dir):
+    """A run dir without result.json is a run that was killed: keep its partial logs
+    under a new name and start the run afresh."""
+    if os.path.isdir(run_dir) and not os.path.exists(os.path.join(run_dir, 'result.json')):
+        k = 0
+        while os.path.exists(f'{run_dir}.killed{k}'):
+            k += 1
+        os.rename(run_dir, f'{run_dir}.killed{k}')
+
+
 def train_run(args, params, seed, run_dir, extra):
-    os.makedirs(run_dir, exist_ok=True)
     res_path = os.path.join(run_dir, 'result.json')
     if os.path.exists(res_path):  # resumed sweep: do not retrain (and do not re-ledger)
         return json.load(open(res_path))
+    set_aside(run_dir)
+    os.makedirs(run_dir, exist_ok=True)
     cmd = [PY, os.path.join(HERE, 'train_ppo.py'), '--timesteps', str(args.steps), '--seed', str(seed),
            '--threads', str(args.threads), '--out', run_dir, '--tag', args.name, '--quiet',
            '--env', args.env, *run_args(params)]
@@ -84,6 +95,43 @@ def train_run(args, params, seed, run_dir, extra):
     if proc.returncode != 0 or not os.path.exists(res_path):
         raise RuntimeError(f'run failed ({proc.returncode}): {run_dir}/stdout.txt')
     return json.load(open(res_path))
+
+
+def distributions():
+    import optuna
+    d = {}
+    for k, spec in SPACE.items():
+        if spec[0] == 'log':
+            d[k] = optuna.distributions.FloatDistribution(spec[1], spec[2], log=True)
+        elif spec[0] == 'float':
+            d[k] = optuna.distributions.FloatDistribution(spec[1], spec[2])
+        else:
+            d[k] = optuna.distributions.CategoricalDistribution(spec[1])
+    return d
+
+
+def resume(study, log_path):
+    """Make a killed sweep continue where it stopped.
+
+    - optuna.db lost but sweep_log.jsonl present: re-add every logged trial.
+    - Trials left RUNNING by a kill: mark them FAIL (user attr stale, not counted in
+      the budget) and enqueue their parameters again, so the planned points still
+      run (their partial run dirs are set aside by train_run)."""
+    import optuna
+    if not study.trials and os.path.exists(log_path):
+        dists = distributions()
+        for line in open(log_path):
+            r = json.loads(line)
+            if 'trial' in r and 'value' in r and r.get('params') and set(r['params']) <= set(dists):
+                study.add_trial(optuna.trial.create_trial(
+                    params=r['params'], distributions={k: dists[k] for k in r['params']},
+                    value=r['value'], user_attrs={'rebuilt_from_log': True, 'orig_trial': r['trial']}))
+    for t in study.trials:
+        if t.state == optuna.trial.TrialState.RUNNING:
+            study._storage.set_trial_user_attr(t._trial_id, 'stale', True)
+            study._storage.set_trial_state_values(t._trial_id, optuna.trial.TrialState.FAIL)
+            if t.params:
+                study.enqueue_trial(t.params, user_attrs={'requeued_from': t.number})
 
 
 def metric_of(res, metric, variant=None):
@@ -137,8 +185,11 @@ def main():
                          'sps': res['sps_median']})
         return params, float(np.mean(vals)), runs
 
-    done = len([t for t in study.trials if t.state.is_finished()])
+    resume(study, log_path)
+    done = len([t for t in study.trials if t.state == optuna.trial.TrialState.COMPLETE
+                or (t.state == optuna.trial.TrialState.FAIL and not t.user_attrs.get('stale'))])
     todo = max(0, args.trials - done)
+    print(json.dumps({'sweep': args.name, 'done': done, 'todo': todo, 'steps': args.steps}), flush=True)
     with cf.ThreadPoolExecutor(args.jobs) as ex:
         pending = {}
         while todo or pending:

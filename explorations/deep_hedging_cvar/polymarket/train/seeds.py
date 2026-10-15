@@ -32,8 +32,10 @@ KEYS = ('pnl_total', 'pnl_mean', 'pnl_median', 'cvar95', 'max_abs_inv', 'frac_po
 def run(seed, cfg_path, out, args, tag):
     rd = os.path.join(out, f'seed_{seed}')
     res_path = os.path.join(rd, 'result.json')
-    if os.path.exists(res_path):
+    if os.path.exists(res_path):  # resumable: finished seeds are not retrained
         return json.load(open(res_path))
+    from sweep import set_aside
+    set_aside(rd)  # a killed seed run: keep its partial logs, retrain
     cmd = [PY, os.path.join(HERE, 'train_ppo.py'), '--config', cfg_path, '--seed', str(seed),
            '--threads', str(args.threads), '--out', rd, '--tag', tag, '--quiet',
            '--eval-every', str(args.eval_every)]
@@ -59,6 +61,8 @@ def main():
     p.add_argument('--eval-every', type=float, default=0)
     p.add_argument('--variants', nargs='*', default=None)
     p.add_argument('--ledger', default=None)
+    p.add_argument('--timesteps', type=float, default=None,
+                   help='train longer than the sweep (changes total_timesteps, hence the config hash)')
     p.add_argument('--out', default=None)
     a = p.parse_args()
     if len(a.seeds) < 5:
@@ -69,6 +73,8 @@ def main():
     if cfg is None:
         raise SystemExit('selected.json has no selected config')
     import ledger
+    if a.timesteps:
+        cfg = {**cfg, 'total_timesteps': int(a.timesteps)}
     h = ledger.config_hash(cfg)
     out = a.out or os.path.join(HERE, 'runs', 'seeds', h[:12])
     os.makedirs(out, exist_ok=True)
