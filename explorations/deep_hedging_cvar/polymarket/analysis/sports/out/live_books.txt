@@ -1,0 +1,73 @@
+Summarise the polyrec sports recording (books at 1 Hz on change) into compact tables.
+
+Per market, on the outcome-0 token, with the book forward-filled to a 1 s grid:
+  spread (cents), depth within 1/2/5 cents of mid (shares, both sides), mid / touch changes per minute;
+  split into pre-game (t < gameStartTime) and live (t >= gameStartTime).
+Game start: total resting depth (both sides, all levels) and spread at gs-60 s, gs-5 s, gs+5 s, gs+60 s,
+gs+300 s, to see the clearBookOnStart wipe and how fast the book refills.
+In-play jumps: seconds where |mid(t) - mid(t-30 s)| >= 5 cents; spread and depth in the 30 s before vs
+the 60 s after each jump.
+Usage: live_books.py <rec_out_dir>
+
+recording: /tmp/claude-0/-home-user-MARs/fc9de0c5-c81f-55ee-a203-afdadaace9c8/scratchpad/rec
+rows: 4214, markets: 18
+
+## per market and phase (outcome-0 token; spread in cents; depth in shares within w of mid, both sides)
+                                   slug league phase  minutes  spread_med  spread_mean  one_tick_share  mid_med   dep1_med   dep2_med   dep5_med  mid_chg_per_min  touch_chg_per_min
+                 cfb-gas-old-2026-10-15    cfb   pre      3.6         1.0        1.000           1.000    0.605   75129.18  391841.56  752851.53            0.000              0.000
+             col-bha-kau-2026-10-15-kau    col  live      3.9         0.5        0.457           1.000    0.007   41451.69   43312.76   53079.43            2.564              2.564
+               cs2-lgc-furia-2026-10-15    cs2  live      3.9         1.0        1.017           0.987    0.725   67982.75  150867.46  242620.64            2.051              2.051
+                   lol-c9-kc-2026-10-15    lol  live      3.9         1.0        1.043           0.983    0.185    3384.13   19624.85   82455.94            3.574              3.574
+                 nba-okc-hou-2026-10-15    nba   pre      3.9         1.0        1.000           1.000    0.585    2446.92    8067.83   38761.04            0.000              0.000
+                 nba-tor-nyk-2026-10-15    nba   pre      3.9         1.0        1.000           1.000    0.665    6227.08   14292.86   65344.84            0.000              0.000
+                 nfl-sea-den-2026-10-16    nfl   pre      3.9         1.0        1.000           1.000    0.565 2528838.76 6634051.88 8598040.29            0.000              0.000
+nfl-sea-den-2026-10-16-spread-away-2pt5    nfl   pre      3.8         1.0        1.000           1.000    0.505 1366494.82 3294995.69 4287918.90            0.000              0.000
+     nfl-sea-den-2026-10-16-total-40pt5    nfl   pre      3.7         1.0        1.000           1.000    0.505  317883.37 1256354.84 1470388.83            0.000              0.000
+                 nhl-buf-tor-2026-10-15    nhl   pre      3.9         1.0        1.000           1.000    0.515  109492.26  307885.93  601713.65            0.000              0.000
+                 nhl-nyi-ott-2026-10-15    nhl   pre      3.9         1.0        1.000           1.000    0.605  143443.77  322080.04  579718.46            0.000              0.000
+                  nhl-nyr-nj-2026-10-15    nhl   pre      3.4         1.0        1.000           1.000    0.445  111786.17  286771.84  559025.85            0.000              0.000
+                nhl-utah-edm-2026-10-15    nhl   pre      3.8         1.0        1.000           1.000    0.515   47491.94  298082.45  636552.84            0.000              0.000
+             uel-ben-cel-2026-10-15-ben    uel  live      3.9         0.4        0.400           1.000    0.993   65818.75   69425.80   74533.13            0.511              0.511
+            uel-cel1-juv-2026-10-15-juv    uel  live      3.9         1.0        1.017           0.983    0.165   15200.22   36707.90  102613.83            2.043              2.043
+             uel-din-and-2026-10-15-din    uel  live      3.9         1.0        1.498           0.847    0.445   13586.39   36435.69   91236.33            4.851              5.106
+             uel-hof-bes-2026-10-15-hof    uel  live      3.9         1.0        1.021           0.979    0.445    9763.27   25885.29   72808.25            1.787              1.787
+             uel-olm-oly-2026-10-15-oly    uel  live      3.9         1.0        1.328           0.774    0.575    1173.86    2439.56    6091.88           14.043             14.553
+
+## medians by phase
+       spread_med  one_tick_share    dep1_med    dep2_med    dep5_med  mid_chg_per_min  touch_chg_per_min
+phase                                                                                                    
+live          1.0           0.983   14393.305   36571.795   78494.535            2.308              2.308
+pre           1.0           1.000  110639.215  314982.985  619133.245            0.000              0.000
+
+## around game start (total resting shares both sides, spread)
+                                   slug
+                 cfb-gas-old-2026-10-15
+             col-bha-kau-2026-10-15-kau
+               cs2-lgc-furia-2026-10-15
+                   lol-c9-kc-2026-10-15
+                 nba-okc-hou-2026-10-15
+                 nba-tor-nyk-2026-10-15
+                 nfl-sea-den-2026-10-16
+nfl-sea-den-2026-10-16-spread-away-2pt5
+     nfl-sea-den-2026-10-16-total-40pt5
+                 nhl-buf-tor-2026-10-15
+                 nhl-nyi-ott-2026-10-15
+                  nhl-nyr-nj-2026-10-15
+                nhl-utah-edm-2026-10-15
+             uel-ben-cel-2026-10-15-ben
+            uel-cel1-juv-2026-10-15-juv
+             uel-din-and-2026-10-15-din
+             uel-hof-bes-2026-10-15-hof
+             uel-olm-oly-2026-10-15-oly
+
+## in-play jumps (|dmid| >= 5c within 30 s): 2
+                      slug          t   move  spread_pre  spread_post  spread_post_max  dep2_pre  dep2_post
+      lol-c9-kc-2026-10-15 1792093527  0.055         1.0          1.0              2.0  22263.54    3161.61
+uel-olm-oly-2026-10-15-oly 1792093425 -0.075         1.0          1.0              5.0   1925.38     240.06
+
+## jump medians
+spread_pre             1.000
+spread_post            1.000
+spread_post_max        3.500
+dep2_pre           12094.460
+dep2_post           1700.835

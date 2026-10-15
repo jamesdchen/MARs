@@ -1,0 +1,96 @@
+Sports game events (gamma tag 100639) with endDate in [2026-10-01, 2026-10-15): 21241 events, 361692 markets, gamma volume $1376M (gamma 'volume' units; relative shares are what matter)
+
+## by sport
+                   vol_$M  share  events
+sport                                   
+soccer              391.4  0.284    8390
+esports             386.3  0.281    1170
+american football   251.8  0.183     456
+tennis              222.1  0.161    4265
+baseball             58.7  0.043     425
+hockey               27.1  0.020      99
+basketball           26.3  0.019      62
+other                12.2  0.009    6374
+
+## top 25 leagues
+        vol_$M  share  events  $M_per_event
+league                                     
+nfl      174.9  0.127     124          1.41
+cs2      163.3  0.119     665          0.25
+atp      139.1  0.101     955          0.15
+lol      110.3  0.080      89          1.24
+unl      110.1  0.080     481          0.23
+dota2     88.0  0.064     110          0.80
+cfb       76.9  0.056     332          0.23
+ucl       71.1  0.052     137          0.52
+wta       69.1  0.050     383          0.18
+mlb       57.8  0.042     342          0.17
+epl       28.6  0.021     103          0.28
+nhl       27.1  0.020      99          0.27
+val       24.3  0.018      26          0.93
+lal       19.2  0.014      99          0.19
+nba       18.4  0.013      47          0.39
+fif       14.1  0.010     191          0.07
+itf       13.9  0.010    2927          0.00
+sea       13.0  0.009     103          0.13
+bra       12.3  0.009     148          0.08
+bun       11.8  0.009      67          0.18
+mls        9.3  0.007     236          0.04
+arg        8.0  0.006     180          0.04
+wnba       7.9  0.006      15          0.53
+conl       7.0  0.005     258          0.03
+es2        6.0  0.004     169          0.04
+
+## by sportsMarketType (volume share)
+smt
+moneyline                 0.623
+child_moneyline           0.138
+totals                    0.109
+spreads                   0.075
+soccer_exact_score        0.011
+map_handicap              0.011
+first_half_totals         0.007
+tennis_completed_match    0.006
+soccer_team_totals        0.005
+both_teams_to_score       0.004
+
+## fee schedules (markets)
+                                                                                                  size  share
+fee_type                  fee                                                                                
+sports_fees_nfl_cfb_oct26 {"exponent": 1, "rate": 0.03, "takerOnly": true, "rebateRate": 0.15}   23301  0.084
+sports_fees_v2            {"exponent": 1, "rate": 0.03, "takerOnly": true, "rebateRate": 0.25}      78  0.001
+sports_fees_v3            {"exponent": 1, "rate": 0.05, "takerOnly": true, "rebateRate": 0.15}  316256  0.816
+weather_fees              {"exponent": 1, "rate": 0.05, "takerOnly": true, "rebateRate": 0.25}       2  0.000
+zero_fees                 {"exponent": 1, "rate": 0, "takerOnly": true, "rebateRate": 0}         22055  0.099
+
+## reward configs (rewardsMinSize, rewardsMaxSpread)
+                      size  share
+rew_min rew_spread               
+0       0.0           5353  0.143
+20      4.5              1  0.000
+50      4.5         356037  0.853
+200     4.5              2  0.001
+500     2.5              1  0.000
+1000    2.5            298  0.003
+
+markets with a clobRewards entry: 381; daily rates: {514.285714: 225, 0.001: 108, 1885.714286: 41, 102.857143: 7}
+
+## secondsDelay / clearBookOnStart
+delay
+1.0    350386
+0.0     11287
+NaN        19
+clear_on_start
+True    361692
+
+## delay by sport (market counts)
+delay              -1.0    0.0     1.0
+sport                                 
+american football     0      0   45356
+baseball              0  10334      83
+basketball            0    953     447
+esports               0      0   16589
+hockey                0      0     823
+other                19      0   26617
+soccer                0      0  196784
+tennis                0      0   63687
