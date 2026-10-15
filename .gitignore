@@ -54,3 +54,6 @@ knowledge.md
 # Test files
 main.js
 
+
+# PufferLib creates this symlink in the working directory on import
+resources
