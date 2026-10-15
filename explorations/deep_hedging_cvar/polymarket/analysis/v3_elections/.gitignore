@@ -1,0 +1,6 @@
+rec/raw/
+rec/**/_parts/
+rec/*.log
+rec/status.json
+__pycache__/
+rec/
