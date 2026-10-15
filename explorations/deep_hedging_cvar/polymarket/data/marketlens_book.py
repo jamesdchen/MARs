@@ -14,8 +14,10 @@ State at an evaluation time T (ms):
 Optional ghost cleaning (`trades` given): not every level removal arrives as a delta, so a level
 emptied by a trade can survive in the replay. A trade with taker side BUY at price p at time tau
 proves that no ask below p rested at tau (price priority), and a SELL at p that no bid above p
-did; such a level is hidden from tau on, until a later delta for it arrives. Only trades with
-timestamp <= T are used, so the cleaned state is still causal.
+did; such a level is hidden from tau on, until a later delta for it arrives. A trade's timestamp
+lags the deltas of its own fills by a few ms (median 3 ms, 95% within 27 ms on this file), so only
+levels last updated more than GUARD_MS before tau are hidden: an order posted in that window is never
+hidden by mistake. Only trades with timestamp <= T are used, so the cleaned state is still causal.
 
 Prices are handled as integers in 1e-4 (the dataset's exact precision).
 """
@@ -26,6 +28,7 @@ import pandas as pd
 
 NLEV = 5
 PX = 10000            # price units per 1.0
+GUARD_MS = 50         # trade-implied removals apply to levels last updated before tau - GUARD_MS
 
 
 def snapshot_levels(levels) -> tuple[np.ndarray, np.ndarray]:
@@ -93,10 +96,10 @@ def side_matrix(q0, s0, t_snap, dq, ds, dts, B, trades_tau=None, trades_px=None,
         for j in np.flatnonzero(rt < n):
             if is_bid:      # SELL at p: no bid above p rested at tau
                 c0 = np.searchsorted(L, trades_px[j], side="right")
-                R[rt[j], c0:] = trades_tau[j]
+                R[rt[j], c0:] = trades_tau[j] - GUARD_MS
             else:           # BUY at p: no ask below p rested at tau
                 c1 = np.searchsorted(L, trades_px[j], side="left")
-                R[rt[j], :c1] = trades_tau[j]
+                R[rt[j], :c1] = trades_tau[j] - GUARD_MS
         np.maximum.accumulate(R, axis=0, out=R)
         hidden = R > upd
     return L, sizes, hidden

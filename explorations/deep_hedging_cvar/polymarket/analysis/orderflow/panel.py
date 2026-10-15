@@ -86,7 +86,7 @@ GROUPS = {
 CAND = [c for g in GROUPS.values() for c in g]
 
 
-def build(split: str, build_dir: Path):
+def build(split: str, build_dir: Path, dmatch: int = D_MATCH):
     t_start = time.time()
     d = Data(build_dir)
     ticks_meta = json.loads((build_dir / "meta.json").read_text())
@@ -179,7 +179,7 @@ def build(split: str, build_dir: Path):
             np.minimum.at(ext, txid[side < 0], px[side < 0])
             np.maximum.at(ext, txid[side > 0], px[side > 0])
             size_tx = np.bincount(txid, weights=fl["size"].astype(np.float64), minlength=ntx)
-            tau = u_tx - D_MATCH
+            tau = u_tx - dmatch
             tdec = tau - LAT
             ok = tdec >= 0
             tau_c = np.clip(tau, 0, n - 1)
@@ -211,7 +211,8 @@ def build(split: str, build_dir: Path):
     R = {k: cat(rows, k) for k in rows[0]}
     Fl = {k: cat(fills, k) for k in fills[0]}
     CACHE.mkdir(exist_ok=True)
-    np.savez(CACHE / f"panel_{split}.npz", **{f"r_{k}": v for k, v in R.items()},
+    tag = "" if dmatch == D_MATCH else f"_D{dmatch}"
+    np.savez(CACHE / f"panel_{split}{tag}.npz", **{f"r_{k}": v for k, v in R.items()},
              **{f"f_{k}": v for k, v in Fl.items()}, cand_names=np.array(CAND),
              base_names=np.array([{v: k for k, v in d.col.items()}[c] for c in BASE_COLS]))
     print(f"{split}: rows {len(R['t'])}, touch fills {len(Fl['t'])}; {time.time() - t_start:.0f}s", flush=True)
@@ -225,10 +226,12 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--split", choices=["train", "val"], required=True)
     ap.add_argument("--build", default=None, help="build dir (val: data/build_v2 when it exists)")
+    ap.add_argument("--dmatch", type=int, default=D_MATCH,
+                    help="what-if: match delay D (rows) of the touch-fill panel (env central = 4)")
     a = ap.parse_args()
     bd = Path(a.build) if a.build else POLY / "data" / "build"
     assert "jun15" not in str(bd), "the v2 test set is never analysed here"
-    build(a.split, bd)
+    build(a.split, bd, a.dmatch)
 
 
 if __name__ == "__main__":

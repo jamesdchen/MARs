@@ -39,6 +39,7 @@ PM = os.path.dirname(HERE)
 PY = sys.executable
 sys.path.insert(0, HERE)
 import ledger  # noqa: E402
+import evaluator  # noqa: E402,F401  (imports pufferlib.pufferl, which sets a SIGINT handler: main thread only)
 from rounds import jdump, jload, sha256  # noqa: E402
 
 V2_DIR = os.path.join(PM, 'data', 'build_v2')
@@ -219,6 +220,40 @@ class Search:
                          default=float), flush=True)
         return doc
 
+    def ensembles(self):
+        """3-seed ensembles (logits and probabilities) of the top configs: the --top best by
+        unfiltered seed mean, the --top best D1.3-passing (config, filter) pairs' configs, and
+        the --top best by any filter; scored on v2 val with every length filter (v2eval.py,
+        one ledger row each, tag <name>_ens). Results: runs/v2/<name>_ens.json."""
+        rows = [r for r in self.table() if r['n'] >= 3]
+        pick = []
+        for key in (lambda r: r['filter'] == '5m+15m+4h', lambda r: r['d13'], lambda r: True):
+            for r in sorted(filter(key, rows), key=lambda r: -r['mean'])[:self.a.top]:
+                if r['config'] not in pick:
+                    pick.append(r['config'])
+        cmd = [PY, 'v2eval.py', 'ckpts', '--out', os.path.join(self.vroot, f'{self.a.name}_ens'),
+               '--tag', f'{self.a.name}_ens', '--ensemble-only', '--ledger', self.ledger]
+        if self.a.data_dir:
+            cmd += ['--data-dir', self.a.data_dir]
+        env = {**os.environ, 'OMP_NUM_THREADS': '1', 'OMP_WAIT_POLICY': 'PASSIVE', 'PYTHONWARNINGS': 'ignore'}
+        def one(c):
+            ps = [os.path.join(self.root, f'{c}_s{s}', 'final.pt') for s in self.plan()['seeds']]
+            log = os.path.join(self.vroot, f'{self.a.name}_ens_{c}.log')
+            with open(log, 'a') as f:
+                subprocess.run(cmd + ['--name', c, '--ckpts', *ps], cwd=HERE, stdout=f, stderr=subprocess.STDOUT,
+                               env=env, check=True)
+            return c
+        with cf.ThreadPoolExecutor(self.a.jobs) as ex:
+            for c in ex.map(one, pick):
+                print(json.dumps({'ensembled': c}), flush=True)
+        out = {}
+        d = os.path.join(self.vroot, f'{self.a.name}_ens')
+        for c in pick:
+            res = jload(os.path.join(d, f'{c}.json'), {}).get(c, {})
+            out[c] = res
+        jdump(out, os.path.join(self.vroot, f'{self.a.name}_ens.json'))
+        return out
+
     def write_progress(self):
         rows = self.table()
         plan = self.plan()
@@ -246,7 +281,8 @@ class Search:
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument('mode', choices=['run', 'status', 'select'])
+    p.add_argument('mode', choices=['run', 'status', 'select', 'ensembles'])
+    p.add_argument('--top', type=int, default=4, help='ensembles: configs per ranking')
     p.add_argument('--name', default='v2s1')
     p.add_argument('--configs', type=int, default=32)
     p.add_argument('--seeds', type=int, default=3)
@@ -272,6 +308,8 @@ def main():
         s.run()
     elif a.mode == 'status':
         s.status()
+    elif a.mode == 'ensembles':
+        s.ensembles()
     else:
         s.select()
 

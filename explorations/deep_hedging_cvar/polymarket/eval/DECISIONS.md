@@ -291,3 +291,55 @@ category. It will fix:
 - a test set that nobody has touched.
 
 Nothing learned from the census is reported as a test result.
+
+## D10. Rows of the v2 test with no book (recorded 2026-10-15 ~20:00 UTC, before any Jun 15 strategy result)
+
+**What the build found.** 58 of the 288 Jun 15 markets have no order book for the first 3–201 s
+after open: 2,987 rows (3.4%) with `book_valid=0`. v1 had the same pattern in 57 of its 471 5m
+markets (1.8% of 5m rows), and the env treats both data sets identically.
+
+**Decision: no change to the data or the env, so treatment stays consistent with train, val and
+v1.**
+- The existing T5 detector already covers fills on these rows through its `onesided` and
+  `crossed_or_stale` artifact flags. A result where flagged fills carry more than 25% of the fill
+  edge is invalid.
+- In addition, the v2 report will show the method's P&L once more with every fill on a
+  `book_valid=0` row removed, as a sensitivity check. This is reported, not used to judge.
+
+**Two cosmetic leftovers, not fixed:**
+- The env's test banner still mentions "Aug 24", because the text is hard-coded in `mm.h`. It is
+  not changed, so the frozen hash stays the same.
+- `book_age` on Jun 15 measures time since the last feed message. That differs from the v1
+  capture and is part of the source-shift caveat in D7.
+
+## D11. Protocol v3: pivot to pre-game sports and election reward farming (recorded 2026-10-15 ~20:25 UTC, before any v3 tuning)
+
+The user chose to pivot to both tracks named by the census (`analysis/census/REPORT.md`,
+`train/PIVOT.md`). Crypto v2 tuning stops: the local sweep in flight finishes, and the crypto v2
+freeze and Jun 15 test still run as pre-registered.
+
+### Track S: pre-game sports
+
+- **Data:** PolyOrderBooks sports L2 (the user is getting an API key), plus on-chain fills, gamma
+  `gameStartTime`, and our recorder from now on.
+- **Episode:** from listing to kickoff. Quotes are forced off at kickoff and inventory is
+  flattened or marked there. Holding into the game is not allowed.
+- **Split by game date.** The oldest ~60% of days are train, the next ~20% val, and the newest
+  ~20% test, untouched. Exact dates are fixed once the backfill range is known, and before any
+  model is evaluated on them. Days recorded after that form an extra forward test.
+
+### Track E: election reward farming (US midterms, Nov 3)
+
+- **Data:** no vendor has historical L2 for elections, so books must be recorded from now on with
+  our recorder. Liquidity rewards are modelled with the env's reward hook, using the current reward
+  configs.
+- **Split by date** over the recorded days. The last recorded days before Nov 3 are the untouched
+  test.
+- Election night is out of scope: it is a jump event.
+
+### Shared rules
+
+- Same comparators logic as D1: no-quote plus tuned classical quoters.
+- Same D1.3 market-making rule, same T5/T6 detectors.
+- Every val evaluation goes in a ledger.
+- Each track's test is run once.

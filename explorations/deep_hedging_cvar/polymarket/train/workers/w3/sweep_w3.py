@@ -12,6 +12,7 @@ and tag w3_<config>.
 import argparse
 import copy
 import json
+import re
 import os
 import subprocess
 import sys
@@ -116,9 +117,68 @@ def run_one(name, c, seed, steps=None):
     return name, seed, r.returncode
 
 
+def n_training():
+    r = subprocess.run(['pgrep', '-f', '[t]rain_ppo.py'], capture_output=True, text=True)
+    return len(r.stdout.split())
+
+
+def top_configs(k=3, min_seeds=3):
+    sys.path.insert(0, HERE)
+    import analyze_w3
+    A = {n: analyze_w3.agg(v) for n, v in analyze_w3.collect().items() if len(v) >= min_seeds}
+    ok = [n for n, x in A.items() if x['d13']] or list(A)
+    return sorted(ok, key=lambda n: -A[n]['pnl_mean'])[:k]
+
+
+def follow(a):
+    """Keep 4 training processes busy after the main sweep's queue has drained:
+    1) seeds 3,4 of the top-3 configs (ranked when the first slot opens);
+    2) then entries of queue.json ([{"name", "cfg"(full) or "base": name + "ppo"/"policy"/"top": ...,
+       "seeds": [...]}]), re-read every poll, so it can be extended while running."""
+    V = configs()
+    n_main = len(V) * 3
+    started, top3 = set(), None
+    qpath = os.path.join(HERE, 'queue.json')
+    pool = ThreadPoolExecutor(8)
+    while True:
+        dirs = [d for d in os.listdir(os.path.join(HERE, 'runs')) if re.match(r'.+_s\d+$', d)]
+        main_started = sum(1 for k in V for s in (0, 1, 2) if f'{k}_s{s}' in dirs)
+        if main_started >= n_main and n_training() < a.jobs:
+            if top3 is None:
+                top3 = top_configs()
+                print(time.strftime('%H:%M:%S'), 'top3', top3, flush=True)
+            jobs = [(k, V[k], s) for k in top3 for s in (3, 4)]
+            try:
+                Q = json.load(open(qpath)) if os.path.exists(qpath) else []
+            except json.JSONDecodeError:
+                Q = []
+            for e in Q:
+                c = e.get('cfg')
+                if c is None:
+                    c = copy.deepcopy(V[e['base']])
+                    for grp in ('ppo', 'policy'):
+                        c[grp].update(e.get(grp, {}))
+                    if 'num_envs' in e:
+                        c['num_envs'] = e['num_envs']
+                    if 'kw' in e:
+                        c['env']['kw'].update(e['kw'])
+                for s in e.get('seeds', [0, 1, 2]):
+                    jobs.append((e['name'], c, s))
+            todo = [j for j in jobs if (j[0], j[2]) not in started
+                    and not os.path.exists(os.path.join(HERE, 'runs', f'{j[0]}_s{j[2]}', 'result.json'))]
+            if todo:
+                name, c, s = todo[0]
+                started.add((name, s))
+                print(time.strftime('%H:%M:%S'), 'launch', name, s, flush=True)
+                pool.submit(run_one, name, c, s)
+                time.sleep(20)
+                continue
+        time.sleep(15)
+
+
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument('cmd', choices=['list', 'run'])
+    p.add_argument('cmd', choices=['list', 'run', 'follow'])
     p.add_argument('--only', default=None)
     p.add_argument('--seeds', type=int, nargs='*', default=[0, 1, 2])
     p.add_argument('--jobs', type=int, default=4)
@@ -127,6 +187,8 @@ def main():
     V = configs()
     if a.only:
         V = {k: V[k] for k in a.only.split(',')}
+    if a.cmd == 'follow':
+        return follow(a)
     if a.cmd == 'list':
         for k, c in V.items():
             print(f'{k:22s} cost={cost(k, c):.2f} policy={c["policy"]} envs={c["num_envs"]}')
