@@ -28,6 +28,13 @@ Hourly reward-config snapshots go alongside them. These recordings are the only 
   election day), so they had been left pending. That group included 2 of the top 3 by rate:
   `2026-balance-of-power-d-senate-d-house-949` and `...-r-senate-d-house-444`.
   **Those 24 markets are recorded from 20:46 on.** All 300 have been live since.
+- 21:00:06: polyrec hit its 1.5 GB RSS limit (exit 76) after 14 min. The supervisor restarted it in 5 s.
+  The per-token reconcile rings (4,096 events × 600 tokens, including full snapshots of deep election books) and
+  growth of roughly 10–30 MB/min were the cause. The config was changed to `history_events` 1024, then 256, with
+  `max_rss_mb` 6000 (the box has 16 GB). That cost restarts at 21:00:30 and 21:07:24 (about 5 s each).
+- Since 21:07:29 RSS is about 590 MB after start-up, then grows about 7 MB/min, so the 6 GB cap is reached after
+  about 13 h. That means at most about two 5 s restarts a day, which fits merge.py's coverage rule (max gap 5 s,
+  total 15 s per window). Oct 15 is a partial, gappy day. **Oct 16 is the first full recorded day.**
 - `rec/coverage/` records every gap, and builds apply `merge.py`'s coverage rule.
 
 ## Operations
