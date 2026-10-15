@@ -1,7 +1,7 @@
 {
  "meta": {
   "fitted_on": "train split 0 only: 431 markets (5m 248, 15m 146, 4h 37), opens 2026-08-21..22 UTC; Binance < 2026-08-23",
-  "created_utc": "2026-10-15T08:43:27.263554+00:00",
+  "created_utc": "2026-10-15T08:58:32.814647+00:00",
   "n_rows": 739031,
   "pricer": {
    "halflife_s": 300,
@@ -68,32 +68,34 @@
  },
  "mid": {
   "5m": {
-   "s_fast": 0.864823,
-   "s_slow": 0.887516,
-   "halflife_slow_s": 3500.050646,
-   "halflife_u_s": 38.383992,
-   "sigma_u": 0.075084,
-   "update_prob_mult": 0.843438,
+   "s_fast": 0.862796,
+   "s_slow": 1.085332,
+   "halflife_slow_s": 3778.997488,
+   "halflife_u_s": 45.225522,
+   "sigma_u": 0.068125,
+   "update_prob_mult": 0.79368,
    "update_prob": [
-    0.271397,
-    0.240667,
-    0.240852,
-    0.268613,
-    0.26775,
-    0.26775,
-    0.26775,
-    0.26775
+    0.255386,
+    0.226469,
+    0.226643,
+    0.252767,
+    0.251954,
+    0.251954,
+    0.251954,
+    0.251954
    ],
    "b_tau": [
-    -0.237398,
-    -0.237398,
-    -0.237398,
-    -0.067543,
-    -0.036978,
-    -0.036978,
-    -0.036978,
-    -0.036978
+    -0.25324,
+    -0.25324,
+    -0.25324,
+    -0.048838,
+    -0.02582,
+    -0.02582,
+    -0.02582,
+    -0.02582
    ],
+   "psi": 0.02997,
+   "ant_h_s": 60,
    "moments_real": {
     "slope_1": 0.210139,
     "slope_5": 0.504704,
@@ -104,51 +106,61 @@
     "acf_5": 0.759,
     "acf_30": 0.469292,
     "acf_120": 0.1886,
-    "p_change": 0.263267
+    "p_change": 0.263267,
+    "gapdp_30": -0.036868,
+    "gapdy_30": 0.391096,
+    "gapdp_60": -0.10999,
+    "gapdy_60": 0.41989
    },
    "moments_sim": {
-    "slope_1": 0.237448,
-    "slope_5": 0.498835,
-    "slope_30": 0.770042,
-    "slope_120": 0.820287,
-    "level_slope": 0.818805,
-    "sd_gap": 0.553625,
-    "acf_5": 0.751976,
-    "acf_30": 0.485158,
-    "acf_120": 0.166232,
-    "p_change": 0.248675
+    "slope_1": 0.219368,
+    "slope_5": 0.468892,
+    "slope_30": 0.752077,
+    "slope_120": 0.820772,
+    "level_slope": 0.832199,
+    "sd_gap": 0.550945,
+    "acf_5": 0.749092,
+    "acf_30": 0.502476,
+    "acf_120": 0.191975,
+    "p_change": 0.232972,
+    "gapdp_30": -0.069712,
+    "gapdy_30": 0.398606,
+    "gapdp_60": -0.11631,
+    "gapdy_60": 0.495996
    },
-   "smm_loss": 3.728358,
+   "smm_loss": 9.268439,
    "n_markets": 248,
-   "note": "target = s_fast*logit(p) + (s_slow-s_fast)*EWMA_hl(logit p) + b(tau) + u, u AR(1) (half-life halflife_u_s, innovation sd sigma_u); the book re-aligns to the target only at update events (prob update_prob[tau_b] per second) and holds otherwise"
+   "note": "target = fund + psi * (mean of fund over (t, t+ant_h] - fund_t) + b(tau) + u, fund = s_fast*logit(p) + (s_slow-s_fast)*EWMA_hl(logit p), u AR(1) (half-life halflife_u_s, innovation sd sigma_u); the book re-aligns to the target only at update events (prob update_prob[tau_b] per second) and holds otherwise"
   },
   "15m": {
-   "s_fast": 0.879163,
-   "s_slow": 0.752674,
-   "halflife_slow_s": 844.917614,
-   "halflife_u_s": 115.645448,
-   "sigma_u": 0.027962,
-   "update_prob_mult": 0.711927,
+   "s_fast": 0.874844,
+   "s_slow": 0.947484,
+   "halflife_slow_s": 4899.592541,
+   "halflife_u_s": 138.753336,
+   "sigma_u": 0.02671,
+   "update_prob_mult": 0.703028,
    "update_prob": [
-    0.216504,
-    0.180176,
-    0.166604,
-    0.183021,
-    0.203961,
-    0.204035,
-    0.204035,
-    0.204035
+    0.213798,
+    0.177924,
+    0.164521,
+    0.180733,
+    0.201412,
+    0.201484,
+    0.201484,
+    0.201484
    ],
    "b_tau": [
-    -0.119599,
-    -0.119599,
-    -0.119599,
-    -0.075064,
-    0.007778,
-    0.004887,
-    0.004887,
-    0.004887
+    -0.08696,
+    -0.08696,
+    -0.08696,
+    -0.071361,
+    0.00952,
+    0.004762,
+    0.004762,
+    0.004762
    ],
+   "psi": 0.011008,
+   "ant_h_s": 120,
    "moments_real": {
     "slope_1": 0.172775,
     "slope_5": 0.446106,
@@ -160,52 +172,62 @@
     "acf_5": 0.814227,
     "acf_30": 0.633927,
     "acf_120": 0.434001,
-    "p_change": 0.198871
+    "p_change": 0.198871,
+    "gapdp_30": -0.02694,
+    "gapdy_30": 0.292393,
+    "gapdp_60": -0.034066,
+    "gapdy_60": 0.332734
    },
    "moments_sim": {
-    "slope_1": 0.197045,
-    "slope_5": 0.43655,
-    "slope_30": 0.763444,
-    "slope_120": 0.844514,
-    "slope_300": 0.85604,
-    "level_slope": 0.851709,
-    "sd_gap": 0.384641,
-    "acf_5": 0.807838,
-    "acf_30": 0.648771,
-    "acf_120": 0.429427,
-    "p_change": 0.179443
+    "slope_1": 0.192742,
+    "slope_5": 0.428242,
+    "slope_30": 0.754667,
+    "slope_120": 0.84296,
+    "slope_300": 0.86178,
+    "level_slope": 0.871841,
+    "sd_gap": 0.381126,
+    "acf_5": 0.807658,
+    "acf_30": 0.649561,
+    "acf_120": 0.435708,
+    "p_change": 0.175518,
+    "gapdp_30": -0.031048,
+    "gapdy_30": 0.295063,
+    "gapdp_60": -0.045535,
+    "gapdy_60": 0.345403
    },
-   "smm_loss": 2.88304,
+   "smm_loss": 2.805431,
    "n_markets": 146,
-   "note": "target = s_fast*logit(p) + (s_slow-s_fast)*EWMA_hl(logit p) + b(tau) + u, u AR(1) (half-life halflife_u_s, innovation sd sigma_u); the book re-aligns to the target only at update events (prob update_prob[tau_b] per second) and holds otherwise"
+   "note": "target = fund + psi * (mean of fund over (t, t+ant_h] - fund_t) + b(tau) + u, fund = s_fast*logit(p) + (s_slow-s_fast)*EWMA_hl(logit p), u AR(1) (half-life halflife_u_s, innovation sd sigma_u); the book re-aligns to the target only at update events (prob update_prob[tau_b] per second) and holds otherwise"
   },
   "4h": {
-   "s_fast": 0.724435,
-   "s_slow": 1.051614,
-   "halflife_slow_s": 1666.655793,
-   "halflife_u_s": 886.522392,
-   "sigma_u": 0.016057,
-   "update_prob_mult": 0.99684,
+   "s_fast": 0.832519,
+   "s_slow": 1.023268,
+   "halflife_slow_s": 3446.18689,
+   "halflife_u_s": 1058.98303,
+   "sigma_u": 0.015163,
+   "update_prob_mult": 0.996804,
    "update_prob": [
-    0.067354,
-    0.105072,
-    0.065558,
-    0.093398,
-    0.062415,
-    0.091736,
-    0.098656,
-    0.175788
+    0.067352,
+    0.105068,
+    0.065556,
+    0.093395,
+    0.062413,
+    0.091733,
+    0.098653,
+    0.175782
    ],
    "b_tau": [
-    -0.97897,
-    -0.97897,
-    -0.97897,
-    -0.97897,
-    -0.666389,
-    -0.187646,
-    -0.167595,
-    -0.070964
+    -1.040938,
+    -1.040938,
+    -1.040938,
+    -1.040938,
+    -0.815321,
+    -0.252132,
+    -0.139769,
+    -0.065408
    ],
+   "psi": 0.158685,
+   "ant_h_s": 600,
    "moments_real": {
     "slope_1": 0.1253,
     "slope_5": 0.36242,
@@ -218,25 +240,33 @@
     "acf_5": 0.986365,
     "acf_30": 0.954211,
     "acf_120": 0.8726,
-    "p_change": 0.083105
+    "p_change": 0.083105,
+    "gapdp_30": -0.002236,
+    "gapdy_30": 0.032909,
+    "gapdp_60": -0.008911,
+    "gapdy_60": 0.046256
    },
    "moments_sim": {
-    "slope_1": 0.121645,
-    "slope_5": 0.289753,
-    "slope_30": 0.589839,
-    "slope_120": 0.704602,
-    "slope_300": 0.72071,
-    "slope_900": 0.763346,
-    "level_slope": 0.896365,
-    "sd_gap": 0.435332,
-    "acf_5": 0.987163,
-    "acf_30": 0.957563,
-    "acf_120": 0.881823,
-    "p_change": 0.122618
+    "slope_1": 0.119514,
+    "slope_5": 0.281023,
+    "slope_30": 0.576027,
+    "slope_120": 0.692209,
+    "slope_300": 0.720838,
+    "slope_900": 0.798923,
+    "level_slope": 0.898832,
+    "sd_gap": 0.428572,
+    "acf_5": 0.987436,
+    "acf_30": 0.958637,
+    "acf_120": 0.885716,
+    "p_change": 0.12075,
+    "gapdp_30": -0.008414,
+    "gapdy_30": 0.026427,
+    "gapdp_60": -0.01671,
+    "gapdy_60": 0.038375
    },
-   "smm_loss": 10.749004,
+   "smm_loss": 14.204316,
    "n_markets": 37,
-   "note": "target = s_fast*logit(p) + (s_slow-s_fast)*EWMA_hl(logit p) + b(tau) + u, u AR(1) (half-life halflife_u_s, innovation sd sigma_u); the book re-aligns to the target only at update events (prob update_prob[tau_b] per second) and holds otherwise"
+   "note": "target = fund + psi * (mean of fund over (t, t+ant_h] - fund_t) + b(tau) + u, fund = s_fast*logit(p) + (s_slow-s_fast)*EWMA_hl(logit p), u AR(1) (half-life halflife_u_s, innovation sd sigma_u); the book re-aligns to the target only at update events (prob update_prob[tau_b] per second) and holds otherwise"
   }
  },
  "book": {
@@ -93580,17 +93610,17 @@
   },
   "impact": {
    "5m": {
-    "kappa": 0.01,
+    "kappa": 0.0,
     "halflife_s": 300.0,
     "rise_halflife_s": 15.0
    },
    "15m": {
-    "kappa": 0.01,
+    "kappa": 0.0,
     "halflife_s": 300.0,
     "rise_halflife_s": 15.0
    },
    "4h": {
-    "kappa": 0.02,
+    "kappa": 0.0,
     "halflife_s": 300.0,
     "rise_halflife_s": 15.0
    },
@@ -93599,15 +93629,15 @@
   "lookahead": {
    "5m": {
     "h": 5,
-    "kappa": 0.5
+    "kappa": 0.359261
    },
    "15m": {
     "h": 5,
-    "kappa": 3.0
+    "kappa": 6.4667069999999995
    },
    "4h": {
     "h": 5,
-    "kappa": 3.0
+    "kappa": 10.777845
    }
   },
   "refill_prob": 0.8,
@@ -93713,8 +93743,55 @@
      "acf|4h": 0.232316
     },
     "note": "5m look-ahead kappa lowered to 0.5 and copy prob 0 (5m) / 0.1 (15m) so the sign ACF of trades matches real (look-ahead informed trades already come in same-sign runs)"
+   },
+   "random_search": {
+    "cand": {
+     "flow.lookahead.5m": {
+      "h": 5,
+      "kappa": 0.359261
+     },
+     "flow.lookahead.15m": {
+      "h": 5,
+      "kappa": 2.155569
+     },
+     "flow.lookahead.4h": {
+      "h": 5,
+      "kappa": 2.155569
+     },
+     "flow.impact.5m.kappa": 0.01321,
+     "flow.impact.15m.kappa": 0.01321,
+     "flow.impact.4h.kappa": 0.026421,
+     "flow.refill_prob": 0.8,
+     "flow.informed.5m.w": 0.0,
+     "flow.informed.15m.w": 0.0,
+     "flow.informed.4h.w": 0.0,
+     "flow.actual_book_tracking": 1.0
+    },
+    "loss": 100.068064
+   },
+   "no_impact": {
+    "cand": {
+     "flow.lookahead.5m": {
+      "h": 5,
+      "kappa": 0.359261
+     },
+     "flow.lookahead.15m": {
+      "h": 5,
+      "kappa": 6.4667069999999995
+     },
+     "flow.lookahead.4h": {
+      "h": 5,
+      "kappa": 10.777845
+     },
+     "flow.impact.5m.kappa": 0.0,
+     "flow.impact.15m.kappa": 0.0,
+     "flow.impact.4h.kappa": 0.0
+    },
+    "loss": 113.59461289099342,
+    "note": "print impact removed: its transient decay made prices revert after trades, giving makers (fair_value) too much inventory P&L (sim 1.14 vs real 0.63 $/market); adverse selection now comes from look-ahead informed takers only (kappa x1 / x3 / x5 of the random-search point)"
    }
-  }
+  },
+  "actual_book_tracking": 1.0
  },
  "fees": {
   "taker_fee_rate": 0.07,

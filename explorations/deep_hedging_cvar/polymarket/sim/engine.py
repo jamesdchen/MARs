@@ -168,7 +168,11 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
     sig_u = mp["sigma_u"] * kn["sigma_u_mult"]
     z = rng.standard_normal((B, n))
     u = lfilter([1.0], [1, -phi], z, axis=1, zi=phi * z[:, :1] / np.sqrt(1 - phi ** 2))[0] * sig_u[:, None]
-    fund = s_f[:, None] * x + (s_l - s_f)[:, None] * xb + np.asarray(mp["b_tau"])[tb_row][None, :]
+    fund = s_f[:, None] * x + (s_l - s_f)[:, None] * xb
+    if mp.get("psi", 0.0) > 0:                 # the mid partly anticipates fair value (fit.py anticipation)
+        from fit import anticipation
+        fund = fund + mp["psi"] * anticipation(fund, mp.get("ant_h_s", 60))
+    fund = fund + np.asarray(mp["b_tau"])[tb_row][None, :]
     target = fund + u                       # fund: Binance-driven part; u: mean-reverting disagreement
     pi_upd = np.asarray(mp["update_prob"])[tb_row][None, :] * kn["refresh_rate_mult"][:, None]
     ug = model.raw["book"].get("update_dp_gain")
@@ -228,7 +232,8 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
     la_on = la_h > 0 and la["kappa"] > 0
     la_hi = int(la.get("h_hi", 0))
     fcs = np.concatenate([np.zeros((B, 1)), np.cumsum(fund, axis=1)], axis=1) if (la_on and la_hi > la_h) else None
-    trk = float(model.raw["flow"].get("actual_book_tracking", 1.0))      # actual book: snapshot + trk*(target-snap)
+    trk = model.raw["flow"].get("actual_book_tracking", 1.0)            # actual book: snapshot + trk*(target-snap)
+    trk = float(trk.get(cm.LEN_NAME[L], 1.0) if isinstance(trk, dict) else trk)
     r_refill = float(model.raw["flow"].get("refill_prob", 0.0))
     fee_r = model.fees["taker_fee_rate"] * kn["fee_rate_mult"] * (1 - kn["fee_free"])
     imp = model.impact[li]

@@ -112,21 +112,36 @@ def mid_moments(y, x, good, mi, fine_unused=None, H=(1, 5, 30), ok_y=None):
     i_ = idx[idx >= 1]
     v = (mi[i_ - 1] == mi[i_]) & ok[i_ - 1]
     out["p_change"] = float((np.abs(y[i_[v]] - y[i_[v] - 1]) > 1e-9).mean())
+    # how the gap (logit p - logit mid) predicts later moves of p and of the mid (the real mid partly
+    # anticipates p: fair_value REPORT section 3)
+    for h in (30, 60):
+        j = idx + h
+        vv = j < len(x)
+        i2, j2 = idx[vv], j[vv]
+        vv = (mi[i2] == mi[j2]) & ok[j2]
+        i2, j2 = i2[vv], j2[vv]
+        gap = x[i2] - y[i2]
+        out[f"gapdp_{h}"] = float(np.sum(gap * (x[j2] - x[i2])) / np.sum(gap * gap))
+        out[f"gapdy_{h}"] = float(np.sum(gap * (y[j2] - y[i2])) / np.sum(gap * gap))
     return out
 
 
-MOM_SCALE = dict(level_slope=0.03, sd_gap=0.03, p_change=0.02, **{f"acf_{k}": 0.03 for k in ACF_LAGS})
+MOM_SCALE = dict(level_slope=0.03, sd_gap=0.03, p_change=0.02, **{f"acf_{k}": 0.03 for k in ACF_LAGS},
+                 gapdp_30=0.03, gapdp_60=0.04, gapdy_30=0.04, gapdy_60=0.05)
+ANT_H = {300: 60, 900: 120, 14400: 600}   # anticipation horizon of the mid (s)
 
 
 def sim_mid_paths(X, TB, pi_prof, th, U, Z, b_tau=None):
     """Sticky mid on padded arrays [n_mkt, T]: target = s_f*x + (s_l-s_f)*ewma(x) + u (+ b[tau]);
     the displayed latent mid jumps to the target at update events (prob pi per second), else holds."""
-    s_f, s_l, hl_slow, hl_u, sig_u, pi_mult = th
+    s_f, s_l, hl_slow, hl_u, sig_u, pi_mult = th[:6]
+    psi, ant_h = (th[6], th[7]) if len(th) > 6 else (0.0, 60)
     d = 0.5 ** (1.0 / hl_slow)
     xb = lfilter([1 - d], [1, -d], X, axis=1, zi=(d * X[:, :1]))[0]
     phi = 0.5 ** (1.0 / hl_u)
     u = lfilter([sig_u], [1, -phi], Z, axis=1, zi=(phi * Z[:, :1] * sig_u / np.sqrt(1 - phi ** 2)))[0]
-    T = s_f * X + (s_l - s_f) * xb + u
+    fund = s_f * X + (s_l - s_f) * xb
+    T = fund + psi * anticipation(fund, ant_h) + u
     if b_tau is not None:
         T = T + b_tau[TB]
     ev = U < np.clip(pi_mult * pi_prof[TB], 0, 1)
@@ -136,13 +151,24 @@ def sim_mid_paths(X, TB, pi_prof, th, U, Z, b_tau=None):
     return np.take_along_axis(T, last, axis=1)
 
 
+def anticipation(fund, H):
+    """mean of fund over (t, t+H] (truncated at the market end) minus fund_t, per row of a padded [B, T] array."""
+    B, T = fund.shape
+    cs = np.concatenate([np.zeros((B, 1)), np.cumsum(fund, axis=1)], axis=1)
+    t = np.arange(T)
+    hi = np.minimum(t + int(H), T - 1)
+    n = np.maximum(hi - t, 1)
+    fut = (cs[:, hi + 1] - cs[:, t + 1]) / n[None, :]
+    return np.where((hi > t)[None, :], fut - fund, 0.0)
+
+
 def quantize_mid(ell, fine):
     m = cm.sigmoid(ell)
     q = np.where(fine, 0.0005, 0.005)
     return np.round(m / q) * q
 
 
-def fit_mid(P: dict, mk: pd.DataFrame, reg, mid, fine, pi_prof) -> dict:
+def fit_mid(P: dict, mk: pd.DataFrame, reg, mid, fine, pi_prof, warm: dict | None = None) -> dict:
     """Simulated method of moments on the real train Binance paths (common random numbers).
     pi_prof[len, tau_b]: profile of the per-second book-update probability (scaled by pi_mult)."""
     off = np.concatenate([[0], np.cumsum(mk.n_rows.values)])
@@ -185,28 +211,42 @@ def fit_mid(P: dict, mk: pd.DataFrame, reg, mid, fine, pi_prof) -> dict:
             mom = mid_moments(ys.ravel(), X.ravel(), G.ravel(), MI, H=H, ok_y=okm.ravel())
             return mom, b
 
+        AH = ANT_H[L]
+
+        def unpack(z):
+            return (z[0], z[1], np.exp(z[2]), np.exp(z[3]), np.exp(z[4]), np.exp(z[5]), z[6], AH)
+
         def loss(z):
-            th = (z[0], z[1], np.exp(z[2]), np.exp(z[3]), np.exp(z[4]), np.exp(z[5]))
-            if not (0 < th[0] < 2 and 0 < th[1] < 2 and 2 < th[2] < 5000 and 2 < th[3] < 50000 and th[5] < 5):
+            th = unpack(z)
+            if not (0 < th[0] < 2 and 0 < th[1] < 2 and 2 < th[2] < 5000 and 2 < th[3] < 50000 and th[5] < 5
+                    and 0 <= th[6] < 2):
                 return 1e6
             mom, _ = run(th)
             return sum(((mom[k] - real[k]) / MOM_SCALE.get(k, 0.03)) ** 2 for k in real)
 
-        z0 = np.array([0.5, 0.9, np.log(120.0), np.log(300.0), np.log(0.03), 0.0])
+        prev = (warm or {}).get(cm.LEN_NAME[L])
+        if prev:
+            z0 = np.array([prev["s_fast"], prev["s_slow"], np.log(prev["halflife_slow_s"]),
+                           np.log(prev["halflife_u_s"]), np.log(prev["sigma_u"]), np.log(prev["update_prob_mult"]), 0.2])
+            starts = (z0,)
+        else:
+            z0 = np.array([0.5, 0.9, np.log(120.0), np.log(300.0), np.log(0.03), 0.0, 0.2])
+            starts = (z0, z0 + np.array([0.2, -0.1, 1.0, 1.5, 0.5, -0.5, 0.2]))
         best = None
-        for start in (z0, z0 + np.array([0.2, -0.1, 1.0, 1.5, 0.5, -0.5])):
+        for start in starts:
             res = minimize(loss, start, method="Nelder-Mead",
-                           options=dict(maxiter=500, xatol=1e-3, fatol=1e-3, adaptive=True))
+                           options=dict(maxiter=400, xatol=1e-3, fatol=1e-3, adaptive=True))
             if best is None or res.fun < best.fun:
                 best = res
         z = best.x
-        th = (z[0], z[1], np.exp(z[2]), np.exp(z[3]), np.exp(z[4]), np.exp(z[5]))
+        th = unpack(z)
         mom, b = run(th)
         out[cm.LEN_NAME[L]] = dict(
             s_fast=th[0], s_slow=th[1], halflife_slow_s=th[2], halflife_u_s=th[3], sigma_u=th[4],
-            update_prob_mult=th[5], update_prob=np.clip(th[5] * prof, 0, 1), b_tau=b,
+            update_prob_mult=th[5], update_prob=np.clip(th[5] * prof, 0, 1), b_tau=b, psi=th[6], ant_h_s=AH,
             moments_real=real, moments_sim=mom, smm_loss=float(best.fun), n_markets=int(len(mis)),
-            note="target = s_fast*logit(p) + (s_slow-s_fast)*EWMA_hl(logit p) + b(tau) + u, u AR(1) "
+            note="target = fund + psi * (mean of fund over (t, t+ant_h] - fund_t) + b(tau) + u, "
+                 "fund = s_fast*logit(p) + (s_slow-s_fast)*EWMA_hl(logit p), u AR(1) "
                  "(half-life halflife_u_s, innovation sd sigma_u); the book re-aligns to the target only at "
                  "update events (prob update_prob[tau_b] per second) and holds otherwise")
         print(f"  mid {cm.LEN_NAME[L]}: loss {best.fun:.2f} th={np.round(th, 4)}")
@@ -937,7 +977,8 @@ def main():
         params["book"] = book
         print(f"book done {time.time()-t0:.1f}s")
     if "mid" in a.parts:
-        params["mid"] = fit_mid(P, mk, reg, mid, fine, np.asarray(params["book"]["book_change_profile"]["p_age0"]))
+        params["mid"] = fit_mid(P, mk, reg, mid, fine, np.asarray(params["book"]["book_change_profile"]["p_age0"]),
+                                warm=params.get("mid"))
         print(f"mid done {time.time()-t0:.1f}s")
     if "flow" in a.parts:
         keep = {k: params.get("flow", {}).get(k) for k in ("informed", "impact", "stamp_delay", "lookahead",
@@ -983,7 +1024,7 @@ def main():
 def summary(p):
     print("settlement:", {k: v for k, v in p["settlement"].items() if k != "note"})
     for L, d in p["mid"].items():
-        print(f"mid {L}: s_fast={d['s_fast']:.3f} s_slow={d['s_slow']:.3f} hl_slow={d['halflife_slow_s']:.0f}s "
+        print(f"mid {L}: psi={d.get('psi', 0):.3f} s_fast={d['s_fast']:.3f} s_slow={d['s_slow']:.3f} hl_slow={d['halflife_slow_s']:.0f}s "
               f"hl_u={d['halflife_u_s']:.0f}s sigma_u={d['sigma_u']:.4f} upd_mult={d['update_prob_mult']:.2f} "
               f"b_tau={np.round(d['b_tau'], 3)} loss={d['smm_loss']:.2f}")
     b = p["book"]

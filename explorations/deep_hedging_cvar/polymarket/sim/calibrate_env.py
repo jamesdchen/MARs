@@ -46,6 +46,7 @@ def env_metrics(res: dict) -> dict:
         out[f"{pol}|total"] = float(d.pnl.sum())
         out[f"{pol}|fill_vol"] = float(d.fill_vol.mean())
         out[f"{pol}|capture"] = float(d.spread_capture.mean())
+        out[f"{pol}|inv"] = float(d.inventory_pnl.mean())
         for h in (5, 30, 60):
             out[f"{pol}|mk{h}"] = float(d[f"markout_{h}"].sum() / max(vol, 1e-9) * 100)
     return out
@@ -67,7 +68,7 @@ def align_metrics(d) -> dict:
     return out
 
 
-SCALE = {"total": 600.0, "fill_vol": None, "capture": 0.3, "mk5": 0.4, "mk30": 0.4, "mk60": 0.4,
+SCALE = {"total": 600.0, "fill_vol": None, "capture": 0.3, "inv": 0.4, "mk5": 0.4, "mk30": 0.4, "mk60": 0.4,
          "at0": 0.03, "thr0": 0.03, "at4": 0.03, "thr4": 0.03, "count": None, "acf": 0.03}
 FIXED = {}
 
@@ -168,6 +169,27 @@ def grid(name: str, base: dict) -> list[dict]:
             c.update({f"flow.informed.{L}.w": w for L in LENS})
             c["flow.actual_book_tracking"] = float(rng.choice([1.0, 1.0, 0.75]))
             cands.append(c)
+    elif name == "trk4h":
+        cands = [{}]
+        for a4 in (0.5, 0.25, 0.0):
+            cands.append({"flow.actual_book_tracking": {"5m": 1.0, "15m": 1.0, "4h": a4}})
+    elif name == "impact":
+        la0 = {L: dict(base["flow"]["lookahead"][L]) for L in LENS}
+        cands = [{}]
+        for im, km, h, hl in ((0.0, 1.0, 5, 300.0), (0.0, 2.0, 5, 300.0), (0.0, 2.0, 8, 300.0), (1.0, 1.0, 5, 3000.0),
+                              (0.0, 3.0, 5, 300.0)):
+            c = {f"flow.lookahead.{L}": {**la0[L], "h": h, "kappa": la0[L]["kappa"] * km} for L in LENS}
+            c.update({f"flow.impact.{L}.kappa": imp0[L] * im for L in LENS})
+            c.update({f"flow.impact.{L}.halflife_s": hl for L in LENS})
+            cands.append(c)
+    elif name == "mix":
+        la0 = {L: dict(base["flow"]["lookahead"][L]) for L in LENS}
+        cands = []
+        for m4 in (3.0, 5.0):
+            mult = {"5m": 1.0, "15m": 3.0, "4h": m4}
+            c = {f"flow.lookahead.{L}": {**la0[L], "kappa": la0[L]["kappa"] * mult[L]} for L in LENS}
+            c.update({f"flow.impact.{L}.kappa": 0.0 for L in LENS})
+            cands.append(c)
     elif name == "copy5m":
         for k5, c5 in ((1.0, 0.0), (0.5, 0.0), (1.0, 0.1)):
             cands.append({"flow.direction.rho_copy_by_len.5m": c5, "flow.direction.rho_copy_by_len.15m": 0.1,
@@ -228,7 +250,8 @@ def main():
                  if k.endswith(".5m") or k.endswith("5m.kappa") or k.endswith("tracking") or k.endswith("refill_prob")}
         top = sorted(parts.items(), key=lambda kv: -kv[1])[:4]
         short = {k.replace("flow.", "").replace("direction.rho_copy_by_len", "copy"): v for k, v in cand.items()}
-        print(f"[{i}] loss {L:7.1f} {short} 4h at0/at4 {sim['align4h|at0']:.3f}/{sim['align4h|at4']:.3f} acf {sim['acf|5m']:.3f}/{sim['acf|15m']:.3f}/{sim['acf|4h']:.3f} | fv mk {sim['fair_value|mk5']:.2f}/{sim['fair_value|mk30']:.2f}/"
+        short = {k.replace("flow.", ""): (v if not isinstance(v, dict) else v.get("kappa", v)) for k, v in cand.items() if "5m" in k}
+        print(f"[{i}] loss {L:7.1f} {short} inv {sim['fair_value|inv']:.2f}/{real['fair_value|inv']:.2f} 4h at0/at4 {sim['align4h|at0']:.3f}/{sim['align4h|at4']:.3f} acf {sim['acf|5m']:.3f}/{sim['acf|15m']:.3f}/{sim['acf|4h']:.3f} | fv mk {sim['fair_value|mk5']:.2f}/{sim['fair_value|mk30']:.2f}/"
               f"{sim['fair_value|mk60']:.2f} st vol {sim['sym_touch|fill_vol']:.0f} cap {sim['sym_touch|capture']:.2f} "
               f"tot {sim['sym_touch|total']:.0f}/{sim['fair_value|total']:.0f} at0 {sim['align|at0']:.3f} "
               f"| worst {[(k, round(v, 1)) for k, v in top]} ({time.time() - t0:.0f}s)", flush=True)
