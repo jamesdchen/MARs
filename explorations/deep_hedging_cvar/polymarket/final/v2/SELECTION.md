@@ -204,6 +204,7 @@ The requested candidates, by name:
 | w2 specialists | best `4h_c01`, 4h: +169.0 (2 seeds) | fail | no w2 method has 3 seeds |
 | w3 PufferNet replicas | best `pnet_L1_H256`: −507.1 | pass | |
 | w4 toxicity quoter | `q1best` = t54: −22.2 ± 6.9 (positive-component share 0.58); `t45`: −1.6 ± 26.0 (0.62) | fail (C) | both directional under C; pass under A (t54) or B (both) |
+| w4 BC(quoter) + markout PPO (8 configs x 3 seeds, ledgered after 21:00) | best `rl_c2_h120`: +11.2 ± 2.8 (positive-component share 0.66, T6 total share 24); best passing B: `rl_c5`: −5.5 ± 30.4 | fail (C) | all directional under C |
 | w5 BC + markout | best `bcmk_c04_fv_h120`: +92.6 (1 seed) | fail | no w5 method has 3 seeds |
 
 ## Checks on the ledger rows
@@ -223,7 +224,7 @@ The requested candidates, by name:
   | w1 | 50 | t04 and t05 are one config, de-duplicated by config hash and seed; 11 duplicate rows |
   | w2 | 112 | |
   | w3 | 9 | |
-  | w4 | 199 | |
+  | w4 | 251 | includes the q2 and RL rows pushed in w4 commits 0e5f564 / 08e3dce |
   | w5 | 42 | |
 
   The 54 local `v2_baselines` and 5 `w5_teachers` rows are comparators, not candidates. Duplicate
