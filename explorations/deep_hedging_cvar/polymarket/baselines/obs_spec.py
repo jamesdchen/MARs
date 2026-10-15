@@ -28,16 +28,21 @@ Decode keys of a feature entry (all optional; identity if absent):
 
 Raw quantities the baselines need (`State` keys), and where they come from:
 
-  bid, ask        best Up-frame bid / ask ($). From best_bid/bid_px_0 if observed; with the
-                  feat_meta block: mid = sigmoid(3 mark_logit), spread = tick exp(2 spread_ticks),
-                  bid/ask = mid -+ spread/2 snapped to the tick grid; NaN unless two-sided
-                  (mark_is_fv = 0), since the obs carries no price level for a one-sided book.
+  bid, ask        best Up-frame bid / ask ($) or NaN. With the env's obs: p_model + bid_minus_p_c
+                  (obs 47-48, (best - p_model) cents / 5), snapped to the tick grid, when not clipped
+                  at +-25c; else mark -+ spread/2 when two-sided (mark = sigmoid(3 mark_logit),
+                  spread = tick exp(2 spread_ticks)); else NaN. Direct best_bid / bid_px_0 features
+                  are also accepted.
   bid_ok, ask_ok  side present (bid_present / ask_present; else bid > 0 / ask < 1)
-  tick            0.001 if tick_fine else 0.01 (else the tick feature, else the 0.04/0.96 rule)
-  q               our inventory, Up shares, signed       (agent block: inventory | inv | q ...)
+  bid_ref, ask_ref the price the env's action offsets are relative to: the best quote if present;
+                  for an empty side the env's own base, p_model floored (bid) / ceiled (ask) to the
+                  tick (ENV.md section 3), but only while the book has at least one side; else NaN.
+  mark            book mid if two-sided, else p_model (the env's mark); two: both sides present
+  tick            0.001 if tick_fine else 0.01 (else a tick feature, else the 0.04/0.96 rule)
+  q               our inventory, Up shares, signed (obs 33 = inventory / Q)
   tau             seconds to close = tau_frac * T (rounded to whole seconds)
   T               contract length from len_5m/len_15m/len_4h (or contract_len_s)
-  p_model         sigmoid(3 p_logit) (or p_model / mid + gap)   (fair-value quoters only)
+  p_model         sigmoid(3 p_logit) (or p_model / mid + gap)
   min_size        5 shares unless observed / documented (`min_order_size`)
 """
 from __future__ import annotations
@@ -78,6 +83,8 @@ ALIASES = {
     "ask_present": ["ask_present"],
     "tick_fine": ["tick_fine"],
     "mark_is_fv": ["mark_is_fv"],
+    "bid_minus_p": ["bid_minus_p", "bid_minus_p_c"],
+    "ask_minus_p": ["ask_minus_p", "ask_minus_p_c"],
 }
 
 # action head layout of MultiDiscrete([7, 7, 3]); overridable by the spec ("actions" key)
@@ -112,6 +119,18 @@ FEAT_META_DECODERS = {
     "mark_is_fv": ("mark_is_fv", "1 if the mark fell back to p_model (one-sided or no valid book)",
                    lambda x: x),
 }
+
+
+# ENV.md agent-block row name -> (logical name, documented definition (must match ENV.md), inverse
+# taking (x, env_params))
+ENV_MD_DECODERS = {
+    "inventory": ("inventory", "inventory / Q", lambda x, P: x * float(P["Q"])),
+    "bid_minus_p_c": ("bid_minus_p", "(best bid - p_model) in cents / 5; 0 if no bid (feat col 41)",
+                      lambda x, P: x * 0.05),
+    "ask_minus_p_c": ("ask_minus_p", "(best ask - p_model) in cents / 5; 0 if no ask (feat col 42)",
+                      lambda x, P: x * 0.05),
+}
+CLIP_OBS = 5.0           # every obs is clipped to [-5, 5] (ENV.md section 6)
 
 
 def _from_feat_meta(obj: dict, obs_offset: int = 0) -> dict:
@@ -187,7 +206,7 @@ def _from_markdown(text: str) -> tuple[dict, dict]:
     for line in text.splitlines():
         cells = [c.strip().strip("`") for c in line.strip().strip("|").split("|")]
         if len(cells) >= 2 and re.fullmatch(r"\d+", cells[0]) and re.fullmatch(r"[A-Za-z_][\w]*", cells[1]):
-            feats[cells[1]] = {"index": int(cells[0])}
+            feats[cells[1]] = {"index": int(cells[0]), "doc": cells[2] if len(cells) > 2 else ""}
     return feats, {}
 
 
@@ -219,7 +238,24 @@ def load_spec(path: str | Path | None = None, feat_meta: str | Path | None = Non
         feats.update(_from_feat_meta(obj, off))
         src.append(str(fm))
     if md_feats:
-        feats.update(md_feats)
+        by_idx = {f["index"]: f.get("column") for f in feats.values() if "decoder" in f}
+        for name, f in md_feats.items():
+            if f["index"] in by_idx:                     # market block: decoded from feat_meta
+                if by_idx[f["index"]] != name:
+                    raise SpecError(f"ENV.md names obs[{f['index']}] {name!r}, feat_meta.json "
+                                    f"{by_idx[f['index']]!r}")
+                continue
+            if name in ENV_MD_DECODERS:
+                logical, doc, inv = ENV_MD_DECODERS[name]
+                if f.get("doc", "").strip() != doc:
+                    raise SpecError(f"ENV.md definition of {name!r} changed: {f.get('doc')!r} "
+                                    f"(baselines decode {doc!r}); update obs_spec.ENV_MD_DECODERS")
+                if env_params is None:
+                    raise SpecError("load_spec needs env_params (e.g. Q) to decode the agent block")
+                feats[logical] = {"index": f["index"], "column": name,
+                                  "decoder": (lambda x, inv=inv: inv(x, env_params))}
+            elif name not in feats:
+                feats[name] = f
         meta.update(md_obj if isinstance(md_obj, dict) else {})
         src.append(str(md))
     if not feats:
@@ -242,6 +278,10 @@ def load_spec(path: str | Path | None = None, feat_meta: str | Path | None = Non
                                 f"writes inventory at obs[{core['index']}]")
             if not any(k in feats[inv_name] for k in ("scale", "std", "decoder")):
                 feats[inv_name] = {**feats[inv_name], "scale": scale}
+    if mm_h or MM_H.exists():
+        m = re.search(r"#define MM_OBS (\d+)", Path(mm_h or MM_H).read_text())
+        if m:
+            meta["obs_size"] = int(m.group(1))
     return ObsSpec(feats, meta=meta, source=" + ".join(src))
 
 
@@ -316,27 +356,32 @@ class ObsSpec:
         if tick is None and g("tick_fine") is not None:
             tick = np.where(g("tick_fine") > 0.5, 0.001, 0.01)
         bp, ap = g("bid_present"), g("ask_present")
+        p_model = g("p_model")
+        mark = g("mid")
         bid, ask = g("bid"), g("ask")
         if bid is None or ask is None:
-            mid, spread = g("mid"), g("spread")
+            spread = g("spread")
             if spread is None and g("spread_ticks") is not None and tick is not None:
                 spread = np.rint(g("spread_ticks")) * tick
-            bt, at = g("bid_ticks"), g("ask_ticks")
-            if mid is not None and spread is not None:
-                bid, ask = mid - spread / 2, mid + spread / 2
-            elif mid is not None and bt is not None and at is not None and tick is not None:
-                bid, ask = mid - np.abs(bt) * tick, mid + np.abs(at) * tick
-            else:
-                missing.append("best bid/ask (or mid + spread)")
-            if bid is not None and tick is not None:     # snap to the grid (float32 obs)
+            two = np.ones(B, bool)
+            if bp is not None and ap is not None:
+                two &= (bp > 0.5) & (ap > 0.5)
+            if g("mark_is_fv") is not None:
+                two &= g("mark_is_fv") < 0.5
+            nan = np.full(B, np.nan)
+            bid, ask = nan.copy(), nan.copy()
+            if mark is not None and spread is not None:
+                bid = np.where(two, mark - spread / 2, np.nan)
+                ask = np.where(two, mark + spread / 2, np.nan)
+            bmp, amp = g("bid_minus_p"), g("ask_minus_p")
+            if p_model is not None and bmp is not None and amp is not None and bp is not None:
+                lim = 0.05 * (CLIP_OBS - 1e-3)               # +-25c clip of obs 47-48
+                bid = np.where((bp > 0.5) & (np.abs(bmp) < lim), p_model + bmp, bid)
+                ask = np.where((ap > 0.5) & (np.abs(amp) < lim), p_model + amp, ask)
+            if np.all(np.isnan(bid)) and mark is None and bmp is None:
+                missing.append("best bid/ask (or mid + spread, or bid/ask minus p_model)")
+            if tick is not None:                         # snap to the grid (float32 obs)
                 bid, ask = np.rint(bid / tick) * tick, np.rint(ask / tick) * tick
-            if bid is not None:                          # price levels known only if two-sided
-                two = np.ones(B, bool)
-                if bp is not None and ap is not None:
-                    two &= (bp > 0.5) & (ap > 0.5)
-                if g("mark_is_fv") is not None:
-                    two &= g("mark_is_fv") < 0.5
-                bid, ask = np.where(two, bid, np.nan), np.where(two, ask, np.nan)
         q = g("q")
         if q is None:
             missing.append("inventory")
@@ -354,7 +399,6 @@ class ObsSpec:
                 tau = np.rint(tf * T)
             else:
                 missing.append("seconds to close")
-        p_model = g("p_model")
         if need_fair and p_model is None:
             gap = g("gap")
             if gap is not None and bid is not None:
@@ -366,13 +410,30 @@ class ObsSpec:
 
         valid = g("valid")
         valid = np.ones(B, bool) if valid is None else valid > 0.5
-        bid_ok = (bp > 0.5) if bp is not None else (bid > 1e-9) & (bid < 1)
-        ask_ok = (ap > 0.5) if ap is not None else (ask < 1 - 1e-9) & (ask > 0)
+        with np.errstate(invalid="ignore"):
+            bid_ok = (bp > 0.5) if bp is not None else (bid > 1e-9) & (bid < 1)
+            ask_ok = (ap > 0.5) if ap is not None else (ask < 1 - 1e-9) & (ask > 0)
+        bid_ok, ask_ok = bid_ok & valid, ask_ok & valid
         if tick is None:
-            tick = np.where((bid_ok & (bid < 0.04 - 1e-9)) | (ask_ok & (ask > 0.96 + 1e-9)), 0.001, 0.01)
+            with np.errstate(invalid="ignore"):
+                tick = np.where((bid_ok & (bid < 0.04 - 1e-9)) | (ask_ok & (ask > 0.96 + 1e-9)), 0.001, 0.01)
+        two = bid_ok & ask_ok & np.isfinite(bid) & np.isfinite(ask)
+        if mark is None:
+            mark = np.where(two, 0.5 * (bid + ask), p_model if p_model is not None else np.nan)
+        # reference prices of the action offsets (ENV.md section 3): the touch, or for an empty
+        # side p_model rounded to the tick, while the book has at least one side
+        any_side = bid_ok | ask_ok
+        bid_ref = np.where(bid_ok, bid, np.nan)
+        ask_ref = np.where(ask_ok, ask, np.nan)
+        if p_model is not None:
+            pf = np.floor(np.round(p_model / tick, 6)) * tick
+            pc = np.ceil(np.round(p_model / tick, 6)) * tick
+            bid_ref = np.where(~bid_ok & any_side, pf, bid_ref)
+            ask_ref = np.where(~ask_ok & any_side, pc, ask_ref)
         ms = g("min_size")
         ms = np.full(B, float(self.meta.get("min_order_size", 5.0))) if ms is None else ms
-        st = dict(bid=bid, ask=ask, bid_ok=bid_ok & valid, ask_ok=ask_ok & valid, tick=tick, q=q,
+        st = dict(bid=np.where(bid_ok, bid, np.nan), ask=np.where(ask_ok, ask, np.nan), bid_ok=bid_ok,
+                  ask_ok=ask_ok, bid_ref=bid_ref, ask_ref=ask_ref, two=two, mark=mark, tick=tick, q=q,
                   tau=tau, T=T, valid=valid, min_size=ms)
         if p_model is not None:
             st["p_model"] = p_model

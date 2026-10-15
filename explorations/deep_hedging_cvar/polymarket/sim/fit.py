@@ -613,6 +613,15 @@ def fit_flow(P: dict, mk: pd.DataFrame, mid, reg) -> dict:
     qs = np.linspace(0, 1, 101)
     size_q = {cm.LEN_NAME[L]: np.quantile(np.log(np.maximum(tk["size"].values[tk.L.values == L], 1e-3)), qs)
               for L in cm.LENS}
+    # by coin group too: BTC prints are much larger than alt prints (volume mix across coins)
+    tk_cg = np.array([cm.COIN_GROUP[c] for c in mk.coin.values[tk.mpos.values]])
+    size_q_cg = {}
+    for L in cm.LENS:
+        for g_ in range(cm.NCG):
+            s_ = (tk.L.values == L) & (tk_cg == g_)
+            src = s_ if s_.sum() >= 300 else (tk.L.values == L)
+            size_q_cg[f"{cm.LEN_NAME[L]}|{cm.CG_NAMES[g_]}"] = np.quantile(
+                np.log(np.maximum(tk["size"].values[src], 1e-3)), qs)
     # sweep depth (distinct maker price levels per tx) and legs per level
     mkl["pxr"] = mkl.px_up.round(4)
     g = mkl.groupby("tx")
@@ -635,7 +644,9 @@ def fit_flow(P: dict, mk: pd.DataFrame, mid, reg) -> dict:
                               p_same_sign_observed=p_same, p_same_sign_independent=p_ind,
                               note="P(taker buys Up | p_model - mid at match time); with prob rho_copy a trade "
                                    "repeats the previous trade's direction in that market"),
-               size_log_quantiles=dict(q=qs, **size_q),
+               size_log_quantiles=dict(q=qs, **size_q, by_coin_group=size_q_cg,
+                                       note="log taker size quantiles by length and by 'length|coin group' "
+                                            "(the engine uses the coin-group version)"),
                sweep=dict(p_extra_levels=p_lim, legs_per_level_mean=legs_per_level,
                           note="taker limit allows j extra levels beyond the best (j ~ p_extra_levels); size is "
                                "capped at the displayed depth within the limit; each level touched yields "
@@ -645,6 +656,35 @@ def fit_flow(P: dict, mk: pd.DataFrame, mid, reg) -> dict:
                                 note="block time - match time (COVERAGE.md: alignment with the book peaks at 3-4 s)"),
                n_taker_tx=int(len(tk)))
     return out
+
+
+def calibrate_rate(P: dict, mk: pd.DataFrame, params: dict, reps: int = 2, iters: int = 2) -> dict:
+    """Per-length level shift of log A_m so the simulated total taker-tx count on the train schedule equals the
+    real one (the lognormal market effect is fitted on log scale, so its mean differs from the data's)."""
+    import copy
+    import metrics as mt
+    import engine as en
+    ul = cm.train_underlying()
+    prices = [cm.market_pricing(ul[r.coin][1], ul[r.coin][2], ul[r.coin][0], r.open_ts, r.end_ts)
+              for r in mk.itertuples()]
+    real_n = {L: float(P["trade_count"][P["L"] == L].sum()) for L in cm.LENS}
+    shift = dict(params["flow"]["market_effect"].get("a_len_shift") or {cm.LEN_NAME[L]: 0.0 for L in cm.LENS})
+    hist = []
+    for it in range(iters):
+        p2 = copy.deepcopy(params)
+        p2["flow"]["market_effect"]["a_len_shift"] = dict(shift)
+        model = en.Model(p2)
+        sim_n = {L: [] for L in cm.LENS}
+        for d in mt.sim_datasets(model, mk, prices, reps, 21 + it, reps):
+            for L in cm.LENS:
+                sim_n[L].append(float(d.X[d.L == L, cm.C["trade_count"]].sum()))
+        for L in cm.LENS:
+            ratio = real_n[L] / max(np.mean(sim_n[L]), 1.0)
+            shift[cm.LEN_NAME[L]] += float(np.log(ratio))
+            hist.append(dict(iter=it, len=cm.LEN_NAME[L], real=real_n[L], sim=float(np.mean(sim_n[L])), ratio=ratio))
+        print("  rate calibration", it, {h["len"]: round(h["ratio"], 3) for h in hist[-3:]}, flush=True)
+    return dict(a_len_shift=shift, history=hist,
+                note="added to a_len so the simulated mean taker-tx count per length matches train")
 
 
 def fit_delay(P: dict, mk: pd.DataFrame, params: dict, dmax: int = 10) -> dict:
@@ -697,7 +737,8 @@ def fit_delay(P: dict, mk: pd.DataFrame, params: dict, dmax: int = 10) -> dict:
 def calibrate_informed(P: dict, mk: pd.DataFrame, params: dict) -> dict:
     """Informed-taker share w and print impact kappa per length (impact half-life fixed at IMPACT_HL_S), by
     simulated moments on the train schedule with the full engine: the post-trade markout drift (maker markout of
-    all taker prints at 5/30/60 s minus at 0 s) and the P(buy | p_model - mid) curve. Train data only."""
+    all taker prints at 5/30/60 s minus at 0 s), the P(buy | p_model - mid) curve and the alignment of prints
+    with the captured book (at-or-through / through shares at k = 0 and 4 s). Train data only."""
     import copy
     import metrics as mt
     import engine as en
@@ -707,9 +748,9 @@ def calibrate_informed(P: dict, mk: pd.DataFrame, params: dict) -> dict:
     prices = [cm.market_pricing(ul[r.coin][1], ul[r.coin][2], ul[r.coin][0], r.open_ts, r.end_ts)
               for r in mk.itertuples()]
     out_inf, out_imp = {}, {}
-    grids = {300: ([0.0, 0.3], [0.0, 0.005, 0.01, 0.02, 0.04], 2),
-             900: ([0.0, 0.3], [0.0, 0.005, 0.01, 0.02, 0.04], 2),
-             14400: ([0.0, 0.3], [0.0, 0.01, 0.02, 0.04, 0.08], 1)}
+    grids = {300: ([0.0, 0.15, 0.3], [0.0, 0.005, 0.01, 0.02], 2),
+             900: ([0.0, 0.15, 0.3], [0.0, 0.005, 0.01, 0.02], 2),
+             14400: ([0.0, 0.15, 0.3], [0.0, 0.02, 0.04, 0.08], 1)}
     for L in cm.LENS:
         name = cm.LEN_NAME[L]
         sel = np.flatnonzero(mk.L.values == L)
@@ -737,6 +778,12 @@ def calibrate_informed(P: dict, mk: pd.DataFrame, params: dict) -> dict:
                     s_ = np.nanmean([s[k][0] for s in st])
                     pbl += ((s_ - rs[k][0]) / 0.03) ** 2
                 loss += pbl
+                for kk in (0, 4):                       # alignment of prints with the captured book
+                    for nm_ in ("align_at_or_through", "align_through"):
+                        key = f"{nm_}|{name}|k{kk}"
+                        s_ = np.nanmean([s[key] for s in st])
+                        mom[f"{nm_[6:]}{kk}"] = (rs[key], float(s_))
+                        loss += ((s_ - rs[key]) / 0.03) ** 2
                 res.append((loss, w, ki, mom, pbl))
                 print(f"  {name}: w={w:.2f} kappa_imp={ki:.3f} loss={loss:.1f} (pbuy {pbl:.1f}) "
                       + " ".join(f"{k}={v[0]:+.2f}/{v[1]:+.2f}" for k, v in mom.items()), flush=True)
@@ -798,14 +845,14 @@ RANDOMIZATION = {
 def main():
     import argparse
     ap = argparse.ArgumentParser()
-    ap.add_argument("--parts", nargs="+", default=["settlement", "book", "mid", "flow", "delay", "informed", "fees"],
+    ap.add_argument("--parts", nargs="+", default=["settlement", "book", "mid", "flow", "informed", "rate", "fees"],
                     help="refit only these components (others are kept from the existing params.json)")
     a = ap.parse_args()
     t0 = time.time()
     P, mk = cm.train_panel()
     reg, mid, spread = cm.book_state(P)
     print(f"train panel: {len(P['p'])} rows, {len(mk)} markets  {time.time()-t0:.1f}s")
-    params = cm.load_params() if cm.PARAMS.exists() and set(a.parts) != {"settlement", "book", "mid", "flow", "delay", "informed", "fees"} else {}
+    params = cm.load_params() if cm.PARAMS.exists() and set(a.parts) != {"settlement", "book", "mid", "flow", "informed", "rate", "fees"} else {}
     params["meta"] = dict(
         fitted_on="train split 0 only: %d markets (%s), opens 2026-08-21..22 UTC; Binance < 2026-08-23"
                   % (len(mk), ", ".join(f"{cm.LEN_NAME[L]} {int((mk.L == L).sum())}" for L in cm.LENS)),
@@ -823,11 +870,17 @@ def main():
         print(f"mid done {time.time()-t0:.1f}s")
     if "flow" in a.parts:
         keep = {k: params.get("flow", {}).get(k) for k in ("informed", "impact", "stamp_delay")}
+        keep_shift = params.get("flow", {}).get("market_effect", {}).get("a_len_shift")
         params["flow"] = fit_flow(P, mk, mid, reg)
         params["flow"].update({k: v for k, v in keep.items() if v is not None
                                and not (k in ("informed", "impact") and "informed" in a.parts)
                                and not (k == "stamp_delay" and "delay" in a.parts)})
+        if keep_shift is not None and "rate" not in a.parts:
+            params["flow"]["market_effect"]["a_len_shift"] = keep_shift
         print(f"flow done {time.time()-t0:.1f}s")
+    if "rate" in a.parts:
+        params["flow"]["market_effect"]["a_len_shift"] = calibrate_rate(P, mk, params, reps=6, iters=1)["a_len_shift"]
+        print(f"rate calibration done {time.time()-t0:.1f}s")
     if "delay" in a.parts:
         params["flow"]["stamp_delay"] = fit_delay(P, mk, params)
         print(f"delay fit done {time.time()-t0:.1f}s")

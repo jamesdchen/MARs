@@ -274,6 +274,11 @@ class Dataset:
             assert int(self.fmeta["N"]) == self.N
             self.feat = np.memmap(self.dir / "feat.bin", dtype=np.float32, mode="r",
                                   shape=(self.N, int(self.fmeta["G"])))
+        self.book = None
+        if self.fmeta and "book_record" in self.fmeta and (self.dir / "book.bin").exists():
+            bd = _record_dtype(self.fmeta["book_record"])
+            if (self.dir / "book.bin").stat().st_size == self.N * bd.itemsize:
+                self.book = np.memmap(self.dir / "book.bin", dtype=bd, mode="r", shape=(self.N,))
         self.fills = self.fill_index = None
         if self.fmeta and (self.dir / "fills.bin").exists() and (self.dir / "fill_index.bin").exists():
             self.fills = np.fromfile(self.dir / "fills.bin", dtype=_record_dtype(self.fmeta["fill_record"]))
@@ -402,14 +407,21 @@ def _sharpe_of(rec):
     return None
 
 
+NOTE_KINDS = {"note", "comment", "meta", "header", "annotation"}
+
+
 def count_trials(root) -> dict:
     """Trial count N for T4: every val evaluation in every ledger, plus distinct configs.
     A record without a split field is counted as val (conservative) and reported."""
     files, n_val, n_all, n_assumed, keys, sharpes, kinds = [], 0, 0, 0, set(), [], {}
+    n_notes = 0
     for p in find_ledgers(root):
         recs, bad = read_jsonl(p)
         fv = fa = 0
         for r in recs:
+            if str(r.get("kind", "")).lower() in NOTE_KINDS:     # annotations, not evaluations
+                n_notes += 1
+                continue
             n_all += 1
             v = _is_val(r)
             if v is False:
@@ -428,7 +440,7 @@ def count_trials(root) -> dict:
         files.append(dict(path=p.relative_to(root).as_posix(), sha256=S.sha256_file(p),
                           n_records=len(recs), n_val_records=fv, n_assumed_val=fa,
                           n_unparseable_lines=bad))
-    return dict(files=files, n_trials=n_val, n_records_all_splits=n_all,
+    return dict(files=files, n_trials=n_val, n_records_all_splits=n_all, n_annotation_rows=n_notes,
                 n_assumed_val=n_assumed, n_distinct_configs=len(keys), by_kind=kinds,
                 n_with_sharpe=len(sharpes),
                 var_trial_sharpes=float(np.var(sharpes, ddof=1)) if len(sharpes) > 1 else None)

@@ -16,7 +16,8 @@ each has --reseed-n seeds, so select.py can pick by the seed-mean over >= 3
 seeds rather than by a lucky seed.
 
 Search space (SPACE): learning rate, entropy coefficient, gamma, GAE lambda,
-the env's inventory penalty, MLP hidden size. Other settings come from
+the env's inventory penalty, MLP hidden size, and the reward mark (mark_mode 0
+book mid / 1 fair value). Other settings come from
 --base-config (a JSON config as train_ppo.py --config takes) and the
 train_ppo.py defaults; extra train_ppo.py flags can follow `--`.
 State: runs/sweeps/<name>/ (optuna.db, trials.jsonl, one run dir per run).
@@ -42,6 +43,7 @@ SPACE = {
     'gae_lambda': ('float', 0.8, 0.99),
     'inv_penalty': ('log', 1e-5, 3e-2),
     'hidden': ('cat', [64, 128, 256]),
+    'mark_mode': ('cat', [0, 1]),             # reward mark: book mid / fair value
 }
 
 
@@ -60,7 +62,8 @@ def suggest(trial):
 def run_args(params):
     return ['--lr', str(params['lr']), '--ent-coef', str(params['ent_coef']),
             '--gamma', str(1.0 - params['one_minus_gamma']), '--gae-lambda', str(params['gae_lambda']),
-            '--inv-penalty', str(params['inv_penalty']), '--hidden', str(params['hidden'])]
+            '--inv-penalty', str(params['inv_penalty']), '--hidden', str(params['hidden'])] + (
+                ['--mark', str(params['mark_mode'])] if 'mark_mode' in params else [])
 
 
 def train_run(args, params, seed, run_dir, extra):
@@ -99,8 +102,8 @@ def main():
     p.add_argument('--reseed-top', type=int, default=0, help='re-train the K best configs ...')
     p.add_argument('--reseed-n', type=int, default=3, help='... until each has this many seeds')
     p.add_argument('--metric', default='pnl_total')
-    p.add_argument('--jobs', type=int, default=2)
-    p.add_argument('--threads', type=int, default=2)
+    p.add_argument('--jobs', type=int, default=4)
+    p.add_argument('--threads', type=int, default=1, help='torch threads per run (1: see bench.py)')
     p.add_argument('--base-config', default=None)
     p.add_argument('--ledger', default=None)
     p.add_argument('--sampler-seed', type=int, default=0)

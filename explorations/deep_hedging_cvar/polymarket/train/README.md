@@ -38,6 +38,7 @@ env when `../env.py` exists.
 | `bc.py` | Behaviour cloning of a teacher (baselines' `fair_value` through `../baselines/obs_spec.py`, else a simple obs quoter) on train markets; checkpoint loadable with `--init`. |
 | `probes.py` | Learnability probes (join both sides; fixed action; obs-dependent teacher). |
 | `bench.py` | Throughput grid. |
+| `summary.py` | Markdown table of runs (by ledger tag or run dirs; `--by-config` for seed means): val P&L, CVaR95, fills/market, attribution, T6/T5 shares, D1 flag, greedy action mix, pessimistic P&L, train-split P&L, last diagnostics. |
 | `standin.py`, `test_train.py` | Toy env; tests. |
 
 ## Training details
@@ -95,6 +96,17 @@ env when `../env.py` exists.
 - `seeds.py`: 5 fresh seeds (100-104, unused by the sweep) of the selected
   config; mean / min / max / std across seeds per variant.
 
+## Protocol flags in every evaluation
+
+From the per-market Log records (`evaluator.protocol_flags`): `fills_per_market`;
+`t6_share` = inventory/resolution P&L / total P&L when the total is positive
+(T6: > 0.5 = directional) and `t6_share_pos` (positive inventory P&L over the sum of
+positive components, defined for any total); `t5_max_share` = the largest share of
+fill P&L (spread capture + 60 s markout) under one artifact flag kept by
+DECISIONS.md D2 (inspread, crossed, stale, onesided, last30; NaN when fill P&L <= 0);
+`makes_markets` = D1.3 (fills >= 5 per market, T6 <= 0.5, T5 <= 0.25).
+`select.py --require-mm` restricts the choice to market-making configs.
+
 ## Diagnostics (log.jsonl)
 
 Every epoch (`type: train`): `sps`, `sps_rollout`, `sps_update`, `losses/*`
@@ -136,9 +148,16 @@ What moved the number:
 - **The PPO update dominates.** Shared trunk (~1.3x over separate actor/critic) and
   1 update epoch (~2x over 2) are the big levers. Minibatch size does not change
   throughput (within noise), so the default is 8192 (32 Adam steps per 262k batch).
-- **Scoring actions**: `pufferlib.pytorch.sample_logits` pads the three heads to
-  (3, B, 7) with -inf; per-head log-softmax gives identical values at 1/3 of the
-  cost (`policy.logprob_entropy`, ~20 -> 6 ms per 16k minibatch).
+- **Sampling and scoring actions**: `pufferlib.pytorch.sample_logits` pads the three
+  heads to (3, B, 7) with -inf. Rollout: `policy.sample_actions` samples each head
+  by inverse CDF from one uniform per head, reusing the log-softmax for the log-prob
+  (per 4096-row step, 1 thread: sample_logits 7.6 ms, multinomial per head 3.7 ms,
+  inverse CDF 1.9 ms; forward 3.8 ms; env 0.8 ms). Update: per-head log-softmax
+  gives identical values at 1/3 of the cost (`policy.logprob_entropy`, ~20 -> 6 ms
+  per 16k minibatch). `test_train.py` checks values and sampling frequencies.
+- **Parallel runs, not threads**: 4 processes x 1 torch thread gave 133-151k SPS
+  each (~550k aggregate) while 1 process x 2 threads gives ~160-190k. Sweeps and
+  seeds use `--jobs 4 --threads 1`.
 - **Threads**: 2 is best here; 4 gives nothing more. With the default OpenMP spin
   wait, 4 threads on a loaded box collapsed to 2.9k SPS; every entry point sets
   `OMP_WAIT_POLICY=PASSIVE` (4 threads then: 46k under load 7, vs 2.9k).

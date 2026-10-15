@@ -35,7 +35,6 @@ import os
 import re
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 
 import numpy as np
@@ -319,6 +318,3 @@ def default_env_params(code_root=CODE_ROOT) -> dict:
     """The core's parameter defaults (mm.h), for the plan."""
     return Core(code_root).defaults
 
-
-if __name__ == "__main__":
-    sys.exit(0)

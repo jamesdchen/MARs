@@ -31,7 +31,8 @@ import make_plan  # noqa: E402
 import pyreplay  # noqa: E402
 import run_test  # noqa: E402
 import synth  # noqa: E402
-from reduce import FLAG_NAMES, directional_verdict, exploit_verdict  # noqa: E402
+import reduce  # noqa: E402
+from reduce import RULE_FLAGS, directional_verdict, exploit_verdict  # noqa: E402
 
 report = common.load_module("pm_final_report", HERE / "report.py")   # baselines/ has a report.py too
 
@@ -113,7 +114,10 @@ def test_plan_contents():
     w = world()
     p = w["plan"]
     ids = [m["id"] for m in p["methods"]]
-    assert ids[:4] == ["baseline/no_quote", "baseline/sym_touch", "baseline/as_logit", "baseline/fair_value"]
+    assert ids[:5] == ["baseline/no_quote", "baseline/sym_touch", "baseline/as_logit", "baseline/fair_value",
+                       "baseline_c/sym_touch"]
+    assert p["secondary_comparators"] == ["baseline_c/sym_touch"]
+    assert "baseline/no_quote" in p["best_baseline"]["candidates"]               # D1.1
     assert sum(m["group"] == "rl" for m in p["methods"]) == 5
     if synth.have_torch():
         assert sum(m["group"] == "rl5" for m in p["methods"]) == 5
@@ -132,7 +136,8 @@ def test_plan_contents():
         common.S.sha256_file(w["plan_path"])
     assert [c["id"] for c in p["decision_rule"]["success_requires_all"]] == [
         "ci_lower_gt_0", "pessimistic_1s_gt_0", "central_2s_gt_0", "not_directional", "no_exploit_flag",
-        "ex_top_positive"]
+        "ex_top_positive", "counts_as_market_making"]
+    assert p["exploit_detectors"]["rule_flags"] == ["inspread", "crossed_or_stale", "onesided", "last30"]
 
 
 def test_plan_refuses_overwrite():
@@ -157,12 +162,21 @@ def test_plan_rules():
         assert "seeds" in str(e)
     p = make_plan.build_plan(w["root"], w["build"], "pyreplay", best_baseline="as_logit", allow_dirty=True)
     assert p["best_baseline"]["id"] == "baseline/as_logit"
-    for bad in ("no_quote", "nope"):
-        try:
-            make_plan.build_plan(w["root"], w["build"], "pyreplay", best_baseline=bad, allow_dirty=True)
-            raise AssertionError(f"{bad} accepted as comparator")
-        except common.PlanError:
-            pass
+    p = make_plan.build_plan(w["root"], w["build"], "pyreplay", best_baseline="no_quote", allow_dirty=True)
+    assert p["best_baseline"]["id"] == "baseline/no_quote"                      # D1.1 candidate
+    try:
+        make_plan.build_plan(w["root"], w["build"], "pyreplay", best_baseline="nope", allow_dirty=True)
+        raise AssertionError("unknown comparator accepted")
+    except common.PlanError:
+        pass
+    root3 = _TMP / "root_neg"                      # every tuned baseline loses on val -> no-quote
+    shutil.copytree(w["root"], root3)
+    tj = json.loads((root3 / "baselines" / "tuned.json").read_text())
+    for v in tj.values():
+        v["val"] = {"total_pnl": -1.0}
+    (root3 / "baselines" / "tuned.json").write_text(json.dumps(tj))
+    p = make_plan.build_plan(root3, w["build"], "pyreplay", allow_dirty=True)
+    assert p["best_baseline"]["id"] == "baseline/no_quote"
 
 
 def test_count_trials_excludes_final_and_caches():
@@ -360,15 +374,31 @@ def test_verdict_rules():
     assert directional_verdict(t)["directional"]
     t.update(inventory=0.5, total=1.5)
     assert not directional_verdict(t)["directional"]
-    flags = {k: dict(share_of_total=0.1, pnl=0.1, n=1) for k in FLAG_NAMES}
+    flags = {k: dict(share_of_total=0.1, pnl=0.1, n=1) for k in RULE_FLAGS}
     flags["_any"] = dict(pnl_excluding=0.5)
     assert not exploit_verdict(flags, 1.0)["invalid"]
-    flags["last_10s"]["share_of_total"] = 0.3
+    flags["last30"]["share_of_total"] = 0.3
     v = exploit_verdict(flags, 1.0)
-    assert v["invalid"] and v["worst_single_flag"] == "last_10s"
-    flags["last_10s"]["share_of_total"] = 0.1
+    assert v["invalid"] and v["worst_single_flag"] == "last30"
+    flags["last30"]["share_of_total"] = 0.1
     flags["_any"]["pnl_excluding"] = -0.1
     assert exploit_verdict(flags, 1.0)["invalid_sign_change"]
+    # D2: the through-the-touch flag is reported, not a detector
+    fl = pd.DataFrame({k: [True, False] for k in reduce.ALL_FLAGS})
+    fl["outside"] = [True, True]
+    for k in RULE_FLAGS:
+        fl[k] = [False, False]
+    fl["edge60"] = [1.0, 1.0]
+    fl["qty"] = [5.0, 5.0]
+    fl["print_px_known"] = True
+    ex = reduce.exploit_tables(fl)
+    assert ex["flags"]["outside"]["share_of_total"] == 1.0 and not ex["verdict"]["invalid"]
+    mk = pd.DataFrame(dict(n_fills=[10, 0], uptime_two=[0.5, 0.0], uptime_any=[0.6, 0.0],
+                           contract_len_s=[300, 300]))
+    mm = reduce.market_making(mk, t, ex["verdict"])
+    assert mm["counts_as_market_making"] and mm["fills_per_market"] == 5.0
+    mm = reduce.market_making(mk.assign(n_fills=[1, 0]), t, ex["verdict"])
+    assert not mm["counts_as_market_making"] and not mm["criteria"]["fills"]
 
 
 # ----------------------------------------------------------------------------- stand-in env + adapters

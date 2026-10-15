@@ -216,7 +216,8 @@ def write_build(out: Path, model, sch, prices, rng, randomize, args_dict):
     else:
         lg = pd.DataFrame(columns=["m", "stamp", "trade", "outcome_idx", "side", "price", "size", "is_taker",
                                    "aggressor_up"])
-    seed_bytes = hashlib.sha256(json.dumps(args_dict, sort_keys=True).encode()).digest()
+    seed_bytes = hashlib.sha256(json.dumps({k: v for k, v in args_dict.items() if not k.startswith("_")},
+                                           sort_keys=True, default=str).encode()).digest()
     txid = (lg.m.values.astype(np.int64) << 24) + lg.trade.values.astype(np.int64)
     tx = [hashlib.sha256(seed_bytes + int(v).to_bytes(8, "little")).digest() for v in np.unique(txid)]
     uniq, inv = np.unique(txid, return_inverse=True)
@@ -261,9 +262,10 @@ def write_build(out: Path, model, sch, prices, rng, randomize, args_dict):
         "market_order": "sorted by (split, open_ts, slug); each split's rows are contiguous",
         "slugs": list(sch.slug), "test_rows": {"row_lo": 0, "row_hi": 0, "sha256": None},
         "row_counts": {"ticks": N, "markets": int(len(recs))},
-        "synthetic": {"generator": "sim/generate.py", "args": args_dict,
+        "synthetic": {"generator": "sim/generate.py", "args": {k: v for k, v in args_dict.items() if not k.startswith("_")},
                       "params_sha256": hashlib.sha256(cm.PARAMS.read_bytes()).hexdigest(),
                       "params_fitted_on": model.raw["meta"]["fitted_on"],
+                      "underlying": args_dict["_underlying"],
                       "fills": "fills.parquet (data/raw/trades.parquet schema)",
                       "differences_vs_replay": "no crossed/stale capture artefacts (crossed_raw = book_from_down = 0, "
                                                "book_valid = 1); strike = Binance TWAP60 at open * exp(coin basis); "
@@ -288,6 +290,8 @@ def main():
     ap.add_argument("--randomize", action=argparse.BooleanOptionalAction, default=True,
                     help="domain randomisation (params.json 'randomization' table)")
     ap.add_argument("--out", default=str(cm.OUT_DEFAULT))
+    ap.add_argument("--features", action=argparse.BooleanOptionalAction, default=True,
+                    help="run data/features.py on the output (via sim/features_sim.py): feat/book/fills/fill_index")
     a = ap.parse_args()
     t0 = time.time()
     model = en.Model(cm.load_params())
@@ -297,8 +301,15 @@ def main():
         sch = schedule_train(a.reps)
         ul = cm.train_underlying()
         segs = {c: [ul[c]] for c in ul}
+        a._underlying = {"source": "train", "note": "fair_value.load_underlying(): Binance 2026-08-20..22"}
     else:
         segs = load_segments(a.coins, a.start, a.end)
+        t0s = {c: [s[0] for s in v] for c, v in segs.items()}
+        if any(len(v) != 1 for v in t0s.values()) or len({v[0] for v in t0s.values()}) != 1:
+            raise SystemExit(f"need one contiguous cached segment common to all coins (got {t0s}); "
+                             "narrow --start/--end")
+        a._underlying = {"source": "cache", "t0": int(next(iter(t0s.values()))[0]), "coins": a.coins,
+                         "start": a.start, "end": a.end, "days": len(segs[a.coins[0]][0][1]) // 86400}
         if a.schedule == "random":
             w = a.length_weights or [{300: 248, 900: 146, 14400: 37}[L] for L in lens]
             w = np.asarray(w, float) / np.sum(w)
@@ -310,7 +321,13 @@ def main():
     print(f"priced  {time.time()-t0:.1f}s")
     info = write_build(Path(a.out), model, sch, prices, rng, a.randomize, vars(a))
     print(f"wrote {a.out}: {info['markets']} markets, {info['N']} rows, {info['legs']} fill legs; "
-          f"engine {info['sim_s']:.1f}s, total {time.time()-t0:.1f}s")
+          f"engine {info['sim_s']:.1f}s, total {time.time()-t0:.1f}s", flush=True)
+    if a.features:
+        import subprocess
+        import sys
+        subprocess.run([sys.executable, str(cm.HERE / "features_sim.py"), str(Path(a.out).resolve())],
+                       check=True, cwd=str(cm.HERE))
+        print(f"features done, total {time.time()-t0:.1f}s")
 
 
 if __name__ == "__main__":

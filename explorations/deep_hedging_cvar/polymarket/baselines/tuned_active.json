@@ -1,0 +1,331 @@
+{
+ "sym_touch": {
+  "phase": "active",
+  "constraints": {
+   "fills_mean": 5.0,
+   "uptime_two_sided_mean": 0.25
+  },
+  "objective": {
+   "split": 1,
+   "fill_model": "central",
+   "latency": 1,
+   "metric": "pnl_mean"
+  },
+  "best_params": {
+   "size": 0,
+   "q_cap": 1.22464420791979,
+   "cap_mode": "pull"
+  },
+  "best_trial": 41,
+  "val_pnl_mean": -2.109869133684829,
+  "best_fills_mean": 46.88663967611336,
+  "best_uptime_two_sided_mean": 0.255957883390549,
+  "n_feasible": 53,
+  "untuned_params": {
+   "size": 0,
+   "q_cap": 10.0,
+   "cap_mode": "pull"
+  },
+  "untuned_pnl_mean": -3.9071678175190137,
+  "untuned_feasible": true,
+  "n_trials": 64,
+  "sampler": "TPE (Trial.set_constraint)",
+  "sampler_seed": 1,
+  "search_space": {
+   "size": [
+    "cat",
+    [
+     0,
+     1,
+     2
+    ]
+   ],
+   "q_cap": [
+    "float",
+    1.0,
+    200.0,
+    true
+   ],
+   "cap_mode": [
+    "cat",
+    [
+     "pull",
+     "back"
+    ]
+   ]
+  },
+  "tune_wall_s": 66.5,
+  "env_sha256": {
+   "markets.bin": "bcecae968c3d7db608c10690e82f80963f0056891777d28351338bfa185b41c9",
+   "feat.bin": "122176d8a2795551ed84376a34e1236f88e1cedc7bb7ccef046616767dd6435c",
+   "book.bin": "c9caad1c3c01edaaf6b358504a42f4b0032aa6737d1b06d8757431693634d934",
+   "fills.bin": "8c59307b8eed1df7ff53db9176d91bff4be9f9925ddddc29ecf1e4092769542f",
+   "fill_index.bin": "1c296215a4c04763f93f17008f2b2ecd1bf1f86a5f3cae7bb92cc319b60dc5ae",
+   "meta.json": "da2f22efe5d595a723dcb8e04a36eeff35d7adbca984b23cb7e632cfa855ce54",
+   "feat_meta.json": "0656b0540ced7d4daf55538ba11c736d29594b061842cd335c11dc7243d17283",
+   "splits.json": "d2ee6ed29817581f8ff35d59c3560b895e3dd0ecc6612bcaec9c3329c3f45d21",
+   "ticks.bin": "8539fe962cd5cc5f6d0934291ea9aa0b8ea98b8096f073ea29f9bd05c4437521",
+   "mm.h": "746dd7dea250eee035a8cb08a7be479eacf2d44ac1b7251503bc0d0e468566a9",
+   "binding.c": "03adf9f954243b2baf4a10d5a762b544822f2abb86c904b53519a97edab398c0",
+   "binding.cpython-313-x86_64-linux-gnu.so": "5125a1fc988c061d7af1f9e0d015a14e7fb965705d23f51a32dd775905d67bed",
+   "ENV.md": "1bbac87d8447e5683b9198f53861ae62fc53391149411f3f8a39102504977be4"
+  },
+  "code_sha256": "9153110915779a87831b290624cf09e1ad91131a2c73a279fd1915e34415c382"
+ },
+ "fair_value": {
+  "phase": "active",
+  "constraints": {
+   "fills_mean": 5.0,
+   "uptime_two_sided_mean": 0.25
+  },
+  "objective": {
+   "split": 1,
+   "fill_model": "central",
+   "latency": 1,
+   "metric": "pnl_mean"
+  },
+  "best_params": {
+   "k_skew": 0.008154378091721821,
+   "spread_mult": 1.0091446250933702,
+   "gap_max": 0.027317916457896146,
+   "pull_s": 111.82928002112294,
+   "size": 0
+  },
+  "best_trial": 21,
+  "val_pnl_mean": -0.461273688737205,
+  "best_fills_mean": 21.923076923076923,
+  "best_uptime_two_sided_mean": 0.26270102323994404,
+  "n_feasible": 45,
+  "untuned_params": {
+   "k_skew": 0.001,
+   "spread_mult": 1.0,
+   "gap_max": 0.1,
+   "pull_s": 30.0,
+   "size": 0
+  },
+  "untuned_pnl_mean": -2.3258902131734644,
+  "untuned_feasible": true,
+  "n_trials": 64,
+  "sampler": "TPE (Trial.set_constraint)",
+  "sampler_seed": 1,
+  "search_space": {
+   "k_skew": [
+    "float",
+    1e-05,
+    0.02,
+    true
+   ],
+   "spread_mult": [
+    "float",
+    0.3,
+    4.0,
+    true
+   ],
+   "gap_max": [
+    "float",
+    0.02,
+    0.5,
+    true
+   ],
+   "pull_s": [
+    "float",
+    0.0,
+    120.0,
+    false
+   ],
+   "size": [
+    "cat",
+    [
+     0,
+     1,
+     2
+    ]
+   ]
+  },
+  "tune_wall_s": 126.2,
+  "env_sha256": {
+   "markets.bin": "bcecae968c3d7db608c10690e82f80963f0056891777d28351338bfa185b41c9",
+   "feat.bin": "122176d8a2795551ed84376a34e1236f88e1cedc7bb7ccef046616767dd6435c",
+   "book.bin": "c9caad1c3c01edaaf6b358504a42f4b0032aa6737d1b06d8757431693634d934",
+   "fills.bin": "8c59307b8eed1df7ff53db9176d91bff4be9f9925ddddc29ecf1e4092769542f",
+   "fill_index.bin": "1c296215a4c04763f93f17008f2b2ecd1bf1f86a5f3cae7bb92cc319b60dc5ae",
+   "meta.json": "da2f22efe5d595a723dcb8e04a36eeff35d7adbca984b23cb7e632cfa855ce54",
+   "feat_meta.json": "0656b0540ced7d4daf55538ba11c736d29594b061842cd335c11dc7243d17283",
+   "splits.json": "d2ee6ed29817581f8ff35d59c3560b895e3dd0ecc6612bcaec9c3329c3f45d21",
+   "ticks.bin": "8539fe962cd5cc5f6d0934291ea9aa0b8ea98b8096f073ea29f9bd05c4437521",
+   "mm.h": "746dd7dea250eee035a8cb08a7be479eacf2d44ac1b7251503bc0d0e468566a9",
+   "binding.c": "03adf9f954243b2baf4a10d5a762b544822f2abb86c904b53519a97edab398c0",
+   "binding.cpython-313-x86_64-linux-gnu.so": "5125a1fc988c061d7af1f9e0d015a14e7fb965705d23f51a32dd775905d67bed",
+   "ENV.md": "1bbac87d8447e5683b9198f53861ae62fc53391149411f3f8a39102504977be4"
+  },
+  "code_sha256": "9153110915779a87831b290624cf09e1ad91131a2c73a279fd1915e34415c382"
+ },
+ "as_logit": {
+  "phase": "active",
+  "constraints": {
+   "fills_mean": 5.0,
+   "uptime_two_sided_mean": 0.25
+  },
+  "objective": {
+   "split": 1,
+   "fill_model": "central",
+   "latency": 1,
+   "metric": "pnl_mean"
+  },
+  "best_params": {
+   "gamma": 0.018596532763910514,
+   "k": 2.224337294288256,
+   "h_risk": 1780.7208989134238,
+   "size": 0
+  },
+  "best_trial": 48,
+  "val_pnl_mean": -0.3004450711116137,
+  "best_fills_mean": 13.724696356275304,
+  "best_uptime_two_sided_mean": 0.2991880346353539,
+  "n_feasible": 50,
+  "untuned_params": {
+   "gamma": 0.01,
+   "k": 50.0,
+   "h_risk": 60.0,
+   "size": 0
+  },
+  "untuned_pnl_mean": -4.014889126620916,
+  "untuned_feasible": true,
+  "n_trials": 64,
+  "sampler": "TPE (Trial.set_constraint)",
+  "sampler_seed": 1,
+  "search_space": {
+   "gamma": [
+    "float",
+    0.0001,
+    10.0,
+    true
+   ],
+   "k": [
+    "float",
+    2.0,
+    2000.0,
+    true
+   ],
+   "h_risk": [
+    "float",
+    5.0,
+    14400.0,
+    true
+   ],
+   "size": [
+    "cat",
+    [
+     0,
+     1,
+     2
+    ]
+   ]
+  },
+  "tune_wall_s": 186.0,
+  "env_sha256": {
+   "markets.bin": "bcecae968c3d7db608c10690e82f80963f0056891777d28351338bfa185b41c9",
+   "feat.bin": "122176d8a2795551ed84376a34e1236f88e1cedc7bb7ccef046616767dd6435c",
+   "book.bin": "c9caad1c3c01edaaf6b358504a42f4b0032aa6737d1b06d8757431693634d934",
+   "fills.bin": "8c59307b8eed1df7ff53db9176d91bff4be9f9925ddddc29ecf1e4092769542f",
+   "fill_index.bin": "1c296215a4c04763f93f17008f2b2ecd1bf1f86a5f3cae7bb92cc319b60dc5ae",
+   "meta.json": "da2f22efe5d595a723dcb8e04a36eeff35d7adbca984b23cb7e632cfa855ce54",
+   "feat_meta.json": "0656b0540ced7d4daf55538ba11c736d29594b061842cd335c11dc7243d17283",
+   "splits.json": "d2ee6ed29817581f8ff35d59c3560b895e3dd0ecc6612bcaec9c3329c3f45d21",
+   "ticks.bin": "8539fe962cd5cc5f6d0934291ea9aa0b8ea98b8096f073ea29f9bd05c4437521",
+   "mm.h": "746dd7dea250eee035a8cb08a7be479eacf2d44ac1b7251503bc0d0e468566a9",
+   "binding.c": "03adf9f954243b2baf4a10d5a762b544822f2abb86c904b53519a97edab398c0",
+   "binding.cpython-313-x86_64-linux-gnu.so": "5125a1fc988c061d7af1f9e0d015a14e7fb965705d23f51a32dd775905d67bed",
+   "ENV.md": "1bbac87d8447e5683b9198f53861ae62fc53391149411f3f8a39102504977be4"
+  },
+  "code_sha256": "9153110915779a87831b290624cf09e1ad91131a2c73a279fd1915e34415c382"
+ },
+ "fv_smart": {
+  "phase": "active",
+  "constraints": {
+   "fills_mean": 5.0,
+   "uptime_two_sided_mean": 0.25
+  },
+  "objective": {
+   "split": 1,
+   "fill_model": "central",
+   "latency": 1,
+   "metric": "pnl_mean"
+  },
+  "best_params": {
+   "k_skew": 3.6793418431692186e-05,
+   "spread_mult": 0.39007092338462585,
+   "g_adv": 0.18686797203329114,
+   "pull_s": 25.3209299562493,
+   "size": 1
+  },
+  "best_trial": 38,
+  "val_pnl_mean": -2.0747525782535523,
+  "best_fills_mean": 56.072874493927124,
+  "best_uptime_two_sided_mean": 0.2660588164312335,
+  "n_feasible": 28,
+  "untuned_params": {
+   "k_skew": 0.001,
+   "spread_mult": 1.0,
+   "g_adv": 0.03,
+   "pull_s": 30.0,
+   "size": 0
+  },
+  "untuned_pnl_mean": -1.7107599240639115,
+  "untuned_feasible": false,
+  "n_trials": 64,
+  "sampler": "TPE (Trial.set_constraint)",
+  "sampler_seed": 1,
+  "search_space": {
+   "k_skew": [
+    "float",
+    1e-05,
+    0.02,
+    true
+   ],
+   "spread_mult": [
+    "float",
+    0.3,
+    4.0,
+    true
+   ],
+   "g_adv": [
+    "float",
+    0.005,
+    0.3,
+    true
+   ],
+   "pull_s": [
+    "float",
+    0.0,
+    120.0,
+    false
+   ],
+   "size": [
+    "cat",
+    [
+     0,
+     1,
+     2
+    ]
+   ]
+  },
+  "tune_wall_s": 124.2,
+  "env_sha256": {
+   "markets.bin": "bcecae968c3d7db608c10690e82f80963f0056891777d28351338bfa185b41c9",
+   "feat.bin": "122176d8a2795551ed84376a34e1236f88e1cedc7bb7ccef046616767dd6435c",
+   "book.bin": "c9caad1c3c01edaaf6b358504a42f4b0032aa6737d1b06d8757431693634d934",
+   "fills.bin": "8c59307b8eed1df7ff53db9176d91bff4be9f9925ddddc29ecf1e4092769542f",
+   "fill_index.bin": "1c296215a4c04763f93f17008f2b2ecd1bf1f86a5f3cae7bb92cc319b60dc5ae",
+   "meta.json": "da2f22efe5d595a723dcb8e04a36eeff35d7adbca984b23cb7e632cfa855ce54",
+   "feat_meta.json": "0656b0540ced7d4daf55538ba11c736d29594b061842cd335c11dc7243d17283",
+   "splits.json": "d2ee6ed29817581f8ff35d59c3560b895e3dd0ecc6612bcaec9c3329c3f45d21",
+   "ticks.bin": "8539fe962cd5cc5f6d0934291ea9aa0b8ea98b8096f073ea29f9bd05c4437521",
+   "mm.h": "746dd7dea250eee035a8cb08a7be479eacf2d44ac1b7251503bc0d0e468566a9",
+   "binding.c": "03adf9f954243b2baf4a10d5a762b544822f2abb86c904b53519a97edab398c0",
+   "binding.cpython-313-x86_64-linux-gnu.so": "5125a1fc988c061d7af1f9e0d015a14e7fb965705d23f51a32dd775905d67bed",
+   "ENV.md": "1bbac87d8447e5683b9198f53861ae62fc53391149411f3f8a39102504977be4"
+  },
+  "code_sha256": "9153110915779a87831b290624cf09e1ad91131a2c73a279fd1915e34415c382"
+ }
+}

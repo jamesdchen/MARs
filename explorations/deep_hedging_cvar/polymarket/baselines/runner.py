@@ -49,11 +49,18 @@ from load import load as load_data  # noqa: E402  (data/load.py)
 FILL_MODELS = {"optimistic": 0, "central": 1, "pessimistic": 2}
 LENS = {300: "5m", 900: "15m", 14400: "4h"}
 COINS = ["btc", "eth", "sol", "xrp", "bnb", "doge", "hype", "zec"]
-VOL_FLAGS = ["vol_crossed", "vol_stale", "vol_onesided", "vol_last30", "vol_last10",
-             "vol_inside2", "vol_extreme", "vol_outside"]
+FLAGS = ["crossed", "stale", "onesided", "last30", "last10", "inside2", "extreme", "outside", "inspread"]
+VOL_FLAGS = [f"vol_{f}" for f in FLAGS]
+PNL_FLAGS = [f"pnl_{f}" for f in FLAGS]
+# T5 as amended by eval/DECISIONS.md D2: the 25% P&L rule applies to the replay-artifact flags only
+# (last10 is a subset of last30); `outside` (sweeps through the touch) is reported, not judged.
+T5_ARTIFACT_FLAGS = ["inspread", "crossed", "stale", "onesided", "last30"]
+T5_MAX_SHARE = 0.25
+T6_MAX_INVENTORY_SHARE = 0.50
+D1_MIN_FILLS = 5.0
 SUM_KEYS = ["pnl", "pnl_trading", "spread_capture", "markout_5", "markout_30", "markout_60",
             "inventory_pnl", "rebates", "liq_rewards", "fills", "fill_vol", "buy_vol", "sell_vol",
-            "rejects"] + VOL_FLAGS
+            "rejects"] + VOL_FLAGS + PNL_FLAGS
 
 
 def core_params(mm_h: Path = PM / "mm.h") -> dict:
@@ -97,6 +104,8 @@ def make_snapshot(dest: str | Path) -> dict:
     dest.mkdir(parents=True, exist_ok=True)
     files = [(DATA_DIR / f, dest / f) for f in DATA_FILES] + [(PM / "mm.h", dest / "mm.h"),
              (PM / "binding.c", dest / "binding.c"), (so[-1], dest / so[-1].name)]
+    if (PM / "ENV.md").exists():
+        files.append((PM / "ENV.md", dest / "ENV.md"))
     for src, dst in files:
         shutil.copy2(src, dst)
     man = {"source": str(PM), "files": {dst.name: _sha(dst) for _, dst in files},
@@ -232,12 +241,39 @@ def summarize(recs: list[dict]) -> dict:
     out["max_abs_inv_mean"] = float(np.mean([r["max_abs_inv"] for r in recs]))
     for k in ("uptime_two_sided", "uptime_any", "final_abs_inv"):
         out[f"{k}_mean"] = float(np.mean([r[k] for r in recs]))
-    vol = float(np.sum([r["fill_vol"] for r in recs]))
-    for k in VOL_FLAGS:
-        out[f"share_{k}"] = float(np.sum([r[k] for r in recs]) / vol) if vol > 0 else 0.0
+    tot = lambda k: float(np.sum([r.get(k, 0.0) for r in recs]))  # noqa: E731
+    vol = tot("fill_vol")
+    # T5: share of fill volume and of fill P&L (spread capture + 60 s markout, as env.py's
+    # pnl_share_X; NaN when that P&L is <= 0) per flag
+    fill_pnl = tot("spread_capture") + tot("markout_60")
+    out["fill_pnl_total"] = fill_pnl
+    for f in FLAGS:
+        out[f"share_vol_{f}"] = tot(f"vol_{f}") / vol if vol > 0 else 0.0
+        out[f"pnl_total_{f}"] = tot(f"pnl_{f}")
+        out[f"pnl_share_{f}"] = tot(f"pnl_{f}") / fill_pnl if fill_pnl > 0 else float("nan")
+    art = {f: out[f"pnl_share_{f}"] for f in T5_ARTIFACT_FLAGS}
+    ok = {f: v for f, v in art.items() if v == v}
+    worst = max(ok, key=ok.get) if ok else None
+    out["t5_worst_artifact_flag"] = worst
+    out["t5_worst_artifact_share"] = ok[worst] if worst else float("nan")
+    out["t5_invalid"] = bool(worst is not None and ok[worst] > T5_MAX_SHARE)
+    # T6 directional (final/reduce.py directional_verdict, on totals over markets)
+    comp = {"spread_capture": tot("spread_capture"), "adverse_selection": tot("markout_60"),
+            "inventory": tot("inventory_pnl"), "rebates": tot("rebates"), "rewards": tot("liq_rewards")}
+    total, inv = tot("pnl"), comp["inventory"]
+    pos = sum(max(v, 0.0) for v in comp.values())
+    out["t6_inventory_share_of_total"] = inv / total if total > 0 else float("nan")
+    out["t6_inventory_share_of_positive"] = inv / pos if pos > 0 else float("nan")
+    out["t6_directional"] = bool(inv > 0 and ((total > 0 and inv / total > T6_MAX_INVENTORY_SHARE)
+                                             or (pos > 0 and inv / pos > T6_MAX_INVENTORY_SHARE)))
+    # D1.3: counts as market making only with >= 5 fills/market, not directional, T5 artifact <= 25%
+    out["d1_makes_markets"] = bool(out["fills_mean"] >= D1_MIN_FILLS and not out["t6_directional"]
+                                   and not out["t5_invalid"])
     for L in LENS.values():
         sub = [r["pnl"] for r in recs if r["len"] == L]
         out[f"pnl_mean_{L}"] = float(np.mean(sub)) if sub else float("nan")
+        sub = [r["fills"] for r in recs if r["len"] == L]
+        out[f"fills_mean_{L}"] = float(np.mean(sub)) if sub else float("nan")
     return out
 
 

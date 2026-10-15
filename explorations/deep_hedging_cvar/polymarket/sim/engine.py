@@ -8,7 +8,9 @@ Timing inside second t (row t = unix second open+t, interval (t-1, t]):
      spread, gaps and sizes;
   2. taker arrivals matched against that book (direction from gap = p_t - mid), each sweeping the opposite
      side and depleting it; maker legs at resting prices;
-  3. row t = book after the trades (build.py: latest snapshot <= t). Trades are stamped (block time)
+  3. row t = the captured snapshot: a copy of the actual book taken at the last update event (prints deplete
+     only the actual book, which is also translated to the current mid target when prints execute against
+     it, see "actual book" below). Trades are stamped (block time)
      t + d, d in {3, 4}, and aggregated into the trade columns of row t + d (dropped from ticks if > end,
      like real settlement-lag prints, but kept in the fills table).
 Prices are handled in integer mils (0.001); the coarse grid is 10 mils.
@@ -67,7 +69,8 @@ class Model:
         self.b_gap, self.b_z5, self.b_os = g["b_absgap"], g["b_absz5"], g["b_onesided"]
         self.eta, self.decay = g["hawkes_eta"], np.exp(-1.0 / g["hawkes_tau_s"])
         me = f["market_effect"]
-        self.a_len = {i: me["a_len"][cm.LEN_NAME[L]] for i, L in enumerate(cm.LENS)}
+        sh = me.get("a_len_shift", {})
+        self.a_len = {i: me["a_len"][cm.LEN_NAME[L]] + sh.get(cm.LEN_NAME[L], 0.0) for i, L in enumerate(cm.LENS)}
         self.a_coin = np.array([me["a_coin"][c] for c in cm.COINS])
         self.a_sd = me["sd"]
         ip = f.get("impact", {})
@@ -80,6 +83,9 @@ class Model:
         sq = f["size_log_quantiles"]
         self.size_q = np.asarray(sq["q"])
         self.size_v = {i: np.asarray(sq[cm.LEN_NAME[L]]) for i, L in enumerate(cm.LENS)}
+        bcg = sq.get("by_coin_group", {})
+        self.size_v_cg = {(i, g): np.asarray(bcg.get(f"{cm.LEN_NAME[L]}|{cm.CG_NAMES[g]}", sq[cm.LEN_NAME[L]]))
+                          for i, L in enumerate(cm.LENS) for g in range(cm.NCG)}
         self.lim_cum = np.cumsum(f["sweep"]["p_extra_levels"])
         self.legs_mean = f["sweep"]["legs_per_level_mean"]
         self.tok = f["tokens"]
@@ -230,6 +236,8 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
     ask_px = np.full((B, 5), 1000, np.int64)
     bid_sz = np.zeros((B, 5))
     ask_sz = np.zeros((B, 5))
+    dbid_px, dask_px = bid_px.copy(), ask_px.copy()                     # displayed (captured) snapshot
+    dbid_sz, dask_sz = bid_sz.copy(), ask_sz.copy()
     szvec = np.zeros((B, 12))
     dratio = np.zeros((B, 2))
     age = np.zeros(B)
@@ -356,14 +364,18 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
             bp_c, bs_c = compact(bp, bsz, 0, R, t, refill=False)
             ap_c, as_c = compact(ap, asz, 1, R, t, refill=False)
             bid_px[R], ask_px[R], bid_sz[R], ask_sz[R] = bp_c, ap_c, bs_c, as_c
+            # the captured snapshot (what ticks.bin shows) is a copy of the actual book at update events;
+            # prints deplete only the actual book until the next capture (real book_age p90 12-31 s)
+            dbid_px[R], dask_px[R], dbid_sz[R], dask_sz[R] = bp_c, ap_c, bs_c, as_c
             age[R] = 0
         nr = ~rebuild[:, t]
         age[nr] += 1
 
         # ---- 2. taker flow ----
-        hb, ha = bid_sz[:, 0] > EPS, ask_sz[:, 0] > EPS
-        mid = np.where(hb & ha, (bid_px[:, 0] + ask_px[:, 0]) / 2000.0,
-                       np.where(hb, (bid_px[:, 0] / 1000.0 + 1) / 2, np.where(ha, ask_px[:, 0] / 2000.0, 0.5)))
+        dhb, dha = dbid_sz[:, 0] > EPS, dask_sz[:, 0] > EPS
+        mid = np.where(dhb & dha, (dbid_px[:, 0] + dask_px[:, 0]) / 2000.0,      # displayed mid (as fitted)
+                       np.where(dhb, (dbid_px[:, 0] / 1000.0 + 1) / 2, np.where(dha, dask_px[:, 0] / 2000.0, 0.5)))
+        hb, ha = bid_sz[:, 0] > EPS, ask_sz[:, 0] > EPS                          # actual book sides
         gap = p[:, t] - mid
         lam = (A * np.exp(cell[t] + b_gap * np.minimum(np.abs(gap), 0.3) + model.b_z5 * z5[:, t]
                           + model.b_os * (reg[:, t] == cm.ONESIDED)) + eta * E)
@@ -385,7 +397,12 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
             R = np.flatnonzero(N > k)
             copy = (rng.random(len(R)) < rho_copy) & (prev_sign[R] != 0)
             sgn = np.where(copy, prev_sign[R], np.where(rng.random(len(R)) < q[R], 1, -1)).astype(np.int8)
-            Q = np.exp(np.interp(rng.random(len(R)), model.size_q, size_v)) * kn["taker_size_mult"][R]
+            uq = rng.random(len(R))
+            Q = np.empty(len(R))
+            for g in np.unique(cgm[R]):
+                sel = cgm[R] == g
+                Q[sel] = np.exp(np.interp(uq[sel], model.size_q, model.size_v_cg[(li, int(g))]))
+            Q *= kn["taker_size_mult"][R]
             jlim = np.full(len(R), 4)          # no limit cap: the empirical (filled) size sweeps what it needs
             buy = sgn == 1
             szs = np.where(buy[:, None], ask_sz[R], bid_sz[R])
@@ -408,7 +425,6 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
             prev_sign[R] = sgn
             executed[R] += 1
             a_imp[R] += k_imp[R] * sgn * np.sqrt(np.minimum(fill.sum(1), 500.0) / 10.0)
-            age[R] = 0
             for side, Rs in ((1, R[buy]), (0, R[~buy])):
                 if not len(Rs):
                     continue
@@ -421,12 +437,12 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
 
         # ---- 3. write row t (book after trades) ----
         row = ticks[:, t]
-        row[:, C["bid_px_0"]:C["bid_px_0"] + 5] = bid_px / 1000.0
-        row[:, C["ask_px_0"]:C["ask_px_0"] + 5] = ask_px / 1000.0
-        row[:, C["bid_sz_0"]:C["bid_sz_0"] + 5] = bid_sz
-        row[:, C["ask_sz_0"]:C["ask_sz_0"] + 5] = ask_sz
-        row[:, C["bid_depth_total"]] = bid_sz.sum(1) * np.exp(np.maximum(dratio[:, 0], 0.0))
-        row[:, C["ask_depth_total"]] = ask_sz.sum(1) * np.exp(np.maximum(dratio[:, 1], 0.0))
+        row[:, C["bid_px_0"]:C["bid_px_0"] + 5] = dbid_px / 1000.0
+        row[:, C["ask_px_0"]:C["ask_px_0"] + 5] = dask_px / 1000.0
+        row[:, C["bid_sz_0"]:C["bid_sz_0"] + 5] = dbid_sz
+        row[:, C["ask_sz_0"]:C["ask_sz_0"] + 5] = dask_sz
+        row[:, C["bid_depth_total"]] = dbid_sz.sum(1) * np.exp(np.maximum(dratio[:, 0], 0.0))
+        row[:, C["ask_depth_total"]] = dask_sz.sum(1) * np.exp(np.maximum(dratio[:, 1], 0.0))
         row[:, C["book_age"]] = age
 
     # ---------------- assemble ticks ----------------

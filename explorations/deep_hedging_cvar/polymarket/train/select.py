@@ -11,6 +11,9 @@ total P&L, headline variant central fills / 1 s), subject to
   - seed-mean CVaR95 of per-market P&L >= --cvar-floor (the best baseline's
     CVaR95, when given), and
   - max |inventory| over every seed and market <= --max-inv (when given).
+The table also carries the seed means of fills/market, the T6 directional share,
+the T5 artifact share and DECISIONS.md D1's makes_markets flag; --require-mm
+keeps only configs whose seed-mean fills/market >= 5 and T6 share <= 0.5 (D1.3).
 Ties (within --tie-tol) go to the higher seed-mean pessimistic-fill P&L
 (--tiebreak-variant). Never the best seed. Writes selected.json with the
 config, its per-seed results, the full candidate table and the ledger's trial
@@ -51,7 +54,16 @@ def candidates(rows, metric, variant, tiebreak_variant):
         cv = [val_of(r, variant, 'cvar95') for r in runs]
         inv = [val_of(r, variant, 'max_abs_inv') for r in runs]
         tb = [val_of(r, tiebreak_variant, metric) for r in runs]
+        extra = {}
+        for k in ('fills_per_market', 't6_share', 't6_share_pos', 't5_max_share', 'makes_markets',
+                  'pnl_mean', 'sum/spread_capture', 'sum/markout_60', 'sum/inventory_pnl', 'sum/rebates',
+                  'mean/uptime_two_sided'):
+            xs = [val_of(r, variant, k) for r in runs]
+            xs = [x for x in xs if x is not None]
+            if xs:
+                extra[f'{k}_seedmean'] = float(np.mean(xs))
         out.append({
+            **extra,
             'cfg_hash': h, 'cfg': g['cfg'], 'n_seeds': len(runs), 'seeds': [r['seed'] for r in runs],
             'mean': float(np.mean(vals)), 'std': float(np.std(vals)), 'min': float(np.min(vals)),
             'max': float(np.max(vals)), 'per_seed': dict(zip([r['seed'] for r in runs], vals)),
@@ -64,10 +76,14 @@ def candidates(rows, metric, variant, tiebreak_variant):
     return out
 
 
-def choose(cands, min_seeds, cvar_floor=None, max_inv=None, tie_tol=0.0):
+def choose(cands, min_seeds, cvar_floor=None, max_inv=None, tie_tol=0.0, require_mm=False):
     ok = []
     for c in cands:
         reasons = []
+        if require_mm:
+            f, t6 = c.get('fills_per_market_seedmean', 0.0), c.get('t6_share_seedmean')
+            if f < 5 or (t6 is not None and t6 == t6 and t6 > 0.5):
+                reasons.append(f'not market making (fills {f:.2f}, t6 {t6})')
         if c['n_seeds'] < min_seeds:
             reasons.append(f'{c["n_seeds"]} < {min_seeds} seeds')
         if cvar_floor is not None and (c['cvar95_mean'] is None or c['cvar95_mean'] < cvar_floor):
@@ -96,6 +112,7 @@ def main():
     p.add_argument('--cvar-floor', type=float, default=None)
     p.add_argument('--max-inv', type=float, default=None)
     p.add_argument('--tie-tol', type=float, default=0.0)
+    p.add_argument('--require-mm', action='store_true', help='D1.3: fills >= 5/market and T6 <= 0.5')
     p.add_argument('--out', default=None)
     a = p.parse_args()
     if a.min_seeds < 3:
@@ -104,14 +121,15 @@ def main():
     all_rows = ledger.read(a.ledger)
     rows = [r for r in all_rows if a.tag is None or r.get('tag') == a.tag]
     cands = candidates(rows, a.metric, a.variant, a.tiebreak_variant)
-    sel = choose(cands, a.min_seeds, a.cvar_floor, a.max_inv, a.tie_tol)
+    sel = choose(cands, a.min_seeds, a.cvar_floor, a.max_inv, a.tie_tol, a.require_mm)
     cands.sort(key=lambda c: c['mean'], reverse=True)
     out = a.out or os.path.join(HERE, 'runs', 'sweeps', a.tag or 'all', 'selected.json')
     os.makedirs(os.path.dirname(out), exist_ok=True)
     doc = {
         'rule': {'metric': a.metric, 'variant': a.variant or 'headline', 'statistic': 'seed mean',
                  'min_seeds': a.min_seeds, 'cvar_floor': a.cvar_floor, 'max_inv': a.max_inv,
-                 'tiebreak_variant': a.tiebreak_variant, 'tie_tol': a.tie_tol, 'tag': a.tag},
+                 'tiebreak_variant': a.tiebreak_variant, 'tie_tol': a.tie_tol, 'tag': a.tag,
+                 'require_mm': a.require_mm},
         'ledger': os.path.abspath(a.ledger),
         'n_trials_ledger': len(all_rows),
         'n_val_evals_ledger': int(sum(r.get('n_val_evals', 1) for r in all_rows)),

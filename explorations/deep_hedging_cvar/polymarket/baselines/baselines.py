@@ -17,7 +17,12 @@ discrete choice relative to the current best quotes (all Up frame):
   - a desired price more than FAR_TICKS beyond the deepest choice (4 behind) is "off", so a quoter
     that wants to be far away is not forced to sit 4 ticks behind, which would be more aggressive
     than it asked for;
-  - a side whose best quote is missing (one-sided or invalid book) is off.
+  - offsets are relative to the env's reference price (ENV.md section 3): the touch, or for an
+    empty side of a one-sided book p_model floored / ceiled to the tick (obs 47-48 give the present
+    side's touch relative to p_model); with no book at all, or a present touch whose obs 47-48 is
+    clipped (> 25c from p_model) on a one-sided book, the side is off.
+  - the price quoters (as_logit, fair_value, fv_smart) centre on the env's mark: the mid when the
+    book is two-sided, p_model when it is one-sided; sym_touch only joins a touch that exists.
 Inventory `q` is in shares (Up frame); parameters that scale with inventory use lots of the min
 order size (q_lots = q / min_size) so they do not depend on the share count.
 
@@ -206,8 +211,8 @@ def _uncross(amap: ActionMap, st: dict, a: np.ndarray, bid_px, ask_px, inside_on
     tk[amap.idx] = amap.ticks
     for _ in range(len(ranks)):
         on = (a[:, 0] != amap.off) & (a[:, 1] != amap.off)
-        pb = st["bid"] + tk[a[:, 0]] * st["tick"]
-        pa = st["ask"] - tk[a[:, 1]] * st["tick"]
+        pb = st["bid_ref"] + tk[a[:, 0]] * st["tick"]
+        pa = st["ask_ref"] - tk[a[:, 1]] * st["tick"]
         bad = on & (pb >= pa - 1e-9)
         if not bad.any():
             break
@@ -217,8 +222,8 @@ def _uncross(amap: ActionMap, st: dict, a: np.ndarray, bid_px, ask_px, inside_on
         if inside_only:
             nb = np.where(tk[nb] < 0, amap.off, nb)
             na = np.where(tk[na] < 0, amap.off, na)
-        cost_b = np.abs(bid_px - (st["bid"] + tk[nb] * st["tick"])) - np.abs(bid_px - pb)
-        cost_a = np.abs(ask_px - (st["ask"] - tk[na] * st["tick"])) - np.abs(ask_px - pa)
+        cost_b = np.abs(bid_px - (st["bid_ref"] + tk[nb] * st["tick"])) - np.abs(bid_px - pb)
+        cost_a = np.abs(ask_px - (st["ask_ref"] - tk[na] * st["tick"])) - np.abs(ask_px - pa)
         move_b = bad & (cost_b < cost_a)
         move_a = bad & ~move_b
         a[:, 0] = np.where(move_b, nb, a[:, 0])
@@ -228,12 +233,12 @@ def _uncross(amap: ActionMap, st: dict, a: np.ndarray, bid_px, ask_px, inside_on
 
 def to_actions(amap: ActionMap, st: dict, bid_px, ask_px, size_idx, inside_only=False):
     """(B, 3) int32 actions from desired prices (NaN = off) and a size index."""
-    B = st["bid"].shape[0]
+    B = st["bid_ref"].shape[0]
     a = np.empty((B, 3), dtype=np.int32)
-    a[:, 0] = price_to_choice(amap, bid_px, st["bid"], np.where(st["ask_ok"], st["ask"], np.nan),
-                              st["tick"], +1, st["bid_ok"], inside_only)
-    a[:, 1] = price_to_choice(amap, ask_px, st["ask"], np.where(st["bid_ok"], st["bid"], np.nan),
-                              st["tick"], -1, st["ask_ok"], inside_only)
+    a[:, 0] = price_to_choice(amap, bid_px, st["bid_ref"], np.where(st["ask_ok"], st["ask"], np.nan),
+                              st["tick"], +1, np.isfinite(st["bid_ref"]), inside_only)
+    a[:, 1] = price_to_choice(amap, ask_px, st["ask_ref"], np.where(st["bid_ok"], st["bid"], np.nan),
+                              st["tick"], -1, np.isfinite(st["ask_ref"]), inside_only)
     with np.errstate(invalid="ignore"):
         a = _uncross(amap, st, a, np.asarray(bid_px, np.float64), np.asarray(ask_px, np.float64),
                      inside_only)
@@ -253,10 +258,13 @@ def inventory_limit(bid_px, ask_px, q, sz, q_max):
             np.where(q - sz < -q_max - 1e-9, np.nan, ask_px))
 
 
-def _two_sided(st):
-    both = st["bid_ok"] & st["ask_ok"]
-    mid = np.where(both, 0.5 * (st["bid"] + st["ask"]), np.nan)
-    return both, mid, st["ask"] - st["bid"]
+def _book(st):
+    """(quotable, mark, spread): quotable = the book has a side (the env quotes an empty side
+    from p_model rounded to the tick); mark = mid if two-sided else p_model (the env's mark);
+    spread = ask - bid if two-sided else 0."""
+    quotable = (st["bid_ok"] | st["ask_ok"]) & np.isfinite(st["mark"])
+    spread = np.where(st["two"], st["ask"] - st["bid"], 0.0)
+    return quotable, st["mark"], spread
 
 
 def _q_max(spec, params):
@@ -286,7 +294,7 @@ def sym_touch(spec: ObsSpec, params=None):
         st = spec.decode(obs)
         sz = order_size(amap, st, size)
         cap = p["q_cap"] * st["min_size"]
-        a = np.empty((st["bid"].shape[0], 3), dtype=np.int32)
+        a = np.empty((st["bid_ref"].shape[0], 3), dtype=np.int32)
         over_b = st["q"] + sz > np.minimum(cap, q_max) + 1e-9
         over_a = st["q"] - sz < -np.minimum(cap, q_max) - 1e-9
         capped = amap.off if p["cap_mode"] == "pull" else amap.deepest
@@ -310,7 +318,7 @@ def as_logit(spec: ObsSpec, params=None):
 
     def fn(obs):
         st = spec.decode(obs)
-        both, mid, _ = _two_sided(st)
+        both, mid, _ = _book(st)
         m = np.clip(np.nan_to_num(mid, nan=0.5), P_CLIP, 1 - P_CLIP)
         v_x = digital_var(m, st["tau"], h) / (m * (1 - m)) ** 2
         x_r = logit(m) - (st["q"] / st["min_size"]) * gamma * v_x
@@ -324,7 +332,7 @@ def as_logit(spec: ObsSpec, params=None):
 
 def fv_quotes(st, p):
     """Centre, half-spread and gap of the REPORT section-6 quoter (prices in $)."""
-    both, mid, spread = _two_sided(st)
+    both, mid, spread = _book(st)
     pm = np.clip(st["p_model"], 0.001, 0.999)
     mm = np.clip(np.nan_to_num(mid, nan=0.5), 0.001, 0.999)
     c5 = sigmoid(0.6 * logit(pm) + 0.32 * logit(mm))

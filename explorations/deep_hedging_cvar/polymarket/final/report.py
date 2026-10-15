@@ -31,7 +31,8 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import (CODE_ROOT, FINAL, LENGTH_NAMES, MARKOUT_HORIZONS, SPLIT_NAMES, S, Dataset,  # noqa: E402
                     read_jsonl, resolve, utcnow)
-from reduce import FLAG_DOCS, FLAG_NAMES, directional_verdict, exploit_verdict  # noqa: E402
+from reduce import (ALL_FLAGS, FLAG_DOCS, RULE_FLAGS, directional_verdict, exploit_tables,  # noqa: E402
+                    market_making)
 
 COMPONENTS = ["spread_capture", "adverse_selection", "inventory_carry", "resolution", "fees", "rebates",
               "rewards", "total"]
@@ -83,6 +84,8 @@ class Results:
     def label(self, key):
         if key.endswith("/mean"):
             return GROUP_LABEL.get(key.split("/")[0], key)
+        if key.startswith("baseline_c/"):
+            return key[len("baseline_c/"):] + " (active)"
         return key.replace("baseline/", "")
 
     def hourly(self, key, vid, col="dpnl", bin_s=3600):
@@ -161,21 +164,22 @@ def verdict(ok):
 
 
 # ============================================================================ sections
-def pooled_fill_pnl(R, key, vid):
-    """Per-fill P&L sq*(S - price) - fee + rebate pooled over the group's seeds, with flags."""
+def method_exploit(R, key, vid):
+    """T5 tables (reduce.exploit_tables) of a method, or of a group's seeds pooled (= seed mean)."""
+    if not key.endswith("/mean"):
+        return R.aggs[(key, vid)]["exploit"]
     f = R.fills[(R.fills.method.isin(R.members(key))) & (R.fills.variant == vid)]
-    st = R.mk[(R.mk.method.isin(R.members(key))) & (R.mk.variant == vid)][["method", "market", "settlement"]]
-    f = f.merge(st, on=["method", "market"], how="left")
-    pnl = f.side * f.qty * (f.settlement - f.price) - f.fee + f.rebate
-    return f, pnl.to_numpy(float)
+    return exploit_tables(f)
 
 
-def group_exploit(R, key, vid):
-    f, pnl = pooled_fill_pnl(R, key, vid)
-    if not len(f):
-        return None, None
-    flags = S.flag_pnl_share(pnl, {k: f[k].to_numpy(bool) for k in FLAG_NAMES})
-    return flags, exploit_verdict(flags, float(pnl.sum()))
+def method_mm(R, key, vid):
+    """DECISIONS.md D1.3 classification; for a group, on the seed-mean quantities."""
+    if not key.endswith("/mean"):
+        return R.aggs[(key, vid)]["market_making"]
+    mk = R.mk_rows(key, vid)
+    g = mk.groupby("market").agg(n_fills=("n_fills", "mean"), uptime_two=("uptime_two", "mean"),
+                                 uptime_any=("uptime_any", "mean"), contract_len_s=("contract_len_s", "first"))
+    return market_making(g.reset_index(), group_attr(R, key, vid), method_exploit(R, key, vid)["verdict"])
 
 
 def group_attr(R, key, vid):
@@ -235,13 +239,14 @@ def decision(R):
     dv = directional_verdict(group_attr(R, rl, head))
     crit["not_directional"] = (not dv["directional"], f"inventory share of total {pct(dv['share_of_total'])}, "
                                                       f"of positive components {pct(dv['share_of_positive'])}")
-    _, ev = group_exploit(R, rl, head)
-    if ev is None:
-        crit["no_exploit_flag"] = (True, "no fills")
-    else:
-        crit["no_exploit_flag"] = (not ev["invalid"], f"worst flag {ev['worst_single_flag']} "
-                                                      f"{pct(ev['worst_single_share'])}; P&L excl. flagged "
-                                                      f"{f2(ev['pnl_excluding_flagged'])}")
+    ev = method_exploit(R, rl, head)["verdict"]
+    crit["no_exploit_flag"] = (not ev["invalid"], f"worst artifact flag {ev['worst_single_flag']} "
+                                                  f"{pct(ev['worst_single_share'])} of the fill edge; edge excl. "
+                                                  f"flagged {f2(ev['edge_excluding_flagged'])} (D2 flags)")
+    mm = method_mm(R, rl, head)
+    crit["counts_as_market_making"] = (mm["counts_as_market_making"],
+                                       f"{mm['description']}: {mm['fills_per_market']:.1f} fills/market, "
+                                       f"two-sided uptime {pct(mm['uptime_two_sided'])} (D1.3)")
     cm = S.concentration(R.per_market(rl, head).to_numpy(), ks=(1, 3, 5, 10))
     chh = S.concentration(a, ks=(1, 3, 5, 10))
     crit["ex_top_positive"] = (cm["ex_top5"] > 0 and chh["ex_top3"] > 0,
@@ -453,6 +458,10 @@ def build(R: Results, fig_dir: Path, out_path: Path, ds: Dataset | None) -> str:
     pe = P["primary_endpoint"]
     L.append(f"{pe['description']}. Comparator (fixed in the plan): **{R.label(R.best)}** "
              f"({P['best_baseline']['rule']}).\n")
+    am = (P.get("protocol") or {}).get("amendments") or {}
+    if am.get("applied"):
+        L.append(f"Protocol amendments applied ({am['path']}, sha256 `{(am.get('sha256') or '')[:16]}`): "
+                 + "; ".join(am["applied"]) + ".\n")
     if D.get("missing"):
         L.append("_Not evaluable: the RL group or the comparator was not run at the headline variant._\n")
     else:
@@ -471,7 +480,7 @@ def build(R: Results, fig_dir: Path, out_path: Path, ds: Dataset | None) -> str:
 
     # ---- headline table
     L.append("## 2. Headline: central fills, 1 s latency, size x1\n")
-    keys = [m["id"] for m in R.methods if m["group"] == "baseline"] + \
+    keys = [m["id"] for m in R.methods if m["group"] in ("baseline", "baseline_c")] + \
         [f"{g}/mean" for g in ("rl", "rl5") if g in R.groups]
     L.append(table(["method", "P&L total", "P&L/day", "mean/market", "median/market", "P&L ex rewards+rebates",
                     "hourly Sharpe [95% CI]", "CVaR95/market", "fills", "fills per quoted min",
@@ -486,12 +495,13 @@ def build(R: Results, fig_dir: Path, out_path: Path, ds: Dataset | None) -> str:
     rows = []
     for g in ("rl", "rl5"):
         key = f"{g}/mean"
-        for b in [m["id"] for m in R.methods if m["group"] == "baseline"]:
+        for b in [m["id"] for m in R.methods if m["group"] in ("baseline", "baseline_c")]:
             if not (R.has(key, head) and R.has(b, head)):
                 continue
             r1 = R.ci(R.hourly(key, head), R.hourly(b, head))
             r2 = R.ci(R.hourly(key, head, "dpnl_ex_rr"), R.hourly(b, head, "dpnl_ex_rr"))
-            rows.append([R.label(key), R.label(b) + (" (comparator)" if b == R.best else ""),
+            rows.append([R.label(key), R.label(b) + (" (comparator)" if b == R.best else
+                                                     (" (secondary, D1.2)" if b.startswith("baseline_c/") else "")),
                          f2(r1["estimate"]), cis(r1), f2(r2["estimate"]), cis(r2), f2(r1["corr_ab"], False)])
     best_test = None
     tuned = [m["id"] for m in R.methods if m["group"] == "baseline" and m.get("tuned")]
@@ -507,7 +517,7 @@ def build(R: Results, fig_dir: Path, out_path: Path, ds: Dataset | None) -> str:
     # ---- attribution
     L.append("## 4. Attribution (T6) and markouts\n")
     rows, mrows = [], []
-    akeys = [k for k in ["rl/mean", "rl5/mean"] + [m["id"] for m in R.methods if m["group"] == "baseline"]
+    akeys = [k for k in ["rl/mean", "rl5/mean"] + [m["id"] for m in R.methods if m["group"] in ("baseline", "baseline_c")]
              if R.has(k, head)]
     for k in akeys:
         if k.endswith("/mean"):
@@ -534,25 +544,34 @@ def build(R: Results, fig_dir: Path, out_path: Path, ds: Dataset | None) -> str:
         L.append(f"![attribution]({_relfig(figs['attribution'], out_path)})\n")
 
     # ---- exploit detectors
-    L.append("## 5. Exploit detectors (T5)\n")
-    rows = []
+    L.append("## 5. Exploit detectors (T5, DECISIONS.md D2) and market-making status (D1.3)\n")
+    rows, rows2, rows3 = [], [], []
     for k in akeys:
-        if k.endswith("/mean"):
-            flags, ev = group_exploit(R, k, head)
-        else:
-            flags = R.aggs[(k, head)]["exploit"]["flags"]
-            ev = R.aggs[(k, head)]["exploit"]["verdict"]
-        if flags is None:
-            rows.append([R.label(k)] + ["-"] * (len(FLAG_NAMES) + 3))
-            continue
-        rows.append([R.label(k)] + [f"{pct(flags[f]['share_of_total'])} ({flags[f]['n']})" for f in FLAG_NAMES]
-                    + [f2(ev["fill_pnl"]), f2(ev["pnl_excluding_flagged"]),
+        ex = method_exploit(R, k, head)
+        rf, ev, af, vs = ex["rule_flags"], ex["verdict"], ex["flags"], ex["volume_share"]
+        rows.append([R.label(k)] + [f"{pct(rf[f]['share_of_total'])} ({rf[f]['n']})" for f in RULE_FLAGS]
+                    + [f2(ev["edge_total"]), f2(ev["edge_excluding_flagged"]),
                        "**INVALID**" if ev["invalid"] else "valid"])
-    L.append(table(["method"] + FLAG_NAMES + ["fill P&L", "excl. flagged", "verdict"], rows) + "\n")
-    L.append("Cells: share of total fill P&L from fills made under the flag (number of such fills); shares are "
-             "n/a when the total is <= 0. Invalid if any single flag > 25% or the P&L excluding all flagged "
-             "fills is <= 0 while the total is > 0. RL rows pool the seeds' fills. Flags: "
+        rows2.append([R.label(k)] + [f"{pct(af[f]['share_of_total'])} / {pct(vs[f])}" for f in ALL_FLAGS])
+        mm = method_mm(R, k, head)
+        rows3.append([R.label(k), "yes" if mm["counts_as_market_making"] else "**no**", mm["description"],
+                      f"{mm['fills_per_market']:.1f}", pct(mm["uptime_two_sided"]), pct(mm["uptime_any"]),
+                      pct(mm["frac_markets_without_fills"]),
+                      ", ".join(c for c, ok in mm["criteria"].items() if not ok) or "-"])
+    L.append(table(["method"] + RULE_FLAGS + ["fill edge", "excl. flagged", "verdict"], rows) + "\n")
+    L.append("Artifact flags of D2 (the T5 rule): share of the total fill edge (per fill: spread capture + "
+             "60 s markout, the env's pnl_X) from fills under the flag (number of fills); n/a when the total "
+             "edge is <= 0. Invalid if one of them carries > 25%, or the edge excluding all of them is <= 0 "
+             "while the total is > 0. RL rows pool the seeds' fills.\n")
+    L.append("Every flag, edge share / volume share (the through-the-touch `outside` flag is reported, not a "
+             "detector, D2):\n")
+    L.append(table(["method"] + ALL_FLAGS, rows2) + "\n")
+    L.append("Flags (judged on the book at the match second, as the env does): "
              + "; ".join(f"`{k}` {v}" for k, v in FLAG_DOCS.items()) + ".\n")
+    L.append("D1.3: a policy counts as making markets only with >= 5 fills per market, T6 directional share "
+             "<= 50% and T5 artifact share <= 25%; otherwise this table says what it does instead.\n")
+    L.append(table(["method", "makes markets", "what it does", "fills/market", "uptime 2-sided", "uptime any",
+                    "markets without fills", "failed"], rows3) + "\n")
     tt = R.fills[R.fills.variant == head]
     if len(tt):
         L.append("Fills by time to close (all methods, headline; a policy that only trades in the last seconds "
@@ -686,7 +705,8 @@ def build(R: Results, fig_dir: Path, out_path: Path, ds: Dataset | None) -> str:
     led = P["ledger"]
     L.append(f"Configurations evaluated on val before the freeze (all `trials.jsonl` ledgers): **N = "
              f"{led['n_trials']}** evaluations, {led['n_distinct_configs']} distinct configs "
-             f"({led['n_assumed_val']} records without a split field counted as val), by kind "
+             f"({led['n_assumed_val']} records without a split field counted as val; "
+             f"{led.get('n_annotation_rows', 0)} annotation rows not counted), by kind "
              f"{json.dumps(led['by_kind'])}; files: " + ", ".join(f"`{f['path']}` ({f['n_val_records']})"
                                                                 for f in led["files"]) + ".\n")
     if R.has("rl/mean", head):
@@ -734,6 +754,7 @@ def build(R: Results, fig_dir: Path, out_path: Path, ds: Dataset | None) -> str:
             ["data snapshot", json.dumps(ck.get("snapshot")) if ck.get("snapshot") else "n/a"],
             ["mirrored data (sha256)", ", ".join(f"{k} {v[:12]}" for k, v in (ck.get("mirror_data") or {}).items())
              or "not built"],
+            ["fill flags vs the C Log (vol_X, pnl_X)", flag_check_text(R)],
             ["C replay (harness + reference)",
              "n/a (stand-in env)" if not rp.get("checked") else
              f"max |state diff| {rp['state_max_abs_diff']:.1e}, max |C Log P&L - trace| "
@@ -746,6 +767,14 @@ def build(R: Results, fig_dir: Path, out_path: Path, ds: Dataset | None) -> str:
         L.insert(L.index("## 3. Paired differences vs every baseline (hourly blocks, identical markets)\n"),
                  f"![cumulative P&L]({_relfig(figs['cumulative_pnl'], out_path)})\n")
     return "\n".join(L)
+
+
+def flag_check_text(R) -> str:
+    fc = [a["flag_check_vs_c_log"] for a in R.aggs.values() if a.get("flag_check_vs_c_log")]
+    if not fc:
+        return "n/a (stand-in env)"
+    return (f"max |volume diff| {max(x['vol_max_abs_diff'] for x in fc):.1e} shares, max |edge diff| "
+            f"{max(x['pnl_max_abs_diff'] for x in fc):.1e} USD over {len(fc)} runs (float32 Log)")
 
 
 def _relfig(p: Path, out_path: Path) -> str:

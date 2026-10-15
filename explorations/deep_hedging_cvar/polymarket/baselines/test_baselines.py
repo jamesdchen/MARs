@@ -232,7 +232,7 @@ def test_fair_value_spec_point():
     # 5m uses the logit blend 0.6 logit p + 0.32 logit mid (shrinks to 0.5)
     st = dict(bid=np.array([0.69]), ask=np.array([0.71]), bid_ok=np.array([True]), ask_ok=np.array([True]),
               tick=np.array([0.01]), q=np.array([0.0]), min_size=np.array([5.0]), p_model=np.array([0.7]),
-              T=np.array([300.0]), tau=np.array([200.0]))
+              T=np.array([300.0]), tau=np.array([200.0]), mark=np.array([0.70]), two=np.array([True]))
     _, c5, _, _ = bl.fv_quotes(st, bl.DEFAULTS["fair_value"])
     np.testing.assert_allclose(c5, bl.sigmoid(0.92 * bl.logit(0.7)), rtol=1e-12)
     st["T"] = np.array([900.0])
@@ -262,10 +262,12 @@ def test_fv_smart():
 
 
 def test_feat_meta_decode_on_real_rows():
-    """Decode real feat.bin rows (train split only) and compare with the raw build columns."""
-    build = Path(__file__).resolve().parent.parent / "data" / "build"
-    if not (build / "feat.bin").exists():
-        print("   (skipped: no feat.bin)")
+    """Decode real feat.bin rows (train split only), laid out as the env's obs (ENV.md section 6:
+    feat cols 0-32 -> obs 0-32, cols 41-42 -> obs 47-48), and compare with the raw build columns."""
+    pm = Path(__file__).resolve().parent.parent
+    build = pm / "data" / "build"
+    if not (build / "feat.bin").exists() or not (pm / "ENV.md").exists():
+        print("   (skipped: no feat.bin / ENV.md)")
         return
     meta = json.loads((build / "meta.json").read_text())
     fm = json.loads((build / "feat_meta.json").read_text())
@@ -273,25 +275,37 @@ def test_feat_meta_decode_on_real_rows():
     feat = np.memmap(build / "feat.bin", np.float32, "r", shape=(fm["N"], fm["G"]))
     n_train = meta["splits"]["counts"]["train"]["rows"]
     rows = np.sort(np.random.default_rng(0).choice(n_train, 200_000, replace=False))
-    n_obs = fm["n_obs_features"]
-    obs = np.concatenate([feat[rows, :n_obs], np.zeros((rows.size, 1), np.float32)], axis=1)
-    spec = load_spec(build / "feat_meta.json")
-    spec.features["inventory"] = {"index": n_obs}
+    fci = fm["column_index"]
+    spec = load_spec(env_params={"Q": 100.0})
+    obs = np.zeros((rows.size, spec.width), np.float32)
+    obs[:, :fm["n_obs_features"]] = feat[rows, :fm["n_obs_features"]]
+    obs[:, spec.features["bid_minus_p"]["index"]] = feat[rows, fci["bid_minus_p_c"]]
+    obs[:, spec.features["ask_minus_p"]["index"]] = feat[rows, fci["ask_minus_p_c"]]
+    obs[:, spec.features["inventory"]["index"]] = 0.37
     st = spec.decode(obs, need_fair=True)
+    np.testing.assert_allclose(st["q"], 37.0, rtol=1e-6)
     c = meta["column_index"]
     bid, ask = ticks[rows, c["bid_px_0"]].astype(float), ticks[rows, c["ask_px_0"]].astype(float)
     valid = ticks[rows, c["book_valid"]] > 0.5
-    two = valid & (bid > 0) & (ask < 1)
-    assert (st["bid_ok"] == (valid & (bid > 0))).all() and (st["ask_ok"] == (valid & (ask < 1))).all()
-    assert np.isfinite(st["bid"]).sum() == two.sum()
-    np.testing.assert_allclose(st["bid"][two], bid[two], atol=1e-6)
-    np.testing.assert_allclose(st["ask"][two], ask[two], atol=1e-6)
+    has_b, has_a = valid & (bid > 0), valid & (ask < 1)
+    assert (st["bid_ok"] == has_b).all() and (st["ask_ok"] == has_a).all()
+    p_raw = feat[rows, fci["p_model"]].astype(float)
+    kb, ka = np.isfinite(st["bid"]), np.isfinite(st["ask"])
+    np.testing.assert_allclose(st["bid"][kb], bid[kb], atol=1e-6)
+    np.testing.assert_allclose(st["ask"][ka], ask[ka], atol=1e-6)
+    two = has_b & has_a
+    assert kb[two].all() and ka[two].all()                         # two-sided: always known
+    one_b = has_b & ~has_a
+    unknown = one_b & ~kb                                          # one-sided, touch > 25c from p
+    assert (np.abs(bid - p_raw)[unknown] >= 0.2499).all()
+    # empty side: the env's base, p_model floored (bid) / ceiled (ask) to the tick, in mils
+    tick_m = np.where(feat[rows, fci["tick_fine"]] > 0.5, 1, 10)
+    env_ask = np.ceil(p_raw * 1000.0 / tick_m) * tick_m / 1000.0
+    np.testing.assert_allclose(st["ask_ref"][one_b], env_ask[one_b], atol=1e-9)
     np.testing.assert_array_equal(st["tau"], ticks[rows, c["seconds_to_close"]])
-    np.testing.assert_allclose(st["p_model"], feat[rows, fm["column_index"]["p_model"]], atol=1.0001e-4)   # p clipped to [1e-4, 1-1e-4]
-    lens = np.repeat(np.array([300.0, 900.0, 14400.0]), 1)
-    assert set(np.unique(st["T"])) <= set(lens.tolist())
-    print(f"   decoded {rows.size} train rows; two-sided {two.mean():.3f}")
-
+    np.testing.assert_allclose(st["p_model"], p_raw, atol=1.0001e-4)   # p clipped to [1e-4, 1-1e-4]
+    print(f"   decoded {rows.size} train rows; two-sided {two.mean():.3f}; bid-only {one_b.mean():.3f}, "
+          f"touch known on {kb[one_b].mean():.3f} of them")
 
 def test_uncross_joint_quotes():
     spec = base_spec()

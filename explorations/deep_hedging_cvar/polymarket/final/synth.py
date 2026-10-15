@@ -258,6 +258,9 @@ def build_root(out_dir, obs_size, torch_ckpts=None, puffer5=True, n_seeds=5):
         "fair_value": {"params": {"k_skew": 0.001, "spread_mult": 1.0, "gap_max": 0.1, "pull_s": 30.0,
                                   "size": 0}, "val": {"total_pnl": 3.0}},
     })
+    write_json(out / "baselines" / "tuned_constrained.json", {      # DECISIONS.md D1.2 (stand-in)
+        "sym_touch": {"best_params": {"size": 0, "q_cap": 20.0, "cap_mode": "back"}, "val_pnl_mean": -0.5,
+                      "constraints": {"min_fills_per_market": 5, "min_uptime_two_sided": 0.25}}})
     seeds = []
     for s in range(n_seeds):
         if torch_ckpts:

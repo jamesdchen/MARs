@@ -20,8 +20,9 @@ Reads (paths relative to --root, default polymarket/):
   mm.h                   (backend cenv) the env parameters, frozen in the plan: MM_DEFAULTS (the
                          training env) plus --env-params overrides.
 
-The best tuned baseline (the comparator of the primary endpoint) is fixed here: --best-baseline,
-else the tuned baseline with the highest val total P&L recorded in tuned.json.
+The comparator of the primary endpoint is fixed here (DECISIONS.md D1.1): --best-baseline, else
+the highest val P&L in tuned.json among the tuned baselines and no-quote. Activity-constrained
+baselines (D1.2; baselines/tuned_constrained.json or --secondary) are secondary comparators.
 
 Refuses to overwrite an existing plan (or plan_sha256.txt). Prints sha256(TEST_PLAN.json) and
 stores it in plan_sha256.txt next to the plan; record it in eval/EVALUATION.md's amendment log
@@ -39,7 +40,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from common import (BUILD, CODE_ROOT, FINAL, HEADLINE_ID, MARKOUT_HORIZONS, MID_CLOSE_STC,  # noqa: E402
                     PLAN_SCHEMA, PlanError, S, SPLIT_NAMES, Dataset, code_hashes, count_trials,
                     git_info, make_variants, resolve, utcnow, write_json)
-from reduce import FLAG_DOCS, MAX_FLAG_SHARE, MAX_INVENTORY_SHARE  # noqa: E402
+from reduce import (FLAG_DOCS, MAX_FLAG_SHARE, MAX_INVENTORY_SHARE, MIN_FILLS_PER_MARKET,  # noqa: E402
+                    RULE_FLAGS)
 
 META_KEYS = {"val", "val_metrics", "metrics", "config_sha256", "params_sha256", "note", "notes",
              "trials", "n_trials", "score", "name", "selected", "best", "val_total_pnl", "val_pnl",
@@ -98,6 +100,29 @@ def parse_tuned(obj) -> list[dict]:
     else:
         raise PlanError("tuned.json: unrecognised shape")
     return items
+
+
+SECONDARY_FILES = ("tuned_constrained.json", "tuned_active.json")
+
+
+def secondary_methods(root: Path, path=None) -> tuple[list[dict], dict | None]:
+    """DECISIONS.md D1.2: activity-constrained baselines (tune.py output format), optional."""
+    p = Path(path) if path else next((root / "baselines" / f for f in SECONDARY_FILES
+                                      if (root / "baselines" / f).exists()), None)
+    if p is None:
+        return [], None
+    if not p.exists():
+        raise PlanError(f"--secondary {p} not found")
+    import baselines as bl
+    out = []
+    for it in parse_tuned(json.loads(p.read_text())):
+        if it["name"] not in bl.FACTORIES:
+            raise PlanError(f"{p.name} names unknown baseline {it['name']!r}")
+        out.append(dict(id=f"baseline_c/{it['name']}", group="baseline_c", kind="baseline", name=it["name"],
+                        params=it["params"], params_sha256=S.sha256_json(it["params"]),
+                        val_metric=it["val_metric"], tuned=True, constrained=True))
+    return out, dict(path=_rel(p, root), sha256=S.sha256_file(p),
+                     rule="tuned with >= 5 fills/market and two-sided uptime >= 0.25 (DECISIONS.md D1.2)")
 
 
 def baseline_methods(root: Path, code_root: Path) -> tuple[list[dict], dict]:
@@ -236,27 +261,35 @@ def _check_obs_size(methods, root, obs):
 
 def build_plan(root=CODE_ROOT, build_dir=BUILD, backend="cenv", backend_options=None,
                best_baseline=None, puffer5=None, min_seeds=5, allow_dirty=False,
-               code_root=CODE_ROOT, n_boot=10_000, selected=None, env_params=None) -> dict:
+               code_root=CODE_ROOT, n_boot=10_000, selected=None, env_params=None, secondary=None) -> dict:
     root, build_dir, code_root = Path(root), Path(build_dir), Path(code_root)
     methods, tuned_info = baseline_methods(root, code_root)
     tuned = [m for m in methods if m["tuned"]]
     if not tuned:
         raise PlanError("tuned.json holds no tuned baseline")
+    # DECISIONS.md D1.1: the comparator is the best tuned baseline, no-quote included as a candidate
+    cands = tuned + [m for m in methods if m["id"] == "baseline/no_quote"]
     if best_baseline:
         bid = best_baseline if best_baseline.startswith("baseline/") else f"baseline/{best_baseline}"
-        if bid not in {m["id"] for m in tuned}:
-            raise PlanError(f"--best-baseline {best_baseline!r} is not a tuned baseline")
+        if bid not in {m["id"] for m in cands}:
+            raise PlanError(f"--best-baseline {best_baseline!r} is not a tuned baseline or no_quote")
         best = dict(id=bid, rule="named on the command line (--best-baseline)")
     else:
-        scored = [m for m in tuned if m["val_metric"] is not None]
-        if len(scored) != len(tuned):
+        scored = [m for m in cands if m["val_metric"] is not None]
+        if len(scored) != len(cands):
             raise PlanError("tuned.json lacks val P&L for some baselines; pass --best-baseline")
         top = max(scored, key=lambda m: m["val_metric"])
-        best = dict(id=top["id"], rule="highest val total P&L (central fills, 1 s) in tuned.json",
-                    val_metric=top["val_metric"])
+        best = dict(id=top["id"], rule="highest val P&L (central fills, 1 s) in tuned.json among the tuned "
+                                       "baselines and no-quote (DECISIONS.md D1.1)",
+                    val_metric=top["val_metric"],
+                    candidates={m["id"]: m["val_metric"] for m in scored})
+    sec, sec_info = secondary_methods(root, secondary)
+    methods += sec
     sel = _find_selected(root, selected)
     rl, rl_info = rl_methods(sel, root, "rl", "ppo3", min_seeds)
-    groups = {"baseline": dict(n=len(methods), source=tuned_info), "rl": rl_info}
+    groups = {"baseline": dict(n=len(methods) - len(sec), source=tuned_info), "rl": rl_info}
+    if sec:
+        groups["baseline_c"] = dict(n=len(sec), source=sec_info)
     methods += rl
     p5 = Path(puffer5) if puffer5 else (root / "puffer5" / "selected.json")
     if p5.exists():
@@ -311,7 +344,13 @@ def build_plan(root=CODE_ROOT, build_dir=BUILD, backend="cenv", backend_options=
         created_utc=utcnow(),
         protocol=dict(path="eval/EVALUATION.md",
                       sha256=S.sha256_file(code_root / "eval" / "EVALUATION.md")
-                      if (code_root / "eval" / "EVALUATION.md").exists() else None),
+                      if (code_root / "eval" / "EVALUATION.md").exists() else None,
+                      amendments=dict(path="eval/DECISIONS.md",
+                                      sha256=S.sha256_file(code_root / "eval" / "DECISIONS.md")
+                                      if (code_root / "eval" / "DECISIONS.md").exists() else None,
+                                      applied=["D1 comparators (no-quote a candidate; constrained secondary "
+                                               "baselines; market-making classification)",
+                                               "D2 T5 rule on artifact flags only"])),
         test_split=dict(id=2, name=SPLIT_NAMES[2], dates="2026-08-24 UTC",
                         dry_run_split=dict(id=1, name=SPLIT_NAMES[1])),
         git=git, allow_dirty=bool(allow_dirty), dirty_code_at_plan_time=dirty_code,
@@ -328,6 +367,7 @@ def build_plan(root=CODE_ROOT, build_dir=BUILD, backend="cenv", backend_options=
         groups=groups,
         primary_group="rl",
         best_baseline=best,
+        secondary_comparators=[m["id"] for m in sec],
         variants=variants,
         headline_variant=HEADLINE_ID,
         metrics=[
@@ -354,9 +394,17 @@ def build_plan(root=CODE_ROOT, build_dir=BUILD, backend="cenv", backend_options=
         attribution=dict(horizon_s=60, markout_horizons_s=list(MARKOUT_HORIZONS),
                          mid_close_seconds_to_close=MID_CLOSE_STC,
                          identity="components sum to total; checked against the env's cash accounting"),
-        exploit_detectors=dict(flags=FLAG_DOCS, max_single_flag_share=MAX_FLAG_SHARE,
-                               invalid_if="any single flag > 25% of total fill P&L, or fill P&L "
-                                          "excluding all flagged fills <= 0 while the total is > 0"),
+        exploit_detectors=dict(flags=FLAG_DOCS, rule_flags=RULE_FLAGS, max_single_flag_share=MAX_FLAG_SHARE,
+                               fill_pnl="per fill: spread capture + 60 s markout, sq (mid +60 s - price), "
+                                        "as the env's pnl_X",
+                               invalid_if="any rule flag (DECISIONS.md D2: inspread, crossed or stale, "
+                                          "one-sided, last 30 s) carries > 25% of the total fill edge, or the "
+                                          "edge excluding all rule-flagged fills is <= 0 while the total is > 0; "
+                                          "the other flags (outside, inside2, extreme, last10) are reported"),
+        market_making=dict(min_fills_per_market=MIN_FILLS_PER_MARKET, max_t6_share=MAX_INVENTORY_SHARE,
+                           max_t5_share=MAX_FLAG_SHARE,
+                           rule="DECISIONS.md D1.3: counts as making markets only if all three hold; "
+                                "otherwise report what the policy does"),
         directional=dict(max_inventory_share=MAX_INVENTORY_SHARE,
                          rule="directional if inventory/resolution P&L > 0 and > 50% of total P&L "
                               "(total > 0) or > 50% of the positive components",
@@ -379,7 +427,9 @@ def build_plan(root=CODE_ROOT, build_dir=BUILD, backend="cenv", backend_options=
             dict(id="not_directional", text="RL (seed mean) not classified directional (T6)"),
             dict(id="no_exploit_flag", text="no invalidating exploit flag (T5), seed-pooled fills"),
             dict(id="ex_top_positive", text="RL seed-mean P&L excluding the top 5 markets and excluding "
-                                            "the top 3 hours both > 0 (T7)")],
+                                            "the top 3 hours both > 0 (T7)"),
+            dict(id="counts_as_market_making", text="RL counts as making markets: >= 5 fills per market, "
+                                                    "T6 share <= 50%, T5 artifact share <= 25% (D1.3)")],
             note="everything else is secondary and descriptive; 0 s latency is never the headline"),
         ledger=ledger,
         seeds_rule="selected config only, >= 5 seeds, reported as mean with min/max/std; never the best seed",
@@ -399,6 +449,9 @@ def main(argv=None) -> int:
     ap.add_argument("--puffer5", default=None, help="selected.json of 5.0 checkpoints (optional)")
     ap.add_argument("--selected", default=None, help="train/select.py output (default: train/selected.json, "
                                                      "else the only train/runs/sweeps/*/selected.json)")
+    ap.add_argument("--secondary", default=None, help="activity-constrained baselines (D1.2), tune.py "
+                                                       "format; default baselines/tuned_constrained.json "
+                                                       "or tuned_active.json if present")
     ap.add_argument("--env-params", default="{}", help="JSON overrides of the C env parameters "
                                                        "(default: mm.h MM_DEFAULTS, as in training)")
     ap.add_argument("--min-seeds", type=int, default=5)
@@ -415,7 +468,7 @@ def main(argv=None) -> int:
     try:
         plan = build_plan(a.root, a.build_dir, a.backend, json.loads(a.backend_options), a.best_baseline,
                           a.puffer5, a.min_seeds, a.allow_dirty, n_boot=a.n_boot, selected=a.selected,
-                          env_params=json.loads(a.env_params))
+                          env_params=json.loads(a.env_params), secondary=a.secondary)
     except PlanError as e:
         print(f"make_plan: {e}", file=sys.stderr)
         return 1
