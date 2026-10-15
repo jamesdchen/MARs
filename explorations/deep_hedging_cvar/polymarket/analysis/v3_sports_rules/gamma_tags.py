@@ -14,7 +14,7 @@ import random
 import sqlite3
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import duckdb
@@ -51,15 +51,15 @@ def get(params):
         s = _tl.s = requests.Session()
         s.headers.update(UA)
     d = 1.0
-    for _ in range(10):
+    for _ in range(5):  # w2 copy: shorter retries so one bad batch cannot stall the run
         try:
-            r = s.get(GAMMA, params=params, timeout=60)
+            r = s.get(GAMMA, params=params, timeout=20)
             if r.status_code == 200:
                 return r.json()
         except (requests.RequestException, ValueError):
             pass
         time.sleep(d + random.random())
-        d = min(d * 2, 30)
+        d = min(d * 2, 8)
     raise RuntimeError("gamma failed")
 
 
@@ -100,7 +100,8 @@ def main():
     done = 0
     t0 = time.time()
     with ThreadPoolExecutor(a.workers) as ex:
-        for batch, out in ex.map(fetch, batches):
+        for fut in as_completed([ex.submit(fetch, b) for b in batches]):
+            batch, out = fut.result()
             if out is None:
                 print("  batch failed; rerun to retry", flush=True)
                 continue

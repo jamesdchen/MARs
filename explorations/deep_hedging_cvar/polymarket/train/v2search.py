@@ -183,8 +183,11 @@ class Search:
                 pnl = [m['pnl_total'] for m in ms]
                 n = len(pnl)
                 fills = float(np.mean([m.get('fills_per_market') or 0 for m in ms]))
-                t6s = [m.get('t6_share') for m in ms]
-                t6 = float(np.mean([0.0 if (t is None or t != t) else t for t in t6s]))
+                # T6 on seed-pooled attribution (as final/ judges the RL seed mean): mean
+                # inventory/resolution P&L over mean P&L when the mean is positive; a losing
+                # mean has no positive P&L to attribute (0 here, it cannot win the selection)
+                inv_mean = float(np.mean([m.get('sum/inventory_pnl') or 0.0 for m in ms]))
+                t6 = inv_mean / float(np.mean(pnl)) if np.mean(pnl) > 0 else 0.0
                 pess = [r['val'].get('pess_1s', {}).get('pnl_total') for r, _ in runs] if key == '5m+15m+4h' else []
                 rows.append({'config': v['name'], 'filter': key, 'n': n, 'mean': float(np.mean(pnl)),
                              'se': float(np.std(pnl, ddof=1) / math.sqrt(n)) if n > 1 else float('nan'),

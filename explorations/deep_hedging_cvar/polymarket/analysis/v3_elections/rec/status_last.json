@@ -1,0 +1,109 @@
+{
+  "version": "1.0.0",
+  "run_id": "w3e1015210035",
+  "pid": 6220,
+  "time": 1792098417.1085565,
+  "time_utc": "2026-10-15T21:06:57Z",
+  "uptime_s": 381.1,
+  "process": {
+    "rss_mb": 621.2,
+    "cpu_s": 71.4,
+    "cpu_pct_avg": 18.7,
+    "loop_lag_ms": 6.5
+  },
+  "ws": {
+    "shards": 30,
+    "connected": 30,
+    "connects": 32,
+    "disconnects": 2,
+    "disconnects_unexpected": 2,
+    "last_frame_age_s": 0.0,
+    "max_server_lag_s": 2.898
+  },
+  "markets": {
+    "tracked": 300,
+    "subscribed": 300,
+    "live": 300,
+    "tokens": 600,
+    "pending": 0,
+    "awaiting_finalize": 0,
+    "finalized": 0,
+    "finalize_failed": 0
+  },
+  "rates_per_s": {
+    "frames": 193.87,
+    "bytes": 117104.62,
+    "price_change": 189.08,
+    "pc_items": 378.15,
+    "book": 0.0,
+    "best_bid_ask": 1.8,
+    "last_trade_price": 0.0,
+    "rows": 99.59,
+    "reconcile": 0.0,
+    "reconcile_mismatch": 0.0,
+    "bba_mismatch": 0.0
+  },
+  "totals": {
+    "subscribed_markets": 300,
+    "connects": 32,
+    "frames": 125531,
+    "bytes": 83142646,
+    "book": 646,
+    "new_market": 2249,
+    "price_change": 121002,
+    "pc_items": 242004,
+    "bba_checks": 242004,
+    "trade_rows_polled": 1801228,
+    "rows": 50798,
+    "mirror_checks": 25402,
+    "mirror_mismatch": 7,
+    "best_bid_ask": 1162,
+    "pong": 1077,
+    "reconcile": 1799,
+    "reconcile_mismatch": 6,
+    "disconnects": 2,
+    "disconnects_unexpected": 2,
+    "bba_mismatch": 14,
+    "bba_pruned_levels": 14,
+    "last_trade_price": 3
+  },
+  "quality": {
+    "reconcile_checks": 1799,
+    "reconcile_mismatch": 6,
+    "reconcile_mismatch_rate": 0.0033351862145636463,
+    "reconcile_mismatch_top_of_book": 0,
+    "reconcile_errors": 0,
+    "bba_checks": 242004,
+    "bba_mismatch": 14,
+    "bba_mismatch_rate": 0.00005785028346638898,
+    "bba_pruned_levels": 14,
+    "bba_missing": 0,
+    "mirror_checks": 25402,
+    "mirror_mismatch_rate": 0.00027556885284623256,
+    "rows": 50798,
+    "rows_crossed_rate": 0.0,
+    "parse_errors": 0
+  },
+  "output": {
+    "book_rows_written": 48586,
+    "book_bytes_parts": 4894466,
+    "raw_lines": 126896,
+    "raw_bytes_in": 66340664,
+    "raw_bytes_out": 3355819,
+    "raw_paused": false,
+    "buffered_rows": 2212
+  },
+  "disk": {
+    "free_mb": 25798,
+    "used_pct": 5.5
+  },
+  "discovery": {
+    "last_ok_age_s": 27.2,
+    "errors": 0
+  },
+  "http": {
+    "requests": 7562,
+    "errors": 1
+  },
+  "last_error": ""
+}

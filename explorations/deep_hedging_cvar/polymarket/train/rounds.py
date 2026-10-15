@@ -100,7 +100,7 @@ def run_metrics(res, variant=None):
     v = (res.get('val') or {}).get(variant or res.get('headline') or 'central_1s') or {}
     pnl = v.get('pnl_total')
     t6 = v.get('t6_share')
-    return {'pnl_total': pnl, 'fills': v.get('fills_per_market'),
+    return {'pnl_total': pnl, 'fills': v.get('fills_per_market'), 'inv': v.get('sum/inventory_pnl'),
             't6': 0.0 if t6 is None or (isinstance(t6, float) and math.isnan(t6)) else t6,
             'cvar95': v.get('cvar95'), 'pess': ((res.get('val') or {}).get('pess_1s') or {}).get('pnl_total')}
 
@@ -117,7 +117,9 @@ def group_stats(results):
     n = len(vals)
     std = float(np.std(vals, ddof=1)) if n > 1 else float('nan')
     fills = float(np.mean([m['fills'] or 0.0 for m in ms]))
-    t6 = float(np.mean([m['t6'] for m in ms]))
+    # T6 on seed-pooled attribution (as final/ judges the seed mean), not a mean of per-seed shares
+    inv = float(np.mean([m['inv'] or 0.0 for m in ms]))
+    t6 = inv / float(np.mean(vals)) if np.mean(vals) > 0 else 0.0
     return {'n': n, 'seeds': sorted(by_seed), 'mean': float(np.mean(vals)), 'std': std,
             'se': std / math.sqrt(n) if n > 1 else float('nan'), 'per_seed': vals,
             'fills_per_market': fills, 't6_share': t6, 'd13': fills >= 5 and t6 <= 0.5,

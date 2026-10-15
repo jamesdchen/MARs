@@ -136,7 +136,7 @@ def main():
     for t in tags:
         toml += ['[[source]]', f'name = "elec-{t}"', f'params = {{ tag_slug = "{t}" }}',
                  f"slug_regex = '^(?:{slugs})$'", 'window = "end_date"', 'horizon_s = 40000000',
-                 'pre_open_s = 0', 'linger_s = 600', 'max_pages = 60', '']
+                 'pre_open_s = 40000000', 'linger_s = 600', 'max_pages = 60', '']
     (out / "polyrec.toml").write_text("\n".join(toml))
     print(f"reward markets {len(rw)}, open election markets {len(em)}, midterm with rewards {len(rows)}, "
           f"pool ${pool_all:,.0f}/day; selected {len(sel)} = ${snap['selected_pool_per_day']:,.0f}/day; tags {tags}")

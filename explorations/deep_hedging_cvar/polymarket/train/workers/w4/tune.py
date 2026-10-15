@@ -93,12 +93,23 @@ def tune(a):
     log = open(os.path.join(HERE, 'runs', f'{a.study}_log.jsonl'), 'a')
 
     def objective(trial):
+        if a.per_length:
+            P = dict(k_inv=trial.suggest_float('k_inv', 0.0, 0.12), cap=trial.suggest_float('cap', 0.1, 1.0),
+                     max_size=trial.suggest_int('max_size', 0, 2), mode=trial.suggest_categorical('mode', [0, 1, 2]),
+                     thr=0.0, edge_min=0.0)
+            for L in ('5m', '15m', '4h'):
+                P[f'thr_{L}'] = trial.suggest_float(f'thr_{L}', -0.01, 0.05)
+                P[f'edge_min_{L}'] = trial.suggest_float(f'edge_min_{L}', -1.0, 6.0)
+            return run_trial(trial, P)
         P = dict(thr=trial.suggest_float('thr', -0.01, 0.05),
                  edge_min=trial.suggest_float('edge_min', -1.0, 3.0),
                  k_inv=trial.suggest_float('k_inv', 0.0, 0.10),
                  cap=trial.suggest_float('cap', 0.1, 1.0),
                  max_size=trial.suggest_int('max_size', 0, 2),
                  mode=trial.suggest_categorical('mode', [0, 1, 2]))
+        return run_trial(trial, P)
+
+    def run_trial(trial, P):
         rows = []
         for i, q in enumerate(quoters):
             q.params.update(P)
@@ -118,13 +129,21 @@ def tune(a):
     storage = f'sqlite:///{os.path.join(HERE, "runs", a.study + ".db")}'
     study = optuna.create_study(study_name=a.study, storage=storage, direction='maximize', load_if_exists=True,
                                 sampler=optuna.samplers.TPESampler(seed=0, n_startup_trials=12))
-    if len(study.trials) == 0:
+    if len(study.trials) == 0 and a.per_length:
+        b = json.load(open(os.path.join(HERE, 'runs', 'q1_best.json')))['params']   # start from q1's best
+        study.enqueue_trial({**{k: b[k] for k in ('k_inv', 'cap', 'max_size', 'mode')},
+                             **{f'thr_{L}': b['thr'] for L in ('5m', '15m', '4h')},
+                             **{f'edge_min_{L}': b['edge_min'] for L in ('5m', '15m', '4h')}})
+    elif len(study.trials) == 0:
         study.enqueue_trial(dict(thr=0.0, edge_min=0.0, k_inv=0.02, cap=0.6, max_size=2, mode=0))
     left = a.trials - len([t for t in study.trials if t.state.is_finished()])
     if left > 0:
         study.optimize(objective, n_trials=left)
     best = study.best_trial
-    json.dump({'params': best.params, 'value': best.value, 'models': models, 'study': a.study},
+    bp = dict(best.params)
+    if a.per_length:
+        bp.update(thr=0.0, edge_min=0.0)
+    json.dump({'params': bp, 'value': best.value, 'models': models, 'study': a.study},
               open(os.path.join(HERE, 'runs', f'{a.study}_best.json'), 'w'), indent=1)
     print('best', best.number, best.value, best.params)
 
@@ -156,6 +175,7 @@ def main():
     p.add_argument('--tag', default='final')
     p.add_argument('--variants', nargs='*', default=['central_1s', 'pess_1s', 'central_2s'])
     p.add_argument('--threads', type=int, default=1)
+    p.add_argument('--per-length', action='store_true', help='thr / edge_min per contract length')
     a = p.parse_args()
     torch.set_num_threads(a.threads)
     tune(a) if a.cmd == 'tune' else evalcmd(a)
