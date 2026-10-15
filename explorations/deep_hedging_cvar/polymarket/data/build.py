@@ -332,7 +332,7 @@ def main():
                     for k in SPLIT_NAMES}
     meta = {
         "build_version": BUILD_VERSION,
-        "built_at_utc": pd.Timestamp.utcnow().isoformat(),
+        "built_at_utc": pd.Timestamp.now("UTC").isoformat(),
         "F": F, "N": N, "n_markets": int(len(recs)), "dtype": "float32", "order": "row-major [N, F]",
         "columns": COLS, "column_index": C,
         "market_record": {"itemsize": MARKET_DTYPE.itemsize, "fields": layout,
