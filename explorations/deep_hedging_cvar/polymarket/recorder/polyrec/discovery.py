@@ -136,11 +136,21 @@ async def fetch_market_final(http, slug: str) -> dict | None:
     g = await http.get(f"{GAMMA}/markets", params={"slug": slug, "closed": "true"})
     if not g:
         g = await http.get(f"{GAMMA}/markets", params={"slug": slug})
+    ev = None
     if not g:
-        return None
+        # right after the close /markets?slug= can briefly return [] while the event endpoint has it
+        # (up/down event slug == market slug)
+        try:
+            e = await http.get(f"{GAMMA}/events/slug/{slug}", tries=2)
+        except Exception:  # noqa: BLE001  (404 for markets whose event slug differs)
+            e = None
+        ms = [m for m in (e or {}).get("markets") or [] if m.get("slug") == slug]
+        if not ms:
+            return None
+        g, ev = ms, e
     g = g[0]
     meta = {k: g.get(k) for k in GAMMA_KEYS}
-    ev = (g.get("events") or [{}])[0]
+    ev = ev or (g.get("events") or [{}])[0]
     meta["eventMetadata"] = ev.get("eventMetadata")
     meta["eventStartTimeEv"] = ev.get("startTime")
     meta["closed"] = g.get("closed")

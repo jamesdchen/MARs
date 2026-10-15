@@ -6,7 +6,8 @@ its markets files) once gamma reports the markets as resolved.
 
 * winner = 'yes' when outcome 0 (Up) won, 'no' when outcome 1 (Down) won (data/raw convention);
   is_winning_outcome = this row's token is the winning token.
-* Only compacted hourly files are rewritten (never the in-progress _parts of the current hour), each
+* Parts of finished hours are compacted first (same code and lock as the recorder). Only compacted
+  hourly files are rewritten (never the in-progress _parts of the current hour), each
   atomically (temp file + rename) under the same lock the recorder's compaction uses; the part
   manifest in the file metadata is preserved. Safe to run from cron while the recorder is running.
 * Resolutions are cached in <out>/state/resolutions.json, so reruns only query new markets.
@@ -30,9 +31,9 @@ from polyrec.discovery import fetch_market_final, jl, resolution  # noqa: E402
 from polyrec.http import Http  # noqa: E402
 from polyrec.metadata import market_row  # noqa: E402
 from polyrec.schema import BOOK_SCHEMA, MARKETS_SCHEMA  # noqa: E402
-from polyrec.sinks import file_lock  # noqa: E402
+from polyrec.sinks import BookRowBuffer, TableSink, file_lock, hour_key  # noqa: E402
 
-RES_COLS = ["closed_time", "outcome_price_up", "winner_up", "final_price", "uma_status"]
+RES_COLS = ["closed_time", "outcome_price_up", "winner_up", "final_price", "uma_status", "tick_size"]
 
 
 def final_files(out: Path, name: str, days):
@@ -61,7 +62,7 @@ async def fetch_resolutions(slugs, cache: dict, workers: int = 6) -> dict:
                     return
                 toks = [str(t) for t in jl(g.get("clobTokenIds") or "[]")]
                 keep = ("id", "outcomes", "outcomePrices", "clobTokenIds", "closed", "closedTime",
-                        "umaResolutionStatus", "eventMetadata")
+                        "umaResolutionStatus", "eventMetadata", "orderPriceMinTickSize")
                 cache[s] = {"winner_idx": win, "winning_token": toks[win] if len(toks) == 2 else None,
                             "gamma": {k: g.get(k) for k in keep}, "at": int(time.time())}
         await asyncio.gather(*(one(s) for s in todo))
@@ -77,6 +78,28 @@ def rewrite(path: Path, table: pa.Table):
                    use_dictionary=["market_slug", "coin", "contract_length", "token_id", "outcome"]
                    if "market_slug" in table.column_names else True)
     tmp.replace(path)
+
+
+def fill_book_file(path: Path, resolved: dict) -> int:
+    """Fill null winner / is_winning_outcome of resolved markets in one books file; returns rows filled.
+    resolved: slug -> {"winner_idx": 0|1, "winning_token": token_id}."""
+    if not resolved:
+        return 0
+    t = pq.read_table(path)
+    slugs = pa.array(list(resolved), pa.string())
+    win_tok = pa.array([resolved[s]["winning_token"] for s in resolved], pa.string())
+    win_yes = pa.array(["yes" if resolved[s]["winner_idx"] == 0 else "no" for s in resolved], pa.string())
+    idx = pc.index_in(t["market_slug"], slugs)
+    fill = pc.and_(pc.is_valid(idx), pc.is_null(t["winner"]))
+    n = int(pc.sum(fill.cast(pa.int64())).as_py() or 0)
+    if not n:
+        return 0
+    w = pc.if_else(fill, pc.take(win_yes, idx), t["winner"])
+    iw = pc.if_else(fill, pc.equal(t["token_id"], pc.take(win_tok, idx)), t["is_winning_outcome"])
+    t = t.set_column(t.schema.get_field_index("winner"), "winner", w.cast(pa.string()))
+    t = t.set_column(t.schema.get_field_index("is_winning_outcome"), "is_winning_outcome", iw.cast(pa.bool_()))
+    rewrite(path, t.cast(BOOK_SCHEMA))
+    return n
 
 
 def main(argv=None):
@@ -95,6 +118,12 @@ def main(argv=None):
     cache_p = state / "resolutions.json"
     cache = json.loads(cache_p.read_text()) if cache_p.exists() else {}
 
+    # parts of finished hours (recorder stopped before compacting them) -> compact first
+    cur = hour_key(time.time())
+    for sink in (BookRowBuffer(out, "backfill"), TableSink(out, "markets", MARKETS_SCHEMA, "backfill")):
+        for h in sink.part_hours():
+            if h < cur and (days is None or h[:10] in days):
+                sink.compact(h)
     book_files = final_files(out, "books", days)
     need = set()
     for f in book_files:
@@ -116,23 +145,11 @@ def main(argv=None):
         return 0
 
     n_rows = n_files = 0
-    win_tok = pa.array([resolved[s]["winning_token"] for s in resolved], pa.string())
-    win_yes = pa.array(["yes" if resolved[s]["winner_idx"] == 0 else "no" for s in resolved], pa.string())
-    slugs = pa.array(list(resolved), pa.string())
     for f in book_files:
         with file_lock(out, "books"):
-            t = pq.read_table(f)
-            idx = pc.index_in(t["market_slug"], slugs)
-            fill = pc.and_(pc.is_valid(idx), pc.is_null(t["winner"]))
-            if not pc.any(fill).as_py():
-                continue
-            w = pc.if_else(fill, pc.take(win_yes, idx), t["winner"])
-            iw = pc.if_else(fill, pc.equal(t["token_id"], pc.take(win_tok, idx)), t["is_winning_outcome"])
-            t = t.set_column(t.schema.get_field_index("winner"), "winner", w.cast(pa.string()))
-            t = t.set_column(t.schema.get_field_index("is_winning_outcome"), "is_winning_outcome", iw.cast(pa.bool_()))
-            rewrite(f, t.cast(BOOK_SCHEMA))
-            n_rows += int(pc.sum(fill.cast(pa.int64())).as_py())
-            n_files += 1
+            k = fill_book_file(f, resolved)
+        n_rows += k
+        n_files += k > 0
     n_mk = 0
     for f in mk_files:
         with file_lock(out, "markets"):
@@ -145,6 +162,8 @@ def main(argv=None):
                 new = market_row(r.slug, r.coin, r.contract_length, resolved[r.slug]["gamma"],
                                  r.n_taker, r.n_fills, r.truncated)
                 for c in RES_COLS:
+                    if c == "tick_size" and not (new[c] == new[c]):      # NaN: keep the finalize-time value
+                        continue
                     df.at[i, c] = new[c]
             rewrite(f, pa.Table.from_pandas(df, schema=MARKETS_SCHEMA, preserve_index=False))
             n_mk += int(hit.sum())

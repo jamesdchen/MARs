@@ -100,5 +100,6 @@ MARKET_QC_SCHEMA = pa.schema([
     ("n_disconnects", pa.int64()),
     ("n_trades_incremental", pa.int64()),
     ("trades_truncated", pa.bool_()),
+    ("trades_consistent", pa.bool_()),   # passes the leg checks data/features.py asserts
     ("resolved", pa.bool_()),
 ])

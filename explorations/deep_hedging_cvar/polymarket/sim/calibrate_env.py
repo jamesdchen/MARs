@@ -58,17 +58,20 @@ def align_metrics(d) -> dict:
     out = {"align|at0": float(a[0]), "align|thr0": float(t[0]), "align|at4": float(a[1]), "align|thr4": float(t[1])}
     for L, n in zip((300, 900, 14400), LENS):
         out[f"count|{n}"] = float(d.X[d.L == L, cm.C["trade_count"]].sum())
+    ts = mt.trade_stats(d, tk)
+    for n in LENS:
+        out[f"acf|{n}"] = float(ts[f"sign_acf|{n}|1"])
     return out
 
 
 SCALE = {"total": 600.0, "fill_vol": None, "capture": 0.3, "mk5": 0.4, "mk30": 0.4, "mk60": 0.4,
-         "at0": 0.03, "thr0": 0.03, "at4": 0.03, "thr4": 0.03, "count": None}
+         "at0": 0.03, "thr0": 0.03, "at4": 0.03, "thr4": 0.03, "count": None, "acf": 0.03}
 
 
 def loss(sim: dict, real: dict) -> tuple[float, dict]:
     parts = {}
     for k, rv in real.items():
-        kind = k.split("|")[-1] if not k.startswith("count") else "count"
+        kind = k.split("|")[-1] if not (k.startswith("count") or k.startswith("acf")) else k.split("|")[0]
         sv = sim[k]
         if kind in ("fill_vol", "count"):
             parts[k] = (np.log(max(sv, 1e-9) / max(rv, 1e-9)) / (0.15 if kind == "fill_vol" else 0.1)) ** 2
@@ -137,6 +140,15 @@ def grid(name: str, base: dict) -> list[dict]:
             c["flow.refill_prob"] = rf
             cands.append(c)
         cands = cands[1:]
+    elif name == "copy5m":
+        for k5, c5 in ((1.0, 0.0), (0.5, 0.0), (1.0, 0.1)):
+            cands.append({"flow.direction.rho_copy_by_len.5m": c5, "flow.direction.rho_copy_by_len.15m": 0.1,
+                          "flow.lookahead.5m": {"h": 5, "kappa": k5}})
+        cands = cands[1:]
+    elif name == "copy":
+        for c5, c15 in ((0.0, 0.18), (0.08, 0.22), (0.0, 0.10)):
+            cands.append({"flow.direction.rho_copy_by_len.5m": c5, "flow.direction.rho_copy_by_len.15m": c15})
+        cands = cands[1:]
     elif name == "refine2":
         for h, k, trk in itertools.product((10, 20, 40), (3.0, 10.0), (0.5, 0.25)):
             c = {f"flow.lookahead.{L}": {"h": h, "kappa": k} for L in LENS}
@@ -187,7 +199,8 @@ def main():
         short = {k.replace("flow.", ""): v for k, v in cand.items()
                  if k.endswith(".5m") or k.endswith("5m.kappa") or k.endswith("tracking") or k.endswith("refill_prob")}
         top = sorted(parts.items(), key=lambda kv: -kv[1])[:4]
-        print(f"[{i}] loss {L:7.1f} {short} | fv mk {sim['fair_value|mk5']:.2f}/{sim['fair_value|mk30']:.2f}/"
+        short = {k.replace("flow.", "").replace("direction.rho_copy_by_len", "copy"): v for k, v in cand.items()}
+        print(f"[{i}] loss {L:7.1f} {short} acf {sim['acf|5m']:.3f}/{sim['acf|15m']:.3f}/{sim['acf|4h']:.3f} | fv mk {sim['fair_value|mk5']:.2f}/{sim['fair_value|mk30']:.2f}/"
               f"{sim['fair_value|mk60']:.2f} st vol {sim['sym_touch|fill_vol']:.0f} cap {sim['sym_touch|capture']:.2f} "
               f"tot {sim['sym_touch|total']:.0f}/{sim['fair_value|total']:.0f} at0 {sim['align|at0']:.3f} "
               f"| worst {[(k, round(v, 1)) for k, v in top]} ({time.time() - t0:.0f}s)", flush=True)

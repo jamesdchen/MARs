@@ -35,6 +35,8 @@ cd explorations/deep_hedging_cvar/polymarket/sim
 python fetch_binance.py --coins btc eth sol xrp --start 2026-07-23 --end 2026-08-21   # ~30 days, cached in cache/
 python fit.py                          # train-only fit -> params.json + params_book.npz (~10 min)
 python generate.py --n-markets 2000 --coins btc eth sol xrp --seed 1 --randomize      # -> ../data/build_sim/
+python calibrate_env.py --grid refill && python calibrate_env.py --apply --tag refill   # C-env calibration of the flow
+python fit.py --parts rate             # re-match mean trade counts after flow changes
 python validate_env.py --reps 20 --chunk 5   # gate through the C env -> VALIDATION.md, validation_env.json
 ```
 
@@ -112,9 +114,9 @@ Row t is unix second t, as in `data/README.md`. Within second t, events happen i
 | Spread | Empirical categorical by (len, coin group btc/eth/alt/zec, tau, ext(p), tick grid), backed off to coarser cells | Real spread support in mils |
 | Depth | The whole top-5 bid/ask size vector is resampled from the real snapshots of the same (len, coin group, tau) cell, with total/top-5 depth ratio. The previous vector is kept with probability 1 - (1 - acf1)/pi. Level gaps are empirical. | Library of 3000 vectors per cell (`params_book.npz`) |
 | Taker arrivals | Linear Hawkes: lambda = A_m exp(cell(len, tau) + b_gap \|p - mid\| + b_z \|z5\| + b_O O) + eta H_t, with H an exponential kernel. A_m ~ lognormal(len, coin). No flow in hollow books. | eta = 0.43, tau = 5 s (LR 17,239 vs Poisson). b_gap 1.37, b_z 0.28, b_O -2.3. Market sd 0.90. Simulated mean-rate correction per length. |
-| Direction | Noise takers follow the fitted P(buy \| gap bucket), plus a copy of the previous sign with probability rho. Informed takers (share w) trade on the sign of the mid's staleness, i.e. what the next update reveals. | P(buy) 0.40 -> 0.57/0.60/0.59 by gap. rho 0.22/0.29/0.25. w 0.30/0.15/0.00 (5m/15m/4h). |
-| Sizes, sweep | Taker size from empirical quantiles by (len, coin group). It sweeps the **actual** book: the snapshot shape translated to the current mid target. Each level gives geometric(mean 1.35) maker legs. | Median 10 (BTC 5m), 0.02 (alt 5m), 15-20 (4h) |
-| Impact | Each print adds kappa sign sqrt(min(size, 500)/10) to an accumulator (half-life 300 s). The target absorbs it with a 15 s half-life. | kappa 0.02/0.02/0.04 (simulated moments on markout drift, P(buy\|gap) and print alignment) |
+| Direction | Noise takers follow the fitted P(buy \| gap bucket), plus a copy of the previous sign with probability rho. **Look-ahead informed takers**: each arrival is informed with probability 1 - exp(-kappa_I edge), where edge = (mid target h s ahead, Binance-driven part only) minus the actual touch, net of the taker fee, in cents. An informed arrival takes that side. The older "staleness" informed share w is set to 0. | P(buy) 0.40 -> 0.57/0.60/0.59 by gap. h = 5 s; kappa_I 0.5/3/3 per cent; rho 0/0.10/0.25 (5m/15m/4h). From the C-env calibration (`calibrate_env.py`). |
+| Sizes, sweep | Taker size from empirical quantiles by (len, coin group). It sweeps the **actual** book: the snapshot shape translated to the current mid target. A level a print exhausts is re-posted at the same price with probability r_refill (fresh library size), else removed. Each level gives geometric(mean 1.35) maker legs. | Median 10 (BTC 5m), 0.02 (alt 5m), 15-20 (4h); r_refill = 0.8 |
+| Impact | Each print adds kappa sign sqrt(min(size, 500)/10) to an accumulator (half-life 300 s). The target absorbs it with a 15 s half-life. | kappa 0.01/0.01/0.02 (half the earlier simulated-moment values, from the C-env calibration) |
 | Legs, tokens | The taker leg is on Up with probability 0.73 (buy) / 0.30 (sell). Maker legs are on Up with probability 0.13 (buy) / 0.89 (sell). Down legs are priced 1 - p. | Train legs |
 | Block time | Stamp = match + d, d in {3, 4} with probability 1/2 each. Prints after the end appear only in `fills.parquet`, as in the real data. | COVERAGE.md. A fitted delay mixture could not reproduce the real alignment, see VALIDATION.md. |
 | Fees, rewards | taker 0.07 p(1-p), maker rebate 20%, min order size 5. Rewards (min size, max spread) are drawn from the train joint distribution by length. | markets.parquet |
@@ -178,7 +180,7 @@ Not implemented (SIMULATOR.md items left for later):
 |---|---|
 | `common.py` | format constants imported from `data/build.py`; the pricer from `analysis/fair_value`; train-only loaders; bucket definitions |
 | `fetch_binance.py` | caches Binance 1 s closes (excludes 08-22..25); `load_closes` returns contiguous segments |
-| `fit.py` | train-only fit: `--parts settlement book mid flow informed rate fees` |
+| `fit.py` | train-only fit: `--parts settlement book mid flow informed rate fees`. `--pre-trades START END` also pools on-chain pre-period trades (onchain/, days <= 2026-08-20) into the book-free flow parameters: sizes, tokens, legs, sweep depth. |
 | `params.json`, `params_book.npz` | fitted parameters and the empirical size library |
 | `engine.py` | the vectorised batch engine, running B same-length markets in lockstep per second; fill legs |
 | `generate.py` | schedules, pricing, writes the build, calls `features_sim.py` |
@@ -186,4 +188,5 @@ Not implemented (SIMULATOR.md items left for later):
 | `metrics.py` | statistics shared by fit and validation (book, trades, alignment, markouts, mid moments, numpy fill check) |
 | `validate_env.py` | **the gate**: no_quote / sym_touch / fair_value (baselines DEFAULTS) through the C env, real vs sim train. Writes `VALIDATION.md` and `validation_env.json`. |
 | `validate.py` | fast numpy-only variant. Its `evaluate` provides G4. Writes to `cache/`. |
+| `calibrate_env.py` | Calibrates look-ahead informed takers, refill, impact and copy probability **through the C env** on one train-schedule replication per candidate. The loss covers the baselines' markout curves, fill volume, capture and totals, print alignment, sign ACF and trade counts. `--grid NAME`, then `--apply`; log in `cache/calib_env.jsonl`. |
 | `cache/` | git-ignored Binance cache, logs and gate scratch |

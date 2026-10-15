@@ -481,7 +481,10 @@ def glm_design(cov, Lr, tau):
     return cell, X
 
 
-def fit_flow(P: dict, mk: pd.DataFrame, mid, reg) -> dict:
+def fit_flow(P: dict, mk: pd.DataFrame, mid, reg, pre: pd.DataFrame | None = None) -> dict:
+    """pre: optional pre-period on-chain trades (cm.pre_period_trades), pooled only into book-free parameters
+    (taker size quantiles, token mix, maker legs per level, sweep depth); everything that needs the book or
+    Binance state (arrival covariates, P(buy | gap), markouts) stays train-only."""
     o = np.concatenate([[0], np.cumsum(mk.n_rows.values)])
     n_t = P["trade_count"]
     cov = flow_covariates(P, mk, mid, reg)
@@ -609,22 +612,38 @@ def fit_flow(P: dict, mk: pd.DataFrame, mid, reg) -> dict:
         ps = (sg[1:] == sg[:-1])[s2].mean()
         pi_ = (q[1:] * q[:-1] + (1 - q[1:]) * (1 - q[:-1]))[s2].mean()
         rho_copy_len[cm.LEN_NAME[L]] = float((ps - pi_) / (1 - pi_))
-    # sizes
+    # sizes (pooled with pre-period on-chain taker txs when given: no book needed)
     qs = np.linspace(0, 1, 101)
-    size_q = {cm.LEN_NAME[L]: np.quantile(np.log(np.maximum(tk["size"].values[tk.L.values == L], 1e-3)), qs)
+    n_pre = 0
+    if pre is not None and len(pre):
+        ptk = pre[pre.is_taker]
+        n_pre = int(len(ptk))
+        ext = pd.DataFrame({"size": ptk["size"].values.astype(float), "L": ptk.L.values,
+                            "coin": ptk.coin.values})
+        tk_pool = pd.concat([pd.DataFrame({"size": tk["size"].values.astype(float), "L": tk.L.values,
+                                           "coin": mk.coin.values[tk.mpos.values]}), ext], ignore_index=True)
+    else:
+        tk_pool = pd.DataFrame({"size": tk["size"].values.astype(float), "L": tk.L.values,
+                                "coin": mk.coin.values[tk.mpos.values]})
+    size_q = {cm.LEN_NAME[L]: np.quantile(np.log(np.maximum(tk_pool["size"].values[tk_pool.L.values == L], 1e-3)), qs)
               for L in cm.LENS}
     # by coin group too: BTC prints are much larger than alt prints (volume mix across coins)
-    tk_cg = np.array([cm.COIN_GROUP[c] for c in mk.coin.values[tk.mpos.values]])
+    tk_cg = np.array([cm.COIN_GROUP[c] for c in tk_pool.coin.values])
     size_q_cg = {}
     for L in cm.LENS:
         for g_ in range(cm.NCG):
-            s_ = (tk.L.values == L) & (tk_cg == g_)
-            src = s_ if s_.sum() >= 300 else (tk.L.values == L)
+            s_ = (tk_pool.L.values == L) & (tk_cg == g_)
+            src = s_ if s_.sum() >= 300 else (tk_pool.L.values == L)
             size_q_cg[f"{cm.LEN_NAME[L]}|{cm.CG_NAMES[g_]}"] = np.quantile(
-                np.log(np.maximum(tk["size"].values[src], 1e-3)), qs)
-    # sweep depth (distinct maker price levels per tx) and legs per level
+                np.log(np.maximum(tk_pool["size"].values[src], 1e-3)), qs)
+    # sweep depth (distinct maker price levels per tx) and legs per level (pooled with pre-period legs)
+    if pre is not None and len(pre):
+        pm = pre[~pre.is_taker]
+        mkl = pd.concat([mkl[["tx", "px_up"]], pm[["tx", "px_up"]]], ignore_index=True)
+        tr = pd.concat([tr[["is_taker", "outcome_idx", "aggressor_up"]],
+                        pre[["is_taker", "outcome_idx", "aggressor_up"]]], ignore_index=True)
     mkl["pxr"] = mkl.px_up.round(4)
-    g = mkl.groupby("tx")
+    g = mkl.groupby("tx", sort=False)
     nlev = g.pxr.nunique().values
     legs_per_level = float((g.size() / g.pxr.nunique()).mean())
     jlev = np.minimum(nlev - 1, cm.NLEV - 1)
@@ -652,6 +671,8 @@ def fit_flow(P: dict, mk: pd.DataFrame, mid, reg) -> dict:
                                "capped at the displayed depth within the limit; each level touched yields "
                                "a geometric number of maker legs"),
                tokens=tok,
+               pre_period=dict(n_taker_tx=n_pre, used_for="size quantiles, token mix, legs per level, sweep depth"
+                               if n_pre else "not used"),
                stamp_delay=dict(values=[3, 4], p=[0.5, 0.5],
                                 note="block time - match time (COVERAGE.md: alignment with the book peaks at 3-4 s)"),
                n_taker_tx=int(len(tk)))
@@ -849,6 +870,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--parts", nargs="+", default=["settlement", "book", "mid", "flow", "informed", "rate", "fees"],
                     help="refit only these components (others are kept from the existing params.json)")
+    ap.add_argument("--pre-trades", nargs=2, metavar=("START", "END"), default=None,
+                    help="also pool on-chain pre-period trades (onchain/, days START..END <= 2026-08-20) into the "
+                         "book-free flow parameters (sizes, tokens, legs, sweep depth)")
     a = ap.parse_args()
     t0 = time.time()
     P, mk = cm.train_panel()
@@ -871,17 +895,25 @@ def main():
         params["mid"] = fit_mid(P, mk, reg, mid, fine, np.asarray(params["book"]["book_change_profile"]["p_age0"]))
         print(f"mid done {time.time()-t0:.1f}s")
     if "flow" in a.parts:
-        keep = {k: params.get("flow", {}).get(k) for k in ("informed", "impact", "stamp_delay")}
+        keep = {k: params.get("flow", {}).get(k) for k in ("informed", "impact", "stamp_delay", "lookahead",
+                                                           "refill_prob", "actual_book_tracking",
+                                                           "lookahead_calibration")}
         keep_shift = params.get("flow", {}).get("market_effect", {}).get("a_len_shift")
-        params["flow"] = fit_flow(P, mk, mid, reg)
+        pre = cm.pre_period_trades(*a.pre_trades) if a.pre_trades else None
+        if pre is not None:
+            print(f"pre-period trades: {len(pre)} legs, {int(pre.is_taker.sum())} taker txs, "
+                  f"{pre.slug.nunique()} markets")
+        params["flow"] = fit_flow(P, mk, mid, reg, pre)
         params["flow"].update({k: v for k, v in keep.items() if v is not None
                                and not (k in ("informed", "impact") and "informed" in a.parts)
+                               and not (k in ("lookahead", "refill_prob", "lookahead_calibration")
+                                        and "lookahead" in a.parts)
                                and not (k == "stamp_delay" and "delay" in a.parts)})
         if keep_shift is not None and "rate" not in a.parts:
             params["flow"]["market_effect"]["a_len_shift"] = keep_shift
         print(f"flow done {time.time()-t0:.1f}s")
     if "rate" in a.parts:
-        params["flow"]["market_effect"]["a_len_shift"] = calibrate_rate(P, mk, params, reps=6, iters=1)["a_len_shift"]
+        params["flow"]["market_effect"]["a_len_shift"] = calibrate_rate(P, mk, params, reps=10, iters=1)["a_len_shift"]
         print(f"rate calibration done {time.time()-t0:.1f}s")
     if "delay" in a.parts:
         params["flow"]["stamp_delay"] = fit_delay(P, mk, params)

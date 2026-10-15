@@ -61,6 +61,7 @@ class WSConfig:
 class ReconcileConfig:
     interval_s: float = 60.0       # REST re-read period per token
     grace_s: float = 1.5           # wait after the REST reply so in-flight WS deltas land before comparing
+    history_events: int = 4096     # per-token ring of recent stream events replayed on top of REST
     mode: str = "book"             # "book": GET /book per token; "books": POST /books batches
     batch: int = 40                # tokens per POST /books
     concurrency: int = 4
@@ -76,7 +77,8 @@ class TradesConfig:
     poll_interval_s: float = 30.0  # incremental data-api polls per live market (both takerOnly modes)
     page: int = 500
     overlap_s: int = 180           # re-read this far behind the newest seen trade (late indexing)
-    settle_delay_s: float = 300.0  # finalize (full sweep + gamma metadata) this long after end
+    settle_delay_s: float = 600.0  # finalize (full sweep + gamma metadata) this long after end; retried
+                                   # every 2 min (up to 30 min) until resolved and trade legs consistent
     concurrency: int = 3
     finalize_lookback_s: int = 6 * 3600  # on startup, finalize markets that ended this recently
 

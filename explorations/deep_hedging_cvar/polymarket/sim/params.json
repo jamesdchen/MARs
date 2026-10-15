@@ -1,7 +1,7 @@
 {
  "meta": {
   "fitted_on": "train split 0 only: 431 markets (5m 248, 15m 146, 4h 37), opens 2026-08-21..22 UTC; Binance < 2026-08-23",
-  "created_utc": "2026-10-15T05:31:00.912733+00:00",
+  "created_utc": "2026-10-15T07:56:01.798693+00:00",
   "n_rows": 739031,
   "pricer": {
    "halflife_s": 300,
@@ -91422,9 +91422,9 @@
    "n_markets": 429,
    "note": "log A_m = a_len + a_coin + N(0, sd^2) (Hawkes baseline scale per market)",
    "a_len_shift": {
-    "5m": -0.052707,
-    "15m": -0.24811,
-    "4h": -0.530785
+    "5m": -0.13471,
+    "15m": -0.186253,
+    "4h": -0.737855
    }
   },
   "direction": {
@@ -91521,13 +91521,13 @@
    },
    "rho_copy": 0.243512,
    "rho_copy_by_len": {
-    "5m": 0.223304,
-    "15m": 0.291051,
+    "5m": 0.0,
+    "15m": 0.1,
     "4h": 0.246962
    },
    "p_same_sign_observed": 0.626077,
    "p_same_sign_independent": 0.505711,
-   "note": "P(taker buys Up | p_model - mid at match time); with prob rho_copy a trade repeats the previous trade's direction in that market"
+   "note": "P(taker buys Up | p_model - mid at match time); with prob rho_copy a trade repeats the previous trade's direction in that market; rho_copy_by_len re-set after the look-ahead fix (calibrate_env.py copy5m)"
   },
   "size_log_quantiles": {
    "q": [
@@ -93214,7 +93214,7 @@
   "n_taker_tx": 158970,
   "informed": {
    "5m": {
-    "w": 0.3,
+    "w": 0.0,
     "kappa_noise": 1.0,
     "loss": 81.675309,
     "loss_pbuy": 19.287591,
@@ -93312,7 +93312,7 @@
     ]
    },
    "15m": {
-    "w": 0.15,
+    "w": 0.0,
     "kappa_noise": 1.0,
     "loss": 88.542785,
     "loss_pbuy": 8.35242,
@@ -93511,21 +93511,140 @@
   },
   "impact": {
    "5m": {
-    "kappa": 0.02,
+    "kappa": 0.01,
     "halflife_s": 300.0,
     "rise_halflife_s": 15.0
    },
    "15m": {
-    "kappa": 0.02,
+    "kappa": 0.01,
     "halflife_s": 300.0,
     "rise_halflife_s": 15.0
    },
    "4h": {
-    "kappa": 0.04,
+    "kappa": 0.02,
     "halflife_s": 300.0,
     "rise_halflife_s": 15.0
    },
    "note": "each print adds kappa * sign * sqrt(min(size, 500)/10) to an impact accumulator a (logit units, decays with half-life halflife_s); the mid target carries v, which approaches a with half-life rise_halflife_s"
+  },
+  "lookahead": {
+   "5m": {
+    "h": 5,
+    "kappa": 0.5
+   },
+   "15m": {
+    "h": 5,
+    "kappa": 3.0
+   },
+   "4h": {
+    "h": 5,
+    "kappa": 3.0
+   }
+  },
+  "refill_prob": 0.8,
+  "lookahead_calibration": {
+   "loss": 69.709393,
+   "sim": {
+    "sym_touch|total": -4265.327382,
+    "sym_touch|fill_vol": 237.419531,
+    "sym_touch|capture": 1.958387,
+    "sym_touch|mk5": -2.658338,
+    "sym_touch|mk30": -5.367012,
+    "sym_touch|mk60": -5.415919,
+    "fair_value|total": 19.60593,
+    "fair_value|fill_vol": 104.232567,
+    "fair_value|capture": 1.916346,
+    "fair_value|mk5": -2.343699,
+    "fair_value|mk30": -4.10212,
+    "fair_value|mk60": -3.410481,
+    "align|at0": 0.570581,
+    "align|thr0": 0.422742,
+    "align|at4": 0.65297,
+    "align|thr4": 0.48406,
+    "count|5m": 120694.0,
+    "count|15m": 45839.0,
+    "count|4h": 8062.0
+   },
+   "real": {
+    "sym_touch|total": -2957.605577,
+    "sym_touch|fill_vol": 164.379989,
+    "sym_touch|capture": 0.675341,
+    "sym_touch|mk5": -2.897677,
+    "sym_touch|mk30": -4.419531,
+    "sym_touch|mk60": -4.855618,
+    "fair_value|total": -796.566024,
+    "fair_value|fill_vol": 85.713934,
+    "fair_value|capture": 1.353594,
+    "fair_value|mk5": -3.045703,
+    "fair_value|mk30": -4.450832,
+    "fair_value|mk60": -4.721057,
+    "align|at0": 0.547208,
+    "align|thr0": 0.425146,
+    "align|at4": 0.654299,
+    "align|thr4": 0.547791,
+    "count|5m": 107271.0,
+    "count|15m": 45185.0,
+    "count|4h": 6514.0
+   },
+   "cand": {
+    "flow.lookahead.5m": {
+     "h": 5,
+     "kappa": 3.0
+    },
+    "flow.lookahead.15m": {
+     "h": 5,
+     "kappa": 3.0
+    },
+    "flow.lookahead.4h": {
+     "h": 5,
+     "kappa": 3.0
+    },
+    "flow.informed.5m.w": 0.0,
+    "flow.informed.15m.w": 0.0,
+    "flow.informed.4h.w": 0.0,
+    "flow.impact.5m.kappa": 0.01,
+    "flow.impact.15m.kappa": 0.01,
+    "flow.impact.4h.kappa": 0.02,
+    "flow.refill_prob": 0.8
+   },
+   "n_candidates": 6,
+   "note": "calibrate_env.py: one train-schedule replication per candidate through features.py + C env; loss on baseline markout curves, fill volume, capture, totals, print alignment, trade counts",
+   "followup": {
+    "cand": {
+     "flow.direction.rho_copy_by_len.5m": 0.0,
+     "flow.direction.rho_copy_by_len.15m": 0.1,
+     "flow.lookahead.5m": {
+      "h": 5,
+      "kappa": 0.5
+     }
+    },
+    "loss": 92.54521230988425,
+    "sim": {
+     "sym_touch|total": -3843.915094583819,
+     "sym_touch|fill_vol": 221.92692684954392,
+     "sym_touch|capture": 1.7844534132100158,
+     "sym_touch|mk5": -2.740477440912305,
+     "sym_touch|mk30": -5.087498716644504,
+     "sym_touch|mk60": -5.390498758908451,
+     "fair_value|total": 257.1140371312358,
+     "fair_value|fill_vol": 100.7582991583437,
+     "fair_value|capture": 1.8740581328078019,
+     "fair_value|mk5": -2.346153625490931,
+     "fair_value|mk30": -3.739213793162889,
+     "fair_value|mk60": -2.775416956174868,
+     "align|at0": 0.575805270393545,
+     "align|thr0": 0.4267387030874587,
+     "align|at4": 0.6485264386435965,
+     "align|thr4": 0.48165462349407195,
+     "count|5m": 111361.0,
+     "count|15m": 41446.0,
+     "count|4h": 4090.0,
+     "acf|5m": 0.267334782248216,
+     "acf|15m": 0.2915812389846833,
+     "acf|4h": 0.23231572940465947
+    },
+    "note": "5m look-ahead kappa lowered to 0.5 and copy prob 0 (5m) / 0.1 (15m) so the sign ACF of trades matches real (look-ahead informed trades already come in same-sign runs)"
+   }
   }
  },
  "fees": {
@@ -93647,6 +93766,12 @@
    "kind": "log",
    "lo": 0.5,
    "hi": 2.0
+  },
+  "lookahead_mult": {
+   "kind": "log",
+   "lo": 0.5,
+   "hi": 2.0,
+   "doc": "scales the look-ahead informed-taker sensitivity kappa (flow.lookahead)"
   },
   "hawkes_eta": {
    "kind": "uniform",

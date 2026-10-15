@@ -8,6 +8,7 @@ Type=oneshot
 User=polyrec
 Group=polyrec
 WorkingDirectory=/opt/polyrec
+Environment=PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
 ExecStart=/opt/polyrec/.venv/bin/python backfill_winners.py --out /var/lib/polyrec --recent 2
 Nice=10
 ProtectSystem=strict

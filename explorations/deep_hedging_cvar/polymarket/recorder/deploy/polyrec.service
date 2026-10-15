@@ -10,6 +10,7 @@ NotifyAccess=main
 User=polyrec
 Group=polyrec
 WorkingDirectory=/opt/polyrec
+Environment=PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
 ExecStart=/opt/polyrec/.venv/bin/python -m polyrec record --config /etc/polyrec/config.toml
 # polyrec sends READY=1 after start-up and WATCHDOG=1 every 10 s from its event loop; a hung loop
 # is killed by systemd after WatchdogSec (the in-process watchdog thread exits after 120 s too).

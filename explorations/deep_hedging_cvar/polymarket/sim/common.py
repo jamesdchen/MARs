@@ -176,6 +176,45 @@ def book_state(P: dict):
     return reg, mid, spread
 
 
+ONCHAIN = POLY / "onchain" / "data" / "crypto-updown"
+PRE_PERIOD_LAST_DAY = "2026-08-20"          # pre-period trades end before the train days (08-21..22)
+
+
+def pre_period_trades(start: str = "2026-07-21", end: str = PRE_PERIOD_LAST_DAY) -> pd.DataFrame:
+    """On-chain fills converted by onchain/to_trades.py (data/raw/trades.parquet schema) for markets that open
+    AND end inside [start, end] (UTC days), i.e. strictly before the train days. Flow-only data (no L2 book):
+    use it only for parameters that need no book or Binance state (taker sizes, tokens, legs, sweep depth,
+    sign persistence, trades per market). Never reads anything dated 2026-08-21 or later for this purpose,
+    and asserts nothing from 2026-08-22 on is returned."""
+    assert end <= PRE_PERIOD_LAST_DAY, "pre-period trades must end by 2026-08-20 (train starts 08-21)"
+    t_lo = int(pd.Timestamp(start, tz="UTC").timestamp())
+    t_hi = int((pd.Timestamp(end, tz="UTC") + pd.Timedelta(days=1)).timestamp())      # exclusive
+    parts = []
+    for f in sorted(ONCHAIN.glob("trades_*_*.parquet")):
+        s, e = f.stem.split("_")[1:3]
+        if e < start or s > end:
+            continue
+        parts.append(pd.read_parquet(f))
+    if not parts:
+        return pd.DataFrame(columns=["slug", "timestamp", "outcome_idx", "side", "price", "size", "is_taker",
+                                     "aggressor_up", "tx"])
+    t = pd.concat(parts, ignore_index=True)
+    t["slug"] = t.slug.astype(str)
+    sl = t.slug.str.extract(r"^(\w+)-updown-(5m|15m|4h)-(\d+)$")
+    t = t[sl[0].notna()].copy()
+    sl = sl[sl[0].notna()]
+    t["coin"] = sl[0].values
+    t["L"] = sl[1].map(CLEN).values.astype(np.int64)
+    t["open_ts"] = sl[2].astype(np.int64).values
+    t["end_ts"] = t.open_ts + t.L
+    t = t[(t.open_ts >= t_lo) & (t.end_ts <= t_hi) & t.coin.isin(COINS)
+          & (t.timestamp >= t.open_ts) & (t.timestamp <= t.end_ts)]
+    assert (t.timestamp < int(pd.Timestamp("2026-08-21", tz="UTC").timestamp())).all() or end < "2026-08-21"
+    assert not (t.timestamp >= int(pd.Timestamp("2026-08-22", tz="UTC").timestamp())).any(), "LEAKAGE"
+    t["px_up"] = np.where(t.outcome_idx == 0, t.price.astype(np.float64), 1.0 - t.price.astype(np.float64))
+    return t.reset_index(drop=True)
+
+
 def train_trades(slugs) -> pd.DataFrame:
     """Train-split fill legs (data/raw/trades.parquet) for the given slugs, with Up-frame price."""
     sl = set(slugs)

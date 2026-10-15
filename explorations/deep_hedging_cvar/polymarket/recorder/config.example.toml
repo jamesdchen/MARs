@@ -49,6 +49,7 @@ open_timeout_s = 15
 [reconcile]
 interval_s = 60                  # re-read every book from REST this often (staggered per token)
 grace_s = 1.5                    # let in-flight WS deltas land before comparing
+history_events = 4096            # per-token ring of recent stream events replayed on top of REST
 mode = "book"                    # "book" = GET /book per token, "books" = POST /books batches
 batch = 40
 concurrency = 4
@@ -63,7 +64,8 @@ enabled = true
 poll_interval_s = 30             # incremental polls while a market is recorded (both takerOnly modes)
 page = 500
 overlap_s = 180
-settle_delay_s = 300             # full sweep + gamma metadata this long after end
+settle_delay_s = 600             # full sweep + gamma metadata this long after end (retried until
+                                 # resolved and maker legs indexed, up to 30 min)
 concurrency = 3
 finalize_lookback_s = 21600
 

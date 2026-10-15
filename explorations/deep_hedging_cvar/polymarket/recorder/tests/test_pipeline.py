@@ -2,6 +2,7 @@
 import json
 import sys
 import time
+from collections import deque
 from pathlib import Path
 
 import orjson
@@ -18,7 +19,8 @@ from polyrec.discovery import MarketInfo, market_from_gamma, resolution  # noqa:
 from polyrec.recorder import Market, Recorder  # noqa: E402
 from polyrec.schema import BOOK_SCHEMA, BOOK_SCHEMA_RAW, MARKETS_SCHEMA, TRADES_SCHEMA  # noqa: E402
 from polyrec.sinks import RawLog, dataset_files, iter_raw, read_dataset  # noqa: E402
-from polyrec.trades import LegSet, build_trade_rows, trade_rows_to_table, trade_sanity  # noqa: E402
+from polyrec.trades import (LegSet, build_trade_rows, rows_consistency, trade_rows_to_table,  # noqa: E402
+                            trade_sanity)
 
 DATA_RAW = ROOT.parent / "data" / "raw"
 UP, DN = "111", "222"
@@ -28,6 +30,7 @@ class FakeShard:
     id = 1
     last_server_ts = 0
     connected = True
+    closing = False
 
 
 def make_recorder(tmp_path, end_in=10_000):
@@ -42,6 +45,7 @@ def make_recorder(tmp_path, end_in=10_000):
     m.state = "subscribed"
     for t in m.tokens:
         t.shard = FakeShard()
+        t.book.rec_buf = deque(maxlen=4096)
         rec.tokens[t.id] = t
     rec.markets[info.slug] = m
     return rec, m
@@ -118,7 +122,6 @@ def test_reconcile_mismatch_replaces_book_and_flags_row(tmp_path):
     feed(rec, T - 0.9, book_ev(UP, [("0.48", "10")], [("0.52", "10")], 100))
     feed(rec, T - 0.9, book_ev(DN, [("0.48", "10")], [("0.52", "10")], 100))
     tok = rec.tokens[UP]
-    tok.book.rec_buf = []
     # stream event after the REST snapshot (ts 300 > rest ts 200): replayed, so no false mismatch
     feed(rec, T - 0.5, pc_ev(300, (UP, "SELL", "0.55", "2", "0.48", "0.52")))
     rest = {"asset_id": UP, "timestamp": "200", "bids": [{"price": "0.48", "size": "10"}],
@@ -126,7 +129,6 @@ def test_reconcile_mismatch_replaces_book_and_flags_row(tmp_path):
     rec._compare(tok, rest, 5.0)
     assert rec.st["reconcile"] == 1 and rec.st["reconcile_mismatch"] == 0
     # REST shows a level the stream never delivered (dropped message) -> mismatch, corrected, flagged
-    tok.book.rec_buf = []
     rest2 = dict(rest, timestamp="350", bids=[{"price": "0.48", "size": "10"}, {"price": "0.47", "size": "8"}],
                  asks=[{"price": "0.52", "size": "10"}, {"price": "0.55", "size": "2"}])
     rec._compare(tok, rest2, 5.0)
@@ -287,8 +289,17 @@ def test_trade_sanity_flags_missing_maker_legs():
     a, b = LegSet(), LegSet()
     b.merge([leg(tx, "T", "SELL", 0, 0.5, 10)])
     a.merge([leg(tx, "T", "SELL", 0, 0.5, 10), leg(tx, "M", "BUY", 0, 0.5, 4)])
-    df = trade_rows_to_table(build_trade_rows("s", b, a)).to_pandas()
+    rows = build_trade_rows("s", b, a)
+    df = trade_rows_to_table(rows).to_pandas()
     assert not trade_sanity(df)["s"]["ok"]
+    assert not rows_consistency(rows)["ok"]                         # maker sum 4 != taker 10
+    b2 = LegSet()
+    b2.merge([leg(tx, "T", "SELL", 0, 0.5, 10), leg("0x" + "ee" * 32, "T", "BUY", 0, 0.5, 3)])
+    rows2 = build_trade_rows("s", b2, a)
+    c = rows_consistency(rows2)
+    assert not c["ok"] and c["txs_without_maker_legs"] == 1        # taker indexed, maker legs not yet
+    a.merge([leg(tx, "M2", "BUY", 0, 0.5, 6)])
+    assert rows_consistency(build_trade_rows("s", b, a))["ok"]
 
 
 # ----------------------------------------------------------------------------- discovery / metadata
@@ -356,3 +367,26 @@ def test_coverage_intervals():
     assert ok and tot == 7 and mx == 5
     ok, *_ = cov.market_coverage(iv, 0, 300)                       # not live at open (10 s gap)
     assert not ok
+
+
+# ----------------------------------------------------------------------------- backfill
+def test_backfill_fills_winner_and_keeps_manifest(tmp_path):
+    sys.path.insert(0, str(ROOT))
+    from backfill_winners import fill_book_file
+    rec, m = make_recorder(tmp_path)
+    T = int(time.time()) // 3600 * 3600 - 3600
+    rec.next_tick = T
+    feed(rec, T - 0.5, book_ev(UP, [("0.4", "1")], [("0.6", "1")], 1), book_ev(DN, [("0.4", "1")], [("0.6", "1")], 1))
+    rec._flush_tick(T)
+    for cols in rec.books.take_all():
+        rec.books.write_cols(cols)
+    f = rec.books.compact(rec.books.part_hours()[0])
+    md = pq.read_schema(f).metadata
+    n = fill_book_file(f, {"btc-updown-5m-1": {"winner_idx": 1, "winning_token": DN},
+                           "other": {"winner_idx": 0, "winning_token": "x"}})
+    assert n == 2
+    df = pd.read_parquet(f)
+    assert (df.winner == "no").all()
+    assert df.set_index("outcome").is_winning_outcome.to_dict() == {"Up": False, "Down": True}
+    assert pq.read_schema(f).metadata == md and pq.read_schema(f).remove_metadata().equals(BOOK_SCHEMA)
+    assert fill_book_file(f, {"btc-updown-5m-1": {"winner_idx": 0, "winning_token": UP}}) == 0  # never overwrites

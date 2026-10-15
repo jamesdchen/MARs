@@ -28,7 +28,6 @@ def market_row(slug: str, coin, contract_length, g: dict, n_taker: int, n_fills:
     outcome 1. winner_up / outcome_price_up / final_price stay null until gamma reports a resolution
     (backfill_winners.py fills them later).
     """
-    outcomes = jl(g.get("outcomes") or "[]")
     toks = jl(g.get("clobTokenIds") or "[]")
     fs = g.get("feeSchedule") or {}
     em = g.get("eventMetadata") or {}

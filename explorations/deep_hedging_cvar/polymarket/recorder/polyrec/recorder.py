@@ -10,13 +10,12 @@ from __future__ import annotations
 import asyncio
 import logging
 import os
-import re
 import resource
 import shutil
 import signal
 import time
 import uuid
-from collections import Counter
+from collections import Counter, deque
 
 import orjson
 
@@ -28,12 +27,11 @@ from .http import Http, HttpError
 from .metadata import market_row
 from .schema import MARKET_QC_SCHEMA, MARKETS_SCHEMA, RECONCILE_SCHEMA, TRADES_SCHEMA
 from .sinks import BookRowBuffer, PartSink, RawLog, TableSink, dataset_files, hour_key
-from .trades import LegSet, build_trade_rows, fetch_all, fetch_since, trade_rows_to_table
+from .trades import LegSet, build_trade_rows, fetch_all, fetch_since, rows_consistency, trade_rows_to_table
 from .watchdog import EXIT_NO_DATA, EXIT_RSS, CoverageLog, LoopWatchdog, sd_notify
 from .ws import Shard
 
 log = logging.getLogger("polyrec")
-REC_BUF_MAX = 200_000
 
 
 class Token:
@@ -171,7 +169,7 @@ class Recorder:
                 p = float(it["price"])
                 s = float(it["size"])
                 st["pc_items"] += 1
-                if b.rec_buf is not None and len(b.rec_buf) < REC_BUF_MAX:
+                if b.rec_buf is not None:      # recent-event history for reconcile replay
                     b.rec_buf.append((EV_LEVEL, ts, is_bid, p, s))
                 if b.initialized:      # deltas without a base snapshot are meaningless: skip them
                     if b.apply_level(is_bid, p, s, ts):
@@ -309,6 +307,9 @@ class Recorder:
     def on_disconnect(self, shard: Shard, reason: str, was_connected: bool):
         now = time.time()
         self.st["disconnects"] += int(was_connected)
+        if was_connected and not shard.closing:
+            self.st["disconnects_unexpected"] += 1
+            log.info("shard %d lost: %s", shard.id, reason[:120])
         for a in list(shard.assets):
             tok = self.tokens.get(a)
             if tok is None:
@@ -353,6 +354,7 @@ class Recorder:
         for k, t in enumerate(m.tokens):
             t.shard = shard
             t.next_rec = now + 20 + 40 * ((hash(t.id) & 0xFFFF) / 0xFFFF)  # stagger the 60 s cycle
+            t.book.rec_buf = deque(maxlen=self.cfg.reconcile.history_events)
             self.tokens[t.id] = t
         m.state = "subscribed"
         shard.add(m.info.slug, [t.id for t in m.tokens])
@@ -376,8 +378,8 @@ class Recorder:
     def _schedule(self, now: float):
         for m in list(self.markets.values()):
             if m.state == "pending":
-                if now >= m.unsub_at:
-                    m.state, m.finalize_at = "ended", m.info.end + self.cfg.trades.settle_delay_s
+                if now >= m.unsub_at:                  # never subscribed (e.g. after a long stall): drop
+                    m.state = "done"
                 elif now >= m.sub_at:
                     self._subscribe(m, now)
             elif m.state == "subscribed":
@@ -409,7 +411,7 @@ class Recorder:
             if win is None and m.resolved_asset in i.tokens:   # WS market_resolved, gamma lagging
                 k = i.tokens.index(m.resolved_asset)
                 g = dict(g, closed=True, outcomePrices=orjson.dumps(["1", "0"] if k == 0 else ["0", "1"]).decode())
-            trunc = False
+            trunc, consistent, n_inc, tbl = False, None, 0, None
             if self.cfg.trades.enabled:
                 tk, t1 = await fetch_all(self.http, i.condition_id, True)
                 al, t2 = await fetch_all(self.http, i.condition_id, False)
@@ -417,12 +419,21 @@ class Recorder:
                 m.taker.merge(tk)
                 m.allf.merge(al)
                 trunc = t1 or t2
-                tbl = trade_rows_to_table(build_trade_rows(i.slug, m.taker, m.allf))
+                rows = build_trade_rows(i.slug, m.taker, m.allf)
+                consistent = rows_consistency(rows)["ok"]
+                if not consistent and now - i.end < 1800 and m.finalize_tries < 12:
+                    m.finalize_tries += 1                   # maker legs not indexed yet: retry
+                    m.state, m.finalize_at = "ended", now + 120
+                    self.st["finalize_retry_trades"] += 1
+                    return
+                tbl = trade_rows_to_table(rows)
+            row = market_row(i.slug, i.coin, i.contract_length, g, len(m.taker), len(m.allf), trunc)
+            ws_ticks = [float(t.tick) for t in m.tokens if t.tick]
+            if ws_ticks and min(ws_ticks) < (row["tick_size"] or 1):   # gamma updates the tick minutes later
+                row["tick_size"] = min(ws_ticks)
+            if tbl is not None:
                 self.trades_sink.append_table(tbl, time.time())
                 self.st["trade_legs"] += tbl.num_rows
-            else:
-                n_inc = 0
-            row = market_row(i.slug, i.coin, i.contract_length, g, len(m.taker), len(m.allf), trunc)
             self.markets_sink.append(row, time.time())
             toks = m.tokens
             self.qc_sink.append(dict(
@@ -430,7 +441,8 @@ class Recorder:
                 first_live=None if m.first_live is None else int(m.first_live * 1e6),
                 n_rows=m.n_rows, n_reconcile=sum(t.n_rec for t in toks), n_mismatch=sum(t.n_mismatch for t in toks),
                 n_bba_mismatch=sum(t.n_bba for t in toks), n_disconnects=m.n_disconnects,
-                n_trades_incremental=n_inc, trades_truncated=trunc, resolved=row["winner_up"] is not None),
+                n_trades_incremental=n_inc, trades_truncated=trunc, trades_consistent=consistent,
+                resolved=row["winner_up"] is not None),
                 time.time())
             self.st["finalized"] += 1
             m.state = "done"
@@ -500,7 +512,6 @@ class Recorder:
             for t in due:
                 t.rec_inflight = True
                 t.last_rec_start = now
-                t.book.rec_buf = []
             if rc.mode == "books":
                 for k in range(0, len(due), rc.batch):
                     asyncio.get_running_loop().create_task(self._reconcile_batch(due[k:k + rc.batch], sem))
@@ -545,7 +556,6 @@ class Recorder:
             except Exception as e:  # noqa: BLE001
                 log.exception("reconcile compare %s: %s", t.id, e)
             finally:
-                t.book.rec_buf = None
                 t.rec_inflight = False
                 t.next_rec = time.time() + (rc.interval_s if err is None else 15)
                 t.rec_trigger = "periodic"
@@ -556,9 +566,15 @@ class Recorder:
             return
         rest_ts = int(d.get("timestamp") or 0)
         rb, ra = parse_levels(d.get("bids")), parse_levels(d.get("asks"))
-        buf = b.rec_buf or []
+        hist = b.rec_buf if b.rec_buf is not None else ()
+        if hist and len(hist) == hist.maxlen and hist[0][1] > rest_ts:
+            # history no longer reaches back to the REST snapshot: cannot compare exactly
+            self.st["reconcile_overflow"] += 1
+            self._recon_row(tok, "overflow", rest_ts, rtt, 0, None, None)
+            return
+        buf = [ev for ev in hist if ev[1] >= rest_ts]
         cb, ca = replay(rb, ra, buf, rest_ts)
-        n_rep = sum(1 for ev in buf if ev[1] >= rest_ts)
+        n_rep = len(buf)
         if not b.initialized:
             # no stream snapshot yet (e.g. a subscribe without initial dump): seed from REST + replay
             if tok.shard is None or not tok.shard.connected:
@@ -688,9 +704,10 @@ class Recorder:
                 last_summary = now
                 r = status["rates_per_s"]
                 q = status["quality"]
-                log.info("conns %d/%d markets live %d/%d | frames %.0f/s %.2f MB/s rows %.1f/s | reconcile %d "
-                         "mismatch %.2f%% | bba mismatch %.3f%% | rss %d MB lag %.0f ms",
-                         status["ws"]["connected"], status["ws"]["shards"], status["markets"]["live"],
+                log.info("conns %d/%d (lost %d) markets live %d/%d | frames %.0f/s %.2f MB/s rows %.1f/s | "
+                         "reconcile %d mismatch %.2f%% | bba mismatch %.3f%% | rss %d MB lag %.0f ms",
+                         status["ws"]["connected"], status["ws"]["shards"], status["ws"]["disconnects_unexpected"],
+                         status["markets"]["live"],
                          status["markets"]["subscribed"], r["frames"], r["bytes"] / 1e6, r["rows"],
                          q["reconcile_checks"], 100 * q["reconcile_mismatch_rate"], 100 * q["bba_mismatch_rate"],
                          status["process"]["rss_mb"], self.loop_lag_ms)
@@ -749,6 +766,7 @@ class Recorder:
                         "loop_lag_ms": round(self.loop_lag_ms, 1)},
             "ws": {"shards": len(self.shards), "connected": sum(s.connected for s in self.shards),
                    "connects": st["connects"], "disconnects": st["disconnects"],
+                   "disconnects_unexpected": st["disconnects_unexpected"],
                    "last_frame_age_s": round(now - self.last_data, 1),
                    "max_server_lag_s": round(max((now - s.last_server_ts / 1000 for s in self.shards
                                                   if s.connected and s.last_server_ts), default=0), 3)},

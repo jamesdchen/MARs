@@ -131,11 +131,17 @@ class PartSink:
                 p.unlink(missing_ok=True)
             if not new:
                 return final if final.exists() else None
+            good = []
             for p in new:
                 try:
                     tables.append(pq.read_table(p))
+                    good.append(p)
                 except Exception as e:  # noqa: BLE001  (truncated part from a hard crash)
-                    log.error("unreadable part %s skipped: %s", p, e)
+                    log.error("unreadable part %s quarantined: %s", p, e)
+                    p.rename(p.with_suffix(".bad"))
+            new = good
+            if not new:
+                return final if final.exists() else None
             t = pa.concat_tables([x.replace_schema_metadata(None).cast(self.schema)
                                   if x.schema.remove_metadata() != self.schema else x.replace_schema_metadata(None)
                                   for x in tables])

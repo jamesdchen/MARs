@@ -40,7 +40,7 @@ class OrderBook:
         self.last_ts = 0             # server ms of the last applied event
         self.dirty = False           # changed since the last emitted row
         self.reconciled = False      # next row reflects a REST correction
-        self.rec_buf = None          # list of buffered events while a reconcile is in flight
+        self.rec_buf = None          # deque of recent stream events (kind, ts, ...) for reconcile replay
 
     # ------------------------------------------------------------------ queries
     @property

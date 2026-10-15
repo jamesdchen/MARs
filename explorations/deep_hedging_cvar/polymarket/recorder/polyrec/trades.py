@@ -133,6 +133,23 @@ def build_trade_rows(slug: str, taker: LegSet, allf: LegSet) -> list[tuple]:
     return rows
 
 
+def rows_consistency(rows: list[tuple]) -> dict:
+    """The checks data/features.py asserts, on build_trade_rows output for ONE market: one taker leg per
+    tx, every taker tx has maker legs, maker sizes sum to the taker size. data-api indexes the
+    takerOnly=false view a few minutes after the taker view, so a fresh market can fail this."""
+    tk, mk, dup = {}, {}, 0
+    for _, tx, _, _, _, _, sz, ist in rows:
+        if ist:
+            dup += tx in tk
+            tk[tx] = sz
+        else:
+            mk[tx] = mk.get(tx, 0.0) + sz
+    missing = sum(1 for tx in tk if tx not in mk)
+    dev = max((abs(mk[tx] - tk[tx]) for tx in tk if tx in mk), default=0.0)
+    return {"ok": dup == 0 and missing == 0 and dev < 0.01, "taker_dups": dup,
+            "txs_without_maker_legs": missing, "max_abs_maker_sum_minus_taker": dev}
+
+
 def trade_rows_to_table(rows: list[tuple]) -> pa.Table:
     """rows from build_trade_rows (any number of markets) -> table in the trades.parquet schema."""
     if not rows:

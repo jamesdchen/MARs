@@ -6,15 +6,14 @@ import asyncio
 import logging
 import time
 
-import pyarrow.compute as pc
 
 from .config import Config
 from .discovery import fetch_market_final, resolution
 from .http import Http
 from .metadata import market_row
-from .schema import BOOK_SCHEMA, MARKET_QC_SCHEMA, MARKETS_SCHEMA, TRADES_SCHEMA
+from .schema import MARKET_QC_SCHEMA, MARKETS_SCHEMA, TRADES_SCHEMA
 from .sinks import TableSink, read_dataset
-from .trades import LegSet, build_trade_rows, fetch_all, trade_rows_to_table
+from .trades import LegSet, build_trade_rows, fetch_all, rows_consistency, trade_rows_to_table
 
 log = logging.getLogger("polyrec.offline")
 
@@ -48,7 +47,7 @@ async def finalize_offline(cfg: Config, slugs: list | None = None, min_age_s: fl
     trades_sink = TableSink(out, "trades", TRADES_SCHEMA, run, lvl, dictionary_cols=["slug"])
     markets_sink = TableSink(out, "markets", MARKETS_SCHEMA, run, lvl)
     qc_sink = TableSink(out, "market_qc", MARKET_QC_SCHEMA, run, lvl)
-    res = {"finalized": [], "unresolved": [], "errors": {}}
+    res = {"finalized": [], "unresolved": [], "trades_pending": [], "errors": {}}
     async with Http(cfg.http_timeout_s) as http:
         sem = asyncio.Semaphore(cfg.trades.concurrency)
 
@@ -63,20 +62,26 @@ async def finalize_offline(cfg: Config, slugs: list | None = None, min_age_s: fl
                         res["unresolved"].append(slug)
                         return
                     taker, allf = LegSet(), LegSet()
-                    trunc = False
+                    trunc, consistent = False, None
                     if cfg.trades.enabled:
                         tk, t1 = await fetch_all(http, g["conditionId"], True)
                         al, t2 = await fetch_all(http, g["conditionId"], False)
                         taker.merge(tk)
                         allf.merge(al)
                         trunc = t1 or t2
-                        trades_sink.append_table(trade_rows_to_table(build_trade_rows(slug, taker, allf)), now)
+                        rows = build_trade_rows(slug, taker, allf)
+                        consistent = rows_consistency(rows)["ok"]
+                        if not consistent and now - rec[slug]["end_s"] < 1800:
+                            res["trades_pending"].append(slug)      # maker legs not indexed yet
+                            return
+                        trades_sink.append_table(trade_rows_to_table(rows), now)
                     r = rec[slug]
                     row = market_row(slug, r["coin"], r["contract_length"], g, len(taker), len(allf), trunc)
                     markets_sink.append(row, now)
                     qc_sink.append(dict(slug=slug, run_id=run, finalized_at=int(time.time() * 1e6), first_live=None,
                                         n_rows=r["n_rows"], n_reconcile=None, n_mismatch=None, n_bba_mismatch=None,
                                         n_disconnects=None, n_trades_incremental=0, trades_truncated=trunc,
+                                        trades_consistent=consistent,
                                         resolved=row["winner_up"] is not None), now)
                     res["finalized"].append(slug)
                     if win is None:
