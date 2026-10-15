@@ -195,3 +195,22 @@ The markets row comes from `polyrec.metadata.market_row`, with the sports column
 5. **Plan.** `max_history_days` and the daily quota decide the feasible range. Pro has 30 days, so start
    within days of getting the key, because the oldest days roll off.
 6. **`1s` vs `250ms`.** 250ms is allowed but costs 4× the requests. The env grid is ≥ 1 s, so 1s is enough.
+
+## D14 defaults (2026-10-15 22:20 UTC)
+
+The maker edge sits more than 1 h before kickoff (DECISIONS.md D14), so the defaults are now
+**1-minute books over the whole window**: `--hours-before 168` (7 d, effectively from listing),
+`--resolution 1m` and `--fine-hours 0`. The previous default, 1 s for the last 6 h, is still
+available with `--resolution 1s --fine-hours 6`. `build_sports.py` cuts episodes at T−1h, so the
+last hour is used for evaluation only.
+
+Dry run for kickoffs 2026-09-16..10-14:
+
+| setting | value |
+|---|---|
+| markets selected | 6,035 moneylines |
+| requests (dense upper bound) | ≤ 698,572, about 14 Pro-days |
+| requests with `--mirror` | ≤ 349,286, about 7 Pro-days |
+| parquet size | ≤ 7.3 GB |
+
+With `--min-volume 50000`, about half the markets are selected.

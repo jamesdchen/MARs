@@ -1,0 +1,54 @@
+{
+"day": "2026-10-15",
+"taken_at": [
+"2026-10-15T21:24:44Z"
+],
+"source": "https://clob.polymarket.com/rewards/markets/current",
+"n_markets_total": 18759,
+"usd_day_total": 204323.6,
+"n_kept": 5,
+"usd_day_kept": 4076.0,
+"filter": "recorded markets (313 condition_ids known)",
+"markets": {
+"0x10d7af49a073206960639e11b931587efc73c47349f854719f6a7b466796d850": {
+"slug": "cfb-gas-old-2026-10-15",
+"rate_per_day": 50.0,
+"max_spread": 2.5,
+"min_size": 1000,
+"start_date": "2026-10-15",
+"end_date": "2500-12-31"
+},
+"0x41547b2c38e62f16216b26d7e3a38e12509ec8ab5b54876075b2cbae56a29040": {
+"slug": "lol-fur-mvk-2026-10-15",
+"rate_per_day": 95.0,
+"max_spread": 2.5,
+"min_size": 500,
+"start_date": "2026-10-15",
+"end_date": "2500-12-31"
+},
+"0x4d3e76e05f493dd24153c27f5c5aeb1d3bf28a61680a7b97b8cea83d501d1a46": {
+"slug": "lol-c9-kc-2026-10-15",
+"rate_per_day": 3429.0,
+"max_spread": 2.5,
+"min_size": 100,
+"start_date": "2026-10-15",
+"end_date": "2500-12-31"
+},
+"0xe0b5bd8eef80fe8976e2c287e0b76a5cda138ddc437acf95f9ba91112dbc983d": {
+"slug": "nfl-sea-den-2026-10-16",
+"rate_per_day": 500.0,
+"max_spread": 2.5,
+"min_size": 1000,
+"start_date": "2026-10-15",
+"end_date": "2500-12-31"
+},
+"0xe8cfb63f257059ac6ef6de4909cfbb0c810df7a24e04e10d0ad4b89c1e1f5204": {
+"slug": "cs2-lgc-furia-2026-10-15",
+"rate_per_day": 1.99972,
+"max_spread": 4.5,
+"min_size": 50,
+"start_date": "2026-10-14",
+"end_date": "2500-12-31"
+}
+}
+}

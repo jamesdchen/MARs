@@ -419,3 +419,54 @@ It changes no data, env or evaluation code. The test split has not been touched.
 6. **Cosmetic, not fixed.** `make_plan.py` writes `test_split.dates = "2026-08-24 UTC"`, which is
    hard-coded. The v2 plan's data block (`data/build_jun15`, its file and test-row hashes, and the
    288 market slugs) is what defines the test.
+
+## D14. Track S window refined by the out-of-sample census (recorded 2026-10-15 ~21:40 UTC, before any v3 model is tuned or any v3 split is fixed)
+
+**Evidence.**
+- w7's census replication (`analysis/census/REPORT.md` §6, out-of-sample Sep 17–Oct 7) does not reproduce the
+  headline pre-game sports edge: +13 bps [−35, 55], against +64 [1, 130] on Oct 8–14.
+- w2 (`analysis/v3_sports_rules/REPORT.md`) finds the same on Sep 24–Oct 7: −26 bps [−43, −11] at the touch,
+  measured at 30 minutes.
+- What replicates in both periods is the time-to-kickoff structure. The ex-rewards maker edge at +30 min:
+
+  | Time before kickoff | Oct 8–14 | Out-of-sample |
+  |---|---:|---:|
+  | more than 24 h | +330 [73, 665] | +81 [55, 114] |
+  | 6–24 h | +41 [7, 75] | +43 [17, 64] |
+  | 1–6 h | +30 [−9, 62] | +53 [31, 74] |
+  | last hour | about 0, CI ±90 | about 0, CI ±90 |
+
+  The last hour holds 44% of pre-game volume.
+
+**Refinement of D11 Track S:**
+- **Quote window:** from listing (or the start of data) until kickoff − 1 h.
+- **Last hour:** quotes are off and inventory is flattened or marked at T−1 h. In-play stays out of scope.
+- **Time to kickoff** is an observation, and results are reported per time bucket (>24 h, 6–24 h, 1–6 h) and per
+  league.
+- **Recording and backfill** must cover the windows longer than 1 h, not just the final hours.
+
+**Status of the evidence.** The per-league cells and w2's last-5-minute pocket (+35 bps) are exploratory leads and
+not rules; the last-5-minute pocket is negative once realistic size and flatten cost are applied. Track S is still
+unconfirmed until it is tested on unseen L2 data.
+
+**Track E** is confirmed out of sample: +101 bps [63, 130] with rewards, and ex-rewards about 0 to slightly
+positive. It is unchanged.
+
+## D15. D14's T−1h cut withdrawn: the last-hour result was a measurement artifact (recorded 2026-10-15 ~22:25 UTC, before any v3 model is tuned or any v3 split is fixed)
+
+**Evidence: w2's reconciliation** (`analysis/v3_sports_rules/RECONCILE.md`).
+
+1. **w2's −26 bps was a fill-valuation error, so D14 no longer cites it.** It valued sweep volume at the touch price, when that volume really filled deeper makers at better prices; this is a ~70 bps bias in every week. Measured with the census definitions, w2's pipeline reproduces the census: +66 bps [2, 135] against +64 [1, 130].
+2. **w7's "last hour ≈ 0" was an in-play artifact.** The census's +30-minute mark runs past kickoff for legs near kickoff. With the mark capped at kickoff:
+   - the pre-game edge is stable week to week: +50 [28, 73], +49 [32, 67] and +71 [34, 116] for Sep 24–30, Oct 1–7 and Oct 8–14;
+   - the last 30 minutes are the best bucket in every week. At the touch, to kickoff, 0–5 minutes before kickoff is +79, +70 and +65 for the same three weeks.
+3. **The edge is thin to kickoff.** At the touch it is +20 [1, 37] bps; one tick behind it is +81 [34, 124] bps. This is before rewards. Rule and league selections do not transfer: rank correlation is 0.39 from selection to check, and −0.36 to Oct 8–14.
+
+**Decision (replaces D14's quote window):**
+- **Episode:** from the start of data to kickoff, as in D11. Quotes are forced off at kickoff and inventory is marked at the kickoff mid, minus a flatten cost.
+- **Quote pull time** (`pull_s`) and an inventory penalty that ramps over the final 30 minutes are hyperparameters. They are selected on val, never on test. The candidate pull times are {T−5 min, T−15 min, T−30 min, T−1 h}.
+- **Flatten cost** is half a spread on inventory still held at kickoff. A sensitivity check at a full spread is reported but not judged.
+- **D14's per-bucket reporting stays:** >24 h, 6–24 h, 1–6 h, 1 h–30 min, 30–5 min and 5–0 min, all marked at no later than kickoff.
+- **Recording** keeps D14's 7-day horizon and includes the last hour, which can now be traded.
+
+**Track S status:** the edge is real but thin, about +20 to +30 bps to kickoff before rewards. It depends on netting inventory before kickoff and on queue position. The deciding test is an L2 replay with queue-aware fills at the touch and one tick behind.
