@@ -77,9 +77,11 @@ def method_key(src, r):
         return f"{src}/{tag[len(src) + 1:]}|{f}", r["seed"], None
     if src == "w4" and tag in ("w4_q1best", "w4_bc"):
         return f"w4/{tag[3:]}|{f}", r["seed"], None
-    if src == "w4" and tag == "w4_q1":                # 64 TPE trials x 3 edge-model seeds (t<k>_m<seed>)
+    if src == "w4" and re.fullmatch(r"t\d+_m\d+", name):  # quoter TPE trials x 3 edge-model seeds (t<k>_m<seed>)
         trial, m = name.split("_m")
-        return f"w4/q1:{trial}|{f}", int(m), None
+        return f"w4/{tag[3:]}:{trial}|{f}", int(m), None
+    if src == "w4" and r.get("cfg_hash"):             # w4 RL runs (train_ppo.py rows)
+        return f"w4/{tag[3:]}|{f}", r["seed"], None
     if src == "w5":                                   # teachers (baselines) / BC students, 1 eval each
         if tag == "w5_teachers":
             return None, None, None
