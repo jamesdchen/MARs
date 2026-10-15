@@ -127,6 +127,8 @@ class Book:
 def grid(book, mask=None, fills=FILLS):
     rows = []
     for d, S, Q, T, A, age, fl in itertools.product(DIST, SIZES, CAPS, PULL_MIN, START_H, AGES, fills):
+        if T * 60 >= A * 3600:
+            continue
         if Q < S:
             continue
         rows.append({'d': d, 'S': S, 'Q': Q, 'T': T, 'A': A, 'age': age, 'fill': fl,
@@ -145,7 +147,15 @@ def main():
     ap.add_argument('--flat-c', type=float, default=0.5, help='flatten cost at kickoff, cents per share')
     ap.add_argument('--pmin', type=float, default=0.05)
     ap.add_argument('--out', default='out')
+    ap.add_argument('--start-h', type=float, nargs='*', help='override START_H (hours; inf allowed)')
+    ap.add_argument('--pull-min', type=float, nargs='*', help='override PULL_MIN (minutes)')
+    ap.add_argument('--no-leagues', action='store_true', help='skip the per-league selection (stage 3)')
     a = ap.parse_args()
+    global START_H, PULL_MIN
+    if a.start_h:
+        START_H = tuple(a.start_h)
+    if a.pull_min:
+        PULL_MIN = tuple(a.pull_min)
     out = Path(a.out)
     out.mkdir(exist_ok=True)
     df = pd.read_parquet(a.events)
@@ -159,7 +169,8 @@ def main():
     books = {k: Book(v, a.flat_c) for k, v in periods.items()}
     for k, b in books.items():
         periods[k] = b.df   # sorted copy, aligned with the book's arrays
-    res = {'periods': info, 'flat_c': a.flat_c, 'pmin': a.pmin}
+    res = {'periods': info, 'flat_c': a.flat_c, 'pmin': a.pmin,
+           'grid': {'d': DIST, 'S': SIZES, 'Q': CAPS, 'T': PULL_MIN, 'A': START_H, 'age': AGES, 'fill': FILLS}}
 
     # 1. global grid on both periods; selection on 'sel' only
     g = {k: grid(b) for k, b in books.items()}
@@ -200,7 +211,7 @@ def main():
 
     # 3. per-league rule selection on 'sel', evaluated on 'check'
     lg_sel = []
-    for lg in periods['sel'].league.value_counts().index[:8]:
+    for lg in ([] if a.no_leagues else periods['sel'].league.value_counts().index[:8]):
         ms_ = (periods['sel'].league == lg).to_numpy()
         gl = grid(books['sel'], ms_, fills=('gt',)).sort_values('pnl_kick', ascending=False)
         best = rule_of(gl.iloc[0])
