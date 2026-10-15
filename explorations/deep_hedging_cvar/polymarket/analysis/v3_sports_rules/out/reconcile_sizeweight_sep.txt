@@ -1,0 +1,26 @@
+events Sep 24 - Oct 7: level d = touch + k cents, volume at/beyond level, priced at the level, 30 min capped
+d=0c full size notional $   202098k  edge30   -26.1 bps
+d=0c S=250     notional $    28174k  edge30   -16.7 bps
+d=0c S=50      notional $    10416k  edge30   -18.9 bps
+d=0c S=10      notional $     3021k  edge30   -18.2 bps
+d=1c full size notional $    38315k  edge30   -43.9 bps
+d=1c S=250     notional $     6475k  edge30   -93.5 bps
+d=1c S=50      notional $     2413k  edge30  -119.9 bps
+d=1c S=10      notional $      708k  edge30  -122.4 bps
+d=2c full size notional $     9456k  edge30  -170.9 bps
+d=2c S=250     notional $     2186k  edge30  -269.4 bps
+d=2c S=50      notional $      852k  edge30  -328.1 bps
+d=2c S=10      notional $      256k  edge30  -326.5 bps
+d=3c full size notional $     3415k  edge30  -457.4 bps
+d=3c S=250     notional $     1063k  edge30  -494.9 bps
+d=3c S=50      notional $      431k  edge30  -588.7 bps
+d=3c S=10      notional $      132k  edge30  -579.4 bps
+d=0 by taker event size (shares):
+                           share    bps
+vb                                     
+(0.0, 10.0]                 0.00 -55.44
+(10.0, 50.0]                0.01 -42.23
+(50.0, 250.0]               0.05 -46.13
+(250.0, 1000.0]             0.09 -32.01
+(1000.0, 5000.0]            0.18 -54.92
+(5000.0, 1000000000000.0]   0.66 -46.46

@@ -1,0 +1,8 @@
+/home/user/MARs/explorations/deep_hedging_cvar/.venv/lib/python3.13/site-packages/torch/cuda/__init__.py:61: FutureWarning: The pynvml package is deprecated. Please install nvidia-ml-py instead. If you did not install pynvml directly, please report this to the maintainers of the package that installed pynvml for you.
+  import pynvml  # type: ignore[import]
+[1/5] rl/seed0 central_lat1_x1: P&L -387.65 fills 5409 (13.4s)
+[2/5] rl/seed1 central_lat1_x1: P&L -178.24 fills 3812 (12.8s)
+[3/5] rl/seed2 central_lat1_x1: P&L +8.02 fills 4111 (11.9s)
+[4/5] rl/seed3 central_lat1_x1: P&L -499.42 fills 5560 (13.0s)
+[5/5] rl/seed4 central_lat1_x1: P&L -83.89 fills 1799 (11.0s)
+done: 5 runs in 64s -> final/v2/dryrun/results_rlcheck/val

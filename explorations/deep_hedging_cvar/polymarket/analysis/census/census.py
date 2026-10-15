@@ -19,12 +19,13 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
+from period import DAYS, LEGS, OUT, taker
+
 import duckdb
 import numpy as np
 import pandas as pd
 
 HERE = Path(__file__).resolve().parent
-OUT = HERE / "out"
 H = ["1m", "5m", "30m", "2h", "1d"]
 PB = [0, .05, .15, .35, .65, .85, .95, 1.0001]
 TB = [-1e9, 1, 6, 24, 24 * 7, 24 * 30, 1e9]
@@ -119,7 +120,7 @@ def concentration(con, key: str) -> pd.DataFrame:
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--days", type=float, default=7.0)
+    ap.add_argument("--days", type=float, default=DAYS)
     ap.add_argument("--boot", type=int, default=1000)
     a = ap.parse_args()
     OUT.mkdir(exist_ok=True)
@@ -127,14 +128,14 @@ def main():
     con.execute("SET threads=2; SET memory_limit='9GB'")
     # reward pool per condition over the window, spread over the condition's maker shares
     rw = pd.read_parquet(HERE / "cache" / "rewards_current.parquet")
-    tk = pd.read_parquet(HERE / "cache" / "taker.parquet")
+    tk = taker()
     con.register("rw", rw)
     con.register("tk", tk)
     con.execute(f"""
       CREATE TABLE pool AS
       SELECT l.cond, coalesce(rw.rate_per_day, 0) * least(coalesce(tk.n_days, 1), {a.days}) AS pool_usd,
              sum(l.size) AS msh
-      FROM 'cache/legs.parquet' l LEFT JOIN rw ON l.cond = rw.condition_id LEFT JOIN tk ON l.cond = tk.cond
+      FROM {LEGS} l LEFT JOIN rw ON l.cond = rw.condition_id LEFT JOIN tk ON l.cond = tk.cond
       GROUP BY l.cond, rw.rate_per_day, tk.n_days""")
     con.execute(f"""
       CREATE TABLE legs AS
@@ -145,7 +146,7 @@ def main():
              CASE WHEN ttr_h IS NULL THEN 'unknown' WHEN ttr_h < 1 THEN 'a<1h' WHEN ttr_h < 6 THEN 'b1-6h'
                   WHEN ttr_h < 24 THEN 'c6-24h' WHEN ttr_h < 168 THEN 'd1-7d' WHEN ttr_h < 720 THEN 'e7-30d'
                   ELSE 'f>30d' END AS tbin
-      FROM 'cache/legs.parquet' l JOIN pool p USING (cond)""")
+      FROM {LEGS} l JOIN pool p USING (cond)""")
     # taker side per category key: assign each condition's taker flow to its category (sports split by time
     # is approximated by the maker-share split of that condition)
     tak = con.execute(f"""

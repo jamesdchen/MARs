@@ -1,45 +1,60 @@
 # Where on Polymarket is market making most promising? A maker-economics census from on-chain fills
 
-Worker w7, written 2026-10-15. The window is **Oct 8–14 2026 (7 full UTC days)**, every market on the CTF and
-neg-risk exchanges. No order book is needed and no API key: everything comes from complete on-chain fills plus
+Worker w7, written 2026-10-15. First pass: **Oct 8–14 2026 (7 full UTC days)**. Replication: **Sep 17–Oct 7**
+(21 days, out of sample) and pooled **Sep 17–Oct 14** (28 days), §6. Every market on the CTF and neg-risk exchanges. No order book is needed and no API key: everything comes from complete on-chain fills plus
 gamma metadata and the CLOB rewards table. Nothing from `data/build_jun15` or the v2 val/test days was touched.
 
-## TL;DR
+## TL;DR (updated 2026-10-15 ~22:00 UTC after the 4-week replication, §6)
 
-1. **Pivoting away from crypto up/down is justified, but no category has a big, clean edge.** In almost every
-   category, adverse selection eats the quoted spread almost exactly. At +2 h, adverse selection is 70–190% of the
-   spread. Before liquidity rewards, the average maker fill earns about 0 ± 1¢/share. What separates the
-   categories is (a) how fast the adverse selection arrives, (b) liquidity rewards, and (c) who the takers are.
-2. **First choice: pre-game sports, from listing to kickoff, pulling quotes at kickoff.**
-   - It is the only large category whose edge before rewards is positive with the 95% CI above 0 at +30 min:
-     **+64 bps of maker notional [1, 130]**. That is about +0.33¢/share: spread 0.72¢ − adverse selection 0.54¢
-     + rebate 0.15¢.
-   - It is positive on 5 of 7 days, and the top-20 makers earn +236 bps.
-   - Capacity is $14.9M/day of maker volume and $247k/day of taker fees. Maker competition is moderate: 7.1k
-     makers, top-5 share 21%.
-   - The edge to *resolution* is a coin flip (+109 bps, CI ±700), so the strategy must flatten or stop quoting
-     at kickoff rather than hold to settlement.
-3. **Second choice: liquidity-reward farming in long-dated elections markets (the US midterms are Nov 3).**
-   - Before rewards the edge is about 0: +2 h gives −8 bps [−51, 18].
-   - With rewards it is +133 bps [94, 165] at +2 h and +122 bps [74, 156] at +1 d.
-   - This category has the lowest adverse selection per share of any: 0.5–0.6¢.
-   - It has the largest reward pool: about $30k/day across 3.7k rewarded markets.
-   - The edge is the reward program's money. It disappears if the program changes, and election night is a
-     jump event.
-4. **Avoid these:**
-   - **In-play sports:** −39 bps [−134, 51]. Non-top makers lose −123 bps, because takers with live data beat
-     the book.
-   - **Weather:** negative on every day and at every horizon, −87 bps [−115, −56] before rewards. Its takers
-     are forecast-model users.
-   - **Economics, tech/AI, culture, finance-prices:** adverse selection exceeds the spread, with CIs below 0
-     before rewards.
-5. **Validation: our crypto up/down result reproduces inside the census.**
-   - The top-20 crypto up/down makers are the continuous quoters an RL agent resembles. They lose −23 bps,
-     with adverse selection of 1.35¢/share against a spread of 1.02¢. 18 of the 20 are individually profitable,
-     but the group loses in aggregate.
-   - The category average is ≈ 0: +30 bps [−6, 69], made up of spread 0.99¢, adverse selection 1.03¢ and
-     rebate 0.20¢. It is carried by occasional, non-continuous makers.
-   - This matches `final/RESULTS.md` (no edge, adverse selection dominates) and `analysis/fair_value` §4.
+The first pass (Oct 8–14) was replicated out of sample on **Sep 17–Oct 7** (21 days, 76.3M fill legs), then
+pooled over **Sep 17–Oct 14** (28 days, 102.0M fill legs). Edges below are per $ of maker notional (bps)
+with an event-clustered bootstrap 95% CI; "ex-rewards" means spread + markout + rebate.
+
+1. **Validation (crypto up/down) replicates in every period.**
+   - The category average is a small positive: pooled +33 bps [14, 49]. Per share that is +0.17¢: spread
+     1.06¢, adverse selection (AS) 1.08¢ and rebate 0.20¢, so the rebate is the whole margin.
+   - The top-20 continuous quoters lose in both periods: −23 bps (Oct), −12 bps (OOS). The spread does not
+     cover adverse selection for an always-on maker. This is our study's finding, and the pivot away from
+     crypto stands.
+2. **Pre-game sports as a whole does *not* replicate.**
+   - The Oct 8–14 result (+64 bps [1, 130] at +30 min) shrinks to **+13 [−35, 55] out of sample**. Pooled it
+     is +25 [−16, 63], positive on 11 of 28 days.
+   - **What does replicate is the time-to-kickoff structure.** The last hour before kickoff (44% of pre-game
+     volume) has no edge. Earlier windows are positive in **both** periods, with CIs above 0:
+
+     | time to kickoff | Oct 8–14 (+30 min, ex-rewards) | OOS (+30 min, ex-rewards) | pooled +30 min / +2 h | pooled maker volume |
+     |---|---|---|---|---|
+     | 6–24 h | +41 [7, 75] | +43 [17, 64] | +42 [20, 60] / +35 [6, 66] | $2.9M/day |
+     | > 24 h | +330 [73, 665] | +81 [55, 114] | +135 [71, 220] / +157 [69, 276] | $1.0M/day |
+     | 1–6 h | +30 [−9, 62] | +53 [31, 74] | +49 [30, 66] at +30 min (the +2 h mark crosses kickoff) | $5.2M/day |
+
+   - By league, the cells positive in both periods are soccer, esports and MLB at 6–24 h and > 24 h, plus NFL,
+     MLB and NHL at 1–6 h (§6b).
+   - **D11 refinement for pre-game sports:** quote from listing until about 1 h before kickoff and stay flat in
+     the last hour and in-play. Addressable maker volume is about $4–9M/day rather than $16M.
+3. **Election reward farming replicates.**
+   - With rewards: +133 bps [94, 165] (Oct), **+101 [63, 130] (OOS)**, pooled +108 [75, 130] at +2 h and
+     +164 [106, 219] at +1 d.
+   - Ex-rewards it is about 0 to slightly positive: pooled +11 [−25, 31] at +2 h and +67 [1, 132] at +1 d.
+     Positive on 16 of 28 days.
+   - Within elections, ex-rewards is ≈ 0 at prices 0.15–0.85, which is where the rewards pay. It is +43 bps
+     [18, 73] above 0.85.
+   - **Caveat:** rewards for the older weeks use today's (Oct 15) rewards snapshot, so they are uncertain. The
+     wallet REWARD payouts of the top makers ran at 2.0× (Oct) and 2.7× (OOS) the proxy. The proxy looks
+     conservative, but its per-market split is not observable.
+4. **New: geopolitics.** It is the only category besides crypto up/down with a positive pooled ex-rewards edge
+   whose CI excludes 0: +47 bps [11, 102] at +30 min. It is positive on 20 of 28 days, and +94 [46, 146] with
+   rewards. The Oct week alone was ≈ 0, so treat it as a candidate, not a pick.
+5. **Avoid (replicated):**
+   - weather: pooled ex-rewards at +2 h −64 bps [−79, −48]; 2 of 28 days positive;
+   - economics: −124 [−228, −100];
+   - tech/AI: −306 [−506, −134];
+   - culture: −186 [−250, −127];
+   - politics (non-election): −167 [−434, −19];
+   - in-play sports: −18 [−65, 26]. Non-top makers lose −52 bps, and only the top-20 earn there (+43 bps).
+   - Sports futures is negative before rewards (−57 [−148, −6] at +2 h) and positive with rewards.
+
+The first-pass TL;DR for Oct 8–14 alone is kept in §4a for reference.
 
 ## 1. Data and method
 
@@ -209,7 +224,47 @@ notional; `REWARD` rows carry no market. Positions carried into the window are n
 - **Pre-game sports:** the +75 bps "adverse" term is favourable inventory drift at settlement over 7 days. It
   is luck-dominated.
 
-## 4. Recommendation
+## 4. Recommendation (first pass, Oct 8–14; see §6c for the update)
+
+### 4a. First-pass TL;DR (Oct 8–14 only; superseded by §6)
+
+1. **Pivoting away from crypto up/down is justified, but no category has a big, clean edge.** In almost every
+   category, adverse selection eats the quoted spread almost exactly. At +2 h, adverse selection is 70–190% of the
+   spread. Before liquidity rewards, the average maker fill earns about 0 ± 1¢/share. What separates the
+   categories is (a) how fast the adverse selection arrives, (b) liquidity rewards, and (c) who the takers are.
+2. **First choice: pre-game sports, from listing to kickoff, pulling quotes at kickoff.**
+   - It is the only large category whose edge before rewards is positive with the 95% CI above 0 at +30 min:
+     **+64 bps of maker notional [1, 130]**. That is about +0.33¢/share: spread 0.72¢ − adverse selection 0.54¢
+     + rebate 0.15¢.
+   - It is positive on 5 of 7 days, and the top-20 makers earn +236 bps.
+   - Capacity is $14.9M/day of maker volume and $247k/day of taker fees. Maker competition is moderate: 7.1k
+     makers, top-5 share 21%.
+   - The edge to *resolution* is a coin flip (+109 bps, CI ±700), so the strategy must flatten or stop quoting
+     at kickoff rather than hold to settlement.
+3. **Second choice: liquidity-reward farming in long-dated elections markets (the US midterms are Nov 3).**
+   - Before rewards the edge is about 0: +2 h gives −8 bps [−51, 18].
+   - With rewards it is +133 bps [94, 165] at +2 h and +122 bps [74, 156] at +1 d.
+   - This category has the lowest adverse selection per share of any: 0.5–0.6¢.
+   - It has the largest reward pool: about $30k/day across 3.7k rewarded markets.
+   - The edge is the reward program's money. It disappears if the program changes, and election night is a
+     jump event.
+4. **Avoid these:**
+   - **In-play sports:** −39 bps [−134, 51]. Non-top makers lose −123 bps, because takers with live data beat
+     the book.
+   - **Weather:** negative on every day and at every horizon, −87 bps [−115, −56] before rewards. Its takers
+     are forecast-model users.
+   - **Economics, tech/AI, culture, finance-prices:** adverse selection exceeds the spread, with CIs below 0
+     before rewards.
+5. **Validation: our crypto up/down result reproduces inside the census.**
+   - The top-20 crypto up/down makers are the continuous quoters an RL agent resembles. They lose −23 bps,
+     with adverse selection of 1.35¢/share against a spread of 1.02¢. 18 of the 20 are individually profitable,
+     but the group loses in aggregate.
+   - The category average is ≈ 0: +30 bps [−6, 69], made up of spread 0.99¢, adverse selection 1.03¢ and
+     rebate 0.20¢. It is carried by occasional, non-continuous makers.
+   - This matches `final/RESULTS.md` (no edge, adverse selection dominates) and `analysis/fair_value` §4.
+
+
+### 4b. First-pass recommendation
 
 **Pivot to pre-game sports as the primary target, with an elections reward-farming book as the second.** Drop
 crypto up/down, in-play sports, weather, economics, finance-prices, tech and culture as targets.
@@ -281,6 +336,131 @@ edge is about +1.2¢). That is a directional filter, not market making.
 - **One week, mid-October.** It covers the NFL, MLB playoffs, European soccer, and the run-up to the midterms.
   Category mixes are seasonal.
 
+## 6. Out-of-sample replication (Sep 17–Oct 7) and pooled results (Sep 17–Oct 14)
+
+**Data.** The fill pull was extended back to Sep 17 with `extract.py --all --events OrderFilled --slim`, using 8
+segment workers and 0 failed segments: 21 more days, 1.21M blocks and 76.3M fill legs. Gamma lookups grew
+to 757,968 tokens, of which 757,635 resolved (99.96%).
+
+**Method changes.** The pipeline is unchanged except for one thing: legs are now built per week (`build_legs.py
+--tag w1..w4`) with a 1-day pad of later fills, so the +2 h and +1 d marks are not truncated at week boundaries.
+- Marks are capped at the last fill actually loaded. The Oct 8–14 rerun (`w4`) reproduces the first pass
+  exactly.
+- `run_periods.sh` runs all three periods. `period.py` selects the period through environment variables.
+- `boot_buckets.py` adds event-bootstrap CIs for sub-cells.
+
+**Rewards caveat.** The reward proxy uses the CLOB rewards table of **2026-10-15** for every week, so it is
+uncertain for older weeks. Markets that closed before Oct 15 are missing from that table and get 0. As a
+check, the top-20 makers' data-api REWARD payouts were **2.0× (Oct), 2.7× (OOS) and 2.4× (pooled)** the proxy for
+the same wallets, with correlation 0.62–0.75. With-rewards edges are therefore probably understated in level,
+but the split across categories is a modelling assumption.
+
+### 6a. Category edge by period (bps of maker notional, event-bootstrap 95% CI)
+
+`out/`, `out_oos/`, `out_pooled/` → `category_summary.csv`, `daily_edge.csv`
+
+| category            | period             | maker $/day   | ex-rew +30m       | ex-rew +2h        | ex-rew +1d        | with rew +2h    | with rew +1d     | days >0 (+2h ex-rew)   |
+|:--------------------|:-------------------|:--------------|:------------------|:------------------|:------------------|:----------------|:-----------------|:-----------------------|
+| sports_pregame      | Oct 8–14           | 14.94M        | 64 [1, 130]       | 246 [-108, 627]   | 118 [-580, 800]   | 250 [-107, 629] | 124 [-579, 801]  | 5/7                    |
+|                     | Sep 17–Oct 7 (OOS) | 16.65M        | 13 [-35, 55]      | -15 [-138, 114]   | 22 [-269, 324]    | -12 [-138, 114] | 24 [-269, 324]   | 6/21                   |
+|                     | pooled             | 16.23M        | 25 [-16, 63]      | 44 [-92, 175]     | 43 [-265, 335]    | 47 [-90, 175]   | 47 [-265, 335]   | 11/28                  |
+| elections           | Oct 8–14           | 2.17M         | 11 [-27, 38]      | -8 [-51, 18]      | -20 [-59, 10]     | 133 [94, 165]   | 122 [74, 156]    | 2/7                    |
+|                     | Sep 17–Oct 7 (OOS) | 2.75M         | 22 [-10, 39]      | 16 [-29, 39]      | 87 [9, 162]       | 101 [63, 130]   | 173 [100, 242]   | 14/21                  |
+|                     | pooled             | 2.60M         | 20 [-9, 37]       | 11 [-25, 31]      | 67 [1, 132]       | 108 [75, 130]   | 164 [106, 219]   | 16/28                  |
+| geopolitics         | Oct 8–14           | 2.06M         | 10 [-92, 86]      | -1 [-151, 94]     | 63 [-239, 256]    | 56 [-85, 154]   | 115 [-169, 296]  | 5/7                    |
+|                     | Sep 17–Oct 7 (OOS) | 1.68M         | 63 [19, 131]      | 55 [7, 125]       | 44 [-53, 135]     | 110 [55, 179]   | 99 [-4, 189]     | 15/21                  |
+|                     | pooled             | 1.78M         | 47 [11, 102]      | 39 [-5, 96]       | 48 [-50, 135]     | 94 [46, 146]    | 101 [-4, 179]    | 20/28                  |
+| sports_futures      | Oct 8–14           | 0.58M         | 3 [-50, 37]       | -22 [-96, 28]     | -14 [-136, 72]    | 145 [67, 199]   | 155 [43, 207]    | 4/7                    |
+|                     | Sep 17–Oct 7 (OOS) | 0.50M         | -10 [-84, 30]     | -71 [-189, -9]    | -154 [-300, -71]  | 73 [-40, 126]   | -10 [-151, 54]   | 5/21                   |
+|                     | pooled             | 0.52M         | -7 [-66, 27]      | -57 [-148, -6]    | -120 [-241, -50]  | 93 [6, 139]     | 32 [-86, 72]     | 9/28                   |
+| finance_prices      | Oct 8–14           | 0.62M         | -81 [-137, -43]   | -87 [-148, -40]   | -100 [-223, -7]   | 117 [35, 160]   | 101 [-54, 169]   | 0/7                    |
+|                     | Sep 17–Oct 7 (OOS) | 0.85M         | -29 [-109, 60]    | -57 [-142, 32]    | -63 [-144, 17]    | 6 [-90, 92]     | -1 [-89, 70]     | 7/21                   |
+|                     | pooled             | 0.79M         | -39 [-109, 28]    | -62 [-135, 12]    | -69 [-146, 8]     | 27 [-56, 87]    | 18 [-69, 76]     | 7/28                   |
+| crypto_updown_short | Oct 8–14           | 9.52M         | 30 [-7, 69]       | 30 [-6, 69]       | 28 [-8, 68]       | 31 [-6, 69]     | 29 [-8, 68]      | 6/7                    |
+|                     | Sep 17–Oct 7 (OOS) | 9.77M         | 34 [13, 53]       | 34 [13, 53]       | 33 [13, 53]       | 35 [13, 53]     | 34 [13, 53]      | 16/21                  |
+|                     | pooled             | 9.71M         | 33 [14, 49]       | 33 [15, 49]       | 32 [14, 48]       | 34 [15, 49]     | 33 [14, 48]      | 22/28                  |
+| crypto_other        | Oct 8–14           | 2.43M         | 9 [-18, 32]       | 3 [-27, 30]       | 25 [-38, 82]      | 14 [-19, 39]    | 36 [-31, 89]     | 4/7                    |
+|                     | Sep 17–Oct 7 (OOS) | 3.39M         | 29 [12, 45]       | 7 [-20, 31]       | 9 [-30, 44]       | 14 [-15, 35]    | 17 [-26, 49]     | 14/21                  |
+|                     | pooled             | 3.15M         | 25 [8, 41]        | 6 [-18, 25]       | 12 [-21, 40]      | 14 [-13, 31]    | 20 [-17, 46]     | 18/28                  |
+| sports_inplay       | Oct 8–14           | 37.56M        | -38 [-101, 26]    | -40 [-134, 51]    | -76 [-187, 24]    | -39 [-134, 51]  | -75 [-187, 24]   | 2/7                    |
+|                     | Sep 17–Oct 7 (OOS) | 34.31M        | -3 [-34, 28]      | -10 [-60, 40]     | -14 [-66, 37]     | -10 [-60, 40]   | -14 [-66, 37]    | 11/21                  |
+|                     | pooled             | 35.12M        | -12 [-41, 16]     | -18 [-65, 26]     | -31 [-82, 18]     | -17 [-65, 26]   | -30 [-82, 18]    | 13/28                  |
+| politics            | Oct 8–14           | 0.98M         | -37 [-141, 39]    | -71 [-174, 4]     | -72 [-185, -5]    | -26 [-125, 45]  | -26 [-129, 26]   | 1/7                    |
+|                     | Sep 17–Oct 7 (OOS) | 0.67M         | -86 [-218, -3]    | -202 [-518, -16]  | -345 [-930, -29]  | -173 [-486, 1]  | -317 [-898, -10] | 6/21                   |
+|                     | pooled             | 0.75M         | -76 [-209, 1]     | -167 [-434, -19]  | -273 [-708, -33]  | -130 [-396, 5]  | -235 [-672, -10] | 7/28                   |
+| weather             | Oct 8–14           | 1.13M         | -51 [-70, -31]    | -87 [-115, -56]   | -77 [-121, -27]   | -56 [-91, -32]  | -47 [-110, -17]  | 0/7                    |
+|                     | Sep 17–Oct 7 (OOS) | 1.20M         | -24 [-39, -10]    | -57 [-74, -40]    | -71 [-98, -45]    | -46 [-69, -33]  | -60 [-93, -37]   | 2/21                   |
+|                     | pooled             | 1.19M         | -31 [-44, -18]    | -64 [-79, -48]    | -72 [-95, -47]    | -48 [-70, -38]  | -57 [-88, -40]   | 2/28                   |
+| economics           | Oct 8–14           | 0.84M         | -210 [-260, -71]  | -128 [-326, -94]  | -158 [-494, -83]  | -41 [-118, 83]  | -77 [-302, 102]  | 0/7                    |
+|                     | Sep 17–Oct 7 (OOS) | 0.61M         | -94 [-168, -73]   | -122 [-216, -96]  | -202 [-293, -132] | -24 [-73, 20]   | -103 [-154, -10] | 1/21                   |
+|                     | pooled             | 0.67M         | -130 [-177, -84]  | -124 [-228, -100] | -195 [-306, -140] | -29 [-66, 25]   | -103 [-151, -5]  | 1/28                   |
+| tech_ai             | Oct 8–14           | 0.19M         | -188 [-305, -112] | -205 [-342, -118] | -211 [-427, -73]  | -17 [-122, 55]  | -33 [-214, 57]   | 0/7                    |
+|                     | Sep 17–Oct 7 (OOS) | 0.20M         | -263 [-483, -63]  | -339 [-581, -116] | -334 [-578, -90]  | -218 [-469, -8] | -213 [-449, 12]  | 1/21                   |
+|                     | pooled             | 0.20M         | -244 [-419, -94]  | -306 [-506, -134] | -307 [-500, -115] | -169 [-381, -8] | -171 [-385, 7]   | 1/28                   |
+| culture             | Oct 8–14           | 0.15M         | -90 [-193, 24]    | -215 [-339, -89]  | -237 [-463, -28]  | -10 [-172, 80]  | -62 [-304, 115]  | 1/7                    |
+|                     | Sep 17–Oct 7 (OOS) | 0.20M         | -119 [-173, -74]  | -178 [-245, -118] | -179 [-333, -6]   | -79 [-163, -39] | -80 [-245, 77]   | 0/21                   |
+|                     | pooled             | 0.19M         | -114 [-160, -72]  | -186 [-250, -127] | -190 [-317, -32]  | -66 [-143, -35] | -73 [-223, 58]   | 1/28                   |
+
+### 6b. Pre-game sports by time to kickoff and league, and elections/geopolitics by price
+
+Ex-rewards, +30 min unless noted (`*/boot_cells.csv`, `*/sports_league_kickoff.csv`). The +2 h mark crosses
+kickoff for fills inside the last 2 h, so for those cells it measures in-game noise.
+
+| cell                   | Oct 8–14 +30m     | Sep 17–Oct 7 (OOS) +30m   | pooled +30m     | pooled +2h        | pooled maker $/day   |   pooled events |
+|:-----------------------|:------------------|:--------------------------|:----------------|:------------------|:---------------------|----------------:|
+| pregame a<1h           | 64 [-54, 209]     | -32 [-143, 66]            | -8 [-95, 77]    | 86 [-193, 376]    | 7179k                |           18272 |
+| pregame b1-6h          | 30 [-9, 62]       | 53 [31, 74]               | 49 [30, 66]     | -23 [-169, 77]    | 5204k                |           18738 |
+| pregame c6-24h         | 41 [7, 75]        | 43 [17, 64]               | 42 [20, 60]     | 35 [6, 66]        | 2860k                |           17386 |
+| pregame d>24h          | 330 [73, 665]     | 81 [55, 114]              | 135 [71, 220]   | 157 [69, 276]     | 982k                 |           10805 |
+| pregame soccer c6-24h  | 38 [26, 51]       | 52 [31, 69]               | 48 [32, 61]     | 15 [-5, 31]       | 920k                 |            8558 |
+| pregame soccer d>24h   | 67 [53, 81]       | 154 [105, 219]            | 136 [93, 186]   | 140 [90, 189]     | 302k                 |            7328 |
+| pregame esports c6-24h | 66 [49, 81]       | 48 [33, 64]               | 52 [40, 64]     | 30 [15, 46]       | 480k                 |            1874 |
+| pregame esports d>24h  | 113 [40, 196]     | 74 [50, 103]              | 86 [57, 118]    | 67 [32, 99]       | 57k                  |             598 |
+| pregame nfl b1-6h      | 33 [-8, 74]       | 52 [16, 99]               | 50 [18, 91]     | 73 [-73, 228]     | 1373k                |             131 |
+| pregame nfl c6-24h     | 19 [-28, 91]      | 28 [1, 67]                | 27 [0, 65]      | 31 [-0, 71]       | 657k                 |             127 |
+| pregame nfl d>24h      | 480 [55, 1290]    | 15 [-6, 35]               | 123 [19, 302]   | 128 [7, 332]      | 381k                 |             170 |
+| pregame mlb b1-6h      | 97 [70, 124]      | 67 [21, 102]              | 69 [26, 100]    | 87 [-39, 204]     | 503k                 |             432 |
+| pregame mlb c6-24h     | 55 [20, 98]       | 41 [14, 65]               | 43 [20, 66]     | 34 [-10, 83]      | 182k                 |             420 |
+| pregame nhl b1-6h      | 60 [18, 105]      | 90 [64, 116]              | 77 [53, 104]    | -42 [-183, 89]    | 82k                  |             169 |
+| pregame cfb b1-6h      | 52 [19, 85]       | 16 [-1, 32]               | 23 [9, 37]      | -33 [-121, 55]    | 428k                 |             457 |
+| pregame tennis b1-6h   | -197 [-576, 75]   | 258 [175, 344]            | 155 [36, 254]   | 268 [91, 412]     | 359k                 |            4933 |
+| pregame tennis c6-24h  | -106 [-367, 105]  | 185 [73, 311]             | 124 [13, 238]   | 229 [13, 535]     | 236k                 |            4243 |
+| pregame soccer a<1h    | 109 [-37, 286]    | -60 [-339, 180]           | -0 [-188, 184]  | 3 [-646, 644]     | 2738k                |            9587 |
+| pregame nfl a<1h       | 24 [-391, 313]    | 28 [-166, 186]            | 28 [-135, 182]  | 323 [-124, 839]   | 1428k                |             131 |
+| pregame mlb a<1h       | -205 [-1585, 500] | -188 [-552, 85]           | -189 [-504, 71] | -232 [-1005, 570] | 439k                 |             447 |
+| elections p<.15        | 299 [175, 394]    | 315 [-100, 570]           | 309 [38, 482]   | -10 [-536, 276]   | 101k                 |            1998 |
+| elections p.15-.85     | -31 [-78, 3]      | -13 [-76, 29]             | -17 [-70, 19]   | -29 [-91, 8]      | 1344k                |            1490 |
+| elections p>.85        | 16 [-3, 36]       | 50 [19, 85]               | 43 [18, 73]     | 65 [22, 112]      | 1159k                |            1839 |
+| geopolitics p.15-.85   | 12 [-180, 148]    | 89 [10, 226]              | 66 [-3, 166]    | 51 [-41, 166]     | 557k                 |             332 |
+| geopolitics p>.85      | -36 [-127, 5]     | 12 [-1, 29]               | -2 [-27, 17]    | 4 [-24, 25]       | 1167k                |             490 |
+
+How to read it:
+- **The final hour before kickoff carries no robust edge** in any league. That hour is when lineups land and
+  sharp money arrives; the CIs are wide and centred near 0, and MLB is −189 bps.
+- **Earlier windows replicate.** They have wider spreads (0.9–1.7¢ beyond 6 h versus 0.65¢ in the last hour)
+  and adverse selection that does not keep up. Soccer is the largest addressable cell: $1.2M/day at > 6 h,
+  +48 to +136 bps.
+- **Tennis** is positive out of sample but negative in Oct 8–14, so it is unstable.
+- **Pre-game top-20 makers** earn +84 bps at +2 h pooled (+411 in Oct, −48 OOS) against +21 bps for everyone
+  else. The Oct week was a good week.
+
+### 6c. What changes in the recommendation (D11)
+
+- **Keep pre-game sports, but narrow it to the window more than 1 h before kickoff.** Quote soccer, esports,
+  NFL, MLB and NHL from listing until T−1 h, then cancel everything and stay flat through the game.
+  - Expected edge for an average-queue maker is about +40–50 bps of filled notional at 1–24 h (pooled CI
+    lower bound about 20–30) and more beyond 24 h, on $4–9M/day of maker volume.
+  - The replay must test whether *our* quotes, which are always on, get the average fill. In crypto the
+    top-20 continuous quoters did worse than average. In pre-game sports they did better (+84 vs +21 bps).
+- **Keep elections reward farming.** The with-rewards edge replicates (+101 OOS), and adverse selection is the
+  lowest anywhere (0.5–0.6¢).
+  - The money is the reward program. Quote 0.15–0.85, two-sided, inside `rewards_max_spread`.
+  - The risk is the program changing, and Nov 3. Pull quotes at the first returns.
+- **Geopolitics** is the third candidate: +47 [11, 102] ex-rewards pooled, positive OOS, ≈ 0 in Oct.
+- **Data needs** are unchanged from §4. For pre-game, record from market listing to T−1 h, plus the last
+  hour, to measure what is given up by stopping early. PolyOrderBooks (sports, keyed) can backfill. Elections
+  need our recorder, starting now.
+
 ## Files
 
 - `gamma_tags.py`, `rewards_current.py`, `categories.py`, `build_legs.py`, `census.py`, `top_makers.py`,
@@ -288,7 +468,10 @@ edge is about +1.2¢). That is a directional filter, not market making.
 - `out/category_summary.csv`, `subcat_summary.csv`, `by_price.csv`, `by_ttr.csv`, `by_price_ttr.parquet`,
   `crypto_validation.csv`, `top_vs_rest.csv`, `sports_detail.csv`, `top_makers.csv` (wallets truncated),
   `top_makers_by_cat.csv`, `rewards_check.csv`, `holding.csv`, `daily_edge.csv`.
-- `cache/` (git-ignored) holds `legs.parquet`, the gamma and reward caches and the per-market sums.
+- `cache/` (git-ignored) holds `legs*.parquet`, the gamma and reward caches and the per-market sums.
+- Replication: `period.py`, `run_periods.sh`, `boot_buckets.py`, `tables.py`. Outputs for the three periods are
+  `out/` (Oct 8–14), `out_oos/` (Sep 17–Oct 7) and `out_pooled/` (Sep 17–Oct 14): the same files as above,
+  plus `boot_cells.csv`, `sports_league_kickoff.csv` and `out_pooled/replication.md`.
 
 Reproduce (about 20 min of compute plus 12 min of RPC):
 
@@ -297,4 +480,9 @@ cd polymarket/onchain && nice -n 10 python extract.py --start 2026-10-08 --end 2
 cd ../analysis/census && python gamma_tags.py --fills ../../onchain/data/all/fills && python rewards_current.py
 python build_legs.py --fills ../../onchain/data/all/fills --start 2026-10-08 --end 2026-10-14
 python census.py && python top_makers.py && python extras.py && python daily.py
+# replication: extend the pull to Sep 17, re-run gamma, then
+cd ../../onchain && python extract.py --start 2026-09-17 --end 2026-10-07 --all --events OrderFilled --slim --workers 8
+cd ../analysis/census && python gamma_tags.py --fills ../../onchain/data/all/fills && REBUILD=1 ./run_periods.sh
+for p in "w4 out" "w1,w2,w3 out_oos" "w1,w2,w3,w4 out_pooled"; do set -- $p; CENSUS_TAGS=$1 CENSUS_OUT=$2 python boot_buckets.py; done
+python tables.py
 ```
