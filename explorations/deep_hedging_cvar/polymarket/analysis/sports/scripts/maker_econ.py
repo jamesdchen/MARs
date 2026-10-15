@@ -21,7 +21,7 @@ CRYPTO = "--crypto" in sys.argv   # comparison run on onchain/data/crypto-updown
 SRC = HERE.parent.parent / "onchain" / "data" / ("crypto-updown" if CRYPTO else "sports")
 OUT = HERE / "out"
 TAG = "_crypto" if CRYPTO else ""
-CRYPTO_T0, CRYPTO_T1 = 1792022400, 1792044000   # 2026-10-14 08:00-14:00 UTC
+CRYPTO_T0, CRYPTO_T1 = 1791964800, 1791986400   # 2026-10-14 08:00-14:00 UTC
 H = {"10s": 10, "1m": 60, "5m": 300, "30m": 1800}
 JUMP = 0.08
 EXCH = {"0xe2222d279d744050d28e00520010520000310f59", "0xc5d563a36ae78145c45a50134d48a1215220f80a",
@@ -53,6 +53,10 @@ def load():
         cen = crypto_meta(mk)
     else:
         cen = pd.read_parquet(OUT / "census_markets.parquet").drop_duplicates("slug").set_index("slug")
+        # the pull ends 2026-10-15 00:00 UTC (the extractor only does whole UTC days below the chain head):
+        # keep only markets whose game started by 2026-10-14 20:00 so their in-play is covered
+        late = cen.index[pd.to_datetime(cen.game_start, utc=True, format="mixed", errors="coerce") >= pd.Timestamp("2026-10-14T20:00Z")]
+        mk = mk[~mk.slug.isin(late)]
     f = f.merge(mk[["token_id", "slug", "outcome_idx"]], on="token_id", how="inner")
     f = f[f["size"] > 0]
     f["t"] = f.block_time.astype(np.int64)
@@ -171,6 +175,27 @@ if __name__ == "__main__":
     M["hbin"] = pd.cut(M.hrs_to_start, [-10, -3, -1, 0, 0.5, 2, 6, 24, 1e4], right=False)
     res["time_to_start"] = table(M, "hbin")
     res["jump_live"] = table(M[M.phase == "live"], "is_jump")
+    # two-sided (market-maker-like) vs one-sided (limit-order bettor) maker wallets, per wallet x market:
+    # imbalance = |sum dir*size| / sum size over the wallet's maker legs; MM-like = imbalance < 0.3 and >= 20 legs
+    M["sdir"] = M["dir"] * M["size"]
+    wm = M.groupby(["maker", "slug"]).agg(n=("size", "size"), gross=("size", "sum"), net=("sdir", "sum"))
+    wm["imb"] = wm.net.abs() / wm.gross
+    wm["kind"] = np.where((wm.imb < 0.3) & (wm.n >= 20), "two-sided", np.where(wm.imb > 0.7, "one-sided", "mixed"))
+    M = M.join(wm["kind"], on=["maker", "slug"])
+    res["wallet_kind_phase"] = table(M, ["kind", "phase"])
+    res["wallet_kind_pbin"] = table(M[M.kind == "two-sided"], ["phase", "pbin"])
+    # market-clustered standard errors of the size-weighted means (cents/share), by phase
+    se = []
+    for ph, d in list(M.groupby("phase")) + [((k, p_), d_) for (k, p_), d_ in M.groupby(["kind", "phase"])]:
+        per = d.groupby("slug").apply(lambda x: pd.Series({c: np.nansum(x[c] * x["size"]) for c in COLS} | {"w": x["size"].sum()}), include_groups=False)
+        n = len(per); tot = per.w.sum()
+        r = {"phase": ph if isinstance(ph, str) else "/".join(ph), "markets": n}
+        for c in COLS:
+            mu = per[c].sum() / tot
+            r[c] = mu * 100
+            r[c + "_se"] = np.sqrt(n / max(n - 1, 1) * (((per[c] - mu * per.w) / tot) ** 2).sum()) * 100
+        se.append(r)
+    res["clustered_se"] = pd.DataFrame(se).set_index("phase").round(2).T
     # taker volume split pre-game vs live (from all legs, taker role)
     F0 = pd.read_parquet(OUT / "all_legs.parquet".replace(".", TAG + "."))
     lg = M.drop_duplicates("slug").set_index("slug")[["league", "gs", "smt"]]
@@ -179,24 +204,12 @@ if __name__ == "__main__":
     F0["notional"] = F0["size"] * np.where(F0["dir"] > 0, F0.p_yes, 1 - F0.p_yes)
     F0["fee_usd"] = F0.fee / 1e6
     v = F0.pivot_table(index="league", columns="phase", values="notional", aggfunc="sum").fillna(0)
-    v["live_share"] = v["live"] / (v["live"] + v["pre"]); v.loc["ALL"] = [v.pre.sum(), v.live.sum(), v.live.sum() / (v.live.sum() + v.pre.sum())]
+    v["live_share"] = v["live"] / (v["live"] + v["pre"]); v.loc["ALL", ["live", "pre"]] = [v.live.sum(), v.pre.sum()]; v.loc["ALL", "live_share"] = v.loc["ALL", "live"] / (v.loc["ALL", "live"] + v.loc["ALL", "pre"])
     fees = F0.groupby("phase").fee_usd.sum()
     v["taker_fees_usd"] = np.nan; v.loc["ALL", "taker_fees_usd"] = fees.sum()
     res["taker_notional_by_phase"] = v.round(3)
     F0["min_from_start"] = (F0.t - F0.gs) / 60
     res["taker_notional_by_time"] = (F0.groupby(pd.cut(F0.min_from_start, [-1e6, -1440, -360, -60, -10, 0, 30, 60, 120, 180, 1e6]), observed=True).notional.sum() / F0.notional.sum()).round(3).to_frame("share")
-    # market-clustered standard errors of the size-weighted means (cents/share), by phase
-    se = []
-    for ph, d in M.groupby("phase"):
-        per = d.groupby("slug").apply(lambda x: pd.Series({c: np.nansum(x[c] * x["size"]) for c in COLS} | {"w": x["size"].sum()}), include_groups=False)
-        n = len(per); tot = per.w.sum()
-        r = {"phase": ph, "markets": n}
-        for c in COLS:
-            mu = per[c].sum() / tot
-            r[c] = mu * 100
-            r[c + "_se"] = np.sqrt(n / max(n - 1, 1) * (((per[c] - mu * per.w) / tot) ** 2).sum()) * 100
-        se.append(r)
-    res["clustered_se"] = pd.DataFrame(se).set_index("phase").round(2).T
     # wallets: maker-leg P&L to resolution and rebates, plus all legs (maker + taker) to resolution
     W = M[M.y.notna()].assign(pnl_res=lambda d: d.mo_res * d["size"], reb=lambda d: d.rebate_ps * d["size"],
                                sc_usd=lambda d: d.sc * d["size"], m30=lambda d: d.mo_30m * d["size"])
