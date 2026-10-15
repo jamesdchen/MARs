@@ -1,4 +1,9 @@
 rec_out/
 raw_pob/
+raw*/
 build/
+cache/
 *.parquet
+env_sports/resources
+env_sports/build/
+!rec_daily/**/*.parquet

@@ -18,7 +18,7 @@ if [ "$1" = bc ]; then
   for m in 0 1 2; do
     python "$W4/bc_w4.py" --quoter "$QJSON" --model-idx $m -- --num-envs 1024 --steps 2048 --epochs 8 \
       --hidden 64 --layers 2 --value --gamma 0.9988 --seed $((m + 1)) --threads 1 \
-      --env-kw data_dir=$V2 reward_mode=2 markout_h=60 mark_mode=1 \
+      --env-kw data_dir=\"$V2\" reward_mode=2 markout_h=60 mark_mode=1 \
       --out "$W4/ckpt/bc_m$m.pt" > "$W4/runs/bc_m$m.log" 2>&1 &
   done
   wait
