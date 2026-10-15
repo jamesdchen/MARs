@@ -95,7 +95,38 @@ FLAGS = {
     'off_prior': (('policy', 'off_prior'), float),  # MLP: initial logit bonus of 'off' (absent = 0)
     'reward_mode': (('env', 'kw', 'reward_mode'), int),  # 0 MTM, 1 join probe, 2 fill markout (D5)
     'markout_h': (('env', 'kw', 'markout_h'), float),    # reward_mode 2: markout horizon (s)
+    'close_inv_coef': (('shaping', 'close_inv_coef'), float),  # see CloseInventoryPenalty (absent = off)
+    'close_ramp': (('shaping', 'ramp'), float),
 }
+
+
+class CloseInventoryPenalty:
+    """Training-only CVaR-flavoured shaping (wraps the vecenv like probes.RewardOverride):
+    reward -= close_inv_coef * |inventory| / Q * max(0, 1 - tau_frac / ramp), i.e. a cost
+    for carrying inventory into the last `ramp` fraction of the window, where the binary
+    settlement makes the P&L distribution fat-tailed. Read from the observation the
+    action was chosen on. Evaluation and selection use true P&L."""
+
+    def __init__(self, env, adapter, close_inv_coef, ramp=0.2):
+        self.env, self.adapter, self.coef, self.ramp = env, adapter, float(close_inv_coef), float(ramp)
+
+    def __getattr__(self, k):
+        return getattr(self.env, k)
+
+    def async_reset(self, seed=None):
+        self.env.async_reset(seed)
+
+    def send(self, actions):
+        inv, tau = self.adapter.close_risk(self.env.observations)
+        pen = self.coef * inv * np.maximum(0.0, 1.0 - tau / self.ramp)
+        self.env.send(actions)
+        self.env.rewards[:] -= pen.astype(np.float32)
+
+    def recv(self):
+        return self.env.recv()
+
+    def close(self):
+        self.env.close()
 
 
 def set_path(d, path, v):
@@ -246,6 +277,8 @@ def main(argv=None):
         log_f.flush()
 
     env = adapter.make_train(cfg['num_envs'], seed=args.seed, **env_kw)
+    if cfg.get('shaping', {}).get('close_inv_coef'):
+        env = CloseInventoryPenalty(env, adapter, **cfg['shaping'])
 
     if cfg['init']:
         policy, _ = load_checkpoint(cfg['init']['path'])
@@ -290,6 +323,7 @@ def main(argv=None):
             ledger.append({'kind': 'val_eval', 'split': 1, 'source': 'train', 'backend': adapter.name,
                            'tag': args.tag, 'cfg_hash': cfg_hash, 'seed': args.seed, 'variant': name,
                            'variant_kw': variants[name], 'final': final, 'step': trainer.global_step,
+                           'data_dir': kw.get('data_dir'),
                            'run_dir': out, 'ckpt': ck, 'val': nan_to_none(res)}, ledger_path)
             if final and name == headline:
                 with open(os.path.join(out, 'val_markets.jsonl'), 'w') as f:

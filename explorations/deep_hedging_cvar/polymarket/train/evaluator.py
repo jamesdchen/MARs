@@ -52,6 +52,14 @@ def summarize(records, group_key=None):
         out[f'sum/{k}'] = float(vals.sum())
         out[f'mean/{k}'] = float(vals.mean())
     out.update(protocol_flags(recs))
+    if 'contract_len_s' in recs[0]:
+        for L, name in ((300, '5m'), (900, '15m'), (14400, '4h')):
+            rl = [r for r in recs if r['contract_len_s'] == L]
+            if rl:
+                out[f'len/{name}/n'] = len(rl)
+                out[f'len/{name}/pnl_total'] = float(sum(r['pnl'] for r in rl))
+                out[f'len/{name}/pnl_mean'] = float(np.mean([r['pnl'] for r in rl]))
+                out[f'len/{name}/fills_per_market'] = float(np.mean([r.get('fills', 0.0) for r in rl]))
     if group_key and group_key in recs[0]:
         for g in sorted({r[group_key] for r in recs}):
             gp = pnl[[r[group_key] == g for r in recs]]
@@ -60,6 +68,24 @@ def summarize(records, group_key=None):
 
 
 T5_FLAGS = ('inspread', 'crossed', 'stale', 'onesided', 'last30')  # DECISIONS.md D2
+LEN_NAMES = {300: '5m', 900: '15m', 14400: '4h'}
+KEEP_FIELDS = ('env', 'market', 'contract_len_s', 'coin_id', 'open_ts', 'end_ts', 'episode_length')
+
+
+def filter_records(recs, quote_lengths):
+    """Per-market records of the same policy with quoting switched off on the excluded
+    contract lengths: each market is its own env (and recurrent state), so an excluded
+    market is exactly a no-quote market (every Log field 0), and the kept ones are
+    unchanged. quote_lengths: names ('5m', '15m', '4h')."""
+    keep = set(quote_lengths)
+    out = []
+    for r in recs:
+        if LEN_NAMES.get(r.get('contract_len_s')) in keep:
+            out.append(r)
+        else:
+            out.append({k: (v if k in KEEP_FIELDS or not isinstance(v, (int, float)) else 0.0)
+                        for k, v in r.items()})
+    return out
 
 
 def protocol_flags(recs):

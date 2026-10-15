@@ -9,3 +9,7 @@ train/runs/
 train/checkpoints/
 *.pt
 /build/
+data/build_v2/
+data/build_jun15/
+data/raw/marketlens/
+data/raw/aggtrades/

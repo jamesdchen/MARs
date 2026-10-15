@@ -39,6 +39,13 @@ def sha256_file(path):
     return h.hexdigest()
 
 
+def no_jun15(path):
+    """The v2 test set (Marketlens BTC 5m, 2026-06-15; data/build_jun15) is never touched
+    before the v2 plan is frozen (DECISIONS.md D7)."""
+    if path and 'jun15' in os.path.abspath(str(path)).lower():
+        raise PermissionError(f'{path}: the v2 test data is never touched by train/ (DECISIONS.md D7)')
+
+
 def _no_test(split):
     if int(split) == TEST_SPLIT:
         raise PermissionError('train/ never touches the test split (EVALUATION.md section 5)')
@@ -79,6 +86,9 @@ class StandInAdapter:
 
     def group_fn(self, env):
         return lambda obs: env.group_labels()
+
+    def close_risk(self, obs):
+        return np.abs(obs[:, 4]), np.clip((obs[:, 0] + 1) / 2, 0, 1)
 
     def teacher(self, name='standin', params=None, env_kw=None):
         return self.mod.teacher_policy
@@ -222,6 +232,7 @@ class RealAdapter:
         """Resolved env parameters (env.params: defaults + overrides, without the
         per-run split/seed) and sha256 of the env code and binding (part of the
         config hash, so runs on a changed env never pool with old ones)."""
+        no_jun15(kw.get('data_dir'))
         p = self.mod.params(**{k: v for k, v in kw.items() if k not in ('split', 'data_dir')})
         p.pop('split', None)
         files = ['mm.h', 'binding.c', 'env.py'] + [f for f in os.listdir(PM)
@@ -234,10 +245,13 @@ class RealAdapter:
             p['data_dir'] = os.path.abspath(d)
         return {'params': p, 'code': code}
 
-    def split_markets(self, split):
+    def split_markets(self, split, data_dir=None):
         _no_test(split)
-        idx = np.flatnonzero(self.markets_all['split'] == split)
-        m = self.markets_all[idx]
+        no_jun15(data_dir)
+        allm = self.markets_all if not data_dir else np.fromfile(
+            os.path.join(data_dir, 'markets.bin'), MARKET_DTYPE)
+        idx = np.flatnonzero(allm['split'] == split)
+        m = allm[idx]
         out = np.zeros(len(idx), dtype=[('idx', '<i8'), ('contract_len_s', '<i4'), ('coin_id', '<i4'),
                                          ('open_ts', '<i8'), ('end_ts', '<i8')])
         out['idx'] = idx
@@ -247,6 +261,7 @@ class RealAdapter:
 
     def make_train(self, num_envs, seed=0, **kw):
         kw.pop('split', None)
+        no_jun15(kw.get('data_dir'))
         if kw.get('data_dir'):  # same observation layout required (rounds.py R5: sim pretraining)
             other = json.load(open(os.path.join(kw['data_dir'], 'feat_meta.json')))['column_index']
             if other != self.col:
@@ -257,9 +272,13 @@ class RealAdapter:
         _no_test(split)
         for k in ('split', 'fixed_market', 'fixed_start', 'cycle_stride', 'allow_test', 'len_mask'):
             kw.pop(k, None)
-        if kw.pop('data_dir', None):  # evaluation is always on the replay (data/build)
-            raise ValueError('evaluation runs on data/build only; pretraining runs need --no-val --no-train-eval')
-        mk = self.split_markets(split)
+        data_dir = kw.get('data_dir')
+        no_jun15(data_dir)
+        if data_dir and os.path.abspath(data_dir) == os.path.abspath(os.path.join(PM, 'data', 'build_sim')):
+            raise ValueError('no evaluation on the simulator build; pretraining runs need --no-val --no-train-eval')
+        mk = self.split_markets(split, data_dir)  # v2 val: data/build_v2 split 1 (Aug 23 + Aug 24)
+        if not len(mk):
+            raise ValueError(f'no markets of split {split} in {data_dir or "data/build"}')
         return MarketSetEnv(self.mod, mk, split, seed=seed, len_cols=self.len_cols, **kw), len(mk)
 
     def eval_records(self, env):
@@ -294,6 +313,10 @@ class RealAdapter:
             print(f'teacher: baselines.{name} unavailable ({type(e).__name__}: {e}); '
                   'using the simple obs quoter', file=sys.stderr)
             return self.simple_teacher
+
+    def close_risk(self, obs):
+        """(|inventory| / Q, fraction of the window left) for the close-inventory penalty."""
+        return np.abs(obs[:, self.inv_idx]), obs[:, self.col['tau_frac']]
 
     def simple_teacher(self, obs):
         """Join both sides when present; pull the side the fair-value gap says

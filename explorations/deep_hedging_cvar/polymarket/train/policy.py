@@ -279,6 +279,86 @@ def logprob_entropy(logits, actions):
     return lp, ent
 
 
+class EnsemblePolicy(nn.Module):
+    """Seed ensemble for evaluation: each member runs on the same observation (with its
+    own recurrent state); per head the logits are averaged (combine='logits') or the
+    probabilities are averaged and returned as log-probabilities (combine='probs');
+    greedy evaluation then takes the argmax. Value: the mean."""
+
+    def __init__(self, members, combine='logits'):
+        super().__init__()
+        assert combine in ('logits', 'probs')
+        self.members = nn.ModuleList(members)
+        self.combine = combine
+        self.recurrent = any(getattr(m, 'recurrent', False) for m in members)
+        self.obs_size, self.nvec = members[0].obs_size, tuple(members[0].nvec)
+        self.is_continuous = False
+        self.hidden_size = sum(getattr(m, 'hidden_size', 0) for m in members)
+
+    def forward_eval(self, obs, state=None):
+        state = {} if state is None else state
+        subs = state.setdefault('members', [{} for _ in self.members])
+        outs = []
+        for m, st in zip(self.members, subs):
+            if 'done' in state:
+                st['done'] = state['done']
+            outs.append(m.forward_eval(obs, st))
+        heads = []
+        for h in range(len(self.nvec)):
+            ls = torch.stack([o[0][h].float() for o in outs])
+            if self.combine == 'logits':
+                heads.append(ls.mean(0))
+            else:
+                heads.append(torch.log(torch.softmax(ls, -1).mean(0) + 1e-12))
+        return tuple(heads), torch.stack([o[1].float() for o in outs]).mean(0)
+
+    def forward(self, obs, state=None):
+        return self.forward_eval(obs, state)
+
+
+class LengthFilterPolicy(nn.Module):
+    """Quote only on the allowed contract lengths: on other markets both price heads are
+    forced to 'off' (index 0), read from the contract-length one-hot of the observation
+    (len_cols = obs indices of len_5m, len_15m, len_4h)."""
+
+    NAMES = ('5m', '15m', '4h')
+
+    def __init__(self, policy, quote_lengths, len_cols):
+        super().__init__()
+        self.policy = policy
+        self.allowed = torch.tensor([n in set(quote_lengths) for n in self.NAMES])
+        self.len_cols = list(len_cols)
+        self.recurrent = getattr(policy, 'recurrent', False)
+        self.obs_size, self.nvec = policy.obs_size, tuple(policy.nvec)
+        self.is_continuous = False
+        self.hidden_size = getattr(policy, 'hidden_size', 0)
+
+    def forward_eval(self, obs, state=None):
+        logits, v = self.policy.forward_eval(obs, state)
+        ok = self.allowed[obs[:, self.len_cols].argmax(-1)]
+        out = list(logits)
+        for h in (0, 1):
+            forced = torch.full_like(out[h], -1e9)
+            forced[:, 0] = 1e9
+            out[h] = torch.where(ok[:, None], out[h], forced)
+        return tuple(out), v
+
+    def forward(self, obs, state=None):
+        return self.forward_eval(obs, state)
+
+
+def load_policy_spec(spec, map_location='cpu'):
+    """A deployable policy from a JSON-able spec:
+    {"checkpoints": [paths], "combine": "logits"|"probs", "quote_lengths": ["4h", ...] | null,
+     "len_cols": [26, 27, 28]}. One checkpoint and no filter = the plain policy."""
+    members = [load_checkpoint(p, map_location=map_location)[0] for p in spec['checkpoints']]
+    pol = members[0] if len(members) == 1 else EnsemblePolicy(members, spec.get('combine', 'logits'))
+    if spec.get('quote_lengths'):
+        pol = LengthFilterPolicy(pol, spec['quote_lengths'], spec.get('len_cols', (26, 27, 28)))
+    pol.eval()
+    return pol
+
+
 def load_checkpoint(path, env=None, map_location='cpu'):
     """Rebuild a policy from a train_ppo.py checkpoint. Returns (policy, ckpt dict)."""
     ck = torch.load(path, map_location=map_location, weights_only=False)
