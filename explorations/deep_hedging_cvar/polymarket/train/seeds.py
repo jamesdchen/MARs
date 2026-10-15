@@ -6,7 +6,8 @@ Seeds default to 100..104, none of which the sweep used, so the reported
 validation numbers are not inflated by the selection (the selected config's
 sweep seeds were part of the choice). Each seed is a train_ppo.py run
 (--config with the selected config, same step budget), which saves its
-checkpoints and appends its ledger row (tag 'seeds:<cfg hash>'). Writes
+checkpoints, appends its validation evaluations to the ledger and its summary to
+runs.jsonl (tag 'seeds:<cfg hash>'). Writes
 <out>/seeds.json: per seed the validation metrics of every variant, the final
 checkpoint and its sha256; across seeds the mean, min and max of the main
 metrics (EVALUATION.md section 4: report mean and min/max, never the best seed).

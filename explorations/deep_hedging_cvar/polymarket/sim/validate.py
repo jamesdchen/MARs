@@ -1,10 +1,13 @@
 #!/usr/bin/env python3
-"""Sim-vs-replay consistency test on the TRAIN days (SIMULATOR.md §5), numpy version (no C env yet).
+"""Sim-vs-replay consistency test on the TRAIN days, numpy-only version (fast; secondary to validate_env.py).
+
+The gate of record is validate_env.py (C env). This script keeps the original numpy fill check and the
+G4 stylised-fact evaluation (`evaluate`, `compare_table`), which validate_env.py reuses.
 
 Real: the 431 train markets (data/build ticks + data/raw/trades.parquet legs).
 Sim:  the same schedule on the same Binance paths, --reps replications (base generator, no randomisation).
 Both go through the SAME statistics and the SAME numpy fill check (two fixed quoting rules), so any
-difference is the generator's. Writes sim/validation.json and sim/VALIDATION.md.
+difference is the generator's. Writes sim/cache/validation_numpy.json and sim/cache/VALIDATION_numpy.md.
 
 Thresholds are fixed in GATE below (written before any comparison was run).
 """
@@ -248,7 +251,7 @@ def main():
     ap.add_argument("--reps", type=int, default=100)
     ap.add_argument("--chunk", type=int, default=5, help="replications simulated per engine call")
     ap.add_argument("--seed", type=int, default=2026)
-    ap.add_argument("--out", default=str(cm.HERE / "VALIDATION.md"))
+    ap.add_argument("--out", default=str(cm.HERE / "cache" / "VALIDATION_numpy.md"))
     a = ap.parse_args()
     t0 = time.time()
     import hashlib
@@ -269,7 +272,7 @@ def main():
     write_report(res, real, sims, a, time.time() - t0, cm.Path(a.out))
     js = {k: v for k, v in res.items() if k != "tables"}
     js["tables"] = {k: v.to_dict(orient="records") for k, v in res["tables"].items()}
-    (cm.HERE / "validation.json").write_text(json.dumps(js, indent=1, default=lambda o: o.item() if hasattr(o, "item") else str(o)))
+    (cm.HERE / "cache" / "validation_numpy.json").write_text(json.dumps(js, indent=1, default=lambda o: o.item() if hasattr(o, "item") else str(o)))
     print(f"overall {'PASS' if res['passed'] else 'FAIL'}  ({time.time()-t0:.0f}s) -> {a.out}")
 
 

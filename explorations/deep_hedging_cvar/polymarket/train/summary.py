@@ -1,6 +1,6 @@
 """Table of training runs: validation results, attribution, protocol flags and diagnostics.
 
-    python summary.py --tag explore             # ledger rows with this tag
+    python summary.py --tag explore             # runs.jsonl rows with this tag
     python summary.py --runs runs/explore/*      # or run directories
     python summary.py --tag s1 --by-config       # seed means per config hash
 
@@ -90,7 +90,7 @@ def fmt(x):
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument('--ledger', default=ledger.LEDGER)
+    p.add_argument('--runs-index', default=ledger.RUNS)
     p.add_argument('--tag', default=None)
     p.add_argument('--runs', nargs='*', default=None)
     p.add_argument('--by-config', action='store_true')
@@ -101,7 +101,7 @@ def main():
         rows = [json.load(open(os.path.join(d, 'result.json'))) for ds in a.runs for d in glob.glob(ds)
                 if os.path.exists(os.path.join(d, 'result.json'))]
     else:
-        rows = [r for r in ledger.read(a.ledger) if r.get('kind') == 'train_run'
+        rows = [r for r in ledger.read(a.runs_index) if r.get('kind') == 'train_run'
                 and (a.tag is None or r.get('tag') == a.tag)]
     table = [row_of(r) for r in rows]
     if a.by_config:

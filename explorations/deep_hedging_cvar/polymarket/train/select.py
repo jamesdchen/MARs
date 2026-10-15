@@ -3,7 +3,7 @@
     python select.py --tag s1                       # -> runs/sweeps/s1/selected.json
     python select.py --tag s1 --cvar-floor -12.5 --max-inv 100
 
-Reads the ledger, groups the training runs by config hash (configs that
+Reads the run index (runs.jsonl), groups the training runs by config hash (configs that
 differ only in seed), keeps configs with at least --min-seeds distinct seeds
 (the first ledger row of each seed counts; reruns of a seed are ignored), and
 picks the config that maximizes the SEED-MEAN of the validation metric (default
@@ -16,8 +16,8 @@ the T5 artifact share and DECISIONS.md D1's makes_markets flag; --require-mm
 keeps only configs whose seed-mean fills/market >= 5 and T6 share <= 0.5 (D1.3).
 Ties (within --tie-tol) go to the higher seed-mean pessimistic-fill P&L
 (--tiebreak-variant). Never the best seed. Writes selected.json with the
-config, its per-seed results, the full candidate table and the ledger's trial
-count N (all rows, for the deflated Sharpe).
+config, its per-seed results, the full candidate table and the ledger's count of
+validation evaluations N (trials.jsonl, for the deflated Sharpe).
 """
 
 import argparse
@@ -103,7 +103,8 @@ def choose(cands, min_seeds, cvar_floor=None, max_inv=None, tie_tol=0.0, require
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument('--ledger', default=ledger.LEDGER)
+    p.add_argument('--ledger', default=ledger.LEDGER, help='validation-evaluation ledger (for N)')
+    p.add_argument('--runs', default=None, help='run index (default: next to --ledger)')
     p.add_argument('--tag', default=None, help='only runs with this ledger tag (sweep name)')
     p.add_argument('--metric', default='pnl_total')
     p.add_argument('--variant', default=None, help='val variant (default: each run\'s headline)')
@@ -118,8 +119,8 @@ def main():
     if a.min_seeds < 3:
         raise SystemExit('the protocol selects on the mean over >= 3 seeds')
 
-    all_rows = ledger.read(a.ledger)
-    rows = [r for r in all_rows if a.tag is None or r.get('tag') == a.tag]
+    run_rows = ledger.read(a.runs or ledger.runs_path(a.ledger))
+    rows = [r for r in run_rows if a.tag is None or r.get('tag') == a.tag]
     cands = candidates(rows, a.metric, a.variant, a.tiebreak_variant)
     sel = choose(cands, a.min_seeds, a.cvar_floor, a.max_inv, a.tie_tol, a.require_mm)
     cands.sort(key=lambda c: c['mean'], reverse=True)
@@ -131,8 +132,8 @@ def main():
                  'tiebreak_variant': a.tiebreak_variant, 'tie_tol': a.tie_tol, 'tag': a.tag,
                  'require_mm': a.require_mm},
         'ledger': os.path.abspath(a.ledger),
-        'n_trials_ledger': len(all_rows),
-        'n_val_evals_ledger': int(sum(r.get('n_val_evals', 1) for r in all_rows)),
+        'n_val_evals_ledger': ledger.n_val_evals(a.ledger),
+        'n_runs_index': len(run_rows),
         'selected': sel,
         'cfg': sel['cfg'] if sel else None,
         'candidates': [{k: v for k, v in c.items() if k != 'cfg'} for c in cands],

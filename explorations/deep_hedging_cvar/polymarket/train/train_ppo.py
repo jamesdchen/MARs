@@ -10,10 +10,11 @@ puffer3.Trainer (PuffeRL 3.0) for --timesteps agent steps, and every
 --eval-every steps score the greedy policy on all validation markets (split 1,
 start offset 0, headline fill/latency variant) and on all train markets (for the
 train-vs-val gap). At the end: save final.pt, score it under every variant in
---variants, write result.json and append one row to the ledger
-(train/trials.jsonl; the stand-in env writes runs/standin_trials.jsonl).
-Selection uses the final checkpoint only; the periodic evaluations are
-monitoring, counted in the row's n_val_evals.
+--variants and write result.json. Every validation evaluation (periodic or
+final, every variant) appends one row to the ledger train/trials.jsonl as it
+happens (T4: N counts them all); the run's summary goes to train/runs.jsonl,
+which select.py reads (the stand-in env uses runs/standin_*.jsonl). Selection
+uses the final checkpoint only; periodic evaluations are monitoring.
 
 Run directory (--out): config.json, log.jsonl (one 'train' row per epoch and an
 'eval' row per evaluation, the latter with the averaged training diagnostics
@@ -230,6 +231,7 @@ def main(argv=None):
     cfg['env']['code_sha256'] = ident['code']
     cfg_hash = ledger.config_hash(cfg)
     ledger_path = args.ledger or (ledger.LEDGER if adapter.name == 'real' else ledger.STANDIN_LEDGER)
+    runs_path = ledger.runs_path(ledger_path)
     out = args.out or os.path.join(HERE, 'runs', f'{time.strftime("%Y%m%d_%H%M%S")}_{cfg_hash[:8]}_s{args.seed}')
     os.makedirs(out, exist_ok=True)
     with open(os.path.join(out, 'config.json'), 'w') as f:
@@ -281,6 +283,11 @@ def main(argv=None):
                                  seed=args.seed, return_records=True)
             n_val_evals += 1
             results[name] = res
+            # T4: one ledger row per validation evaluation (final/common.py count_trials)
+            ledger.append({'kind': 'val_eval', 'split': 1, 'source': 'train', 'backend': adapter.name,
+                           'tag': args.tag, 'cfg_hash': cfg_hash, 'seed': args.seed, 'variant': name,
+                           'variant_kw': variants[name], 'final': final, 'step': trainer.global_step,
+                           'run_dir': out, 'ckpt': ck, 'val': nan_to_none(res)}, ledger_path)
             if final and name == headline:
                 with open(os.path.join(out, 'val_markets.jsonl'), 'w') as f:
                     for r in recs:
@@ -345,21 +352,22 @@ def main(argv=None):
             with open(args.result_json, 'w') as f:
                 json.dump(result, f, indent=1, default=float)
         if not args.no_val:
-            ledger.append(result, ledger_path)
+            ledger.append(result, runs_path)
         if not args.quiet:
             h = results.get(headline, {})
             print(json.dumps({'done': out, 'steps': trainer.global_step, 'wall_s': round(wall, 1),
                               'sps_median': round(sps), 'val_pnl_total': h.get('pnl_total'),
-                              'val_cvar95': h.get('cvar95'), 'ledger': ledger_path}), flush=True)
+                              'val_cvar95': h.get('cvar95'), 'ledger': ledger_path, 'runs': runs_path}),
+                  flush=True)
         return result
 
     try:
         return loop_and_finish()
     except BaseException as e:
-        if n_val_evals and not args.no_val:  # T4: val evaluations made before a crash are ledgered too
+        if not args.no_val:  # the val evaluations it made are already in the ledger
             ledger.append({'kind': 'train_run_failed', 'backend': adapter.name, 'tag': args.tag,
                            'cfg_hash': cfg_hash, 'seed': args.seed, 'cfg': cfg, 'run_dir': out,
-                           'n_val_evals': n_val_evals, 'error': f'{type(e).__name__}: {e}'}, ledger_path)
+                           'n_val_evals': n_val_evals, 'error': f'{type(e).__name__}: {e}'}, runs_path)
         raise
 
 

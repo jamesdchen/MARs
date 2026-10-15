@@ -9,9 +9,9 @@ Fixed budget: --trials trials, each training for --steps agent steps
 threads each). Each trial trains --seeds-per-trial seeds (default 1, seed 0
 for every trial: common random numbers) and its objective is the seed-mean of
 the validation metric (default: total P&L over all val markets, headline
-variant central fills / 1 s). Every run appends its own row to the ledger
-(train/trials.jsonl) tagged with the sweep name, so the ledger's N counts all
-of them. Then --reseed-top K re-trains the K best configs with more seeds until
+variant central fills / 1 s). Every run appends its validation evaluations to
+the ledger (train/trials.jsonl) and its summary to train/runs.jsonl, tagged with
+the sweep name, so the ledger's N counts all of them. Then --reseed-top K re-trains the K best configs with more seeds until
 each has --reseed-n seeds, so select.py can pick by the seed-mean over >= 3
 seeds rather than by a lucky seed.
 
@@ -20,7 +20,7 @@ the env's inventory penalty, MLP hidden size, and the reward mark (mark_mode 0
 book mid / 1 fair value). Other settings come from
 --base-config (a JSON config as train_ppo.py --config takes) and the
 train_ppo.py defaults; extra train_ppo.py flags can follow `--`.
-State: runs/sweeps/<name>/ (optuna.db, trials.jsonl, one run dir per run).
+State: runs/sweeps/<name>/ (optuna.db, sweep_log.jsonl, one run dir per run).
 """
 
 import argparse
@@ -114,7 +114,7 @@ def main():
 
     root = os.path.join(HERE, 'runs', 'sweeps', args.name)
     os.makedirs(root, exist_ok=True)
-    log_path = os.path.join(root, 'trials.jsonl')
+    log_path = os.path.join(root, 'sweep_log.jsonl')  # not 'trials.jsonl': final/ counts every such file
     optuna.logging.set_verbosity(optuna.logging.WARNING)
     study = optuna.create_study(
         study_name=args.name, storage=f'sqlite:///{os.path.join(root, "optuna.db")}',
