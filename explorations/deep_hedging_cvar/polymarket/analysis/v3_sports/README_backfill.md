@@ -214,3 +214,26 @@ Dry run for kickoffs 2026-09-16..10-14:
 | parquet size | ≤ 7.3 GB |
 
 With `--min-volume 50000`, about half the markets are selected.
+
+## D15 defaults (2026-10-15 22:30 UTC; supersede the D14 defaults above)
+
+D15 withdraws D14's T−1h cut: the last 30 min before kickoff is the best bucket, so the edge is
+near kickoff. The defaults are now **1 s for the last 6 h before kickoff and 1 m from there back to
+7 d** (`--hours-before 168 --resolution 1s --fine-hours 6 --coarse-resolution 1m`).
+
+Dense upper bounds for kickoffs 2026-09-16..10-14:
+
+| options | markets | requests | Pro quota | parquet |
+|---|---|---|---|---|
+| (none) | 6,035 | 1.98 M | 39.6 days | ≤ 22.7 GB |
+| `--mirror` | 6,035 | 0.99 M | 19.8 days | |
+| `--mirror --min-volume 50000` | 3,108 | 0.51 M | 10.2 days | ≤ 11.7 GB |
+
+**Recommended first run:**
+```
+python backfill_pob.py --probe
+python backfill_pob.py --start <oldest day in plan history> --end <yesterday> --mirror --min-volume 50000
+```
+Run `--probe` first to confirm that the mirror holds. The run fetches the oldest days first,
+because the 30-day history drops one day per day. Sparse feeds need fewer requests than these
+bounds.

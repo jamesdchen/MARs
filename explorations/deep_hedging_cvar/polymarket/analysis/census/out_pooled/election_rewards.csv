@@ -1,0 +1,7 @@
+bound,portfolio,markets,capital_usd,reward_usd_day,yield_per_1k_day,lo,hi,median_share,median_mkt_yield
+hi,all (equal size per market),298,1.741e+04,291.7,16.75,9.825,26.66,0.001707,1.65
+hi,top 50 by yield,50,1439,263.4,183,91.12,294.2,0.04274,41.68
+hi,top 100 by yield,100,4223,277.2,65.64,34.61,107.3,0.01582,17.55
+lo,all (equal size per market),298,1.741e+04,7816,448.9,272.5,617.6,0.003922,2.786
+lo,top 50 by yield,50,3935,7755,1971,1558,2274,1,1179
+lo,top 100 by yield,100,5612,7795,1389,984.8,1712,0.08462,77
