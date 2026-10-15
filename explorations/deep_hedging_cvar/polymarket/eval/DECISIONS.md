@@ -235,3 +235,35 @@ same way as v1. The test runs once, and every result is reported.
 - 2026-10-16 03:00 UTC.
 
 The v2 plan is then frozen and Jun 15 is evaluated once.
+
+## D8. Parallel remote workers for v2 (recorded 2026-10-15 ~19:35 UTC, before any v2 result)
+
+The user asked for more parallelism. Five extra cloud sessions (w1–w5), each in its own 4-core
+container, run separate v2 research lines under `train/workers/PROTOCOL.md`:
+
+| Worker | Research line |
+|---|---|
+| w1 | risk-aware objectives on reward mode 2 |
+| w2 | per-contract-length specialists |
+| w3 | architecture: recurrent PufferNet replica and larger networks |
+| w4 | a non-RL toxicity-aware quoter (learned fill-toxicity classifier plus rules) |
+| w5 | behaviour-cloning warm starts from other teachers, with markout reward |
+
+Locally, the coordinator runs ensembling, length filters, the main markout sweep, sub-second
+features and the Jun 15 build.
+
+**Shared rules for every worker and local run:**
+- the same frozen env and data, which each worker verifies by hash;
+- selection on val v2 only, never Jun 15;
+- each worker writes its own ledger (`train/workers/<name>/trials.jsonl`). Every row counts
+  towards N.
+
+**Selection across everything.** The single v2 method is the one with the best seed-mean val-v2
+P&L (central fills, 1 s) among methods that:
+- pass D1.3;
+- have at least 3 seeds.
+
+The coordinator then trains or collects 5 seeds of that method, or uses a pre-specified ensemble
+of them, and freezes the plan.
+
+**Unchanged:** D7's stopping rule and the 03:00 UTC deadline.
