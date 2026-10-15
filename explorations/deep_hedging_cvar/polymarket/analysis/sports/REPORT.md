@@ -286,7 +286,7 @@ pick-off:
     leading signal at the 1 s scale.
 - **In-play (5 UEL matches, 3 NHL games):** Polymarket moved first on large moves.
   - Smarkets suspends on goals. Where it caught up, its half-move came a median **~48 s** after Polymarket's
-    (16 matched moves, range −90 to +180 s).
+    (12 of 26 big Polymarket moves matched; in the other 14 Smarkets never caught up within 90 s; range −90 to +180 s).
   - Its in-play spreads were 2–9¢ against Polymarket's 1¢.
   - Cross-correlations of 3 s mid changes are about 0 at every lag from −60 to +60 s. Polling every 3 s plus
     suspensions make the exchange useless as an in-play reference.

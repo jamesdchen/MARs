@@ -1,0 +1,22 @@
+Out-of-sample recheck on tonight's recorded games, with true book mids instead of the touch proxy.
+
+Maker legs come from data-api /trades (takerOnly=false rows that are not taker rows, see proxy_check.py) for the
+markets polyrec recorded. Markouts use the recorded outcome-0 book mid at (block time - 3 s) + h, h = 10 s, 1 min,
+5 min, and the 0/1 payoff once gamma reports the market resolved. The pre/live split uses gameStartTime. Wallet x
+market pairs are classed two-/one-sided as in maker_econ.py. Cents/share, size-weighted; market-clustered SE.
+Usage: tonight_check.py <rec_out_dir> slug [slug ...]
+
+markets: 11, maker legs: 15772
+group              live     pre  mixed/live  mixed/pre  one-sided/live  one-sided/pre  two-sided/live
+markets           11.00    3.00       11.00       2.00           11.00           3.00            8.00
+maker_shares_k  3972.60  166.43      509.55      45.51         2260.48         120.93         1202.57
+sc                 0.65    0.47        0.92       0.50            0.58           0.46            0.63
+sc_se              0.09    0.05        0.24       0.01            0.09           0.06            0.05
+mo_10s             0.02    0.35       -0.01       0.49           -0.01           0.30            0.08
+mo_10s_se          0.13    0.05        0.28       0.01            0.09           0.07            0.15
+mo_1m              0.25    0.31        0.16       0.49           -0.07           0.24            0.75
+mo_1m_se           0.16    0.05        0.29       0.01            0.06           0.09            0.40
+mo_5m             -0.03    0.10        0.70       0.21           -0.88           0.06            1.00
+mo_5m_se           0.82    0.14        0.95       0.00            0.84           0.21            0.68
+mo_res            -4.15     NaN       -2.10        NaN           -7.40            NaN           -0.83
+mo_res_se          4.78     NaN        6.75        NaN            4.91            NaN            3.99
