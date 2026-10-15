@@ -18,9 +18,10 @@ import numpy as np, pandas as pd
 
 HERE = Path(__file__).resolve().parent.parent
 CRYPTO = "--crypto" in sys.argv   # comparison run on onchain/data/crypto-updown with the same yardstick
-SRC = HERE.parent.parent / "onchain" / "data" / ("crypto-updown" if CRYPTO else "sports")
+BIG = "--big" in sys.argv         # 239-market sample (onchain/data/sports_big)
+SRC = HERE.parent.parent / "onchain" / "data" / ("crypto-updown" if CRYPTO else "sports_big" if BIG else "sports")
 OUT = HERE / "out"
-TAG = "_crypto" if CRYPTO else ""
+TAG = "_crypto" if CRYPTO else "_big" if BIG else ""
 CRYPTO_T0, CRYPTO_T1 = 1791964800, 1791986400   # 2026-10-14 08:00-14:00 UTC
 H = {"10s": 10, "1m": 60, "5m": 300, "30m": 1800}
 JUMP = 0.08

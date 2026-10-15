@@ -293,7 +293,7 @@ def main():
     W["maker_share"] = W.maker_shares / (W.maker_shares + W.taker_shares)
     W["direction_usd"] = W.maker_pnl_mark - W.spread_usd       # maker legs: mark-to-end minus spread at fill
     W = W.sort_values("maker_shares", ascending=False)
-    W.to_csv(OUT / f"{SET}_wallets.csv")
+    W.head(3000).to_csv(OUT / f"{SET}_wallets.csv")          # top 3000 makers by maker shares
     top = W.head(25)
     with pd.option_context("display.width", 250, "display.max_columns", 30, "display.float_format", "{:.4g}".format):
         print(f"== {SET}: top 25 makers by maker shares")

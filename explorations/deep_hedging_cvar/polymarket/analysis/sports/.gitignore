@@ -4,3 +4,5 @@ out/*.big.parquet
 out/all_legs.parquet
 out/maker_legs_crypto.parquet
 out/all_legs_crypto.parquet
+out/maker_legs_big.parquet
+out/all_legs_big.parquet
