@@ -1,0 +1,96 @@
+{
+ "cfg": {
+  "env": {
+   "backend": "real",
+   "kw": {
+    "inv_penalty": 5.203196400420489e-05,
+    "mark_mode": 1,
+    "markout_h": 120,
+    "reward_mode": 2,
+    "data_dir": "/home/user/MARs/explorations/deep_hedging_cvar/polymarket/data/build_v2"
+   },
+   "resolved": {
+    "allow_test": 0.0,
+    "fill_model": 1.0,
+    "latency": 1.0,
+    "match_delay": -1.0,
+    "dt": 0.0,
+    "dt_5m": 1.0,
+    "dt_15m": 1.0,
+    "dt_4h": 5.0,
+    "Q": 100.0,
+    "inv_penalty": 5.203196400420489e-05,
+    "reward_scale": 0.0,
+    "size_mult": 1.0,
+    "part_cap": -1.0,
+    "fee_rate": -1.0,
+    "rebate_rate": -1.0,
+    "liq_rewards": 0.0,
+    "liq_moas": 1.0,
+    "mark_mode": 1.0,
+    "reward_mode": 2.0,
+    "tick_rule": 0.0,
+    "len_mask": 7.0,
+    "fixed_market": -1.0,
+    "fixed_start": -1.0,
+    "cycle_stride": 0.0,
+    "start_frac": 0.2,
+    "markout_h": 120.0,
+    "data_dir": "/home/user/MARs/explorations/deep_hedging_cvar/polymarket/data/build_v2"
+   },
+   "code_sha256": {
+    "binding.c": "03adf9f954243b2baf4a10d5a762b544822f2abb86c904b53519a97edab398c0",
+    "binding.cpython-313-x86_64-linux-gnu.so": "fd7d07ff49e799e39911a07d022ceb8995f8b8546ca246fdf61f846945564ab1",
+    "env.py": "e2b8209e681350618cfd3bbb64995ac738bdbba16effe6362d5c742d732413a9",
+    "mm.h": "9189f83adbb3f42ab803aca998ff97954c7cc092ffd65401d2b835abaa98a8e9",
+    "data:markets.bin": "a35032d146d7802ec68b63a938fcfb0e37b322132c64efcee5df4e40b9e7d1f8",
+    "data:meta.json": "5d75ae1deba9943442acc17acd4d0b662433362f723750f8c0d6946615ecc155"
+   }
+  },
+  "policy": {
+   "kind": "puffernet",
+   "hidden": 128,
+   "layers": 2
+  },
+  "ppo": {
+   "learning_rate": 0.0006776573310250399,
+   "ent_coef": 0.00039747456923718835,
+   "gamma": 0.9988214282795336,
+   "gae_lambda": 0.9794307540969474,
+   "clip_coef": 0.2,
+   "vf_coef": 0.5,
+   "vf_clip_coef": 10.0,
+   "max_grad_norm": 0.5,
+   "update_epochs": 1,
+   "bptt_horizon": 64,
+   "minibatch_size": 8192,
+   "optimizer": "adam",
+   "anneal_lr": true,
+   "adam_eps": 1e-08
+  },
+  "num_envs": 4096,
+  "total_timesteps": 25000000,
+  "init": null,
+  "kl_teacher": null
+ },
+ "cfg_hash": "f3816f02e3558e51ba2796f6982d4a1c9bb7bff1f795918767c1f32a8e5f5937",
+ "seed": 1,
+ "argv": [
+  "/home/user/MARs/explorations/deep_hedging_cvar/polymarket/train/train_ppo.py",
+  "--config",
+  "/home/user/MARs/explorations/deep_hedging_cvar/polymarket/train/workers/w3/runs/pnet_L2_H128_s1/w3_cfg.json",
+  "--seed",
+  "1",
+  "--threads",
+  "1",
+  "--out",
+  "/home/user/MARs/explorations/deep_hedging_cvar/polymarket/train/workers/w3/runs/pnet_L2_H128_s1",
+  "--tag",
+  "w3_pnet_L2_H128",
+  "--ledger",
+  "/home/user/MARs/explorations/deep_hedging_cvar/polymarket/train/workers/w3/trials.jsonl",
+  "--quiet",
+  "--layers",
+  "2"
+ ]
+}

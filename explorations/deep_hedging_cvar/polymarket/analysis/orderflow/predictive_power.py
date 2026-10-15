@@ -9,11 +9,22 @@ Targets (panel.py):
          ulfwd{1,2,5}  Binance log return over (t, t+h] / (sigma sqrt h)
   fills: mo60 / mo30 / mo5  maker markout of a touch fill vs the mid at the match row (cents)
          edge60             spread capture + 60 s markout (cents)
+         quote_edge         per 5m/15m decision row and side: edge60 summed over the touch fills a
+                            touch quote decided at t would face (match row t + 1)
 Models: ridge / logistic on standardised, winsorised inputs (fills: x and m*x, m = maker sign),
 and a small LightGBM (fixed settings, not tuned). CV: 6 contiguous 8-hour blocks of Aug 21-22,
-training rows within 300 s of a test block purged. --confirm: fit on all train, score val.
+training rows within 300 s of a test block purged. --confirm: fit on all train, score val
+(panel_val.npz = data/build_v2 split 1, Aug 23 + 24).
 
-    PYTHONPATH=<lightgbm> /usr/bin/python3 analysis/orderflow/predictive_power.py [--gbm] [--confirm]
+Outcome (2026-10-15): no consistent gain on the fill-toxicity targets (markouts, toxic-fill AUC,
+quote value) or on the taker-flow sign, on train or val, linear or GBM; so no v2 feature columns
+or env observations were added. timing.py shows why: takers react to Binance 2-3.5 s before the
+print's block time, after the env's last decision for that print (u - 5 at L = 1, D = 4).
+
+Run order: panel.py --split train, pred_dp.py, predictive_power.py [--models lin,gbm];
+then panel.py --split val --build data/build_v2, pred_dp.py --confirm, predictive_power.py --confirm.
+LightGBM is not in this repo's Pythons: pip install --target DIR lightgbm narwhals, then run
+without -I and with DIR on sys.path (e.g. PYTHONPATH=DIR).
 """
 from __future__ import annotations
 
