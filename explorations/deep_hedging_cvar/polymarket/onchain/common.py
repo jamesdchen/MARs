@@ -32,13 +32,15 @@ TOPIC_OM = "0x174b3811690657c217184f89418266767c87e4805d09680c39fc9c031c0cab7c"
 TOPIC_FC = "0x55bb3cade9d43b798a4fe5ffdd05024b2d7870df53920673bfc7e68047cd0ab1"
 TOPICS = {"OrderFilled": TOPIC_OF, "OrdersMatched": TOPIC_OM, "FeeCharged": TOPIC_FC}
 
-# Keyless archive endpoints: url, max in-flight requests, initial span, max span (blocks per eth_getLogs).
+# Keyless archive endpoints: url, max in-flight requests, initial span, max span (blocks per eth_getLogs),
+# request rate cap (JSON-RPC calls/s; batch elements count individually), max JSON-RPC batch size.
 # tenderly caps a response at 20k results (~100 blocks at ~190 logs/block) and suggests a range;
-# drpc's free tier rejects ~>100-block ranges; quiknode had no cap up to 1000 blocks (146k logs, 133 MB).
+# drpc's free tier rejects ~>100-block ranges and batches > 10; quiknode had no cap up to 1000 blocks
+# (146k logs, 133 MB) but enforces 20 requests/s (-32007), counting each batch element.
 DEFAULT_ENDPOINTS = [
-    ("https://rpc-mainnet.matic.quiknode.pro", 3, 200, 400),
-    ("https://gateway.tenderly.co/public/polygon", 2, 100, 100),
-    ("https://polygon.drpc.org", 1, 100, 100),
+    ("https://rpc-mainnet.matic.quiknode.pro", 3, 200, 400, 15, 15),
+    ("https://gateway.tenderly.co/public/polygon", 2, 100, 100, 10, 15),
+    ("https://polygon.drpc.org", 1, 100, 100, 8, 10),
 ]
 
 HTTP_HEADERS = {"User-Agent": "Mozilla/5.0 (research data pipeline; polite)",

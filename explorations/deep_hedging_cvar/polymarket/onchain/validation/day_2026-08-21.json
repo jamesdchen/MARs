@@ -1,0 +1,64 @@
+{
+ "date": "2026-08-21",
+ "markets_raw_that_day": 238,
+ "markets_chain_that_day": 3335,
+ "markets_compared": 238,
+ "raw_markets_missing_onchain": [],
+ "legs_raw": 238247,
+ "legs_chain": 238256,
+ "taker_raw": 93500,
+ "taker_chain": 93500,
+ "exact_leg_matches": 238247,
+ "exact_leg_match_rate_raw": 1.0,
+ "exact_leg_match_rate_chain": 0.999962,
+ "leg_matches_ignoring_price": 238247,
+ "tx_timestamp_matches": 238247,
+ "markets_legs_equal": 230,
+ "markets_taker_equal": 238,
+ "markets_vol_rel_err_lt_1e4": 238,
+ "markets_notional_rel_err_lt_1e4": 238,
+ "vol_raw": 4228148.0,
+ "vol_chain": 4228148.0,
+ "notional_raw": 2188134.0,
+ "notional_chain": 2188134.0,
+ "aggressor_up_agree": "93500/93500",
+ "worst_markets": [
+  {
+   "slug": "bnb-updown-4h-1787328000",
+   "legs_raw": 76,
+   "legs_chain": 77,
+   "vol_raw": 1024.16259765625,
+   "vol_chain": 1024.171142578125
+  },
+  {
+   "slug": "xrp-updown-15m-1787323500",
+   "legs_raw": 159,
+   "legs_chain": 160,
+   "vol_raw": 1182.4329833984375,
+   "vol_chain": 1182.43798828125
+  },
+  {
+   "slug": "xrp-updown-15m-1787295600",
+   "legs_raw": 142,
+   "legs_chain": 143,
+   "vol_raw": 1351.0855712890625,
+   "vol_chain": 1351.090576171875
+  },
+  {
+   "slug": "sol-updown-15m-1787323500",
+   "legs_raw": 309,
+   "legs_chain": 310,
+   "vol_raw": 1764.7965087890625,
+   "vol_chain": 1764.801513671875
+  },
+  {
+   "slug": "btc-updown-5m-1787310600",
+   "legs_raw": 4356,
+   "legs_chain": 4357,
+   "vol_raw": 97938.125,
+   "vol_chain": 97938.1328125
+  }
+ ],
+ "chain_markets_not_in_raw": 3097,
+ "chain_legs_not_in_raw_markets": 3222817
+}

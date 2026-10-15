@@ -75,6 +75,8 @@ class Model:
         self.a_sd = me["sd"]
         ip = f.get("impact", {})
         self.impact = {i: ip.get(cm.LEN_NAME[L], {"kappa": 0.0, "halflife_s": 300.0}) for i, L in enumerate(cm.LENS)}
+        la = f.get("lookahead", {})
+        self.lookahead = {i: la.get(cm.LEN_NAME[L], {"h": 0, "kappa": 0.0}) for i, L in enumerate(cm.LENS)}
         inf = f.get("informed", {})
         self.informed = {i: inf.get(cm.LEN_NAME[L], {"w": 0.0, "kappa_noise": 1.0}) for i, L in enumerate(cm.LENS)}
         d = f["direction"]
@@ -101,7 +103,7 @@ class Model:
 # --------------------------------------------------------------------------------------------- randomisation
 DEFAULT_KNOBS = dict(mid_extra_lag_s=0, passthrough_a0_mult=1.0, lag_halflife_mult=1.0, sigma_u_mult=1.0,
                      refresh_rate_mult=1.0, taker_intensity_mult=1.0, taker_size_mult=1.0, informed_share=np.nan,
-                     hawkes_eta=np.nan, impact_mult=1.0, depth_mult=1.0, spread_mult=1.0, onesided_logit_shift=0.0,
+                     hawkes_eta=np.nan, impact_mult=1.0, lookahead_mult=1.0, depth_mult=1.0, spread_mult=1.0, onesided_logit_shift=0.0,
                      hollow_logit_shift=0.0, fee_rate_mult=1.0, fee_free=0, rebate_mult=1.0, sigma_basis_mult=0.0)
 
 
@@ -210,6 +212,11 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
     inf = model.informed[li]
     w_inf = np.where(np.isnan(kn["informed_share"]), inf["w"], kn["informed_share"])
     kap = inf["kappa_noise"]
+    la = model.lookahead[li]
+    la_h = int(la["h"])
+    la_kv = float(la["kappa"]) * kn["lookahead_mult"]
+    la_on = la_h > 0 and la["kappa"] > 0
+    fee_r = model.fees["taker_fee_rate"] * kn["fee_rate_mult"] * (1 - kn["fee_free"])
     imp = model.impact[li]
     k_imp = imp["kappa"] * kn["impact_mult"]
     d_imp = 0.5 ** (1.0 / imp["halflife_s"])
@@ -392,11 +399,26 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
         # prints execute against the ACTUAL book: the displayed (captured, sticky) shape translated to the
         # current mid target; the ticks rows keep showing the snapshot until the next update event
         tick_now = np.where(fine_now, 1, 10)
-        shift = (np.round((cm.sigmoid(target[:, t] + v_imp) - m_now) * 1000.0 / tick_now) * tick_now).astype(np.int64)
+        cen = cm.sigmoid(target[:, t] + v_imp)
+        shift = (np.round((cen - m_now) * 1000.0 / tick_now) * tick_now).astype(np.int64)
+        # look-ahead informed takers: an arrival is informed w.p. 1 - exp(-kappa * edge_c), edge = what the mid
+        # target will be in h s minus the actual book's touch, net of the taker fee (cents); they take that side
+        if la_on:
+            fut = cm.sigmoid(target[:, min(t + la_h, n - 1)] + v_imp)
+            a_ok = (ask_sz[:, 0] > EPS) & (ask_px[:, 0] + shift <= 1000 - tick_now)
+            b_ok = (bid_sz[:, 0] > EPS) & (bid_px[:, 0] + shift >= tick_now)
+            e_buy = np.where(a_ok, fut - (ask_px[:, 0] + shift) / 1000.0, -1.0)
+            e_sell = np.where(b_ok, (bid_px[:, 0] + shift) / 1000.0 - fut, -1.0)
+            edge = np.maximum(e_buy, e_sell) - fee_r * cen * (1 - cen)
+            q_la = 1.0 - np.exp(-la_kv * 100.0 * np.maximum(edge, 0.0))
+            d_la = np.where(e_buy >= e_sell, 1, -1).astype(np.int8)
         for k in range(int(N.max()) if N.size else 0):
             R = np.flatnonzero(N > k)
             copy = (rng.random(len(R)) < rho_copy) & (prev_sign[R] != 0)
             sgn = np.where(copy, prev_sign[R], np.where(rng.random(len(R)) < q[R], 1, -1)).astype(np.int8)
+            if la_on:
+                inf_ = rng.random(len(R)) < q_la[R]
+                sgn = np.where(inf_, d_la[R], sgn).astype(np.int8)
             uq = rng.random(len(R))
             Q = np.empty(len(R))
             for g in np.unique(cgm[R]):

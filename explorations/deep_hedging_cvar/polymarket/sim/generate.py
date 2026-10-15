@@ -265,7 +265,7 @@ def write_build(out: Path, model, sch, prices, rng, randomize, args_dict):
         "slugs": list(sch.slug), "test_rows": {"row_lo": 0, "row_hi": 0, "sha256": None},
         "row_counts": {"ticks": N, "markets": int(len(recs))},
         "synthetic": {"generator": "sim/generate.py", "args": {k: v for k, v in args_dict.items() if not k.startswith("_")},
-                      "params_sha256": hashlib.sha256(cm.PARAMS.read_bytes()).hexdigest(),
+                      "params_sha256": hashlib.sha256(Path(args_dict.get("params", cm.PARAMS)).read_bytes()).hexdigest(),
                       "params_fitted_on": model.raw["meta"]["fitted_on"],
                       "underlying": args_dict["_underlying"],
                       "fills": "fills.parquet (data/raw/trades.parquet schema)",
@@ -292,11 +292,12 @@ def main():
     ap.add_argument("--randomize", action=argparse.BooleanOptionalAction, default=True,
                     help="domain randomisation (params.json 'randomization' table)")
     ap.add_argument("--out", default=str(cm.OUT_DEFAULT))
+    ap.add_argument("--params", default=str(cm.PARAMS), help="params.json to use (calibration runs)")
     ap.add_argument("--features", action=argparse.BooleanOptionalAction, default=True,
                     help="run data/features.py on the output (via sim/features_sim.py): feat/book/fills/fill_index")
     a = ap.parse_args()
     t0 = time.time()
-    model = en.Model(cm.load_params())
+    model = en.Model(cm.load_params(a.params))
     rng = np.random.default_rng(a.seed)
     lens = [cm.CLEN[x] for x in a.lengths]
     if a.schedule == "train":

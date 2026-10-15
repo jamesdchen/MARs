@@ -53,8 +53,10 @@ def classify(err, method: str) -> RpcError:
 
 
 class Endpoint:
-    def __init__(self, url: str, conc: int = 2, span: int = 100, span_max: int = 100, span_min: int = 5):
-        self.url, self.conc = url, conc
+    def __init__(self, url: str, conc: int = 2, span: int = 100, span_max: int = 100, rps: float = 10.0,
+                 max_batch: int = 10, span_min: int = 5):
+        self.url, self.conc, self.rps, self.max_batch = url, conc, float(rps), int(max_batch)
+        self._next = 0.0
         self.name = url.split("/")[2]
         self.span, self.span_cap, self.span_max, self.span_min = span, span_max, span_max, span_min
         self.inflight, self.fails, self.cool_until = 0, 0, 0.0
@@ -70,7 +72,17 @@ class Endpoint:
             self._tl.s = s
         return s
 
+    def _throttle(self, n: int = 1):
+        """Pace requests to `rps` (each batch element counts as one request)."""
+        with self._lock:
+            now = time.monotonic()
+            start = max(now, self._next)
+            self._next = start + n / self.rps
+        if start > now:
+            time.sleep(start - now)
+
     def post(self, payload, timeout: float = 90):
+        self._throttle(len(payload) if isinstance(payload, list) else 1)
         t0 = time.time()
         try:
             r = self._session().post(self.url, data=json.dumps(payload), timeout=timeout)
@@ -104,7 +116,10 @@ class Endpoint:
         return j["result"]
 
     def batch(self, calls: list[tuple[str, list]], timeout: float = 90) -> list:
-        """JSON-RPC batch; returns results in order (raises if any element errors)."""
+        """JSON-RPC batch, split into max_batch-sized posts; results in order (raises if any element errors)."""
+        if len(calls) > self.max_batch:
+            return [r for i in range(0, len(calls), self.max_batch)
+                    for r in self.batch(calls[i:i + self.max_batch], timeout)]
         j = self.post([{"jsonrpc": "2.0", "id": i, "method": m, "params": p} for i, (m, p) in enumerate(calls)], timeout)
         if isinstance(j, dict):
             raise classify(j.get("error", j), calls[0][0]) if "error" in j else TransientError("batch: dict reply")
@@ -123,14 +138,22 @@ class Endpoint:
             for k, v in kw.items():
                 self.stats[k] += v
 
-    # adaptive block span for eth_getLogs
+    # adaptive block span for eth_getLogs: the cap is learned from failures (a failing span lowers it to span-1,
+    # or to the endpoint's suggested range) and relaxed by 10% after every 20 consecutive successes at the cap,
+    # so it tracks the log density through the day instead of ratcheting down.
     def on_range_error(self, span: int, suggest: int | None):
         with self._lock:
-            self.span_cap = max(self.span_min, min(self.span_cap, int(span * 0.8)))
-            self.span = max(self.span_min, min(self.span_cap, suggest if suggest else span // 2))
+            self._streak = 0
+            new = suggest if suggest and suggest < span else span // 2
+            self.span_cap = max(self.span_min, min(self.span_cap, span - 1, max(new, int(span * 0.8))))
+            self.span = max(self.span_min, min(self.span_cap, new))
 
     def on_ok(self, span: int):
         with self._lock:
+            self._streak = getattr(self, "_streak", 0) + 1
+            if self._streak >= 20 and self.span_cap < self.span_max:
+                self.span_cap = min(self.span_max, int(self.span_cap * 1.1) + 1)
+                self._streak = 0
             if span >= self.span:
                 self.span = min(self.span_cap, max(self.span + 1, int(self.span * 1.2)))
 
@@ -147,7 +170,7 @@ class Pool:
     def from_specs(cls, specs=None):
         eps = []
         for s in specs or C.DEFAULT_ENDPOINTS:
-            if isinstance(s, str):           # "url[,conc[,span[,span_max]]]"
+            if isinstance(s, str):           # "url[,conc[,span[,span_max[,rps[,max_batch]]]]]"
                 parts = s.split(",")
                 url, nums = parts[0], [int(x) for x in parts[1:]]
             else:
@@ -155,7 +178,9 @@ class Pool:
             conc = nums[0] if len(nums) > 0 else 2
             span = nums[1] if len(nums) > 1 else 100
             smax = nums[2] if len(nums) > 2 else span
-            eps.append(Endpoint(url, conc, span, smax))
+            rps = nums[3] if len(nums) > 3 else 10
+            mb = nums[4] if len(nums) > 4 else 10
+            eps.append(Endpoint(url, conc, span, smax, rps, mb))
         return cls(eps)
 
     def acquire(self, avoid: Endpoint | None = None) -> Endpoint:

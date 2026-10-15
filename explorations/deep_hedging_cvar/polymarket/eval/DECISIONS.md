@@ -94,3 +94,35 @@ exploit detector.
 
   The test split stays untouched until a single final configuration is
   frozen.
+
+## D4. Overnight improvement loop and when to stop (recorded 2026-10-15 ~07:40 UTC)
+
+The user asked for the work to keep improving overnight without supervision.
+These rules stop that from turning into unbounded searching on validation,
+and keep the test day unseen.
+
+- **What may run:** every training and selection run uses only the train and
+  val splits. Every val evaluation is logged to a ledger, and all of them count
+  towards N.
+- **Improvement steps:** they follow the D3 order. Each one is a named round
+  in the ledger:
+  1. warm start by imitating the fair-value baseline, with a decaying KL
+     penalty;
+  2. an "off" prior at initialisation;
+  3. fair-value mark;
+  4. longer runs;
+  5. pretraining on the simulator, only after its validation gate passes;
+  6. recurrent policy.
+- **Stopping rule:** stop improving at whichever comes first:
+  - **15:30 UTC on 2026-10-15**;
+  - two rounds in a row that don't raise the best mean val score (over 3
+    seeds, among D1.3-passing configs) by more than its seed standard error.
+- **Finishing:** then freeze the best config:
+  1. train 5 final seeds;
+  2. write TEST_PLAN.json and record its hash;
+  3. run the test split **once**, under the EVALUATION.md protocol as
+     amended by D1–D3;
+  4. publish final/RESULTS.md.
+
+  The result is reported whatever it is, including "PPO does not beat not
+  quoting".

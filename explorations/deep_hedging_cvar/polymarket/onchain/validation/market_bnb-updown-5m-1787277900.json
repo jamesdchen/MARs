@@ -1,0 +1,33 @@
+{
+ "slug": "bnb-updown-5m-1787277900",
+ "condition_id": "0x0a479c4ac245b650a772c08f9708a5567859ddbb39efe72a174a45a3f4d0ccbc",
+ "onchain_fills": 152,
+ "onchain_taker": 70,
+ "onchain_maker": 82,
+ "api_rows": 152,
+ "api_taker_rows": 70,
+ "exact_key_matches": 152,
+ "api_only": 0,
+ "onchain_only": 0,
+ "taker_matches": 70,
+ "exact_key_and_price_matches": 152,
+ "max_abs_price_diff": 4.999523017801266e-11,
+ "n_price_diff_gt_1e6": 0,
+ "ts_api_minus_block": {
+  "0": 152
+ },
+ "taker_fee_usdc": 1.5739,
+ "maker_fee_usdc": 0.0051,
+ "taker_fee_over_formula_median": 0.9749,
+ "fee_formula": "fee_usdc = size * 0.07 * p * (1 - p) per taker fill",
+ "taker_notional": 129.5,
+ "distinct_makers": 17,
+ "txs": 70,
+ "calldata": {
+  "orders": 152,
+  "maker_partial": "67/82",
+  "maker_age_median_s": 14.68,
+  "taker_age_median_s": 2.61,
+  "orders_without_timestamp": 4
+ }
+}

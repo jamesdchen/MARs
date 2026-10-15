@@ -829,6 +829,8 @@ RANDOMIZATION = {
                        "doc": "share of takers trading on the sign of the mid's staleness (fitted value per length "
                               "in flow.informed.w)"},
     "impact_mult": {"kind": "log", "lo": 0.5, "hi": 2.0},
+    "lookahead_mult": {"kind": "log", "lo": 0.5, "hi": 2.0,
+                       "doc": "scales the look-ahead informed-taker sensitivity kappa (flow.lookahead)"},
     "hawkes_eta": {"kind": "uniform", "lo": 0.0, "hi": 0.8,
                    "doc": "branching ratio; the baseline is rescaled by (1-eta)/(1-eta_fit) to keep the mean rate"},
     "depth_mult": {"kind": "log", "lo": 0.3, "hi": 3.0},

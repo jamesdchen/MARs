@@ -425,7 +425,7 @@ def main():
     ap.add_argument("--max-event-start", help="crypto-updown: drop markets whose event starts at/after this date")
     ap.add_argument("--events", default="OrderFilled,OrdersMatched,FeeCharged")
     ap.add_argument("--out", help="output dir (default data/<set>)")
-    ap.add_argument("--rpc", action="append", help="url[,conc[,span[,span_max]]]; repeatable (default: 3 keyless)")
+    ap.add_argument("--rpc", action="append", help="url[,conc[,span[,span_max[,rps[,max_batch]]]]]; repeatable (default: 3 keyless)")
     ap.add_argument("--workers", type=int, default=4, help="segments in flight (also capped by endpoint conc)")
     ap.add_argument("--seg", type=int, default=1000, help="checkpoint segment size in blocks")
     ap.add_argument("--verify-frac", type=float, default=0.02, help="fraction of segments recounted elsewhere")
