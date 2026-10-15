@@ -1,6 +1,7 @@
 """Book-free maker-edge analysis on on-chain fills (politics universe or crypto up/down train days).
 
   python analyze.py politics      # onchain/data/politics + out/universe.json + data/prices_history.parquet
+  python analyze.py politics_live # fills during the polyrec recording (validates the proxy vs the recorded L2 mid)
   python analyze.py crypto        # onchain/data/crypto_train (Aug 21-22, train only) + data/raw/markets.parquet
 
 Every price is put in the frame of outcome 0 (Yes / Up): a leg on outcome 1 at price p is a leg on
@@ -31,6 +32,8 @@ H = {"1m": 60, "5m": 300, "30m": 1800, "2h": 7200}
 
 def load_fills(src):
     fs = sorted((PM / "onchain/data" / src / "fills").glob("date=*/day.parquet"))
+    if not fs:      # partial day (live window): segment part files
+        fs = sorted((PM / "onchain/data" / src / "fills").glob("date=*/part-*.parquet"))
     f = pd.concat([pd.read_parquet(p) for p in fs], ignore_index=True)
     return f.drop_duplicates(["tx_hash", "log_index"])
 
@@ -49,7 +52,7 @@ def event_end(slug, _c={}):
 
 
 def setup():
-    if SET == "politics":
+    if SET.startswith("politics"):
         U = json.load(open(OUT / "universe.json"))
         res = json.load(open(OUT / "resolution.json"))
         rows = []
@@ -76,7 +79,7 @@ def setup():
         ph = ph.merge(tm[["token_id", "slug", "outcome_idx"]], on="token_id")
         ph["p0"] = np.where(ph.outcome_idx == 0, ph.p, 1 - ph.p)
         ph = ph[ph.outcome_idx == 0][["slug", "t", "p0"]].sort_values(["slug", "t"])
-        fills = load_fills("politics")
+        fills = load_fills("politics" if SET == "politics" else "politics_live")
     else:
         mk = pd.read_parquet(PM / "data/raw/markets.parquet")
         mk = mk[(mk.event_start >= pd.Timestamp("2026-08-21", tz="UTC")) & (mk.end < pd.Timestamp("2026-08-23", tz="UTC"))]
@@ -215,7 +218,8 @@ def main():
         M["mid_l2"] = l2
         M["edge_l2_c"] = 100 * M.side0 * (M.mid_l2 - M.p0)
         for k, h in H.items():
-            M[f"mo_l2_{k}_c"] = 100 * M.side0 * (np.where(M.block_time + h >= M.end, M.pay0, l2_mid(M, h)) - M.p0)
+            mo = 100 * M.side0 * (np.where(M.block_time + h >= M.end, M.pay0, l2_mid(M, h)) - M.p0)
+            M[f"mo_l2_{k}_c"] = np.where(np.isfinite(M.mid_l2), mo, np.nan)
     for k in list(H) + ["res"]:
         M[f"mo_{k}_c"] = 100 * M.side0 * (M[f"mid_{k}"] - M.p0)
     for k in H:
@@ -289,7 +293,7 @@ def main():
     W["maker_share"] = W.maker_shares / (W.maker_shares + W.taker_shares)
     W["direction_usd"] = W.maker_pnl_mark - W.spread_usd       # maker legs: mark-to-end minus spread at fill
     W = W.sort_values("maker_shares", ascending=False)
-    W.to_csv(OUT / f"{SET}_wallets.csv")
+    W.head(3000).to_csv(OUT / f"{SET}_wallets.csv")          # top 3000 makers by maker shares
     top = W.head(25)
     with pd.option_context("display.width", 250, "display.max_columns", 30, "display.float_format", "{:.4g}".format):
         print(f"== {SET}: top 25 makers by maker shares")

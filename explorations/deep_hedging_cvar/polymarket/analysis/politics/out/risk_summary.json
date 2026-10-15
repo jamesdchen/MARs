@@ -38,63 +38,114 @@
   {
    "category": "economics",
    "jump2h": false,
-   "fills": 9216,
-   "shares": 9609954.530841,
-   "edge_usd": 28151.689795277423,
-   "mo2h_usd": -9868.885788411617,
-   "mo2h_c_per_share": -0.1026944066877698,
-   "edge_c_per_share": 0.2929430072216353
+   "fills": 63815,
+   "shares": 69950881.927178,
+   "edge_usd": 245015.64844927896,
+   "mo2h_usd": 8397.298257029499,
+   "mo2h_c_per_share": 0.012004563810605651,
+   "edge_c_per_share": 0.3502681334373328
   },
   {
    "category": "economics",
    "jump2h": true,
-   "fills": 1522,
-   "shares": 917285.989237,
-   "edge_usd": 10277.535326433694,
-   "mo2h_usd": -16801.210525571645,
-   "mo2h_c_per_share": -1.8316218412478882,
-   "edge_c_per_share": 1.1204286827691072
+   "fills": 11138,
+   "shares": 7793440.203654,
+   "edge_usd": 79813.12561867766,
+   "mo2h_usd": 35375.79128820921,
+   "mo2h_c_per_share": 0.45391753017650754,
+   "edge_c_per_share": 1.0241064733037513
   },
   {
    "category": "geopolitics",
    "jump2h": false,
-   "fills": 40661,
-   "shares": 13042943.493368,
-   "edge_usd": 85698.99190693571,
-   "mo2h_usd": 39160.299714505825,
-   "mo2h_c_per_share": 0.3002412740223695,
-   "edge_c_per_share": 0.657052543013097
+   "fills": 170999,
+   "shares": 69675389.51728,
+   "edge_usd": 389034.7308745807,
+   "mo2h_usd": 152611.9613194834,
+   "mo2h_c_per_share": 0.21903280681571868,
+   "edge_c_per_share": 0.5583531481773737
   },
   {
    "category": "geopolitics",
    "jump2h": true,
-   "fills": 727,
-   "shares": 193648.505799,
-   "edge_usd": 3784.8012901820475,
-   "mo2h_usd": -3371.074033627509,
-   "mo2h_c_per_share": -1.7408210921733418,
-   "edge_c_per_share": 1.954469658604302
+   "fills": 2553,
+   "shares": 630576.272718,
+   "edge_usd": 13708.320522838043,
+   "mo2h_usd": -1810.3225046322798,
+   "mo2h_c_per_share": -0.28709017179304397,
+   "edge_c_per_share": 2.1739353534110126
   },
   {
    "category": "politics",
    "jump2h": false,
-   "fills": 53225,
-   "shares": 33577648.205677,
-   "edge_usd": 148413.89347534074,
-   "mo2h_usd": 64665.2409881962,
-   "mo2h_c_per_share": 0.19258418752884304,
-   "edge_c_per_share": 0.4420020501919734
+   "fills": 113943,
+   "shares": 62987315.892794,
+   "edge_usd": 251527.44565889973,
+   "mo2h_usd": 76329.06086120104,
+   "mo2h_c_per_share": 0.12118163757146762,
+   "edge_c_per_share": 0.3993303129268213
   },
   {
    "category": "politics",
    "jump2h": true,
-   "fills": 8282,
-   "shares": 1656077.917179,
-   "edge_usd": 15468.716023279512,
-   "mo2h_usd": 15221.956720283426,
-   "mo2h_c_per_share": 0.9191570373822051,
-   "edge_c_per_share": 0.9340572603992732
+   "fills": 8414,
+   "shares": 1705466.448573,
+   "edge_usd": 15629.723926948185,
+   "mo2h_usd": 9493.06948287903,
+   "mo2h_c_per_share": 0.5566259887916342,
+   "edge_c_per_share": 0.9164486314008644
   }
  ],
- "resolution": []
+ "resolution": [
+  {
+   "bucket": "after end",
+   "fills": 149,
+   "shares": 208383.390101,
+   "edge_usd": 19570.49226405051,
+   "mo2h_usd": 19674.579469,
+   "mo_res_usd": 19674.579469,
+   "mo_res_c_per_share": 9.441529605341412,
+   "edge_c_per_share": 9.391579748541865
+  },
+  {
+   "bucket": "<1h",
+   "fills": 181,
+   "shares": 133187.758528,
+   "edge_usd": 83.17244221454436,
+   "mo2h_usd": 104.2469860000001,
+   "mo_res_usd": 104.2469860000001,
+   "mo_res_c_per_share": 0.0782706963103402,
+   "edge_c_per_share": 0.062447512544524915
+  },
+  {
+   "bucket": "1-24h",
+   "fills": 35825,
+   "shares": 41177343.925286,
+   "edge_usd": 122678.64891772205,
+   "mo2h_usd": 236282.43960460086,
+   "mo_res_usd": 534022.253321,
+   "mo_res_c_per_share": 1.2968836802343389,
+   "edge_c_per_share": 0.2979275427291173
+  },
+  {
+   "bucket": "1-7d",
+   "fills": 45633,
+   "shares": 31573022.720067002,
+   "edge_usd": 136286.68957219628,
+   "mo2h_usd": 35833.38873684316,
+   "mo_res_usd": 475709.072485,
+   "mo_res_c_per_share": 1.5066947396919699,
+   "edge_c_per_share": 0.4316555015354167
+  },
+  {
+   "bucket": ">7d",
+   "fills": 15515,
+   "shares": 8481612.96838,
+   "edge_usd": 25168.091508427035,
+   "mo2h_usd": 6419.355984685503,
+   "mo_res_usd": 34536.2758,
+   "mo_res_c_per_share": 0.4071899522974399,
+   "edge_c_per_share": 0.2967370900117148
+  }
+ ]
 }

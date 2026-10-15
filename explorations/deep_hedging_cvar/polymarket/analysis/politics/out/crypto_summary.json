@@ -1,0 +1,26 @@
+{
+ "set": "crypto",
+ "n_fills": 417055,
+ "n_maker_fills": 252284,
+ "markets": 401,
+ "days": [
+  "2026-08-21",
+  "2026-08-22"
+ ],
+ "taker_fees_usd": 35841.10039,
+ "maker_shares": 3470100.315775,
+ "maker_notional": 1796535.18163,
+ "top25": {
+  "maker_shares": 1570003.407335,
+  "spread_usd": 19351.52356879787,
+  "rebate_usd": 3422.5693809011223,
+  "mo5_usd": -1109.7576913788312,
+  "mo2h_usd": -5504.140562547771,
+  "maker_pnl_mark": -4494.0860189999985,
+  "taker_pnl_mark": 8650.340578000001,
+  "fees_paid": 4710.72954,
+  "direction_usd": -23845.60958779787,
+  "total_pnl": 2868.0943999011233
+ },
+ "n_wallets_maker": 3092
+}
