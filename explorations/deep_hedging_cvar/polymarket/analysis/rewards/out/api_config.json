@@ -1,0 +1,910 @@
+{
+ "fetched_at_utc": "2026-10-15T04:03:26.085327+00:00",
+ "live": {
+  "btc-updown-5m-1792036800": {
+   "slug": "btc-updown-5m-1792036800",
+   "conditionId": "0x76bc67129c11f28f089fc6aabcef452fb1cab190e2a64604d1e1fd60c4e24e3a",
+   "acceptingOrdersTimestamp": "2026-10-14T04:07:22Z",
+   "orderMinSize": 5,
+   "orderPriceMinTickSize": 0.01,
+   "rewardsMinSize": 50,
+   "rewardsMaxSpread": 4.5,
+   "clobRewards": null,
+   "holdingRewardsEnabled": false,
+   "feesEnabled": true,
+   "feeType": "crypto_fees_v2",
+   "feeSchedule": {
+    "exponent": 1,
+    "rate": 0.07,
+    "takerOnly": true,
+    "rebateRate": 0.2
+   },
+   "makerBaseFee": 1000,
+   "takerBaseFee": 1000,
+   "makerRebatesFeeShareBps": 10000,
+   "clob_markets": {
+    "r": {
+     "mi": 50,
+     "ma": 4.5,
+     "moas": 30
+    },
+    "t": [
+     {
+      "t": "100399949852807970718741395147466614369551402474984881797688264515847460491987",
+      "o": "Up"
+     },
+     {
+      "t": "4694081495708039998404812420019075441463044772225336349154138390774098076585",
+      "o": "Down"
+     }
+    ],
+    "c": "0x76bc67129c11f28f089fc6aabcef452fb1cab190e2a64604d1e1fd60c4e24e3a",
+    "mos": 5,
+    "mts": 0.01,
+    "mbf": 1000,
+    "tbf": 1000,
+    "ao": true,
+    "aot": "2026-10-14T04:07:22Z",
+    "itode": true,
+    "fd": {
+     "r": 0.07,
+     "e": 1,
+     "to": true
+    },
+    "v": "v1"
+   },
+   "clob_rewards_market": {
+    "data": [],
+    "next_cursor": "LTE=",
+    "limit": 100,
+    "count": 0
+   },
+   "in_rewards_markets_current": false,
+   "in_sampling_markets": false
+  },
+  "eth-updown-5m-1792036800": {
+   "slug": "eth-updown-5m-1792036800",
+   "conditionId": "0x6b0ca171f592dc10654df930776977f09b5f626b35cb1dcf897639e06487abc1",
+   "acceptingOrdersTimestamp": "2026-10-14T04:07:35Z",
+   "orderMinSize": 5,
+   "orderPriceMinTickSize": 0.01,
+   "rewardsMinSize": 50,
+   "rewardsMaxSpread": 4.5,
+   "clobRewards": null,
+   "holdingRewardsEnabled": false,
+   "feesEnabled": true,
+   "feeType": "crypto_fees_v2",
+   "feeSchedule": {
+    "exponent": 1,
+    "rate": 0.07,
+    "takerOnly": true,
+    "rebateRate": 0.2
+   },
+   "makerBaseFee": 1000,
+   "takerBaseFee": 1000,
+   "makerRebatesFeeShareBps": 10000,
+   "clob_markets": {
+    "r": {
+     "mi": 50,
+     "ma": 4.5,
+     "moas": 30
+    },
+    "t": [
+     {
+      "t": "95722615204516842492960698813231000001816981830887341939603444589231650404036",
+      "o": "Up"
+     },
+     {
+      "t": "3010927901374468785396597928121906832428541497945277892879498322476138685414",
+      "o": "Down"
+     }
+    ],
+    "c": "0x6b0ca171f592dc10654df930776977f09b5f626b35cb1dcf897639e06487abc1",
+    "mos": 5,
+    "mts": 0.01,
+    "mbf": 1000,
+    "tbf": 1000,
+    "ao": true,
+    "aot": "2026-10-14T04:07:35Z",
+    "itode": true,
+    "fd": {
+     "r": 0.07,
+     "e": 1,
+     "to": true
+    },
+    "v": "v1"
+   },
+   "clob_rewards_market": {
+    "data": [],
+    "next_cursor": "LTE=",
+    "limit": 100,
+    "count": 0
+   },
+   "in_rewards_markets_current": false,
+   "in_sampling_markets": false
+  },
+  "zec-updown-5m-1792036800": {
+   "slug": "zec-updown-5m-1792036800",
+   "conditionId": "0x0b169128e6606e84917d03d309321ba8b1c94c236201d3e2659ae541a36d017e",
+   "acceptingOrdersTimestamp": "2026-10-14T04:07:34Z",
+   "orderMinSize": 5,
+   "orderPriceMinTickSize": 0.01,
+   "rewardsMinSize": 50,
+   "rewardsMaxSpread": 4.5,
+   "clobRewards": null,
+   "holdingRewardsEnabled": false,
+   "feesEnabled": true,
+   "feeType": "crypto_fees_v2",
+   "feeSchedule": {
+    "exponent": 1,
+    "rate": 0.07,
+    "takerOnly": true,
+    "rebateRate": 0.2
+   },
+   "makerBaseFee": 1000,
+   "takerBaseFee": 1000,
+   "makerRebatesFeeShareBps": 10000,
+   "clob_markets": {
+    "r": {
+     "mi": 50,
+     "ma": 4.5,
+     "moas": 30
+    },
+    "t": [
+     {
+      "t": "10524898292248089645789851492271700080008992168809442441186112257633191503983",
+      "o": "Up"
+     },
+     {
+      "t": "10201353348149395723278956713094823076709195045298508189132587236350434041804",
+      "o": "Down"
+     }
+    ],
+    "c": "0x0b169128e6606e84917d03d309321ba8b1c94c236201d3e2659ae541a36d017e",
+    "mos": 5,
+    "mts": 0.01,
+    "mbf": 1000,
+    "tbf": 1000,
+    "ao": true,
+    "aot": "2026-10-14T04:07:34Z",
+    "itode": true,
+    "fd": {
+     "r": 0.07,
+     "e": 1,
+     "to": true
+    },
+    "v": "v1"
+   },
+   "clob_rewards_market": {
+    "data": [],
+    "next_cursor": "LTE=",
+    "limit": 100,
+    "count": 0
+   },
+   "in_rewards_markets_current": false,
+   "in_sampling_markets": false
+  },
+  "btc-updown-15m-1792036800": {
+   "slug": "btc-updown-15m-1792036800",
+   "conditionId": "0x50884641c9f8a4d822a55b61ca1ea8904ca082884415a38436e86860d8394c8e",
+   "acceptingOrdersTimestamp": "2026-10-14T04:07:11Z",
+   "orderMinSize": 5,
+   "orderPriceMinTickSize": 0.01,
+   "rewardsMinSize": 50,
+   "rewardsMaxSpread": 4.5,
+   "clobRewards": null,
+   "holdingRewardsEnabled": false,
+   "feesEnabled": true,
+   "feeType": "crypto_fees_v2",
+   "feeSchedule": {
+    "exponent": 1,
+    "rate": 0.07,
+    "takerOnly": true,
+    "rebateRate": 0.2
+   },
+   "makerBaseFee": 1000,
+   "takerBaseFee": 1000,
+   "makerRebatesFeeShareBps": 10000,
+   "clob_markets": {
+    "r": {
+     "mi": 50,
+     "ma": 4.5,
+     "moas": 30
+    },
+    "t": [
+     {
+      "t": "83835295777559385145390606605740955549419765072216896874992690829892694463532",
+      "o": "Up"
+     },
+     {
+      "t": "4864644885712885797191667919491653017809957084265737426328728850978274977614",
+      "o": "Down"
+     }
+    ],
+    "c": "0x50884641c9f8a4d822a55b61ca1ea8904ca082884415a38436e86860d8394c8e",
+    "mos": 5,
+    "mts": 0.01,
+    "mbf": 1000,
+    "tbf": 1000,
+    "ao": true,
+    "aot": "2026-10-14T04:07:11Z",
+    "itode": true,
+    "fd": {
+     "r": 0.07,
+     "e": 1,
+     "to": true
+    },
+    "v": "v1"
+   },
+   "clob_rewards_market": {
+    "data": [],
+    "next_cursor": "LTE=",
+    "limit": 100,
+    "count": 0
+   },
+   "in_rewards_markets_current": false,
+   "in_sampling_markets": false
+  },
+  "eth-updown-15m-1792036800": {
+   "slug": "eth-updown-15m-1792036800",
+   "conditionId": "0x7eb43dad6e33610550c00c0e0e23586274b226e72263f9bb3883bc6c85026733",
+   "acceptingOrdersTimestamp": "2026-10-14T04:07:29Z",
+   "orderMinSize": 5,
+   "orderPriceMinTickSize": 0.01,
+   "rewardsMinSize": 50,
+   "rewardsMaxSpread": 4.5,
+   "clobRewards": null,
+   "holdingRewardsEnabled": false,
+   "feesEnabled": true,
+   "feeType": "crypto_fees_v2",
+   "feeSchedule": {
+    "exponent": 1,
+    "rate": 0.07,
+    "takerOnly": true,
+    "rebateRate": 0.2
+   },
+   "makerBaseFee": 1000,
+   "takerBaseFee": 1000,
+   "makerRebatesFeeShareBps": 10000,
+   "clob_markets": {
+    "r": {
+     "mi": 50,
+     "ma": 4.5,
+     "moas": 30
+    },
+    "t": [
+     {
+      "t": "76882834438718341793946526395763151047240335231616208226728517197813743535194",
+      "o": "Up"
+     },
+     {
+      "t": "43529651605493626957648445671582224052074319947823429443420283847031355833543",
+      "o": "Down"
+     }
+    ],
+    "c": "0x7eb43dad6e33610550c00c0e0e23586274b226e72263f9bb3883bc6c85026733",
+    "mos": 5,
+    "mts": 0.01,
+    "mbf": 1000,
+    "tbf": 1000,
+    "ao": true,
+    "aot": "2026-10-14T04:07:29Z",
+    "itode": true,
+    "fd": {
+     "r": 0.07,
+     "e": 1,
+     "to": true
+    },
+    "v": "v1"
+   },
+   "clob_rewards_market": {
+    "data": [],
+    "next_cursor": "LTE=",
+    "limit": 100,
+    "count": 0
+   },
+   "in_rewards_markets_current": false,
+   "in_sampling_markets": false
+  },
+  "zec-updown-15m-1792036800": {
+   "slug": "zec-updown-15m-1792036800",
+   "conditionId": "0x2fe6ce427cadfaf8a1c8cdd7e5107d721649de8966213e3dfa398896e2f3230c",
+   "acceptingOrdersTimestamp": "2026-10-14T04:07:26Z",
+   "orderMinSize": 5,
+   "orderPriceMinTickSize": 0.01,
+   "rewardsMinSize": 50,
+   "rewardsMaxSpread": 4.5,
+   "clobRewards": null,
+   "holdingRewardsEnabled": false,
+   "feesEnabled": true,
+   "feeType": "crypto_fees_v2",
+   "feeSchedule": {
+    "exponent": 1,
+    "rate": 0.07,
+    "takerOnly": true,
+    "rebateRate": 0.2
+   },
+   "makerBaseFee": 1000,
+   "takerBaseFee": 1000,
+   "makerRebatesFeeShareBps": 10000,
+   "clob_markets": {
+    "r": {
+     "mi": 50,
+     "ma": 4.5,
+     "moas": 30
+    },
+    "t": [
+     {
+      "t": "17088375694314430265158114299161303969127846041407969511325922425149361804870",
+      "o": "Up"
+     },
+     {
+      "t": "74454106032889189627544016018265596212192587106725496019423505122277159309759",
+      "o": "Down"
+     }
+    ],
+    "c": "0x2fe6ce427cadfaf8a1c8cdd7e5107d721649de8966213e3dfa398896e2f3230c",
+    "mos": 5,
+    "mts": 0.01,
+    "mbf": 1000,
+    "tbf": 1000,
+    "ao": true,
+    "aot": "2026-10-14T04:07:26Z",
+    "itode": true,
+    "fd": {
+     "r": 0.07,
+     "e": 1,
+     "to": true
+    },
+    "v": "v1"
+   },
+   "clob_rewards_market": {
+    "data": [],
+    "next_cursor": "LTE=",
+    "limit": 100,
+    "count": 0
+   },
+   "in_rewards_markets_current": false,
+   "in_sampling_markets": false
+  },
+  "btc-updown-4h-1792036800": {
+   "slug": "btc-updown-4h-1792036800",
+   "conditionId": "0xd9af585c5304d68ba36ea6589ae23b975d286544becbe5e97dbb4b0dbb2358f7",
+   "acceptingOrdersTimestamp": "2026-10-14T04:07:40Z",
+   "orderMinSize": 5,
+   "orderPriceMinTickSize": 0.01,
+   "rewardsMinSize": 50,
+   "rewardsMaxSpread": 4.5,
+   "clobRewards": null,
+   "holdingRewardsEnabled": false,
+   "feesEnabled": true,
+   "feeType": "crypto_fees_v2",
+   "feeSchedule": {
+    "exponent": 1,
+    "rate": 0.07,
+    "takerOnly": true,
+    "rebateRate": 0.2
+   },
+   "makerBaseFee": 1000,
+   "takerBaseFee": 1000,
+   "makerRebatesFeeShareBps": 10000,
+   "clob_markets": {
+    "r": {
+     "mi": 50,
+     "ma": 4.5,
+     "moas": 30
+    },
+    "t": [
+     {
+      "t": "110170944273831229774736878499297559486195232459446380067120564180092101926091",
+      "o": "Up"
+     },
+     {
+      "t": "3907736146430177305953891368160253407077127287324496621465159729571453038108",
+      "o": "Down"
+     }
+    ],
+    "c": "0xd9af585c5304d68ba36ea6589ae23b975d286544becbe5e97dbb4b0dbb2358f7",
+    "mos": 5,
+    "mts": 0.01,
+    "mbf": 1000,
+    "tbf": 1000,
+    "ao": true,
+    "aot": "2026-10-14T04:07:40Z",
+    "ibce": true,
+    "fd": {
+     "r": 0.07,
+     "e": 1,
+     "to": true
+    },
+    "v": "v1"
+   },
+   "clob_rewards_market": {
+    "data": [],
+    "next_cursor": "LTE=",
+    "limit": 100,
+    "count": 0
+   },
+   "in_rewards_markets_current": false,
+   "in_sampling_markets": false
+  },
+  "eth-updown-4h-1792036800": {
+   "slug": "eth-updown-4h-1792036800",
+   "conditionId": "0x8a6d7f6eb1e10e9e226aeb6e903197418a427b20e48c1880e41cc32969ae12e6",
+   "acceptingOrdersTimestamp": "2026-10-14T04:07:19Z",
+   "orderMinSize": 5,
+   "orderPriceMinTickSize": 0.01,
+   "rewardsMinSize": 50,
+   "rewardsMaxSpread": 4.5,
+   "clobRewards": null,
+   "holdingRewardsEnabled": false,
+   "feesEnabled": true,
+   "feeType": "crypto_fees_v2",
+   "feeSchedule": {
+    "exponent": 1,
+    "rate": 0.07,
+    "takerOnly": true,
+    "rebateRate": 0.2
+   },
+   "makerBaseFee": 1000,
+   "takerBaseFee": 1000,
+   "makerRebatesFeeShareBps": 10000,
+   "clob_markets": {
+    "r": {
+     "mi": 50,
+     "ma": 4.5,
+     "moas": 30
+    },
+    "t": [
+     {
+      "t": "79205855399368276765125514900282849032902450584319524146169057718936329302175",
+      "o": "Up"
+     },
+     {
+      "t": "98245175574170453519579767452218262321660852265182383777037096666688318056580",
+      "o": "Down"
+     }
+    ],
+    "c": "0x8a6d7f6eb1e10e9e226aeb6e903197418a427b20e48c1880e41cc32969ae12e6",
+    "mos": 5,
+    "mts": 0.01,
+    "mbf": 1000,
+    "tbf": 1000,
+    "ao": true,
+    "aot": "2026-10-14T04:07:19Z",
+    "ibce": true,
+    "fd": {
+     "r": 0.07,
+     "e": 1,
+     "to": true
+    },
+    "v": "v1"
+   },
+   "clob_rewards_market": {
+    "data": [],
+    "next_cursor": "LTE=",
+    "limit": 100,
+    "count": 0
+   },
+   "in_rewards_markets_current": false,
+   "in_sampling_markets": false
+  },
+  "zec-updown-4h-1792036800": {
+   "slug": "zec-updown-4h-1792036800",
+   "conditionId": "0x6b06ec93e8d137570694f1e84dd13e3353a3dc82c466395b25447e13e2f8f2e9",
+   "acceptingOrdersTimestamp": "2026-10-14T04:07:25Z",
+   "orderMinSize": 5,
+   "orderPriceMinTickSize": 0.01,
+   "rewardsMinSize": 50,
+   "rewardsMaxSpread": 4.5,
+   "clobRewards": null,
+   "holdingRewardsEnabled": false,
+   "feesEnabled": true,
+   "feeType": "crypto_fees_v2",
+   "feeSchedule": {
+    "exponent": 1,
+    "rate": 0.07,
+    "takerOnly": true,
+    "rebateRate": 0.2
+   },
+   "makerBaseFee": 1000,
+   "takerBaseFee": 1000,
+   "makerRebatesFeeShareBps": 10000,
+   "clob_markets": {
+    "r": {
+     "mi": 50,
+     "ma": 4.5,
+     "moas": 30
+    },
+    "t": [
+     {
+      "t": "51813975336865085132777239451382596824539353224281917808812674993747877220699",
+      "o": "Up"
+     },
+     {
+      "t": "24364833401882133161492811358689463733275260820700097364481271144108086081652",
+      "o": "Down"
+     }
+    ],
+    "c": "0x6b06ec93e8d137570694f1e84dd13e3353a3dc82c466395b25447e13e2f8f2e9",
+    "mos": 5,
+    "mts": 0.01,
+    "mbf": 1000,
+    "tbf": 1000,
+    "ao": true,
+    "aot": "2026-10-14T04:07:25Z",
+    "ibce": true,
+    "fd": {
+     "r": 0.07,
+     "e": 1,
+     "to": true
+    },
+    "v": "v1"
+   },
+   "clob_rewards_market": {
+    "data": [],
+    "next_cursor": "LTE=",
+    "limit": 100,
+    "count": 0
+   },
+   "in_rewards_markets_current": false,
+   "in_sampling_markets": false
+  }
+ },
+ "train": {
+  "bnb-updown-5m-1787277900": {
+   "slug": "bnb-updown-5m-1787277900",
+   "conditionId": "0x0a479c4ac245b650a772c08f9708a5567859ddbb39efe72a174a45a3f4d0ccbc",
+   "acceptingOrdersTimestamp": "2026-08-20T02:12:15Z",
+   "orderMinSize": 5,
+   "orderPriceMinTickSize": 0.001,
+   "rewardsMinSize": 0,
+   "rewardsMaxSpread": 0,
+   "clobRewards": null,
+   "holdingRewardsEnabled": false,
+   "feesEnabled": true,
+   "feeType": "crypto_fees_v2",
+   "feeSchedule": {
+    "exponent": 1,
+    "rate": 0.07,
+    "takerOnly": true,
+    "rebateRate": 0.2
+   },
+   "makerBaseFee": 1000,
+   "takerBaseFee": 1000,
+   "makerRebatesFeeShareBps": 10000,
+   "clob_markets": {
+    "r": {
+     "moas": 1
+    },
+    "t": [
+     {
+      "t": "64793885128357825834423179738523532073824858947614514127086033867692990103600",
+      "o": "Up"
+     },
+     {
+      "t": "76829508296972834187696916736387841390568398120722272795376069210348175677477",
+      "o": "Down"
+     }
+    ],
+    "c": "0x0a479c4ac245b650a772c08f9708a5567859ddbb39efe72a174a45a3f4d0ccbc",
+    "mos": 5,
+    "mts": 0.001,
+    "mbf": 1000,
+    "tbf": 1000,
+    "aot": "2026-08-20T02:12:15Z",
+    "itode": true,
+    "fd": {
+     "r": 0.07,
+     "e": 1,
+     "to": true
+    },
+    "v": "v1"
+   },
+   "clob_rewards_market": {
+    "data": [],
+    "next_cursor": "LTE=",
+    "limit": 100,
+    "count": 0
+   },
+   "in_rewards_markets_current": false,
+   "in_sampling_markets": false
+  },
+  "bnb-updown-5m-1787279100": {
+   "slug": "bnb-updown-5m-1787279100",
+   "conditionId": "0xd5ab0c775ff2a71a56c1a9e0e6d8a11266b510a4c1c0fe777af7e2430adfb381",
+   "acceptingOrdersTimestamp": "2026-08-20T02:32:54Z",
+   "orderMinSize": 5,
+   "orderPriceMinTickSize": 0.001,
+   "rewardsMinSize": 0,
+   "rewardsMaxSpread": 0,
+   "clobRewards": null,
+   "holdingRewardsEnabled": false,
+   "feesEnabled": true,
+   "feeType": "crypto_fees_v2",
+   "feeSchedule": {
+    "exponent": 1,
+    "rate": 0.07,
+    "takerOnly": true,
+    "rebateRate": 0.2
+   },
+   "makerBaseFee": 1000,
+   "takerBaseFee": 1000,
+   "makerRebatesFeeShareBps": 10000,
+   "clob_markets": {
+    "r": {
+     "moas": 1
+    },
+    "t": [
+     {
+      "t": "45009566765677121157184904575891145485817729871484667801031924734364027478519",
+      "o": "Up"
+     },
+     {
+      "t": "1388505363530124296970216129306401000671361803311974563828153259470678322026",
+      "o": "Down"
+     }
+    ],
+    "c": "0xd5ab0c775ff2a71a56c1a9e0e6d8a11266b510a4c1c0fe777af7e2430adfb381",
+    "mos": 5,
+    "mts": 0.001,
+    "mbf": 1000,
+    "tbf": 1000,
+    "aot": "2026-08-20T02:32:54Z",
+    "itode": true,
+    "fd": {
+     "r": 0.07,
+     "e": 1,
+     "to": true
+    },
+    "v": "v1"
+   },
+   "clob_rewards_market": {
+    "data": [],
+    "next_cursor": "LTE=",
+    "limit": 100,
+    "count": 0
+   },
+   "in_rewards_markets_current": false,
+   "in_sampling_markets": false
+  },
+  "bnb-updown-15m-1787283000": {
+   "slug": "bnb-updown-15m-1787283000",
+   "conditionId": "0xc00becbb87430b60caafa9a5adc8ca38c6d2e566c0f195622668436385922f57",
+   "acceptingOrdersTimestamp": "2026-08-20T03:37:40Z",
+   "orderMinSize": 5,
+   "orderPriceMinTickSize": 0.001,
+   "rewardsMinSize": 0,
+   "rewardsMaxSpread": 0,
+   "clobRewards": null,
+   "holdingRewardsEnabled": false,
+   "feesEnabled": true,
+   "feeType": "crypto_fees_v2",
+   "feeSchedule": {
+    "exponent": 1,
+    "rate": 0.07,
+    "takerOnly": true,
+    "rebateRate": 0.2
+   },
+   "makerBaseFee": 1000,
+   "takerBaseFee": 1000,
+   "makerRebatesFeeShareBps": 10000,
+   "clob_markets": {
+    "r": {
+     "moas": 1
+    },
+    "t": [
+     {
+      "t": "70329803452244110038648096640855678837488713845295929818683839630816253645298",
+      "o": "Up"
+     },
+     {
+      "t": "55778050191486991826813210080144717989876372776482574923862921084169686287213",
+      "o": "Down"
+     }
+    ],
+    "c": "0xc00becbb87430b60caafa9a5adc8ca38c6d2e566c0f195622668436385922f57",
+    "mos": 5,
+    "mts": 0.001,
+    "mbf": 1000,
+    "tbf": 1000,
+    "aot": "2026-08-20T03:37:40Z",
+    "itode": true,
+    "fd": {
+     "r": 0.07,
+     "e": 1,
+     "to": true
+    },
+    "v": "v1"
+   },
+   "clob_rewards_market": {
+    "data": [],
+    "next_cursor": "LTE=",
+    "limit": 100,
+    "count": 0
+   },
+   "in_rewards_markets_current": false,
+   "in_sampling_markets": false
+  },
+  "bnb-updown-15m-1787296500": {
+   "slug": "bnb-updown-15m-1787296500",
+   "conditionId": "0xaef38949fd8b7635e11211fa6f17b6cee5bf9fe092bc413187d49c73a4bdd73c",
+   "acceptingOrdersTimestamp": "2026-08-20T07:23:04Z",
+   "orderMinSize": 5,
+   "orderPriceMinTickSize": 0.001,
+   "rewardsMinSize": 0,
+   "rewardsMaxSpread": 0,
+   "clobRewards": null,
+   "holdingRewardsEnabled": false,
+   "feesEnabled": true,
+   "feeType": "crypto_fees_v2",
+   "feeSchedule": {
+    "exponent": 1,
+    "rate": 0.07,
+    "takerOnly": true,
+    "rebateRate": 0.2
+   },
+   "makerBaseFee": 1000,
+   "takerBaseFee": 1000,
+   "makerRebatesFeeShareBps": 10000,
+   "clob_markets": {
+    "r": {
+     "moas": 1
+    },
+    "t": [
+     {
+      "t": "23297307336904432553741327799326855706502667911383935922805259263364631175462",
+      "o": "Up"
+     },
+     {
+      "t": "12952561660066027809422335688757593359861246891778078031788671254933025704854",
+      "o": "Down"
+     }
+    ],
+    "c": "0xaef38949fd8b7635e11211fa6f17b6cee5bf9fe092bc413187d49c73a4bdd73c",
+    "mos": 5,
+    "mts": 0.001,
+    "mbf": 1000,
+    "tbf": 1000,
+    "aot": "2026-08-20T07:23:04Z",
+    "itode": true,
+    "fd": {
+     "r": 0.07,
+     "e": 1,
+     "to": true
+    },
+    "v": "v1"
+   },
+   "clob_rewards_market": {
+    "data": [],
+    "next_cursor": "LTE=",
+    "limit": 100,
+    "count": 0
+   },
+   "in_rewards_markets_current": false,
+   "in_sampling_markets": false
+  },
+  "bnb-updown-4h-1787284800": {
+   "slug": "bnb-updown-4h-1787284800",
+   "conditionId": "0x70d2874ebde7a3333ce420e81a320a7b0d4548f7d4031426793873ad4c66ec02",
+   "acceptingOrdersTimestamp": "2026-08-20T04:09:24Z",
+   "orderMinSize": 5,
+   "orderPriceMinTickSize": 0.001,
+   "rewardsMinSize": 50,
+   "rewardsMaxSpread": 1.5,
+   "clobRewards": null,
+   "holdingRewardsEnabled": false,
+   "feesEnabled": true,
+   "feeType": "crypto_fees_v2",
+   "feeSchedule": {
+    "exponent": 1,
+    "rate": 0.07,
+    "takerOnly": true,
+    "rebateRate": 0.2
+   },
+   "makerBaseFee": 1000,
+   "takerBaseFee": 1000,
+   "makerRebatesFeeShareBps": 10000,
+   "clob_markets": {
+    "r": {
+     "mi": 50,
+     "ma": 1.5,
+     "moas": 1
+    },
+    "t": [
+     {
+      "t": "73209156441600600585272568066544039605040904508270461948861411075163006455145",
+      "o": "Up"
+     },
+     {
+      "t": "7184797293642451320226538379313467999944724579775602626322974176970841400355",
+      "o": "Down"
+     }
+    ],
+    "c": "0x70d2874ebde7a3333ce420e81a320a7b0d4548f7d4031426793873ad4c66ec02",
+    "mos": 5,
+    "mts": 0.001,
+    "mbf": 1000,
+    "tbf": 1000,
+    "aot": "2026-08-20T04:09:24Z",
+    "ibce": true,
+    "fd": {
+     "r": 0.07,
+     "e": 1,
+     "to": true
+    },
+    "v": "v1"
+   },
+   "clob_rewards_market": {
+    "data": [],
+    "next_cursor": "LTE=",
+    "limit": 100,
+    "count": 0
+   },
+   "in_rewards_markets_current": false,
+   "in_sampling_markets": false
+  },
+  "bnb-updown-4h-1787299200": {
+   "slug": "bnb-updown-4h-1787299200",
+   "conditionId": "0xe174543f8675ca914916bc2244fd15814b968f0adee4dfe7664fe1626ede1951",
+   "acceptingOrdersTimestamp": "2026-08-20T08:07:49Z",
+   "orderMinSize": 5,
+   "orderPriceMinTickSize": 0.001,
+   "rewardsMinSize": 50,
+   "rewardsMaxSpread": 1.5,
+   "clobRewards": null,
+   "holdingRewardsEnabled": false,
+   "feesEnabled": true,
+   "feeType": "crypto_fees_v2",
+   "feeSchedule": {
+    "exponent": 1,
+    "rate": 0.07,
+    "takerOnly": true,
+    "rebateRate": 0.2
+   },
+   "makerBaseFee": 1000,
+   "takerBaseFee": 1000,
+   "makerRebatesFeeShareBps": 10000,
+   "clob_markets": {
+    "r": {
+     "mi": 50,
+     "ma": 1.5,
+     "moas": 1
+    },
+    "t": [
+     {
+      "t": "18430787878373195761083913823699229005871526639934217037364276482557994048038",
+      "o": "Up"
+     },
+     {
+      "t": "67250880924473557480471916150626174822732372450833338754415002098417176177483",
+      "o": "Down"
+     }
+    ],
+    "c": "0xe174543f8675ca914916bc2244fd15814b968f0adee4dfe7664fe1626ede1951",
+    "mos": 5,
+    "mts": 0.001,
+    "mbf": 1000,
+    "tbf": 1000,
+    "aot": "2026-08-20T08:07:49Z",
+    "ibce": true,
+    "fd": {
+     "r": 0.07,
+     "e": 1,
+     "to": true
+    },
+    "v": "v1"
+   },
+   "clob_rewards_market": {
+    "data": [],
+    "next_cursor": "LTE=",
+    "limit": 100,
+    "count": 0
+   },
+   "in_rewards_markets_current": false,
+   "in_sampling_markets": false
+  }
+ },
+ "n_rewards_markets_current": 18340,
+ "n_sampling_markets": 18249
+}
