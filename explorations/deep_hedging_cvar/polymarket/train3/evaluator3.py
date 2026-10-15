@@ -24,6 +24,10 @@ sums / means of every Log field) plus:
 - `t6/*`: final/reduce.py `directional_verdict` on the attribution totals (imported, not copied);
 - `d13/*`: fills/market >= 5, not directional, T5 valid -> `d13/makes_markets`; `d12/active`: the D1.2
   activity requirement of a secondary comparator (>= 5 fills / market, two-sided uptime >= 0.25);
+- `tk/<bucket>/*` and `d14/*` (DECISIONS.md D14, track S): P&L, steps and quoting share per
+  time-to-kickoff bucket (> 24 h, 6-24 h, 1-6 h, last hour; from the observed wealth, adding up to
+  the P&L exactly), and the P&L marked at T - 1 h and flattened there (`d14/pnl_flat_T1h_total`,
+  the D14 quote window's P&L: listing to T - 1 h, flat at T - 1 h); see TimeBuckets;
 - `group/<g>/*` and `cat/<c>/*`: the same per league group ('sports/nba', 'elections') and per
   category, and `per_market` rows (fills, P&L, components, T5 / T6 per market) when asked.
 For a multi-seed method, `pooled_verdict` averages each attribution component over the seeds
@@ -178,6 +182,7 @@ def summarize3(recs):
     if not recs:
         return out
     out.update(verdicts(_sums(recs), len(recs)))
+    out.update(time_buckets(recs))
     for key, prefix in (('group', 'group'), ('category_name', 'cat')):
         for g in sorted({r[key] for r in recs}):
             rg = [r for r in recs if r[key] == g]
@@ -189,7 +194,8 @@ def summarize3(recs):
                         f'{prefix}/{g}/t6_share': v['t6/share_of_total'], f'{prefix}/{g}/t6_directional': v['t6/directional'],
                         f'{prefix}/{g}/t5_worst_share': v['t5/worst_share'],
                         f'{prefix}/{g}/makes_markets': v['d13/makes_markets'],
-                        **{f'{prefix}/{g}/{k}': v[k] for k in ('income/trading', 'income/rebates', 'income/rewards')}})
+                        **{f'{prefix}/{g}/{k}': v[k] for k in ('income/trading', 'income/rebates', 'income/rewards')},
+                        **{f'{prefix}/{g}/{k}': v for k, v in time_buckets(rg).items()}})
     # train_ppo.py / rounds.py read these names
     out['fills_per_market'] = out['d13/fills_per_market']
     out['t6_share'] = out['t6/share_of_total']
@@ -197,6 +203,26 @@ def summarize3(recs):
     out['makes_markets'] = float(out['d13/makes_markets'])
     # D1.2: a secondary comparator must keep trading (>= 5 fills / market, two-sided uptime >= 0.25)
     out['d12/active'] = bool(out['d13/fills_per_market'] >= MIN_FILLS and out.get('mean/uptime_two_sided', 0.0) >= 0.25)
+    return out
+
+
+def time_buckets(recs):
+    """D14 lines: P&L, decision steps and quoting steps per time-to-event bucket, and the P&L
+    marked / flattened at T - 1 h (TimeBuckets; absent when obs_size <= 50)."""
+    if not recs or 'tk_pnl_lt1h' not in recs[0]:
+        return {}
+    s = lambda k: float(sum(r.get(k, 0.0) for r in recs))  # noqa: E731
+    out = {}
+    for name, _ in TK_BUCKETS:
+        out[f'tk/{name}/pnl_total'] = s(f'tk_pnl_{name}')
+        out[f'tk/{name}/steps'] = s(f'tk_steps_{name}')
+        st = s(f'tk_steps_{name}')
+        out[f'tk/{name}/quote_frac'] = s(f'tk_quote_steps_{name}') / st if st else float('nan')
+    out['d14/pnl_marked_T1h_total'] = s('d14_pnl_marked_T1h')
+    out['d14/pnl_flat_T1h_total'] = s('d14_pnl_flat_T1h')
+    out['d14/abs_inv_T1h_mean'] = float(np.mean([abs(r['d14_inv_T1h']) for r in recs]))
+    out['d14/markets_reaching_T1h'] = s('d14_reached_T1h')
+    out['tk/clip_steps'] = s('tk_clip_steps')
     return out
 
 
@@ -217,6 +243,79 @@ def pooled_verdict(summaries):
     return v
 
 
+
+# ----------------------------------------------------------------------------- D14 time buckets
+TK_BUCKETS = (('gt24h', 86400.0), ('6_24h', 21600.0), ('1_6h', 3600.0), ('lt1h', -1.0))   # seconds to event
+OBS_INV, OBS_WEALTH = 33, 34          # ENV.md section 6: inventory / Q, clip(W / (0.05 Q), +-5)
+
+
+class TimeBuckets:
+    """DECISIONS.md D14: P&L per time-to-kickoff bucket (> 24 h, 6-24 h, 1-6 h, last hour) and the
+    P&L marked (and flattened) at T - 1 h, from the observations of the eval loop.
+
+    Each step's change of the observed wealth W = cash + rebates + rewards + inventory x mark (obs 34)
+    is credited to the bucket of the step's decision time (obs 50, seconds to the event). The
+    terminal step is not observed (auto-reset), so the market's Log P&L minus the observed sum goes
+    to the last step's bucket: the buckets add up to the P&L exactly. W is clipped at +-0.25 Q in
+    the observation: steps at the clip are counted (`tk_clip_steps`) and make the split between
+    buckets (not the total) unreliable; use Q >= 1000. `d14_pnl_marked_T1h` is W at the first
+    decision within 1 h of the event (the inventory marked at the mid there; the whole P&L if the
+    episode never gets that close), `d14_inv_T1h` the inventory then, and `d14_pnl_flat_T1h` the
+    marked P&L minus |inventory| x flat_c / 100 (the env's flattening cost). Needs obs_size > 50."""
+
+    def __init__(self, env, N):
+        p = env.envs[0].params
+        self.on = env.obs_size > envs3.OBS_EV
+        self.Q, self.flat = float(p['Q']), float(p['flat_c']) / 100.0
+        nb = len(TK_BUCKETS)
+        self.pnl = np.zeros((N, nb))
+        self.steps = np.zeros((N, nb))
+        self.qsteps = np.zeros((N, nb))
+        self.clip = np.zeros(N)
+        self.w1h = np.full(N, np.nan)
+        self.inv1h = np.full(N, np.nan)
+        self.last_b = np.zeros(N, np.int64)
+
+    def before(self, obs, act, active):
+        if not self.on:
+            return
+        sec = np.expm1(obs[:, envs3.OBS_EV].astype(np.float64) * LOG86400)
+        b = np.select([sec > lo for _, lo in TK_BUCKETS[:-1]], list(range(len(TK_BUCKETS) - 1)), len(TK_BUCKETS) - 1)
+        self.b, self.w0 = b, obs[:, OBS_WEALTH].astype(np.float64) * 0.05 * self.Q
+        self.clip += active & (np.abs(obs[:, OBS_WEALTH]) >= 4.999)
+        i = np.flatnonzero(active)
+        self.steps[i, b[i]] += 1
+        q = (act[:, 0] != 0) | (act[:, 1] != 0)
+        self.qsteps[i, b[i]] += q[i]
+        first = active & (b == len(TK_BUCKETS) - 1) & np.isnan(self.w1h)
+        self.w1h[first] = self.w0[first]
+        self.inv1h[first] = obs[first, OBS_INV].astype(np.float64) * self.Q
+        self.last_b[i] = b[i]
+
+    def after(self, obs, term, active):
+        if not self.on:
+            return
+        i = np.flatnonzero(active & ~term)
+        w1 = obs[:, OBS_WEALTH].astype(np.float64) * 0.05 * self.Q
+        self.pnl[i, self.b[i]] += w1[i] - self.w0[i]
+
+    def finish(self, i, pnl):
+        if not self.on:
+            return {}
+        self.pnl[i, self.last_b[i]] += pnl - self.pnl[i].sum()
+        out = {}
+        for k, (name, _) in enumerate(TK_BUCKETS):
+            out[f'tk_pnl_{name}'] = float(self.pnl[i, k])
+            out[f'tk_steps_{name}'] = float(self.steps[i, k])
+            out[f'tk_quote_steps_{name}'] = float(self.qsteps[i, k])
+        reached = not np.isnan(self.w1h[i])
+        out['d14_reached_T1h'] = float(reached)
+        out['d14_pnl_marked_T1h'] = float(self.w1h[i]) if reached else float(pnl)
+        out['d14_inv_T1h'] = float(self.inv1h[i]) if reached else 0.0
+        out['d14_pnl_flat_T1h'] = out['d14_pnl_marked_T1h'] - (abs(self.inv1h[i]) * self.flat if reached else 0.0)
+        out['tk_clip_steps'] = float(self.clip[i])
+        return out
+
 # ----------------------------------------------------------------------------- evaluation
 def evaluate(policy, adapter, split=1, env_kw=None, seed=0, device='cpu', max_steps=None,
              return_records=False, with_markets=False):
@@ -236,6 +335,7 @@ def evaluate(policy, adapter, split=1, env_kw=None, seed=0, device='cpu', max_st
     nvec = tuple(int(n) for n in env.single_action_space.nvec)
     hist = [np.zeros(n) for n in nvec]
     active = np.ones(N, bool)
+    tk = TimeBuckets(env, N)
     was = policy.training if is_torch else None
     if is_torch:
         policy.eval()
@@ -251,10 +351,13 @@ def evaluate(policy, adapter, split=1, env_kw=None, seed=0, device='cpu', max_st
                     act = np.asarray(policy(obs), np.int32)
                 for h, n in enumerate(nvec):
                     hist[h] += np.bincount(act[active, h], minlength=n)[:n]
+                tk.before(obs, act, active)
                 obs, _, term, _, _ = env.step(act)
+                tk.after(obs, np.asarray(term, bool), active)
                 done = torch.as_tensor(np.asarray(term, dtype=np.float32))
                 for rec in adapter.eval_records(env):
                     if rec['market'] not in records:
+                        rec.update(tk.finish(rec['env'], rec['pnl']))
                         records[rec['market']] = rec
                         active[rec['env']] = False
                 steps += 1
@@ -451,7 +554,8 @@ def run_comparators(adapter, env_kw, names, split=1, variants=('central_1s',), l
 def headline(res):
     keys = ('n_markets', 'pnl_total', 'pnl_mean', 'fills_per_market', 'income/trading', 'income/rebates',
             'income/rewards', 't6/share_of_total', 't6/directional', 't5/worst_flag', 't5/worst_share',
-            'd13/makes_markets', 'd12/active', 'mean/uptime_two_sided')
+            'd13/makes_markets', 'd12/active', 'mean/uptime_two_sided', 'd14/pnl_flat_T1h_total',
+            'tk/gt24h/pnl_total', 'tk/6_24h/pnl_total', 'tk/1_6h/pnl_total', 'tk/lt1h/pnl_total')
     return {k: (round(res[k], 4) if isinstance(res.get(k), float) else res.get(k)) for k in keys}
 
 

@@ -7,7 +7,8 @@ For each track it runs, each step in its own process (mm3 maps one data director
 at `nice -n 10` with one thread:
 1. data: v3env/fixtures3.py (synthetic builds in the builders' schemas, then v3env/adapt3.py), or a
    real builder output (adapt3.py is run if markets3.bin is missing);
-2. `split3.py --dry-run --out WORK/split_<name>.json` (a dry-run split, accepted only by --smoke);
+2. `split3.py --dry-run --min-pre-hours 0 --out WORK/split_<name>.json` (a dry-run split, accepted only by
+   --smoke; the D14 one-hour rule is off because the smoke builds hold less than an hour per game);
 3. `train_ppo3.py --smoke` for --timesteps (default 1M) with an eval every half, then the final
    eval under central_1s and pess_1s (ledger rows go to train3/smoke_trials.jsonl);
 4. `evaluator3.py policy --smoke` on the final checkpoint (per-market rows) and
@@ -69,7 +70,7 @@ def track(name, kind, build, work, timesteps, log):
         split = os.path.join(work, f'split_{name}.json')
         if os.path.exists(split):
             os.remove(split)
-        out, t = run(['split3.py', build, '--dry-run', '--out', split], log=log)
+        out, t = run(['split3.py', build, '--dry-run', '--min-pre-hours', '0', '--out', split], log=log)
         sp = json.load(open(split))
         counts = sp['_counts']
         rec['split'] = {k: len(v) for k, v in counts.items()}
