@@ -987,10 +987,11 @@ def main():
     ap.add_argument("--out", default=str(HERE / "raw_pob"))
     ap.add_argument("--leagues", default=",".join(LEAGUES), help="comma list in priority order, or 'all'")
     ap.add_argument("--market-types", default="moneyline", help="gamma sportsMarketType list (priority order) or 'all'")
-    ap.add_argument("--hours-before", type=float, default=24.0, help="H: books for [kickoff - H, kickoff + post)")
+    ap.add_argument("--hours-before", type=float, default=168.0,
+                    help="H: books for [kickoff - H, kickoff + post); D14 default 7 d (listing to kickoff; the builder cuts episodes at T-1h, the last hour is kept for evaluation only)")
     ap.add_argument("--post-min", type=float, default=0.0, help="minutes after kickoff to include (default 0)")
-    ap.add_argument("--resolution", default="1s", help="bucket size for the fine part of the window")
-    ap.add_argument("--fine-hours", type=float, default=6.0,
+    ap.add_argument("--resolution", default="1m", help="bucket size for the fine part of the window (D14 default 1m)")
+    ap.add_argument("--fine-hours", type=float, default=0.0,
                     help="hours before kickoff fetched at --resolution; earlier part of the window at "
                          "--coarse-resolution (set = --hours-before for 1 s everywhere)")
     ap.add_argument("--coarse-resolution", default="1m", help="bucket size before the fine part")
