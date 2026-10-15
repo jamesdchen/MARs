@@ -1,0 +1,9 @@
+Does Polymarket's public score feed arrive before or after the book reacts?
+
+For every score change seen on wss://sports-api.polymarket.com/ws (sports_ws_log.py) for a game we also recorded with
+polyrec, take the outcome-0 book mid (1 Hz rows) and find the reaction: the largest 60 s mid move in a window of
+[-90 s, +90 s] around the feed time, and the first second at which half of that move is done.
+lag = feed receive time - book half-move time (positive: the book moved before the public feed).
+Only score changes followed by a book move >= 2 cents are counted (others did not move the price).
+Usage: score_latency.py <rec_out_dir> <sports_ws.jsonl>
+
