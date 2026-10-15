@@ -1,7 +1,7 @@
 {
  "meta": {
   "fitted_on": "train split 0 only: 431 markets (5m 248, 15m 146, 4h 37), opens 2026-08-21..22 UTC; Binance < 2026-08-23",
-  "created_utc": "2026-10-15T05:29:49.318264+00:00",
+  "created_utc": "2026-10-15T05:31:00.912733+00:00",
   "n_rows": 739031,
   "pricer": {
    "halflife_s": 300,
@@ -91422,9 +91422,9 @@
    "n_markets": 429,
    "note": "log A_m = a_len + a_coin + N(0, sd^2) (Hawkes baseline scale per market)",
    "a_len_shift": {
-    "5m": -0.054416,
-    "15m": -0.212227,
-    "4h": -0.594157
+    "5m": -0.052707,
+    "15m": -0.24811,
+    "4h": -0.530785
    }
   },
   "direction": {
