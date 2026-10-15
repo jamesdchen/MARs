@@ -192,6 +192,32 @@ def grid(name: str, base: dict) -> list[dict]:
             cands.append(c)
     elif name == "refill2":
         cands = [{"flow.refill_prob": rf} for rf in (0.95, 1.0)]
+    elif name == "kappa_burst":
+        la0 = {L: dict(base["flow"]["lookahead"][L]) for L in LENS}
+        cands = []
+        for m5, mo in ((1.0, 1.5), (1.5, 1.5), (1.0, 2.5), (2.0, 2.0)):
+            mult = {"5m": m5, "15m": mo, "4h": mo}
+            cands.append({f"flow.lookahead.{L}": {**la0[L], "kappa": la0[L]["kappa"] * mult[L]} for L in LENS})
+    elif name == "horizon_burst":
+        la0 = {L: dict(base["flow"]["lookahead"][L]) for L in LENS}
+        cands = []
+        for h, m in ((8, 1.0), (10, 1.0), (10, 0.5), (15, 0.5)):
+            cands.append({f"flow.lookahead.{L}": {**la0[L], "h": h, "kappa": la0[L]["kappa"] * m} for L in LENS})
+    elif name == "h10copy":
+        la0 = {L: dict(base["flow"]["lookahead"][L]) for L in LENS}
+        cands = []
+        for m5, c15 in ((0.5, 0.0), (0.75, 0.0)):
+            mult = {"5m": m5, "15m": 0.5, "4h": 0.5}
+            c = {f"flow.lookahead.{L}": {**la0[L], "h": 10, "kappa": la0[L]["kappa"] * mult[L]} for L in LENS}
+            c["flow.direction.rho_copy_by_len.15m"] = c15
+            cands.append(c)
+    elif name == "h7":
+        la0 = {L: dict(base["flow"]["lookahead"][L]) for L in LENS}
+        cands = []
+        for h, m in ((7, 0.75), (7, 0.5)):
+            c = {f"flow.lookahead.{L}": {**la0[L], "h": h, "kappa": la0[L]["kappa"] * m} for L in LENS}
+            c["flow.direction.rho_copy_by_len.15m"] = 0.0
+            cands.append(c)
     elif name == "copy5m":
         for k5, c5 in ((1.0, 0.0), (0.5, 0.0), (1.0, 0.1)):
             cands.append({"flow.direction.rho_copy_by_len.5m": c5, "flow.direction.rho_copy_by_len.15m": 0.1,
@@ -252,8 +278,8 @@ def main():
                  if k.endswith(".5m") or k.endswith("5m.kappa") or k.endswith("tracking") or k.endswith("refill_prob")}
         top = sorted(parts.items(), key=lambda kv: -kv[1])[:4]
         short = {k.replace("flow.", "").replace("direction.rho_copy_by_len", "copy"): v for k, v in cand.items()}
-        short = {k.replace("flow.", ""): (v if not isinstance(v, dict) else v.get("kappa", v)) for k, v in cand.items()
-                 if "5m" in k or "refill" in k}
+        short = {k.replace("flow.", ""): (v if not isinstance(v, dict) else (v.get("h"), round(v.get("kappa", 0), 3)))
+                 for k, v in cand.items() if "5m" in k or "refill" in k}
         print(f"[{i}] loss {L:7.1f} {short} inv {sim['fair_value|inv']:.2f}/{real['fair_value|inv']:.2f} 4h at0/at4 {sim['align4h|at0']:.3f}/{sim['align4h|at4']:.3f} acf {sim['acf|5m']:.3f}/{sim['acf|15m']:.3f}/{sim['acf|4h']:.3f} | fv mk {sim['fair_value|mk5']:.2f}/{sim['fair_value|mk30']:.2f}/"
               f"{sim['fair_value|mk60']:.2f} st vol {sim['sym_touch|fill_vol']:.0f} cap {sim['sym_touch|capture']:.2f} "
               f"tot {sim['sym_touch|total']:.0f}/{sim['fair_value|total']:.0f} at0 {sim['align|at0']:.3f} "

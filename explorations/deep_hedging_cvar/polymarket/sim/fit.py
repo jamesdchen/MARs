@@ -736,6 +736,51 @@ def fit_flow(P: dict, mk: pd.DataFrame, mid, reg, pre: pd.DataFrame | None = Non
     return out
 
 
+def calibrate_cluster(P: dict, mk: pd.DataFrame, params: dict, reps: int = 3, iters: int = 2) -> dict:
+    """Within-second bunching of taker txs: arrivals are compound Poisson (bursts of geometric size with mean mu
+    per (length, coin group); the mean rate is unchanged). mu is set so that the simulated mean number of txs
+    per second-with-a-tx matches train (seconds with > 30 s to close)."""
+    import copy
+    import metrics as mt
+    import engine as en
+    ul = cm.train_underlying()
+    prices = [cm.market_pricing(ul[r.coin][1], ul[r.coin][2], ul[r.coin][0], r.open_ts, r.end_ts)
+              for r in mk.itertuples()]
+    cg_m = np.array([cm.COIN_GROUP[c] for c in mk.coin.values])
+
+    def stat(tc, Lr, cgr, tau):
+        out = {}
+        for L in cm.LENS:
+            for g in range(cm.NCG):
+                s = (Lr == L) & (cgr == g) & (tau > 30)
+                x = tc[s]
+                out[(L, g)] = (float(x[x > 0].mean()) if (x > 0).sum() > 50 else np.nan, float((x > 0).mean()) if s.any() else np.nan)
+        return out
+    real = stat(P["trade_count"], P["L"], cg_m[P["m"]], P["seconds_to_close"])
+    mu = params["flow"].get("cluster_mean") or {cm.LEN_NAME[L]: {n: 1.0 for n in cm.CG_NAMES} for L in cm.LENS}
+    mu = copy.deepcopy(mu)
+    hist = []
+    for it in range(iters):
+        p2 = copy.deepcopy(params)
+        p2["flow"]["cluster_mean"] = mu
+        model = en.Model(p2)
+        acc = {}
+        for d in mt.sim_datasets(model, mk, prices, reps, 41 + it, reps):
+            s = stat(d.X[:, cm.C["trade_count"]], d.L, cg_m[d.m], d.tau)
+            for k, v in s.items():
+                acc.setdefault(k, []).append(v[0])
+        for (L, g), v in acc.items():
+            sv = np.nanmean(v)
+            rv = real[(L, g)][0]
+            if np.isfinite(sv) and np.isfinite(rv) and sv > 0:
+                n = cm.LEN_NAME[L]
+                mu[n][cm.CG_NAMES[g]] = float(np.clip(mu[n][cm.CG_NAMES[g]] * rv / sv, 1.0, 20.0))
+                hist.append(dict(iter=it, len=n, cg=cm.CG_NAMES[g], real=rv, sim=float(sv)))
+        print(f"  cluster iter {it}:", {f"{h['len']}|{h['cg']}": (round(h['real'], 2), round(h['sim'], 2))
+                                         for h in hist if h['iter'] == it}, flush=True)
+    return dict(mu=mu, history=hist)
+
+
 def calibrate_cell_rate(P: dict, mk: pd.DataFrame, params: dict, reps: int = 10) -> np.ndarray:
     """Per-(length, tau bucket) log shift of the arrival baseline so the simulated mean taker-tx rate per cell
     matches train (cells with >= 15 real txs; clipped to +-1.5). Adds to flow.glm.tau_cell_shift."""
@@ -985,7 +1030,7 @@ def main():
     if "flow" in a.parts:
         keep = {k: params.get("flow", {}).get(k) for k in ("informed", "impact", "stamp_delay", "lookahead",
                                                            "refill_prob", "actual_book_tracking",
-                                                           "lookahead_calibration")}
+                                                           "lookahead_calibration", "cluster_mean", "cluster_note")}
         keep_shift = params.get("flow", {}).get("market_effect", {}).get("a_len_shift")
         keep_cell = params.get("flow", {}).get("glm", {}).get("tau_cell_shift")
         pre = cm.pre_period_trades(*a.pre_trades, frac=a.pre_frac) if a.pre_trades else None
@@ -1003,6 +1048,12 @@ def main():
         if keep_cell is not None and "cellrate" not in a.parts:
             params["flow"]["glm"]["tau_cell_shift"] = keep_cell
         print(f"flow done {time.time()-t0:.1f}s")
+    if "cluster" in a.parts:
+        cl = calibrate_cluster(P, mk, params)
+        params["flow"]["cluster_mean"] = cl["mu"]
+        params["flow"]["cluster_note"] = ("taker arrivals are compound Poisson per second: Poisson(lambda/mu) bursts, "
+                                          "each of geometric size with mean mu[len][coin group] (fit.py calibrate_cluster)")
+        print(f"cluster calibration done {time.time()-t0:.1f}s")
     if "cellrate" in a.parts:
         params["flow"]["glm"]["tau_cell_shift"] = calibrate_cell_rate(P, mk, params)
         print(f"cell rate calibration done {time.time()-t0:.1f}s")

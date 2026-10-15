@@ -236,6 +236,9 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
     trk = float(trk.get(cm.LEN_NAME[L], 1.0) if isinstance(trk, dict) else trk)
     r_refill = float(model.raw["flow"].get("refill_prob", 0.0))
     fee_r = model.fees["taker_fee_rate"] * kn["fee_rate_mult"] * (1 - kn["fee_free"])
+    clu = model.raw["flow"].get("cluster_mean", {}).get(cm.LEN_NAME[L])
+    clu_on = clu is not None
+    mu_c = np.array([max(float(clu.get(cm.CG_NAMES[g], 1.0)), 1.0) for g in cgm]) if clu_on else None
     imp = model.impact[li]
     k_imp = imp["kappa"] * kn["impact_mult"]
     d_imp = 0.5 ** (1.0 / imp["halflife_s"])
@@ -419,7 +422,12 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
         lam = (A * np.exp(cell[t] + b_gap * np.minimum(np.abs(gap), 0.3) + model.b_z5 * z5[:, t]
                           + model.b_os * (reg[:, t] == cm.ONESIDED)) + eta * E)
         lam = np.where(reg[:, t] == cm.HOLLOW, 0.0, np.minimum(lam, 50.0))
-        N = rng.poisson(lam)
+        if clu_on:                       # compound Poisson: bursts of geometric size (mean mu) in one second
+            Nc = rng.poisson(lam / mu_c)
+            extra = np.where(Nc > 0, rng.negative_binomial(np.maximum(Nc, 1), 1.0 / mu_c), 0)
+            N = Nc + extra
+        else:
+            N = rng.poisson(lam)
         # noise takers: damped fitted P(buy | observed gap); informed takers: sign of the mid's staleness
         q_noise = 0.5 + kap * (pbuy[cm.gap_bucket(gap)] - 0.5)
         st = cm.sigmoid(target[:, t] + v_imp) - m_now          # staleness: what the next update reveals

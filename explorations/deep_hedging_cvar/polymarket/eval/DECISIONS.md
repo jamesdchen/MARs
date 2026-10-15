@@ -160,3 +160,37 @@ it was `746dd7de…`. Reward modes 0 and 1 are bit-identical to the frozen core:
 32 of 32 runs matched exactly, with maximum difference 0. Baseline and main-sweep
 results obtained on `746dd7de` therefore stay valid. Hash references are updated
 in train/run_all.py, baselines/tune.py and puffer5/README.md.
+
+## D6. Amending the stopping rule after R1 and R2 (recorded 2026-10-15 10:50 UTC, after seeing R1/R2)
+
+**What happened.** `auto` stopped after R1 (BC warm start) and R2 (off-prior),
+because neither passed the improvement test, and that met D4's "two
+non-improving rounds in a row" rule.
+- R7 (D5) never ran. D5 inserted it after R2, but nobody checked how that
+  position interacted with the streak rule written for D4's original order.
+- R7 is the round aimed at the failure we diagnosed (reward noise / credit
+  assignment).
+- The user asked for improvement work to continue at full throughput until
+  morning.
+
+**This amendment was made after seeing R1 and R2.** We are stating that
+plainly. It is acceptable because every val evaluation stays in the ledger
+and counts towards N, selection still uses only val, and the test split is
+still run exactly once.
+
+**Amendment.**
+1. The finalize step that had started was stopped. It was retraining seeds of
+   the main config, which already has 5 seeds.
+2. Rounds now run in this order: R7, R3, R4, R6. R5 runs only if the sim gate
+   passes.
+3. The streak counter restarts at R7, and the 15:30 UTC deadline is unchanged.
+   Each round uses the same improvement test and the same D1.3 eligibility
+   (`--require-mm`).
+4. After that comes finalize, then the single test run.
+
+**R1 results to report regardless of selection.** The BC-from-`tuned`
+fair_value variants reach a seed mean of about +$110 to +$144 total on val,
+i.e. about +$0.45–0.58 per market. They fill only about 4.0–4.7 times per
+market. That is below D1.3's threshold of 5, so they cannot be selected.
+Their teacher is itself directional (D1). We will report them as "RL matches
+the low-activity fair-value baseline", not as market making.

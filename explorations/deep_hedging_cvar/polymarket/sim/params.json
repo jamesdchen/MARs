@@ -1,7 +1,7 @@
 {
  "meta": {
   "fitted_on": "train split 0 only: 431 markets (5m 248, 15m 146, 4h 37), opens 2026-08-21..22 UTC; Binance < 2026-08-23",
-  "created_utc": "2026-10-15T08:58:32.814647+00:00",
+  "created_utc": "2026-10-15T10:31:36.301338+00:00",
   "n_rows": 739031,
   "pricer": {
    "halflife_s": 300,
@@ -91470,34 +91470,34 @@
    "note": "lambda_t = A_m * exp(tau_cell[len,tau_b] + b_absgap*min(|p-mid|,0.3) + b_absz5*min(|z5|,6) + b_onesided*O) + hawkes_eta * H_t,  H_t = d*H_{t-1} + (1-d)*n_{t-1}, d = exp(-1/hawkes_tau); baseline shape from a Poisson GLM with market fixed effects, (eta, tau) and A_m by profile MLE; covariates at match time (block time - 3 s); lambda = 0 in the hollow state",
    "tau_cell_shift": [
     [
-     0.011058,
-     -0.097451,
-     0.336247,
-     -0.044553,
-     -0.072362,
+     0.024018,
+     -0.214753,
+     0.345676,
+     -0.087601,
+     -0.106054,
      0.0,
      0.0,
      0.0
     ],
     [
-     -0.819027,
-     -0.864108,
-     0.048774,
-     0.171343,
-     0.061442,
-     0.034897,
+     -1.25334,
+     -1.093769,
+     -0.143389,
+     -0.029664,
+     -0.089361,
+     -0.139794,
      0.0,
      0.0
     ],
     [
-     0.304489,
-     -0.082836,
-     0.14964,
-     0.101137,
-     -0.133916,
-     -0.152346,
-     -0.192985,
-     -0.220184
+     0.247794,
+     -0.210669,
+     0.219981,
+     0.176258,
+     -0.034348,
+     -0.07317,
+     -0.040202,
+     -0.118792
     ]
    ]
   },
@@ -91521,9 +91521,9 @@
    "n_markets": 429,
    "note": "log A_m = a_len + a_coin + N(0, sd^2) (Hawkes baseline scale per market)",
    "a_len_shift": {
-    "5m": -0.177803,
-    "15m": -0.224281,
-    "4h": -0.278516
+    "5m": -0.147445,
+    "15m": -0.187738,
+    "4h": -0.337214
    }
   },
   "direction": {
@@ -91621,7 +91621,7 @@
    "rho_copy": 0.243512,
    "rho_copy_by_len": {
     "5m": 0.0,
-    "15m": 0.1,
+    "15m": 0.0,
     "4h": 0.246962
    },
    "p_same_sign_observed": 0.626077,
@@ -93628,16 +93628,16 @@
   },
   "lookahead": {
    "5m": {
-    "h": 5,
-    "kappa": 0.359261
+    "h": 7,
+    "kappa": 0.17963
    },
    "15m": {
-    "h": 5,
-    "kappa": 6.4667069999999995
+    "h": 7,
+    "kappa": 3.233354
    },
    "4h": {
-    "h": 5,
-    "kappa": 10.777845
+    "h": 7,
+    "kappa": 5.388922
    }
   },
   "refill_prob": 0.8,
@@ -93777,7 +93777,7 @@
      },
      "flow.lookahead.15m": {
       "h": 5,
-      "kappa": 6.4667069999999995
+      "kappa": 6.466707
      },
      "flow.lookahead.4h": {
       "h": 5,
@@ -93787,11 +93787,51 @@
      "flow.impact.15m.kappa": 0.0,
      "flow.impact.4h.kappa": 0.0
     },
-    "loss": 113.59461289099342,
+    "loss": 113.594613,
     "note": "print impact removed: its transient decay made prices revert after trades, giving makers (fair_value) too much inventory P&L (sim 1.14 vs real 0.63 $/market); adverse selection now comes from look-ahead informed takers only (kappa x1 / x3 / x5 of the random-search point)"
+   },
+   "burst_h7": {
+    "cand": {
+     "flow.lookahead.5m": {
+      "h": 7,
+      "kappa": 0.17963
+     },
+     "flow.lookahead.15m": {
+      "h": 7,
+      "kappa": 3.233354
+     },
+     "flow.lookahead.4h": {
+      "h": 7,
+      "kappa": 5.388922
+     },
+     "flow.direction.rho_copy_by_len.15m": 0.0
+    },
+    "loss": 123.259138,
+    "note": "after adding compound-Poisson bursts: look-ahead h = 7 s, kappa halved, 15m copy prob 0"
    }
   },
-  "actual_book_tracking": 1.0
+  "actual_book_tracking": 1.0,
+  "cluster_mean": {
+   "5m": {
+    "btc": 5.165566,
+    "eth": 1.512355,
+    "alt": 1.715946,
+    "zec": 1.0
+   },
+   "15m": {
+    "btc": 1.68736,
+    "eth": 1.911347,
+    "alt": 1.520928,
+    "zec": 1.0
+   },
+   "4h": {
+    "btc": 1.313612,
+    "eth": 1.407487,
+    "alt": 1.16306,
+    "zec": 1.0
+   }
+  },
+  "cluster_note": "taker arrivals are compound Poisson per second: Poisson(lambda/mu) bursts, each of geometric size with mean mu[len][coin group] (fit.py calibrate_cluster)"
  },
  "fees": {
   "taker_fee_rate": 0.07,
