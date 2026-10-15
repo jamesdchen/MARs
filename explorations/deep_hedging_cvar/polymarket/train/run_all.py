@@ -84,6 +84,8 @@ class Pipeline:
         return self.state.get(stage, {}).get('done', False)
 
     def mark(self, stage, **info):
+        if self.a.dry_run:
+            return
         self.state[stage] = {'done': True, 'time': time.strftime('%Y-%m-%dT%H:%M:%S'), **info}
         self.save()
 
@@ -107,9 +109,9 @@ class Pipeline:
         out = os.path.join(self.dir, 'probes.jsonl')
         self.run('probes', [PY, 'probes.py', '--env', a.env, '--steps', str(a.probe_steps),
                             '--threads', '1', '--out', out])
-        res = [json.loads(l) for l in open(out)] if os.path.exists(out) else []
+        res = [json.loads(l) for l in open(out)] if os.path.exists(out) and not a.dry_run else []
         ok = bool(res) and all(r.get('pass') for r in res)
-        if a.require_probes and not ok:
+        if a.require_probes and not ok and not a.dry_run:
             raise SystemExit(f'probes failed: {res}')
         self.mark('probes', results=res, all_pass=ok)
 
@@ -140,6 +142,8 @@ class Pipeline:
             cmd += ['--require-mm']
         if self.run('select', cmd) != 0:
             raise SystemExit('select found no eligible config (see select.log and selected.json)')
+        if self.a.dry_run:
+            return
         sel = json.load(open(self.selected_path))
         self.mark('select', cfg_hash=sel['selected']['cfg_hash'], mean=sel['selected']['mean'])
 
@@ -159,6 +163,9 @@ class Pipeline:
         return os.path.join(HERE, 'runs', 'seeds', self.a.name)
 
     def publish(self):
+        if self.a.dry_run:
+            print('publish: train/selected.json from the selection and the final seeds', flush=True)
+            return
         sel = json.load(open(self.selected_path))
         summ = json.load(open(os.path.join(self.seeds_out(), 'seeds.json')))
         runs = []
