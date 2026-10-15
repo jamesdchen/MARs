@@ -32,7 +32,7 @@ N_FEAT_OBS, OBS = 33, 48
 
 BOOK_DTYPE = np.dtype([("bid_px", "<i2", 5), ("ask_px", "<i2", 5), ("bid_sz", "<f4", 5),
                        ("ask_sz", "<f4", 5), ("flags", "u1"), ("tick", "u1"), ("tick_alt", "u1"),
-                       ("pad", "u1")])
+                       ("same_run", "u1")])
 FILL_DTYPE = np.dtype([("row", "<i4"), ("side", "i1"), ("first", "u1"), ("px", "<i2"),
                        ("price", "<f4"), ("size", "<f4"), ("tx_size", "<f4")])
 

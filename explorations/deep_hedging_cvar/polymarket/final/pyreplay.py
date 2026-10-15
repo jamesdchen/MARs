@@ -32,13 +32,10 @@ const_one (obs_spec() documents it for the baselines).
 from __future__ import annotations
 
 import math
-import sys
 
 import numpy as np
 
-from common import CODE_ROOT, FILL_MODELS, Dataset
-
-sys.path.insert(0, str(CODE_ROOT / "baselines"))
+from common import FILL_MODELS, Dataset
 
 PRICE_OFFSETS = [None, 2, 1, 0, -1, -2, -4]
 SIZE_MULTS = [1, 2, 5]

@@ -38,11 +38,10 @@ import time
 import traceback
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from common import (CODE_ROOT, FINAL, RESULTS_SCHEMA, SPLIT_NAMES, PlanError, S, Dataset,  # noqa: E402
+from common import (CODE_ROOT, FINAL, RESULTS_SCHEMA, SPLIT_NAMES, PlanError, Dataset,  # noqa: E402
                     append_jsonl, clean_json, code_hashes, git_info, git_log_contains, load_plan,
                     read_jsonl, resolve, utcnow, write_json)
 import adapters  # noqa: E402
@@ -77,6 +76,8 @@ def preflight(plan, plan_hash, split, args, ds) -> dict:
                                  f"{reg['amendment_log']}, git commit message: {reg['commit_message']}); "
                                  "register it or pass --skip-registration-check REASON")
         chk["registration"] = reg
+        if not plan["backend"].get("of_record") and not ds.synthetic:
+            raise RunRefused(f"backend {plan['backend']['name']!r} is a stand-in: no test run on real data")
     elif split != 1:
         raise RunRefused("--split must be 1 (val dry run) or 2 (test)")
 
@@ -112,9 +113,6 @@ def preflight(plan, plan_hash, split, args, ds) -> dict:
         raise RunRefused(f"evaluation code changed since the plan: {diff[:10]} "
                          "(--accept-code-change REASON if the change touches no evaluation logic)")
 
-    # backend of record
-    if split == 2 and not plan["backend"].get("of_record") and not ds.synthetic:
-        raise RunRefused(f"backend {plan['backend']['name']!r} is a stand-in: no test run on real data")
     return chk
 
 
@@ -128,9 +126,6 @@ def run(args) -> int:
     ledger = results_root / "runs.jsonl"
     build_dir = resolve(plan["data"]["build_dir"], CODE_ROOT)
     root = resolve(plan.get("artifact_root", "."), CODE_ROOT)
-    ds = Dataset(build_dir)
-    chk = preflight(plan, plan_hash, split, args, ds)
-
     prior = [r for r in read_jsonl(ledger)[0] if r.get("split") == split]
     if prior and not args.force_rerun:
         raise RunRefused(f"{len(prior)} earlier run record(s) of split {split} in {ledger} "
@@ -138,6 +133,8 @@ def run(args) -> int:
                          "once: --force-rerun REASON to run again (recorded)")
     if args.resume and not args.force_rerun:
         raise RunRefused("--resume restarts a crashed run and needs --force-rerun REASON")
+    ds = Dataset(build_dir)
+    chk = preflight(plan, plan_hash, split, args, ds)
 
     methods = plan["methods"]
     variants = plan["variants"]

@@ -21,6 +21,7 @@ from __future__ import annotations
 import datetime as _dt
 import glob
 import hashlib
+import importlib.util
 import json
 import os
 import subprocess
@@ -32,11 +33,31 @@ import numpy as np
 FINAL = Path(__file__).resolve().parent
 CODE_ROOT = FINAL.parent                      # polymarket/
 BUILD = CODE_ROOT / "data" / "build"
-for _p in (CODE_ROOT / "eval", CODE_ROOT / "data", FINAL):
-    if str(_p) not in sys.path:
-        sys.path.insert(0, str(_p))
+if str(FINAL) not in sys.path:
+    sys.path.insert(0, str(FINAL))
+# Other folders are only ever APPENDED (never shadow final/'s modules); generic module names
+# (stats, policy) are loaded by file path under unique names.
+for _d in ("baselines", "puffer5"):
+    if str(CODE_ROOT / _d) not in sys.path:
+        sys.path.append(str(CODE_ROOT / _d))
 
-import stats as S  # noqa: E402  (eval/stats.py)
+
+def load_module(name: str, path):
+    """Import a source file under a unique module name (cached in sys.modules)."""
+    if name in sys.modules:
+        return sys.modules[name]
+    spec = importlib.util.spec_from_file_location(name, str(path))
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+S = load_module("pm_eval_stats", CODE_ROOT / "eval" / "stats.py")
+
+
+def train_policy_module():
+    return load_module("pm_train_policy", CODE_ROOT / "train" / "policy.py")
 
 SPLIT_NAMES = {0: "train", 1: "val", 2: "test", 3: "purged"}
 FILL_MODELS = {"optimistic": 0, "central": 1, "pessimistic": 2}

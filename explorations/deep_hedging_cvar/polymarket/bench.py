@@ -42,16 +42,17 @@ def bench_env(args):
                      rng.integers(0, 3, (64, args.num_envs))], -1).astype(np.int32)
     for i in range(200):                     # warm the page cache and the caches
         env.step(acts[i & 63])
-    best = 0.0
+    best, best_cpu = 0.0, 0.0
     for _ in range(args.repeats):
-        n, t0 = 0, time.perf_counter()
+        n, t0, c0 = 0, time.perf_counter(), time.thread_time()
         while time.perf_counter() - t0 < args.seconds:
             for _ in range(50):
                 env.step(acts[n & 63])
                 n += 1
         best = max(best, n * args.num_envs / (time.perf_counter() - t0))
+        best_cpu = max(best_cpu, n * args.num_envs / (time.thread_time() - c0))
     env.close()
-    return best
+    return best, best_cpu
 
 
 def bench_core(args):
@@ -67,12 +68,15 @@ def bench_core(args):
         lib.mm_h_bench.restype = ctypes.c_double
         p = np.array(list(E.params(**env_kwargs(args)).values()))
         out = np.zeros(64)
-        steps = max(1, int(args.seconds * 6e6 / args.num_envs))
-        best = 0.0
+        cpu = ctypes.c_double(0.0)
+        steps = max(1, int(args.seconds * 4e6 / args.num_envs))
+        best, best_cpu = 0.0, 0.0
         for _ in range(args.repeats):
             best = max(best, lib.mm_h_bench(p.ctypes.data_as(ctypes.c_void_p), args.num_envs, steps,
-                                            ctypes.c_uint64(1), out.ctypes.data_as(ctypes.c_void_p)))
-        return best
+                                            ctypes.c_uint64(1), out.ctypes.data_as(ctypes.c_void_p),
+                                            ctypes.byref(cpu)))
+            best_cpu = max(best_cpu, cpu.value)
+        return best, best_cpu
 
 
 def bench_ppo(args):
@@ -100,6 +104,7 @@ def bench_ppo(args):
     trainer.train()
     t_eval = t_train = 0.0
     s0 = trainer.global_step
+    c0 = time.process_time()
     for _ in range(args.ppo_epochs):
         a = time.perf_counter()
         trainer.evaluate()
@@ -109,9 +114,11 @@ def bench_ppo(args):
         t_eval += b - a
         t_train += c - b
     steps = trainer.global_step - s0
+    cpu = time.process_time() - c0
     trainer.utilization.stop()
     env.close()
     return dict(sps_end_to_end=steps / (t_eval + t_train), sps_rollout=steps / t_eval,
+                sps_per_cpu_second=steps / cpu, cpu_utilisation=cpu / (t_eval + t_train),
                 rollout_share=t_eval / (t_eval + t_train), steps=steps, threads=args.threads,
                 hidden=args.hidden, horizon=args.horizon, minibatch=args.minibatch,
                 update_epochs=args.update_epochs)
@@ -127,7 +134,8 @@ def main():
     ap.add_argument("--dt", type=int, default=0, help="0 = per contract length (1/1/5 s)")
     ap.add_argument("--skip-ppo", action="store_true")
     ap.add_argument("--ppo-epochs", type=int, default=3)
-    ap.add_argument("--threads", type=int, default=os.cpu_count())
+    ap.add_argument("--threads", type=int, default=1,
+                    help="torch threads for PPO (more than the idle cores collapses throughput)")
     ap.add_argument("--hidden", type=int, default=128)
     ap.add_argument("--horizon", type=int, default=64)
     ap.add_argument("--minibatch", type=int, default=32768)
@@ -136,18 +144,21 @@ def main():
     args = ap.parse_args()
     res = {"num_envs": args.num_envs, "fill_model": args.fill_model, "latency": args.latency, "dt": args.dt,
            "load_avg_1m_at_start": os.getloadavg()[0]}
-    res["env_only_binding_sps"] = bench_env(args)
+    res["env_only_binding_sps"], res["env_only_binding_sps_cpu"] = bench_env(args)
     print(f"env-only, PufferLib 3.0 binding, 1 thread, {args.num_envs} envs: "
-          f"{res['env_only_binding_sps'] / 1e6:.2f}M steps/s", flush=True)
-    res["env_only_core_sps"] = bench_core(args)
+          f"{res['env_only_binding_sps'] / 1e6:.2f}M steps/s wall, "
+          f"{res['env_only_binding_sps_cpu'] / 1e6:.2f}M steps per CPU-second", flush=True)
+    res["env_only_core_sps"], res["env_only_core_sps_cpu"] = bench_core(args)
     print(f"env-only, bare C core (ctypes harness), 1 thread:        "
-          f"{res['env_only_core_sps'] / 1e6:.2f}M steps/s", flush=True)
+          f"{res['env_only_core_sps'] / 1e6:.2f}M steps/s wall, "
+          f"{res['env_only_core_sps_cpu'] / 1e6:.2f}M steps per CPU-second", flush=True)
     if not args.skip_ppo:
         res["ppo"] = bench_ppo(args)
         p = res["ppo"]
         print(f"PPO end to end (PufferLib 3.0, CPU, {p['threads']} torch threads, MLP {p['hidden']}): "
               f"{p['sps_end_to_end'] / 1e3:.0f}k steps/s (rollout alone {p['sps_rollout'] / 1e3:.0f}k steps/s, "
-              f"{100 * p['rollout_share']:.0f}% of wall time)", flush=True)
+              f"{100 * p['rollout_share']:.0f}% of wall time; {p['sps_per_cpu_second'] / 1e3:.0f}k steps per "
+              f"CPU-second)", flush=True)
     res["load_avg_1m_at_end"] = os.getloadavg()[0]
     if args.out:
         Path(args.out).write_text(json.dumps(res, indent=1))

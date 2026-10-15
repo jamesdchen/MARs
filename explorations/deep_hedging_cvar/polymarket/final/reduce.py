@@ -113,7 +113,6 @@ class RunAccumulator:
         side = np.asarray(f["side"], np.int64)
         qty = np.asarray(f["qty"], np.float64)
         price = np.asarray(f["price"], np.float64)
-        sq = side * qty
 
         # minute grid
         mi = (t // 60) - (t[0] // 60)

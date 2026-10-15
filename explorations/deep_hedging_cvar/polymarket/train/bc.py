@@ -180,7 +180,9 @@ def main():
     p.add_argument('--hidden', type=int, default=128)
     p.add_argument('--layers', type=int, default=None)
     p.add_argument('--act', default='tanh')
-    p.add_argument('--shared', action='store_true')
+    p.add_argument('--shared', dest='shared', action='store_true', default=True,
+                   help='MLP: one trunk (the train_ppo.py default)')
+    p.add_argument('--separate', dest='shared', action='store_false')
     p.add_argument('--epochs', type=int, default=8)
     p.add_argument('--minibatch', type=int, default=2048, help='samples per gradient step')
     p.add_argument('--lr', type=float, default=1e-3)
@@ -200,11 +202,12 @@ def main():
     adapter = get_adapter(a.env)
     params = json.load(open(a.teacher_params)) if a.teacher_params else None
     teacher_name = a.teacher or ('standin' if adapter.name == 'standin' else 'fair_value')
-    teacher = adapter.teacher(teacher_name, params)
     env_kw = {}
     for it in a.env_kw or []:
         k, v = it.split('=', 1)
         env_kw[k] = json.loads(v)
+    teacher = adapter.teacher(teacher_name, params, env_kw)
+    params = getattr(adapter, 'teacher_params', params)
 
     t0 = time.time()
     data = collect(adapter, teacher, a.num_envs, a.steps, a.seed, env_kw)

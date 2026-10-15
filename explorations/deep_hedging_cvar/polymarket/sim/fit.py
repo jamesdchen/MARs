@@ -262,16 +262,46 @@ def fit_book(P: dict, mk: pd.DataFrame, reg, mid, spread) -> dict:
         sel = same_mkt & v & (prev == k)
         keep[name] = [float((reg[sel & (li == j)] == k).mean()) if (sel & (li == j)).sum() > 50 else 0.99
                       for j in range(3)]
+    # Persistence through a Gaussian copula: per market, z^O and z^H are stationary AR(1) N(0,1) processes;
+    # one-sided iff Phi(z^O) < pi_O(cell_t), else hollow iff Phi(z^H) < pi_H / (1 - pi_O). The marginal equals
+    # the table exactly and the state follows the conditions immediately; the AR half-lives are chosen so the
+    # simulated P(S_t = S | S_{t-1} = S) on the real train p-paths matches the observed one.
+    from scipy.special import ndtr
+    hl_grid = np.array([2, 5, 10, 20, 40, 80, 160, 320, 640, 1280, 2560, 5120, 10240, 20480])
+    rng = np.random.default_rng(3)
+    cop = {}
+    for j, L in enumerate(cm.LENS):
+        mis = np.flatnonzero(mk.L.values == L)
+        rows = np.concatenate([np.arange(o[m], o[m + 1]) for m in mis])
+        sh = (len(mis), L + 1)
+        piO = tab[j][tb[rows], eb[rows], cm.ONESIDED].reshape(sh)
+        piH = (tab[j][tb[rows], eb[rows], cm.HOLLOW] / np.maximum(1 - tab[j][tb[rows], eb[rows], cm.ONESIDED],
+                                                                  1e-9)).reshape(sh)
+        reps = 4
+        Z = rng.standard_normal((reps * len(mis), L + 1))
+        best = {}
+        for name, pi, target in (("onesided", piO, keep["onesided"][j]), ("hollow", piH, keep["hollow"][j])):
+            pi = np.tile(pi, (reps, 1))
+            errs = []
+            for hl in hl_grid:
+                ph = 0.5 ** (1.0 / hl)
+                z = lfilter([np.sqrt(1 - ph ** 2)], [1, -ph], Z, axis=1, zi=ph * Z[:, :1] / 1.0)[0]
+                s = ndtr(z) < pi
+                pss = (s[:, 1:] & s[:, :-1]).sum() / max(s[:, :-1].sum(), 1)
+                errs.append(abs(pss - target))
+            best[name] = float(hl_grid[int(np.argmin(errs))])
+        cop[cm.LEN_NAME[L]] = dict(halflife_onesided_s=best["onesided"], halflife_hollow_s=best["hollow"])
     # side that is empty when one-sided: the extreme side (ask empty when p > 0.5)?
     os_ = v & (reg == cm.ONESIDED)
     noask = P["ask_px_0"] >= 1
     agree_side = float(((P["p"] > 0.5) == noask)[os_].mean())
     hollow_open = [float((reg[o[:-1]][mk.L.values == L] == cm.HOLLOW).mean()) for L in cm.LENS]
     out["regime"] = dict(states=["normal", "hollow", "onesided"], table=tab, counts_total=cnt.sum((0, 1, 2)),
-                         p_keep=keep, onesided_extreme_side_agree=agree_side, p_hollow_at_open=hollow_open,
-                         note="per second: keep current state w.p. p_keep[state], else redraw from "
-                              "pi'(s) ~ table(s) * (1 - p_keep[s]) (so the marginal matches the table); one-sided "
-                              "removes the side beyond the extreme (ask if p_model > 0.5)")
+                         p_same_state_observed=keep, copula=cop, onesided_extreme_side_agree=agree_side,
+                         p_hollow_at_open=hollow_open,
+                         note="table[len, tau_b, ext_b(p_model)] = P(state); per market Gaussian-copula AR(1) "
+                              "thresholds give the persistence (copula half-lives fitted to P(S_t=S|S_t-1=S)); "
+                              "one-sided removes the side beyond the extreme (ask if p_model > 0.5)")
 
     # ---- spread (normal rows) by (len, tau_b, ext_b, fine) over pruned support (mils)
     nr = v & (reg == cm.NORMAL)
@@ -353,6 +383,31 @@ def fit_book(P: dict, mk: pd.DataFrame, reg, mid, spread) -> dict:
                      "rho = (acf1 - (1 - pi_update)) / pi_update so the per-second autocorrelation matches")
     out["size"] = sizes
     out["book_change_profile"] = dict(p_age0=age0, note="P(book_age == 0) per (len, tau_b) in train ticks")
+    # empirical size library: joint top-5 bid/ask size vectors of real normal rows by (len, tau_b) plus the
+    # log ratio of total depth to top-5 depth (resampled whole at update events: keeps round-lot clustering,
+    # level correlation and missing levels); hollow rows separately
+    lib = {}
+    top5b = sum(P[f"bid_sz_{k}"] for k in range(cm.NLEV))
+    top5a = sum(P[f"ask_sz_{k}"] for k in range(cm.NLEV))
+    rb = np.log(np.maximum(P["bid_depth_total"], 1e-6) / np.maximum(top5b, 1e-6))
+    ra = np.log(np.maximum(P["ask_depth_total"], 1e-6) / np.maximum(top5a, 1e-6))
+    vec = np.column_stack([P[f"bid_sz_{k}"] for k in range(cm.NLEV)] + [P[f"ask_sz_{k}"] for k in range(cm.NLEV)]
+                          + [np.maximum(rb, 0), np.maximum(ra, 0)]).astype(np.float32)
+    rng_l = np.random.default_rng(11)
+    for j, L in enumerate(cm.LENS):
+        for k in range(cm.NTAU):
+            sel = np.flatnonzero(nr & (li == j) & (tb == k) & (top5b > 0) & (top5a > 0))
+            if len(sel) == 0:
+                continue
+            pick = rng_l.choice(sel, min(4000, len(sel)), replace=False)
+            lib[f"size_{j}_{k}"] = vec[pick]
+        hsel = np.flatnonzero((reg == cm.HOLLOW) & v & (li == j))
+        if len(hsel):
+            lib[f"hollow_{j}"] = vec[rng_l.choice(hsel, min(2000, len(hsel)), replace=False)]
+    np.savez_compressed(cm.HERE / "params_book.npz", **lib)
+    out["size_library"] = dict(file="params_book.npz", vectors_per_cell=4000, n_cells=len(lib),
+                               keep_prob_note="at an update event the previous vector is kept with prob "
+                                              "1 - (1 - acf1)/pi_update, else a fresh one is drawn")
     # depth total / top-5 ratio
     top5 = sum(P[f"bid_sz_{k}"] for k in range(cm.NLEV))
     ratio = np.log(np.maximum(P["bid_depth_total"], 1e-6) / np.maximum(top5, 1e-6))
@@ -417,71 +472,80 @@ def fit_flow(P: dict, mk: pd.DataFrame, mid, reg) -> dict:
     rate_other = float(n_t[w_row == 1].mean())
     N_m = np.bincount(m_idx, weights=n_t * w_row, minlength=len(mk))
 
-    def excitation(tau_e):
-        d = np.exp(-1.0 / tau_e)
-        E = np.zeros_like(n_t)
-        for m in range(len(mk)):
-            a, b = o[m], o[m + 1]
-            x = np.r_[0.0, n_t[a:b - 1]]
-            E[a:b] = lfilter([1.0], [1.0, -d], x)
-        return np.log1p(E)
-
-    def negll(theta, ex):
+    def negll(theta):
         k = len(free_cells)
         th_c = np.zeros(ncell)
         th_c[free_cells] = theta[:k]
-        beta = theta[k:k + Xc.shape[1]]
-        gam = theta[-1]
-        eta = th_c[cell] + Xc @ beta + gam * ex
-        eta = np.minimum(eta, 30)
+        beta = theta[k:]
+        eta = np.minimum(th_c[cell] + Xc @ beta, 30)
         w = np.exp(eta) * w_row
         Sm = np.bincount(m_idx, weights=w, minlength=len(mk))
         ll = np.sum(w_row * n_t * eta) - np.sum(N_m[N_m > 0] * np.log(Sm[N_m > 0]))
-        # gradient
         coefm = np.where(Sm > 0, N_m / np.maximum(Sm, 1e-300), 0.0)
         r = w_row * n_t - coefm[m_idx] * w
-        g_c = np.bincount(cell, weights=r, minlength=ncell)[free_cells]
-        g_b = Xc.T @ r
-        g_g = np.sum(r * ex)
-        return -ll, -np.r_[g_c, g_b, g_g]
+        return -ll, -np.r_[np.bincount(cell, weights=r, minlength=ncell)[free_cells], Xc.T @ r]
 
-    best = None
-    for tau_e in (2.0, 5.0, 10.0, 30.0, 60.0):
-        ex = excitation(tau_e)
-        th0 = np.zeros(len(free_cells) + Xc.shape[1] + 1)
-        res = minimize(negll, th0, args=(ex,), jac=True, method="L-BFGS-B")
-        if best is None or res.fun < best[1].fun:
-            best = (tau_e, res, ex)
-    tau_e, res, ex = best
+    # (1) baseline shape: Poisson GLM with market fixed effects (profiled), no excitation
+    res = minimize(negll, np.zeros(len(free_cells) + Xc.shape[1]), jac=True, method="L-BFGS-B")
     k = len(free_cells)
     th_c = np.zeros(ncell)
     th_c[free_cells] = res.x[:k]
-    beta = res.x[k:k + Xc.shape[1]]
-    gam = float(res.x[-1])
-    eta = th_c[cell] + Xc @ beta + gam * ex
-    Sm = np.bincount(m_idx, weights=np.exp(eta) * w_row, minlength=len(mk))
-    okm = Sm > 1.0                                  # markets with >= ~1 s-equivalent of non-hollow exposure
-    logA = np.log((N_m[okm] + 0.5) / Sm[okm])
-    # market effect = length + coin effects + iid normal
+    beta = res.x[k:]
+    base = np.exp(th_c[cell] + Xc @ beta) * w_row
+    Sb = np.bincount(m_idx, weights=base, minlength=len(mk))
+    use = w_row > 0
+
+    # (2) linear Hawkes on top: lambda_t = A_m * base_t + eta * H_t, H_t = sum_{s<t} n_s (1-d) d^(t-1-s)
+    def hawkes_H(tau_e):
+        d = np.exp(-1.0 / tau_e)
+        H = np.zeros_like(n_t)
+        for m in range(len(mk)):
+            a, b = o[m], o[m + 1]
+            H[a:b] = lfilter([0.0, 1.0 - d], [1.0, -d], n_t[a:b])
+        return H
+
+    def profile(eta, H):
+        A = np.maximum(N_m * (1 - eta), 0.5 * (1 - eta)) / np.maximum(Sb, 1e-9)
+        nb = n_t * base
+        for _ in range(40):
+            lam = np.maximum(A[m_idx] * base + eta * H, 1e-300)
+            g = np.bincount(m_idx, weights=np.where(use, nb / lam, 0.0), minlength=len(mk)) - Sb
+            h = -np.bincount(m_idx, weights=np.where(use, nb * base / lam ** 2, 0.0), minlength=len(mk))
+            A = np.where(h < 0, np.maximum(A - g / np.minimum(h, -1e-300), 1e-12), A)
+        lam = np.maximum(A[m_idx] * base + eta * H, 1e-300)
+        ll = np.sum(np.where(use, n_t * np.log(lam) - lam, 0.0))
+        return ll, A
+
+    from scipy.optimize import minimize_scalar
+    best = None
+    for tau_e in (1.0, 2.0, 5.0, 10.0, 20.0, 60.0):
+        H = hawkes_H(tau_e)
+        r = minimize_scalar(lambda e: -profile(e, H)[0], bounds=(0.0, 0.97), method="bounded",
+                            options=dict(xatol=1e-3))
+        if best is None or r.fun < best[1]:
+            best = (tau_e, r.fun, r.x, H)
+    tau_e, nll_h, eta_h, H = best
+    ll_h, A = profile(eta_h, H)
+    ll_0, A0 = profile(0.0, H)
+    okm = Sb > 1.0                                   # markets with >= ~1 s-equivalent of non-hollow exposure
+    floor = 0.5 * (1 - eta_h) / np.maximum(Sb, 1e-9)
+    logA = np.log(np.maximum(A, floor))[okm]
     D = np.column_stack([(mk.L.values[okm] == L).astype(float) for L in cm.LENS]
                         + [(mk.coin.values[okm] == c).astype(float) for c in cm.COINS[1:]])
     coef, *_ = np.linalg.lstsq(D, logA, rcond=None)
     resid = logA - D @ coef
-    # also: Poisson null (no excitation) log-lik for the record
-    res0 = minimize(lambda th: negll(np.r_[th, 0.0], ex)[0], res.x[:-1], method="L-BFGS-B",
-                    jac=lambda th: negll(np.r_[th, 0.0], ex)[1][:-1])
     glm = dict(tau_cell=th_c.reshape(3, cm.NTAU), b_absgap=beta[0], b_absz5=beta[1], b_onesided=beta[2],
                rate_hollow_per_s=rate_hollow, rate_non_hollow_per_s=rate_other,
-               gamma_excite=gam, tau_excite_s=tau_e, loglik=-res.fun,
-               loglik_no_excitation=-res0.fun, lr_stat_excitation=2 * (res0.fun - res.fun),
+               hawkes_eta=float(eta_h), hawkes_tau_s=float(tau_e), loglik_hawkes=float(ll_h),
+               loglik_poisson=float(ll_0), lr_stat_hawkes=float(2 * (ll_h - ll_0)),
                note="lambda_t = A_m * exp(tau_cell[len,tau_b] + b_absgap*min(|p-mid|,0.3) + b_absz5*min(|z5|,6) "
-                    "+ b_onesided*O) * (1 + E_t)^gamma, E_t = decay*E_{t-1} + n_{t-1}, "
-                    "decay = exp(-1/tau_excite); covariates at match time (block time - 3 s); "
-                    "lambda = 0 in the hollow state (fit excludes hollow seconds)")
+                    "+ b_onesided*O) + hawkes_eta * H_t,  H_t = d*H_{t-1} + (1-d)*n_{t-1}, d = exp(-1/hawkes_tau); "
+                    "baseline shape from a Poisson GLM with market fixed effects, (eta, tau) and A_m by profile "
+                    "MLE; covariates at match time (block time - 3 s); lambda = 0 in the hollow state")
     meff = dict(a_len={cm.LEN_NAME[L]: coef[j] for j, L in enumerate(cm.LENS)},
                 a_coin={"btc": 0.0, **{c: coef[3 + j] for j, c in enumerate(cm.COINS[1:])}},
                 sd=float(resid.std()), n_markets=int(okm.sum()),
-                note="log A_m = a_len + a_coin + N(0, sd^2); A_m = (N_m + 0.5) / exposure_m (non-hollow seconds)")
+                note="log A_m = a_len + a_coin + N(0, sd^2) (Hawkes baseline scale per market)")
 
     # ---- taker transactions (direction, size, sweep, legs, tokens)
     tr = cm.train_trades(mk.slug)

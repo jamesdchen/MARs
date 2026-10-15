@@ -102,7 +102,8 @@ G = len(COLS)
 CI = {c: i for i, c in enumerate(COLS)}
 
 BOOK_DTYPE = np.dtype([("bid_px", "<i2", 5), ("ask_px", "<i2", 5), ("bid_sz", "<f4", 5),
-                       ("ask_sz", "<f4", 5), ("flags", "u1"), ("tick", "u1"), ("pad", "u1", 2)])
+                       ("ask_sz", "<f4", 5), ("flags", "u1"), ("tick", "u1"), ("tick_alt", "u1"),
+                       ("same_run", "u1")])
 assert BOOK_DTYPE.itemsize == 64
 BOOK_VALID, BOOK_CROSSED, BOOK_STALE, BOOK_FROM_DOWN, BOOK_SAME = 1, 2, 4, 8, 16
 LIQ = rt.AUG_2026          # liquidity-reward preset baked into liq_* (v = 1.5 c, min size 50, c = 3)
@@ -322,8 +323,12 @@ def main():
         same = np.r_[False, (lad[1:] == lad[:-1]).all(1)]       # ladder identical to the previous row
         rec["flags"] = (valid * BOOK_VALID | crossed * BOOK_CROSSED | (age > STALE_S) * BOOK_STALE
                         | (X[:, c["book_from_down"]] > 0) * BOOK_FROM_DOWN | same * BOOK_SAME)
+        run = np.zeros(n, np.int64)                              # rows r.. with SAME set, capped
+        for r in range(n - 1, -1, -1):
+            run[r] = min(run[r + 1] + 1, 255) if (same[r] and r + 1 < n) else int(same[r])
+        rec["same_run"] = run
         rec["tick"] = np.where(fine, 1, 10)
-        rec["pad"][:, 0] = np.where(fine_alt, 1, 10)
+        rec["tick_alt"] = np.where(fine_alt, 1, 10)
 
         # ---- mark, gap
         has_b = valid & (bp[:, 0] > 0)
@@ -430,7 +435,9 @@ def main():
             {"name": "tick", "type": "uint8_t", "offset": 61, "doc": "tick in mils: 10 or 1"},
             {"name": "tick_alt", "type": "uint8_t", "offset": 62,
              "doc": "tick (mils) under tick_rule 1: also 1 once the two-sided mid left [0.04, 0.96] (sticky)"},
-            {"name": "pad", "type": "uint8_t", "offset": 63}]},
+            {"name": "same_run", "type": "uint8_t", "offset": 63,
+             "doc": "number of consecutive rows from this one with bit4 set (capped at 255); lets the "
+                    "step skip quiet seconds in bulk"}]},
         "fill_record": {"itemsize": 20, "fields": [
             {"name": "row", "type": "int32_t", "offset": 0, "doc": "global row in ticks.bin = block timestamp"},
             {"name": "side", "type": "int8_t", "offset": 4,

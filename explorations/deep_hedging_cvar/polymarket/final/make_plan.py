@@ -93,7 +93,6 @@ def baseline_methods(root: Path, code_root: Path) -> tuple[list[dict], dict]:
         raise PlanError(f"{p} missing: baselines must be tuned on val first")
     items = parse_tuned(json.loads(p.read_text()))
     try:
-        sys.path.insert(0, str(code_root / "baselines"))
         import baselines as bl
         known = set(bl.FACTORIES)
     except Exception as e:  # noqa: BLE001

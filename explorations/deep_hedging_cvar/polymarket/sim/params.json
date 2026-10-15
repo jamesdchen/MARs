@@ -1,7 +1,7 @@
 {
  "meta": {
   "fitted_on": "train split 0 only: 431 markets (5m 248, 15m 146, 4h 37), opens 2026-08-21..22 UTC; Binance < 2026-08-23",
-  "created_utc": "2026-10-15T04:37:55.760041+00:00",
+  "created_utc": "2026-10-15T04:47:07.314637+00:00",
   "n_rows": 739031,
   "pricer": {
    "halflife_s": 300,
@@ -24343,22 +24343,23 @@
   },
   "market_effect": {
    "a_len": {
-    "5m": NaN,
-    "15m": NaN,
-    "4h": NaN
+    "5m": -0.455586,
+    "15m": -1.398489,
+    "4h": -4.112197
    },
    "a_coin": {
     "btc": 0.0,
-    "eth": NaN,
-    "sol": NaN,
-    "xrp": NaN,
-    "bnb": NaN,
-    "doge": NaN,
-    "hype": NaN,
-    "zec": NaN
+    "eth": -0.603596,
+    "sol": -1.228184,
+    "xrp": -1.397973,
+    "bnb": -1.34612,
+    "doge": -1.462862,
+    "hype": -1.854813,
+    "zec": -3.613431
    },
-   "sd": NaN,
-   "note": "log A_m = a_len + a_coin + N(0, sd^2)"
+   "sd": 0.697996,
+   "n_markets": 429,
+   "note": "log A_m = a_len + a_coin + N(0, sd^2); A_m = (N_m + 0.5) / exposure_m (non-hollow seconds)"
   },
   "direction": {
    "gap_edges": [
@@ -24905,7 +24906,89 @@
    ],
    "note": "block time - match time (COVERAGE.md: alignment with the book peaks at 3-4 s)"
   },
-  "n_taker_tx": 158970
+  "n_taker_tx": 158970,
+  "calibration": {
+   "gamma_excite": 0.188173,
+   "market_sd": 0.591679,
+   "a_len_shift": {
+    "5m": -0.299422,
+    "15m": -0.27574,
+    "4h": -0.330423
+   },
+   "loss": 2268.439341,
+   "reps": 6,
+   "moments_real": {
+    "5m": {
+     "q25": 4.510676,
+     "q50": 5.11197,
+     "q75": 5.768321,
+     "q90": 7.343615,
+     "log_mean": 6.071994,
+     "p_any": 0.281294,
+     "acf1": 0.329417,
+     "acf5": 0.281343,
+     "acf20": 0.223971
+    },
+    "15m": {
+     "q25": 3.800679,
+     "q50": 4.886519,
+     "q75": 5.958415,
+     "q90": 6.862149,
+     "log_mean": 5.73814,
+     "p_any": 0.149507,
+     "acf1": 0.2294,
+     "acf5": 0.168388,
+     "acf20": 0.119479
+    },
+    "4h": {
+     "q25": 3.367296,
+     "q50": 4.521789,
+     "q75": 5.568345,
+     "q90": 6.260957,
+     "log_mean": 5.176455,
+     "p_any": 0.009898,
+     "acf1": 0.109376,
+     "acf5": 0.056576,
+     "acf20": 0.028447
+    }
+   },
+   "moments_sim": {
+    "5m": {
+     "q25": 3.044522,
+     "q50": 3.828641,
+     "q75": 4.553877,
+     "q90": 5.351858,
+     "log_mean": 4.464285,
+     "p_any": 0.193926,
+     "acf1": 0.453789,
+     "acf5": 0.433162,
+     "acf20": 0.406243
+    },
+    "15m": {
+     "q25": 3.295837,
+     "q50": 3.951244,
+     "q75": 4.672829,
+     "q90": 5.386783,
+     "log_mean": 4.59994,
+     "p_any": 0.091371,
+     "acf1": 0.255437,
+     "acf5": 0.247552,
+     "acf20": 0.23387
+    },
+    "4h": {
+     "q25": 3.663562,
+     "q50": 4.174387,
+     "q75": 4.774886,
+     "q90": 5.462552,
+     "log_mean": 4.647332,
+     "p_any": 0.007103,
+     "acf1": 0.013799,
+     "acf5": 0.013425,
+     "acf20": 0.012383
+    }
+   },
+   "note": "simulation-calibrated: the one-step-ahead GLM fit is explosive when simulated forward (busy markets run away under (1+E)^gamma); the engine uses these values for gamma, the market-effect sd and a_len + a_len_shift"
+  }
  },
  "fees": {
   "taker_fee_rate": 0.07,

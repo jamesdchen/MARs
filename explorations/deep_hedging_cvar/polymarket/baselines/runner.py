@@ -1,16 +1,18 @@
 """Play every market of a split once, from offset 0, through the C env, with a batched numpy policy.
 
 All fills, P&L and attribution come from the C core (../mm.h through the PufferLib 3.0 binding
-../binding.c); nothing here re-implements a fill rule. One env per market, each pinned to its
-market (`fixed_market`, `fixed_start = 0`). The envs step together through one vectorized handle,
-so the policy sees one (n_markets, OBS) batch per step, and each env's Log is read through its own
-single-env handle right after its first terminal. The env auto-resets onto the same market, and
-later episodes are discarded. Envs whose market has ended keep stepping until the longest market
-ends; their actions do not matter.
+../binding.c); nothing here re-implements a fill rule. One env per market, all sharing one config:
+the core's market cycle (`cycle_stride = n_markets`, env seed i) starts env i on market i of the
+split's list (markets.bin order) from `fixed_start = 0`; after reset each env's market observation
+is checked against feat.bin row 0 of the market it should be playing. The envs step together
+through one vectorized handle, so the policy sees one (n_markets, OBS) batch per step, and each
+env's Log is read through its own single-env handle right after its first terminal. The env then
+auto-resets onto the same market, and later episodes are discarded. Envs whose market has ended
+keep stepping until the longest market ends; their actions do not matter.
 
 Env parameters: the core's defaults (MM_PARAM_NAMES / MM_DEFAULTS, parsed from mm.h, so they
 cannot drift from the C code) with these overrides: split, fill_model (0 optimistic, 1 central,
-2 pessimistic), latency (s), fixed_market, fixed_start = 0, plus anything passed in `env`. So the
+2 pessimistic), latency (s), fixed_start = 0, cycle_stride = n_markets, plus anything in `env`. So the
 decision interval (dt_5m, dt_15m, dt_4h), inventory limit Q, rebates (on, 20%) and liquidity
 rewards (off) are those of the headline env.
 
@@ -150,6 +152,9 @@ class Runner:
                           end_ts=int(markets[i]["end_ts"])) for i in self.idx]
         n = len(self.idx)
         self.n = n
+        self.params["cycle_stride"] = n
+        self.params["fixed_market"] = -1
+        self.data_dir = Path(data_dir)
         self.obs = np.zeros((n, obs_size(mm_h)), np.float32)
         self.act = np.zeros((n, 3), np.int32)
         self.rew = np.zeros(n, np.float32)
@@ -159,15 +164,27 @@ class Runner:
         kw = {k: float(v) for k, v in self.params.items()}
         self.handles = [b.env_init(self.obs[i:i + 1], self.act[i:i + 1], self.rew[i:i + 1],
                                    self.term[i:i + 1], self.trunc[i:i + 1], i,
-                                   data_dir=str(data_dir), **{**kw, "fixed_market": float(m)})
-                        for i, m in enumerate(self.idx)]
+                                   data_dir=str(data_dir), **kw)
+                        for i in range(n)]
         self.vec = b.vectorize(*self.handles)
         self.single = [b.vectorize(h) for h in self.handles]
         steps = {300: 300 / max(1, self.params["dt_5m"]), 900: 900 / max(1, self.params["dt_15m"]),
                  14400: 14400 / max(1, self.params["dt_4h"])}
         if self.params.get("dt", 0) > 0:
             steps = {k: k / self.params["dt"] for k in steps}
+        self._check_markets(markets)
         self.max_steps = int(max(np.ceil(steps[int(markets[i]["contract_len_s"])]) for i in self.idx)) + 5
+
+    def _check_markets(self, markets):
+        """After reset, env i must be on market idx[i] at offset 0 (its obs equals feat.bin row 0)."""
+        fm = json.loads((self.data_dir / "feat_meta.json").read_text())
+        feat = np.memmap(self.data_dir / "feat.bin", np.float32, "r", shape=(fm["N"], fm["G"]))
+        k = int(fm["n_obs_features"])
+        self.binding.vec_reset(self.vec, 0)
+        want = feat[markets["row_offset"][self.idx].astype(np.int64), :k]
+        bad = np.flatnonzero(~(self.obs[:, :k] == want).all(1))
+        if bad.size:
+            raise RuntimeError(f"envs {bad[:10].tolist()} are not on their expected markets at offset 0")
 
     def run(self, policy) -> dict:
         b = self.binding

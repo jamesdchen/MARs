@@ -61,11 +61,7 @@ from pathlib import Path
 
 import numpy as np
 
-from common import CODE_ROOT, FILL_MODELS, FINAL, Dataset, resolve
-
-for _d in ("baselines", "train", "puffer5"):
-    if str(CODE_ROOT / _d) not in sys.path:
-        sys.path.append(str(CODE_ROOT / _d))
+from common import CODE_ROOT, FILL_MODELS, FINAL, Dataset, resolve, train_policy_module
 
 TRACE_FIELDS = ("cash", "inv", "reward_cum", "rebate_cum", "fee_cum", "bid_live", "ask_live",
                 "bid_px", "ask_px")
@@ -97,7 +93,7 @@ class TorchPPO3Policy:
 
     def __init__(self, path, obs_size=None):
         import torch
-        import policy as tp  # train/policy.py
+        tp = train_policy_module()  # train/policy.py
         self.torch, self.tp = torch, tp
         self.net, self.ck = tp.load_checkpoint(str(path))
         self.net.eval()
@@ -159,9 +155,8 @@ def _puffer5(entry, ctx):
 
 def _callable(entry, ctx):
     mod, attr = entry["target"].split(":")
-    for p in (str(FINAL), str(ctx.get("root", ""))):
-        if p and p not in sys.path:
-            sys.path.insert(0, p)
+    if str(FINAL) not in sys.path:
+        sys.path.insert(0, str(FINAL))
     obj = getattr(importlib.import_module(mod), attr)(entry, ctx)
     if not hasattr(obj, "act"):
         obj = FnPolicy(obj, entry["id"])
@@ -312,7 +307,8 @@ class CEnvBackend(StepperBackend):
             raise BackendUnavailable(f"{path} does not exist yet (C env not built)")
         spec = importlib.util.spec_from_file_location("polymarket_env_final", path)
         mod = importlib.util.module_from_spec(spec)
-        sys.path.insert(0, str(path.parent))
+        if str(path.parent) not in sys.path:
+            sys.path.append(str(path.parent))
         spec.loader.exec_module(mod)
         fn = self.options.get("factory", "make_eval_env")
         if not hasattr(mod, fn):

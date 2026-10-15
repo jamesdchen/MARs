@@ -88,6 +88,37 @@ def test_puffernet_scan_equals_steps():
     assert torch.allclose(st['lstm_h'], h, atol=1e-5)
 
 
+def test_puffernet_matches_puffer5_replica():
+    """Same weights through puffer5/puffernet_mm.py (the 5.0 replica that is
+    checked against PufferLib 5.0's C forward) and through PufferNetPolicy."""
+    import tempfile
+    sys.path.insert(0, os.path.join(os.path.dirname(HERE), 'puffer5'))
+    try:
+        import puffernet_mm as p5
+    except ImportError:
+        print('skip: puffer5/puffernet_mm.py not importable')
+        return
+    torch.manual_seed(4)
+    D, H, L, B, T = 48, 32, 2, 16, 20
+    net = PufferNetPolicy(obs_size=D, hidden=H, layers=L)
+    with torch.no_grad():
+        for w in net.tensors():
+            w.mul_(2.0)
+    with tempfile.TemporaryDirectory() as d:
+        path = net.save_puffer5_bin(os.path.join(d, 'w.bin'))
+        ref = p5.PufferNetMM(D, hidden=H, layers=L).load_bin(path)
+    obs = torch.randn(T, B, D)
+    obs[..., -1] = 1
+    term = (torch.rand(T, B) < 0.2).float()
+    s_ref, st = None, {}
+    for t in range(T):
+        out_ref, v_ref, s_ref = ref.step(obs[t], s_ref, term[t])
+        st['done'] = term[t]
+        logits, v = net.forward_eval(obs[t], st)
+        assert torch.allclose(torch.cat(logits, -1), out_ref, atol=1e-5)
+        assert torch.allclose(v[:, 0], v_ref, atol=1e-5)
+
+
 def _trainer(policy, num_envs=64, horizon=16, **kw):
     env = StandInAdapter().make_train(num_envs, seed=3, reward_scale=1.0, lengths=(20, 30, 50))
     cfg = ppo_config(bptt_horizon=horizon, minibatch_size=num_envs * horizon, total_timesteps=10**6,

@@ -67,7 +67,7 @@ class StandInAdapter:
     def group_fn(self, env):
         return lambda obs: env.group_labels()
 
-    def teacher(self, name='standin', params=None):
+    def teacher(self, name='standin', params=None, env_kw=None):
         return self.mod.teacher_policy
 
 
@@ -86,13 +86,20 @@ class MarketSetEnv:
 
     PufferLib 3.0's binding only reports the Log summed over all envs of a
     vec handle, and the 5m markets all end on the same step, so per-market
-    results need one handle per market: one MmEnv(num_envs=1, fixed_market=mk,
-    fixed_start=0) per market, all writing into slices of shared buffers.
-    A step steps only the envs still on their first market; when one ends, its
-    Log (n = 1: exactly that market) becomes the record. Deterministic: with a
-    fixed market and start the core draws no random numbers."""
+    results need one handle per market: one MmEnv(num_envs=1) per market, all
+    writing into slices of shared buffers. Market j of the split (mm.h's list
+    for the split, ascending global index = `markets`) is selected without a
+    per-market config (mm.h interns at most 256 configs per process): every
+    handle has the same config, cycle_stride = n and fixed_start = 0, and handle
+    j gets seed j, so its first episode is list[j % n] (mm_new_episode;
+    env_binding seeds env 0 of a 1-env vec with `seed`). Checked: the
+    contract-length one-hot of each first observation, and each episode's
+    decision count. A step steps only the handles still on their first
+    market; when one ends, its Log (n = 1) becomes that market's record.
+    Deterministic: with cycling and a fixed start the core draws no random
+    numbers."""
 
-    def __init__(self, mod, markets, split, seed=0, **kw):
+    def __init__(self, mod, markets, split, seed=0, len_cols=None, **kw):
         import gymnasium
         n = len(markets)
         self.num_agents = n
@@ -105,19 +112,28 @@ class MarketSetEnv:
         self.truncations = np.zeros(n, bool)
         self.masks = np.ones(n, bool)
         self.markets = markets
+        self.len_cols = len_cols
         self.envs = []
-        for i, mk in enumerate(markets['idx']):
-            buf = {k: getattr(self, k)[i:i + 1] for k in
+        for j in range(n):
+            buf = {k: getattr(self, k)[j:j + 1] for k in
                    ('observations', 'actions', 'rewards', 'terminals', 'truncations', 'masks')}
-            self.envs.append(mod.MmEnv(num_envs=1, seed=seed, split=split, fixed_market=int(mk),
-                                       fixed_start=0, buf=buf, **kw))
+            self.envs.append(mod.MmEnv(num_envs=1, seed=j, split=split, cycle_stride=n, fixed_start=0,
+                                       len_mask=7, buf=buf, **kw))
+        p = self.envs[0].params
+        dts = {300: p['dt_5m'], 900: p['dt_15m'], 14400: p['dt_4h']}
+        self.expected_steps = np.array([int(np.ceil(L / (p['dt'] if p['dt'] > 0 else dts[int(L)])))
+                                        for L in markets['contract_len_s']])
         self.binding = self.envs[0]._binding
         self.active = np.ones(n, bool)
         self.records = []
 
     def reset(self, seed=0):
-        for e in self.envs:
-            self.binding.vec_reset(e.c_envs, seed)
+        for j, e in enumerate(self.envs):
+            self.binding.vec_reset(e.c_envs, j)
+        if self.len_cols is not None:
+            got = np.argmax(self.observations[:, self.len_cols], 1)
+            want = np.searchsorted([300, 900, 14400], self.markets['contract_len_s'])
+            assert np.array_equal(got, want), 'eval env: market order differs from mm.h list'
         self.active[:] = True
         self.records = []
         return self.observations, []
@@ -132,6 +148,7 @@ class MarketSetEnv:
             log = b.vec_log(self.envs[i].c_envs)
             assert log.get('n') == 1.0, log
             m = self.markets[i]
+            assert int(round(log['episode_length'])) == self.expected_steps[i], (i, log['episode_length'])
             self.records.append({'env': int(i), 'market': int(m['idx']),
                                  'contract_len_s': int(m['contract_len_s']), 'coin_id': int(m['coin_id']),
                                  'open_ts': int(m['open_ts']), 'end_ts': int(m['end_ts']),
@@ -203,10 +220,10 @@ class RealAdapter:
 
     def make_eval(self, split=1, seed=0, **kw):
         _no_test(split)
-        for k in ('split', 'fixed_market', 'fixed_start', 'cycle_stride', 'allow_test'):
+        for k in ('split', 'fixed_market', 'fixed_start', 'cycle_stride', 'allow_test', 'len_mask'):
             kw.pop(k, None)
         mk = self.split_markets(split)
-        return MarketSetEnv(self.mod, mk, split, seed=seed, **kw), len(mk)
+        return MarketSetEnv(self.mod, mk, split, seed=seed, len_cols=self.len_cols, **kw), len(mk)
 
     def eval_records(self, env):
         recs, env.records = env.records, []
@@ -216,14 +233,26 @@ class RealAdapter:
         cols = self.len_cols
         return lambda obs: np.argmax(obs[:, cols], axis=1)
 
-    def teacher(self, name='fair_value', params=None):
-        """The fair-value baseline (baselines/baselines.py) when its obs spec
-        resolves on this env; otherwise a simple obs-based quoter."""
+    def teacher(self, name='fair_value', params=None, env_kw=None):
+        """A baselines/baselines.py quoter (default fair_value) on this env's obs,
+        with `params`, else the tuned ones in baselines/tuned.json (tuned on val by
+        the baselines' own ledgered sweep), else its defaults. Falls back to a
+        simple obs quoter if the obs spec does not resolve. 'simple' forces it."""
+        if name == 'simple':
+            return self.simple_teacher
         try:
-            sys.path.insert(1, os.path.join(PM, 'baselines'))
+            bdir = os.path.join(PM, 'baselines')
+            if bdir not in sys.path:
+                sys.path.insert(1, bdir)
             import baselines as bl
             from obs_spec import load_spec
-            return bl.make(name, load_spec(), params)
+            q = (env_kw or {}).get('Q', self.mod.DEFAULTS['Q'])
+            if params is None:
+                tuned = os.path.join(bdir, 'tuned.json')
+                if os.path.exists(tuned):
+                    params = json.load(open(tuned)).get(name, {}).get('best_params')
+            self.teacher_params = params
+            return bl.make(name, load_spec(env_params={'Q': q}), params)
         except Exception as e:  # noqa: BLE001
             print(f'teacher: baselines.{name} unavailable ({type(e).__name__}: {e}); '
                   'using the simple obs quoter', file=sys.stderr)

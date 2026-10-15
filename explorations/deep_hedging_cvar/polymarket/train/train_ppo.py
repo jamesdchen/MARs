@@ -52,10 +52,10 @@ from puffer3 import Trainer, ppo_config  # noqa: E402
 
 DEFAULT_CFG = {
     'env': {'backend': 'auto', 'kw': {}},
-    'policy': {'kind': 'mlp', 'hidden': 128, 'layers': 2, 'act': 'tanh', 'shared': False},
+    'policy': {'kind': 'mlp', 'hidden': 128, 'layers': 2, 'act': 'tanh', 'shared': True},
     'ppo': {'learning_rate': 3e-4, 'ent_coef': 0.01, 'gamma': 0.995, 'gae_lambda': 0.95,
             'clip_coef': 0.2, 'vf_coef': 0.5, 'vf_clip_coef': 10.0, 'max_grad_norm': 0.5,
-            'update_epochs': 2, 'bptt_horizon': 64, 'minibatch_size': 16384,
+            'update_epochs': 1, 'bptt_horizon': 64, 'minibatch_size': 16384,
             'optimizer': 'adam', 'anneal_lr': True, 'adam_eps': 1e-8},
     'num_envs': 4096,
     'total_timesteps': 50_000_000,
@@ -138,6 +138,12 @@ def build_cfg(args):
             set_path(cfg, path, typ(v))
     if args.shared is not None:
         cfg['policy']['shared'] = args.shared
+    if cfg['policy']['kind'] == 'puffernet':
+        # PufferNet has no activation choice or separate critic; default to the
+        # 5.0 ini's 4 layers (puffer5/polymarket_mm.ini) unless --layers is given
+        cfg['policy'] = {'kind': 'puffernet', 'hidden': cfg['policy']['hidden'],
+                         'layers': args.layers if args.layers is not None else
+                         (cfg['policy']['layers'] if args.config else 4)}
     cfg['env']['kw'].update(parse_kv(args.env_kw))
     cfg['total_timesteps'] = int(cfg['total_timesteps'])
     if args.init:

@@ -21,7 +21,7 @@ from pathlib import Path
 
 import numpy as np
 
-from common import CODE_ROOT, S, sha256_bytes, write_json
+from common import S, sha256_bytes, train_policy_module, write_json
 
 COLS = ["seconds_to_close"] + [f"bid_px_{i}" for i in range(5)] + [f"bid_sz_{i}" for i in range(5)] \
     + [f"ask_px_{i}" for i in range(5)] + [f"ask_sz_{i}" for i in range(5)] \
@@ -52,7 +52,7 @@ def _market_record():
                 flags={"HAS_TRADES": 1, "HAS_UNDERLYING": 2, "UL_PERP_PROXY": 4, "HAS_STRIKE": 8})
 
 
-def build_dataset(out_dir, n_per_split=8, seed=7):
+def build_dataset(out_dir, n_per_split=8, seed=7, lengths=(300, 900)):
     """Write a synthetic build dir; returns its Path."""
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -61,7 +61,7 @@ def build_dataset(out_dir, n_per_split=8, seed=7):
     specs = []
     for split in (0, 1, 2):
         for i in range(n_per_split):
-            L = (300, 900)[i % 2]
+            L = lengths[i % len(lengths)]
             coin = ("btc", "eth", "sol")[i % 3]
             open_ts = DAY[split] + 1800 * i + 600
             specs.append((split, open_ts, coin, L))
@@ -175,9 +175,7 @@ def build_dataset(out_dir, n_per_split=8, seed=7):
 # ----------------------------------------------------------------------------- components
 def _save_mlp(path, obs_size, seed):
     import torch
-    import sys
-    sys.path.insert(0, str(CODE_ROOT / "train"))
-    import policy as tp
+    tp = train_policy_module()
     torch.manual_seed(seed)
     net = tp.make_policy("mlp", obs_size=obs_size, nvec=(7, 7, 3), hidden=16, layers=1)
     with torch.no_grad():                         # larger logits so argmax is not all-off
@@ -189,8 +187,6 @@ def _save_mlp(path, obs_size, seed):
 
 def _save_p5(path, obs_size, seed):
     import torch
-    import sys
-    sys.path.insert(0, str(CODE_ROOT / "puffer5"))
     import puffernet_mm as p5
     torch.manual_seed(seed)
     net = p5.PufferNetMM(obs_size, hidden=16, layers=1)
@@ -199,11 +195,8 @@ def _save_p5(path, obs_size, seed):
 
 
 def have_torch():
-    try:
-        import torch  # noqa: F401
-        return True
-    except Exception:  # noqa: BLE001
-        return False
+    import importlib.util
+    return importlib.util.find_spec("torch") is not None
 
 
 def build_root(out_dir, obs_size, torch_ckpts=None, puffer5=True, n_seeds=5):
@@ -255,8 +248,6 @@ def build_root(out_dir, obs_size, torch_ckpts=None, puffer5=True, n_seeds=5):
 
 def standin_root(out_dir, n_seeds=5):
     """Artifact root for a val dry run with the real data before tuned.json/selected.json exist."""
-    import sys
-    sys.path.insert(0, str(CODE_ROOT / "baselines"))
     import baselines as bl
     out = Path(out_dir)
     write_json(out / "baselines" / "tuned.json",

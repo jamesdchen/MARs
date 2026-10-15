@@ -94,8 +94,15 @@ int mm_h_run(const double* params, int n, int T, const int* markets, const int* 
     return 0;
 }
 
-// Bare-core throughput: n envs stepped round-robin for T steps on random actions.
-double mm_h_bench(const double* params, int n, int T, uint64_t seed, double* log_out) {
+// Bare-core throughput: n envs stepped round-robin for T steps on random actions. Returns steps
+// per wall-clock second; *cpu_sps gets steps per second of this thread's CPU time (robust to
+// other load on the machine). log_out receives the Log summed over envs.
+#ifndef MM_AHEAD
+#define MM_AHEAD 4
+#endif
+double mm_h_bench(const double* params, int n, int T, uint64_t seed, double* log_out, double* cpu_sps) {
+    const char* pl = getenv("MM_PIPELINE");
+    int pipeline = pl == NULL || atoi(pl) != 0;
     char err[512];
     Mm* ms = (Mm*)calloc(n, sizeof(Mm));
     Log* lg = (Log*)calloc(n, sizeof(Log));
@@ -118,16 +125,24 @@ double mm_h_bench(const double* params, int n, int T, uint64_t seed, double* log
         }
         mm_reset(&ms[i], obs + (size_t)i * MM_OBS);
     }
-    struct timespec a, b;
+    struct timespec a, b, ca, cb;
     clock_gettime(CLOCK_MONOTONIC, &a);
+    clock_gettime(CLOCK_THREAD_CPUTIME_ID, &ca);
     for (int t = 0; t < T; t++) {
         const int* at = act + (size_t)(t % na) * n * MM_NUM_ATNS;
         for (int i = 0; i < n; i++) {
+            if (pipeline) {                 // the same software pipelining as binding.c
+                if (i + 2 * MM_AHEAD < n) mm_prefetch_state(&ms[i + 2 * MM_AHEAD]);
+                if (i + MM_AHEAD < n) mm_prefetch_data(&ms[i + MM_AHEAD]);
+            }
             mm_step(&ms[i], at + (size_t)i * MM_NUM_ATNS, obs + (size_t)i * MM_OBS, rew + i, term + i, &lg[i]);
         }
     }
     clock_gettime(CLOCK_MONOTONIC, &b);
+    clock_gettime(CLOCK_THREAD_CPUTIME_ID, &cb);
     double secs = (b.tv_sec - a.tv_sec) + 1e-9 * (b.tv_nsec - a.tv_nsec);
+    double csecs = (cb.tv_sec - ca.tv_sec) + 1e-9 * (cb.tv_nsec - ca.tv_nsec);
+    if (cpu_sps) *cpu_sps = (double)n * T / csecs;
     Log tot;
     memset(&tot, 0, sizeof(tot));
     for (int i = 0; i < n; i++) {

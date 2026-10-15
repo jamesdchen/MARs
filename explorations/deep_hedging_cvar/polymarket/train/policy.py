@@ -139,6 +139,17 @@ class PufferNetPolicy(nn.Module):
         """Parameters in the 5.0 trainer's buffer order (encoder, decoder, MinGRU layers)."""
         return [self.encoder.weight, self.decoder.weight] + [m.weight for m in self.mingru]
 
+    def save_puffer5_bin(self, path):
+        """Write the weights as a PufferLib 5.0 checkpoint (.bin): fp32, the 5.0
+        buffer order (tensors()), each tensor 16-byte aligned. Every tensor here is a
+        multiple of H values, so with H % 8 == 0 there is no padding in either 5.0
+        build and the file is the plain concatenation (puffer5/puffernet_mm.py loads it)."""
+        if self.width % 8:
+            raise ValueError('5.0 needs hidden % 8 == 0 (PUFFER5.md rule 5)')
+        data = np.concatenate([t.detach().cpu().float().numpy().ravel() for t in self.tensors()])
+        data.astype('<f4').tofile(path)
+        return path
+
     def initial_state(self, batch, device=None):
         return torch.zeros(batch, self.hidden_size, device=device or self.encoder.weight.device)
 

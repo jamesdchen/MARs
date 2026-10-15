@@ -57,9 +57,13 @@ class Model:
         self.b_gap, self.b_z5, self.b_os = g["b_absgap"], g["b_absz5"], g["b_onesided"]
         self.gamma, self.decay = g["gamma_excite"], np.exp(-1.0 / g["tau_excite_s"])
         me = f["market_effect"]
-        self.a_len = {i: me["a_len"][cm.LEN_NAME[L]] for i, L in enumerate(cm.LENS)}
+        cal = f.get("calibration")                 # simulation-calibrated overrides (fit.py calibrate_flow)
+        shift = cal["a_len_shift"] if cal else {k: 0.0 for k in me["a_len"]}
+        self.a_len = {i: me["a_len"][cm.LEN_NAME[L]] + shift[cm.LEN_NAME[L]] for i, L in enumerate(cm.LENS)}
         self.a_coin = np.array([me["a_coin"][c] for c in cm.COINS])
-        self.a_sd = me["sd"]
+        self.a_sd = cal["market_sd"] if cal else me["sd"]
+        if cal:
+            self.gamma = cal["gamma_excite"]
         d = f["direction"]
         self.p_buy = {i: np.asarray(d[cm.LEN_NAME[L]]["p_buy"]) for i, L in enumerate(cm.LENS)}
         self.rho_copy = {i: d["rho_copy_by_len"][cm.LEN_NAME[L]] for i, L in enumerate(cm.LENS)}

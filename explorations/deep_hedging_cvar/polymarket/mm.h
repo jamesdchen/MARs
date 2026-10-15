@@ -70,7 +70,7 @@ typedef struct {
     uint8_t flags;                               // MM_BOOK_*
     uint8_t tick;                                // tick in mils (10 or 1), data-observed rule
     uint8_t tick_alt;                            // tick under tick_rule 1 (price rule)
-    uint8_t pad;
+    uint8_t same_run;                            // rows from here with MM_BOOK_SAME set (cap 255)
 } MmBook;                                        // 64 bytes
 
 typedef struct {
@@ -746,6 +746,35 @@ static inline void mm_row(Mm* m, int u) {
     }
 }
 
+// Rows t+1..tn are quiet if nothing in them can change the order book state: no printed legs,
+// no decision reaching the exchange, no liquidity accrual, and (central model, queue to track)
+// an unchanged ladder. mm_row would then only advance counters and the minute window; mm_skip
+// does that in bulk and leaves exactly the same state (checked by test_env.py).
+static inline int mm_quiet(const Mm* m, int t, int tn) {
+    const MmCfg* c = m->cfg;
+    if (MM_DATA.fill_off[t + 1] != MM_DATA.fill_off[tn + 1] || c->liq_on) return 0;
+    int tau0 = t + 1 - c->D, tau1 = tn - c->D;
+    if (m->pn > 0 && m->pend[m->ph].row <= tau1) return 0;
+    if (c->model == MM_CENTRAL && ((m->ord[0].live && m->ord[0].q > 0.0) || (m->ord[1].live && m->ord[1].q > 0.0))
+            && MM_DATA.book[tau0].same_run < tau1 - tau0 + 1) {
+        return 0;
+    }
+    return 1;
+}
+
+static inline void mm_skip(Mm* m, int t, int tn) {
+    float k = (float)(tn - t);
+    int live0 = m->ord[0].live, live1 = m->ord[1].live;
+    m->rows += k;
+    m->rows_two += k * (float)(live0 & live1);
+    m->rows_any += k * (float)(live0 | live1);
+    if (tn >= m->next_min) {
+        m->minute_vol = 0.0;
+        m->minute_fill = 0.0;
+        m->next_min = tn + 60 - (m->open_mod + tn - m->r0) % 60;
+    }
+}
+
 // ------------------------------------------------------------------ observation
 
 static inline void mm_write_obs(const Mm* m, float* obs) {
@@ -787,20 +816,39 @@ static inline void mm_reset(Mm* m, float* obs) {
     mm_write_obs(m, obs);
 }
 
-static inline void mm_prefetch(const Mm* m) {
+// Software pipelining across envs. Every env's next step reads rows of the shared data at its
+// own market position, and with thousands of envs those lines are long evicted when the env
+// comes round again. So a vectorized loop that steps env i should call mm_prefetch_state on
+// env i + 2k and mm_prefetch_data on env i + k (k about 4): binding.c and mm_harness.c do.
+// Both only issue prefetches (no architectural effect), so a stale or odd pointer is harmless
+// as long as it points to a live Mm.
 #if defined(__GNUC__) || defined(__clang__)
-    int t = m->t, dt = m->dt;
-    int tn = t + dt <= m->r_end ? t + dt : m->r_end;
+#define MM_PREFETCH(p) __builtin_prefetch(p)
+#else
+#define MM_PREFETCH(p) ((void)(p))
+#endif
+
+static inline void mm_prefetch_state(const Mm* m) {
+    const char* p = (const char*)m;
+    for (size_t b = 0; b < sizeof(Mm); b += 64) MM_PREFETCH(p + b);
+}
+
+static inline void mm_prefetch_data(const Mm* m) {
+    if (m->cfg == NULL) return;
+    int t = m->t;
+    int tn = t + m->dt <= m->r_end ? t + m->dt : m->r_end;
     int tau = t + 1 - m->cfg->D;
     tau = tau > 0 ? tau : 0;
-    for (int r = tau; r <= tn - m->cfg->D; r++) __builtin_prefetch(&MM_DATA.book[r]);
-    __builtin_prefetch(&MM_DATA.fill_off[t + 1]);
+    MM_PREFETCH(&MM_DATA.book[t]);
+    for (int r = tau; r <= tn - m->cfg->D; r++) MM_PREFETCH(&MM_DATA.book[r]);
+    MM_PREFETCH(&MM_DATA.fill_off[t + 1]);
+    MM_PREFETCH(&MM_DATA.fill_off[tn + 1]);
     const char* f = (const char*)mm_feat(tn);
-    __builtin_prefetch(f);
-    __builtin_prefetch(f + 64);
-    __builtin_prefetch(f + 128);
-    __builtin_prefetch(&MM_DATA.book[tn]);
-#endif
+    MM_PREFETCH(f);
+    MM_PREFETCH(f + 64);
+    MM_PREFETCH(f + 128);
+    MM_PREFETCH(f + MM_G * sizeof(float) - 1);
+    MM_PREFETCH((const char*)mm_feat(t) + MM_F_P * sizeof(float));
 }
 
 static inline void mm_log_episode(Mm* m, Log* log, double pnl) {
@@ -854,7 +902,11 @@ static inline void mm_step(Mm* m, const int* act, float* obs, float* rew, float*
     e->ask = (int16_t)ask;
     m->pn++;
     int tn = t + m->dt < m->r_end ? t + m->dt : m->r_end;
-    for (int u = t + 1; u <= tn; u++) mm_row(m, u);
+    if (mm_quiet(m, t, tn)) {
+        mm_skip(m, t, tn);
+    } else {
+        for (int u = t + 1; u <= tn; u++) mm_row(m, u);
+    }
     m->t = tn;
     int done = tn == m->r_end;
     double mark = done ? (double)m->winner : mm_mark(m, tn);
@@ -880,7 +932,6 @@ static inline void mm_step(Mm* m, const int* act, float* obs, float* rew, float*
         *term = 0.0f;
     }
     mm_write_obs(m, obs);
-    mm_prefetch(m);
 }
 
 #endif
