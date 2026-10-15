@@ -94,6 +94,13 @@ def buckets(coin: str, day: str) -> dict:
     return out
 
 
+def _fv():
+    import sys
+    sys.path.insert(0, str(HERE.parent / "analysis" / "fair_value"))
+    import fair_value
+    return fair_value
+
+
 def _ffill(x: np.ndarray) -> np.ndarray:
     idx = np.where(np.isnan(x), 0, np.arange(len(x)))
     np.maximum.accumulate(idx, out=idx)
@@ -118,10 +125,12 @@ class CoinGrid:
     are indexed by t - t0. `px(t)` is the last trade price strictly before t (= the close of the
     1 s kline with open_time t - 1)."""
 
-    def __init__(self, coin: str, t0: int, t1: int, warm_s: int = 3600):
+    def __init__(self, coin: str, t0: int, t1: int, warm_s: int = 3600, fwd_s: int = 0):
+        """Rows t0..t1 read trades before t1 only, so the last UTC day loaded is the one holding
+        second t1 - 1 (plus fwd_s seconds when future returns are wanted as targets)."""
         self.coin, self.t0, self.t1 = coin, t0, t1
         d0 = pd.Timestamp(t0 - warm_s, unit="s", tz="UTC").floor("D")
-        d1 = pd.Timestamp(t1, unit="s", tz="UTC").floor("D")
+        d1 = pd.Timestamp(t1 - 1 + fwd_s, unit="s", tz="UTC").floor("D")
         days = [str(d.date()) for d in pd.date_range(d0, d1, freq="D")]
         parts = [buckets(coin, d) for d in days]
         B = {k: np.concatenate([p[k] for p in parts]) for k in parts[0]}
@@ -167,14 +176,22 @@ class CoinGrid:
         si = sec - base - 1                         # second [t-1, t) has index t - base - 1
         self.vol_ewma = _ewma(vol_s, 300.0)[si]
         self.cnt_ewma = _ewma(cnt_s, 300.0)[si]
+        # EWMA vol exactly as feat.bin's sigma (fair_value.ewma_sigma: half-life 300 s on overlapping
+        # 30 s returns of the 1 s closes; close of kline open_time s = last price before s + 1)
+        close_1s = last[BPS - 1::BPS]                # index i <-> kline open_time base + i
+        self.sigma = _fv().ewma_sigma(close_1s, 300.0, sample_s=30)[sec - 1 - base]
+        self.end_unix = base + nbk // BPS             # first second NOT covered by the loaded days
         # future log returns (targets only; never written into feat): ln p(t + h) - ln p(t)
         self._lnp_full, self._bt = lnp, bt
 
     def fwd_ret(self, h_s: float) -> np.ndarray:
         """ln px(t + h) - ln px(t): FUTURE information, for fitting/evaluating only."""
         k = int(round(h_s * BPS))
-        j = np.minimum(self._bt + k, len(self._lnp_full) - 1)
-        return self._lnp_full[j] - self._lnp_full[self._bt]
+        j = self._bt + k
+        out = np.full(len(j), np.nan)
+        ok = j < len(self._lnp_full)
+        out[ok] = self._lnp_full[j[ok]] - self._lnp_full[self._bt[ok]]
+        return out
 
     def px(self) -> np.ndarray:
         return np.exp(self.lnp)

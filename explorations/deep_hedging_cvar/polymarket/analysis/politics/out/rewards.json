@@ -1,0 +1,1778 @@
+{
+ "current": [
+  {
+   "condition_id": "0x12aa13b3da17ceae1b0a59b5d5b77121e91bb79b4bb0b52bf6543ed3f8d0953b",
+   "rewards_config": [
+    {
+     "asset_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+     "start_date": "2026-09-17",
+     "end_date": "2500-12-31",
+     "rate_per_day": 1000,
+     "total_rewards": 0,
+     "id": 0
+    }
+   ],
+   "rewards_max_spread": 2.5,
+   "rewards_min_size": 200,
+   "sponsored_daily_rate": 1.99872,
+   "sponsors_count": 1,
+   "native_daily_rate": 1000,
+   "total_daily_rate": 1001.99872,
+   "slug": "will-the-fed-increase-interest-rates-by-25-bps-after-the-october-2026-meeting-20260617190324032"
+  },
+  {
+   "condition_id": "0x16c63b7cc37f012b9f59ee164ec03877914c701d06d48291ae8d6fc08a088b0d",
+   "rewards_config": [
+    {
+     "asset_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+     "start_date": "2026-10-14",
+     "end_date": "2500-12-31",
+     "rate_per_day": 1356,
+     "total_rewards": 0,
+     "id": 0
+    }
+   ],
+   "rewards_max_spread": 4.5,
+   "rewards_min_size": 200,
+   "native_daily_rate": 1356,
+   "total_daily_rate": 1356,
+   "slug": "2026-balance-of-power-d-senate-d-house-949"
+  },
+  {
+   "condition_id": "0x1a01bf78f56a507fcb666d564d8c8b91b0750679163ed6e96746102c9b7d285d",
+   "rewards_config": [
+    {
+     "asset_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+     "start_date": "2026-10-15",
+     "end_date": "2500-12-31",
+     "rate_per_day": 970,
+     "total_rewards": 0,
+     "id": 0
+    }
+   ],
+   "rewards_max_spread": 6.5,
+   "rewards_min_size": 150,
+   "sponsored_daily_rate": 3.99744,
+   "sponsors_count": 2,
+   "native_daily_rate": 970,
+   "total_daily_rate": 973.99744,
+   "slug": "will-flvio-bolsonaro-win-the-2026-brazilian-presidential-election"
+  },
+  {
+   "condition_id": "0x2a4fcda5c1598fc8621cf96cabc410f9f23a2d0336c3bff5070a37a663d39e94",
+   "rewards_config": [
+    {
+     "asset_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+     "start_date": "2026-09-19",
+     "end_date": "2500-12-31",
+     "rate_per_day": 20,
+     "total_rewards": 0,
+     "id": 0
+    }
+   ],
+   "rewards_max_spread": 4.5,
+   "rewards_min_size": 200,
+   "native_daily_rate": 20,
+   "total_daily_rate": 20,
+   "slug": "nato-x-russia-military-clash-by-october-31-2026"
+  },
+  {
+   "condition_id": "0x307a1ed89d60b61002dd5bbf00e1408c5ed2ab3fcdb056191ca7ef9bc34d38f3",
+   "rewards_config": [
+    {
+     "asset_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+     "start_date": "2026-10-01",
+     "end_date": "2500-12-31",
+     "rate_per_day": 40,
+     "total_rewards": 0,
+     "id": 0
+    }
+   ],
+   "rewards_max_spread": 3.5,
+   "rewards_min_size": 200,
+   "native_daily_rate": 40,
+   "total_daily_rate": 40,
+   "slug": "will-the-democratic-party-control-the-senate-after-the-2026-midterm-elections"
+  },
+  {
+   "condition_id": "0x34918035a590555ba1fb1d6a019d766ab6e557d63e7f3140b63b4550eee7f417",
+   "rewards_config": [
+    {
+     "asset_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+     "start_date": "2026-10-15",
+     "end_date": "2500-12-31",
+     "rate_per_day": 246,
+     "total_rewards": 0,
+     "id": 0
+    }
+   ],
+   "rewards_max_spread": 6.5,
+   "rewards_min_size": 100,
+   "native_daily_rate": 246,
+   "total_daily_rate": 246,
+   "slug": "will-the-democrats-win-the-texas-senate-race-in-2026"
+  },
+  {
+   "condition_id": "0x3738ad9665480991affe3ba286cd035516e17d1f8b7703e05088ec19c70c21a4",
+   "rewards_config": [
+    {
+     "asset_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+     "start_date": "2026-10-09",
+     "end_date": "2500-12-31",
+     "rate_per_day": 2000,
+     "total_rewards": 0,
+     "id": 0
+    }
+   ],
+   "rewards_max_spread": 4.5,
+   "rewards_min_size": 200,
+   "sponsored_daily_rate": 3.99744,
+   "sponsors_count": 2,
+   "native_daily_rate": 2000,
+   "total_daily_rate": 2003.99744,
+   "slug": "us-x-iran-ceasefire-continues-through-october-31-20260917"
+  },
+  {
+   "condition_id": "0x46ca741da4abd7ffa993f59ac65bfe83de43ae027accac71d263a493e44064e7",
+   "rewards_config": [
+    {
+     "asset_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+     "start_date": "2026-09-18",
+     "end_date": "2500-12-31",
+     "rate_per_day": 100,
+     "total_rewards": 0,
+     "id": 0
+    }
+   ],
+   "rewards_max_spread": 4.5,
+   "rewards_min_size": 200,
+   "native_daily_rate": 100,
+   "total_daily_rate": 100,
+   "slug": "us-announces-end-of-iranian-blockade-by-december-31-2026-20260727171803489-375-949-645-919-269-157-255-857"
+  },
+  {
+   "condition_id": "0x4e4f77e7dbf4cab666e9a1943674d7ae66348e862df03ea6f44b11eb95731928",
+   "rewards_config": [
+    {
+     "asset_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+     "start_date": "2026-10-08",
+     "end_date": "2500-12-31",
+     "rate_per_day": 278,
+     "total_rewards": 0,
+     "id": 0
+    }
+   ],
+   "rewards_max_spread": 4.5,
+   "rewards_min_size": 50,
+   "native_daily_rate": 278,
+   "total_daily_rate": 278,
+   "slug": "will-the-republican-party-control-the-house-after-the-2026-midterm-elections"
+  },
+  {
+   "condition_id": "0x5c79dfde05559b79a9cb9f7c4187e4d49632dd042572ae676952f812732591cc",
+   "rewards_config": [
+    {
+     "asset_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+     "start_date": "2026-05-11",
+     "end_date": "2500-12-31",
+     "rate_per_day": 300,
+     "total_rewards": 0,
+     "id": 0
+    }
+   ],
+   "rewards_max_spread": 4.5,
+   "rewards_min_size": 200,
+   "native_daily_rate": 300,
+   "total_daily_rate": 300,
+   "slug": "strait-of-hormuz-traffic-returns-to-normal-by-december-31"
+  },
+  {
+   "condition_id": "0x5db999fad322cea2914535aae5517060c3f80ad6d8c0231cde2124a434d16846",
+   "rewards_config": [
+    {
+     "asset_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+     "start_date": "2026-04-29",
+     "end_date": "2500-12-31",
+     "rate_per_day": 30,
+     "total_rewards": 0,
+     "id": 0
+    }
+   ],
+   "rewards_max_spread": 3.5,
+   "rewards_min_size": 200,
+   "native_daily_rate": 30,
+   "total_daily_rate": 30,
+   "slug": "will-the-us-invade-iran-before-2027"
+  },
+  {
+   "condition_id": "0x694595d0a008f10e4701285d071e4b08407495f6f8a6bd8cbdd7de522fa9b463",
+   "rewards_config": [
+    {
+     "asset_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+     "start_date": "2026-10-15",
+     "end_date": "2500-12-31",
+     "rate_per_day": 99,
+     "total_rewards": 0,
+     "id": 0
+    }
+   ],
+   "rewards_max_spread": 6.5,
+   "rewards_min_size": 50,
+   "native_daily_rate": 99,
+   "total_daily_rate": 99,
+   "slug": "will-nithya-raman-win-the-2026-los-angeles-mayoral-election-876"
+  },
+  {
+   "condition_id": "0x6bd56627aa21311850825edb27e53434a0e17a4f782be0086bc07f71eee00d0d",
+   "rewards_config": [
+    {
+     "asset_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+     "start_date": "2026-04-29",
+     "end_date": "2500-12-31",
+     "rate_per_day": 70,
+     "total_rewards": 0,
+     "id": 0
+    }
+   ],
+   "rewards_max_spread": 3.5,
+   "rewards_min_size": 200,
+   "native_daily_rate": 70,
+   "total_daily_rate": 70,
+   "slug": "putin-out-before-2027-346"
+  },
+  {
+   "condition_id": "0x7586a96520578acaaaa4ea84a2582f197f84255da1f3392a7aa300386c187b37",
+   "rewards_config": [
+    {
+     "asset_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+     "start_date": "2026-10-15",
+     "end_date": "2500-12-31",
+     "rate_per_day": 218,
+     "total_rewards": 0,
+     "id": 0
+    }
+   ],
+   "rewards_max_spread": 6.5,
+   "rewards_min_size": 100,
+   "native_daily_rate": 218,
+   "total_daily_rate": 218,
+   "slug": "will-benjamin-netanyahu-be-the-next-prime-minister-of-israel"
+  },
+  {
+   "condition_id": "0x8126317d621047fb13d508a2651eecc8d38305904671822a62309c5aabd353aa",
+   "rewards_config": [
+    {
+     "asset_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+     "start_date": "2026-10-15",
+     "end_date": "2500-12-31",
+     "rate_per_day": 299,
+     "total_rewards": 0,
+     "id": 0
+    }
+   ],
+   "rewards_max_spread": 6.5,
+   "rewards_min_size": 100,
+   "native_daily_rate": 299,
+   "total_daily_rate": 299,
+   "slug": "will-marine-le-pen-win-the-2027-french-presidential-election"
+  },
+  {
+   "condition_id": "0x94521176f57d2ce81dde01e0b7699ca4279423042d37ed53908f0c8bfefe7e14",
+   "rewards_config": [
+    {
+     "asset_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+     "start_date": "2026-10-15",
+     "end_date": "2500-12-31",
+     "rate_per_day": 254,
+     "total_rewards": 0,
+     "id": 0
+    }
+   ],
+   "rewards_max_spread": 6.5,
+   "rewards_min_size": 100,
+   "native_daily_rate": 254,
+   "total_daily_rate": 254,
+   "slug": "will-the-republicans-win-the-texas-senate-race-in-2026"
+  },
+  {
+   "condition_id": "0x998bc71817b2d76921d1999ce0f3431cfd5945583667a371280ca2b430b0c06e",
+   "rewards_config": [
+    {
+     "asset_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+     "start_date": "2026-10-14",
+     "end_date": "2500-12-31",
+     "rate_per_day": 975,
+     "total_rewards": 0,
+     "id": 0
+    }
+   ],
+   "rewards_max_spread": 4.5,
+   "rewards_min_size": 200,
+   "sponsored_daily_rate": 1.99872,
+   "sponsors_count": 1,
+   "native_daily_rate": 975,
+   "total_daily_rate": 976.99872,
+   "slug": "2026-balance-of-power-r-senate-d-house-444"
+  },
+  {
+   "condition_id": "0xa467b14d51f01b957109d9cbb1d6c124fab2a089d52ed8f471d23c2812e743b7",
+   "rewards_config": [
+    {
+     "asset_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+     "start_date": "2026-09-16",
+     "end_date": "2500-12-31",
+     "rate_per_day": 100,
+     "total_rewards": 0,
+     "id": 0
+    }
+   ],
+   "rewards_max_spread": 3.5,
+   "rewards_min_size": 200,
+   "native_daily_rate": 100,
+   "total_daily_rate": 100,
+   "slug": "xi-jinping-out-before-2027"
+  },
+  {
+   "condition_id": "0xbb4d51e6364066d92eb6f9b8413dd7193de70966736044463b205834805a1f3b",
+   "rewards_config": [
+    {
+     "asset_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+     "start_date": "2026-04-30",
+     "end_date": "2500-12-31",
+     "rate_per_day": 70,
+     "total_rewards": 0,
+     "id": 0
+    }
+   ],
+   "rewards_max_spread": 3.5,
+   "rewards_min_size": 200,
+   "native_daily_rate": 70,
+   "total_daily_rate": 70,
+   "slug": "will-the-iranian-regime-fall-by-the-end-of-2026"
+  },
+  {
+   "condition_id": "0xc3d5708780de5528998aeb53ca90e7ade64804f9f2386392a681435d5c42b44d",
+   "rewards_config": [
+    {
+     "asset_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+     "start_date": "2026-10-05",
+     "end_date": "2500-12-31",
+     "rate_per_day": 100,
+     "total_rewards": 0,
+     "id": 0
+    }
+   ],
+   "rewards_max_spread": 5.5,
+   "rewards_min_size": 50,
+   "native_daily_rate": 100,
+   "total_daily_rate": 100,
+   "slug": "israel-x-iran-ceasefire-continues-through-october-31"
+  },
+  {
+   "condition_id": "0xc5eae79d1ffe716572353962eb926b1e3964c500a4880a7a94f58408218ee76b",
+   "rewards_config": [
+    {
+     "asset_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+     "start_date": "2026-10-14",
+     "end_date": "2500-12-31",
+     "rate_per_day": 169,
+     "total_rewards": 0,
+     "id": 0
+    }
+   ],
+   "rewards_max_spread": 4.5,
+   "rewards_min_size": 200,
+   "native_daily_rate": 169,
+   "total_daily_rate": 169,
+   "slug": "2026-balance-of-power-r-senate-r-house-537"
+  },
+  {
+   "condition_id": "0xce610556ec78cfd7894f4169d91fe70e31c2fb49f927fffd7fe7d06530f88d56",
+   "rewards_config": [
+    {
+     "asset_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+     "start_date": "2026-10-15",
+     "end_date": "2500-12-31",
+     "rate_per_day": 49,
+     "total_rewards": 0,
+     "id": 0
+    }
+   ],
+   "rewards_max_spread": 6.5,
+   "rewards_min_size": 100,
+   "native_daily_rate": 49,
+   "total_daily_rate": 49,
+   "slug": "will-david-lisnard-win-the-2027-french-presidential-election"
+  },
+  {
+   "condition_id": "0xcee04ba47d02f6c64642369b34193c355f64de1b9ae425c71ea4efef1989d271",
+   "rewards_config": [
+    {
+     "asset_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+     "start_date": "2026-09-15",
+     "end_date": "2500-12-31",
+     "rate_per_day": 200,
+     "total_rewards": 0,
+     "id": 0
+    }
+   ],
+   "rewards_max_spread": 4.5,
+   "rewards_min_size": 200,
+   "native_daily_rate": 200,
+   "total_daily_rate": 200,
+   "slug": "us-announces-end-of-iranian-blockade-by-october-31-2026-20260727171711632-895-372-622-413-171-454-592-696"
+  },
+  {
+   "condition_id": "0xd5d9fc47718bd553592d126b1fa5e87183d27f3936975b0c04cc0f2dec1f1bb4",
+   "rewards_config": [
+    {
+     "asset_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+     "start_date": "2026-10-08",
+     "end_date": "2500-12-31",
+     "rate_per_day": 222,
+     "total_rewards": 0,
+     "id": 0
+    }
+   ],
+   "rewards_max_spread": 4.5,
+   "rewards_min_size": 50,
+   "native_daily_rate": 222,
+   "total_daily_rate": 222,
+   "slug": "will-the-democratic-party-control-the-house-after-the-2026-midterm-elections"
+  },
+  {
+   "condition_id": "0xd9fb1184af0064e5e34b129f5b79afa5a17b7e32f2953ab05efed82315fee6d4",
+   "rewards_config": [
+    {
+     "asset_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+     "start_date": "2026-04-30",
+     "end_date": "2500-12-31",
+     "rate_per_day": 50,
+     "total_rewards": 0,
+     "id": 0
+    }
+   ],
+   "rewards_max_spread": 3.5,
+   "rewards_min_size": 200,
+   "native_daily_rate": 50,
+   "total_daily_rate": 50,
+   "slug": "will-china-invade-taiwan-before-2027"
+  },
+  {
+   "condition_id": "0xdf8e2dc5860027decbe6164555c3c1c9645c3bd33e16b9dc57ca87125047d4a8",
+   "rewards_config": [
+    {
+     "asset_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+     "start_date": "2026-10-15",
+     "end_date": "2500-12-31",
+     "rate_per_day": 1030,
+     "total_rewards": 0,
+     "id": 0
+    }
+   ],
+   "rewards_max_spread": 6.5,
+   "rewards_min_size": 150,
+   "native_daily_rate": 1030,
+   "total_daily_rate": 1030,
+   "slug": "will-luiz-incio-lula-da-silva-win-the-2026-brazilian-presidential-election"
+  },
+  {
+   "condition_id": "0xdf9bf27ee5757c55b44b8b9826ddc9ec3a8809aa3278634c45edbb7fc8f1a3e3",
+   "rewards_config": [
+    {
+     "asset_address": "0xC011a7E12a19f7B1f670d46F03B03f3342E82DFB",
+     "start_date": "2026-09-17",
+     "end_date": "2500-12-31",
+     "rate_per_day": 1000,
+     "total_rewards": 0,
+     "id": 0
+    }
+   ],
+   "rewards_max_spread": 2.5,
+   "rewards_min_size": 200,
+   "native_daily_rate": 1000,
+   "total_daily_rate": 1000,
+   "slug": "will-there-be-no-change-in-fed-interest-rates-after-the-october-2026-meeting-20260617190324031"
+  }
+ ],
+ "per_market": {
+  "will-luiz-incio-lula-da-silva-win-the-2026-brazilian-presidential-election": {
+   "data": [
+    {
+     "condition_id": "0xdf8e2dc5860027decbe6164555c3c1c9645c3bd33e16b9dc57ca87125047d4a8",
+     "question": "Will Luiz In\u00e1cio Lula da Silva win the 2026 Brazilian presidential election?",
+     "market_slug": "will-luiz-incio-lula-da-silva-win-the-2026-brazilian-presidential-election",
+     "event_slug": "brazil-presidential-election",
+     "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/will-luiz-incio-lula-da-silva-win-the-2026-brazilian-presidential-election-reTil6nEVB1J.jpg",
+     "tokens": [
+      {
+       "token_id": "30630994248667897740988010928640156931882346081873066002335460180076741328029",
+       "outcome": "Yes",
+       "price": 0.215
+      },
+      {
+       "token_id": "79191939610100241429039499950443680906623179487184628479206155805558220344190",
+       "outcome": "No",
+       "price": 0.785
+      }
+     ],
+     "rewards_config": [
+      {
+       "asset_address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+       "start_date": "2026-10-15",
+       "end_date": "2500-12-31",
+       "id": 287353,
+       "rate_per_day": 1030,
+       "total_rewards": 0,
+       "total_days": 173203
+      }
+     ],
+     "rewards_max_spread": 6.5,
+     "rewards_min_size": 150,
+     "market_competitiveness": 74.441706
+    }
+   ],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 1
+  },
+  "will-there-be-no-change-in-fed-interest-rates-after-the-october-2026-meeting-20260617190324031": {
+   "data": [
+    {
+     "condition_id": "0xdf9bf27ee5757c55b44b8b9826ddc9ec3a8809aa3278634c45edbb7fc8f1a3e3",
+     "question": "Will there be no change in Fed interest rates after the October 2026 meeting?",
+     "market_slug": "will-there-be-no-change-in-fed-interest-rates-after-the-october-2026-meeting-20260617190324031",
+     "event_slug": "fed-decision-in-october-20260617190323537",
+     "image": "",
+     "tokens": [
+      {
+       "token_id": "111061902544814266207267295505639408607400625795891618462682726460921782993748",
+       "outcome": "Yes",
+       "price": 0.725
+      },
+      {
+       "token_id": "42038775866198212615491650114881818219665139981763207699110491615333273795415",
+       "outcome": "No",
+       "price": 0.275
+      }
+     ],
+     "rewards_config": [
+      {
+       "asset_address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+       "start_date": "2026-09-17",
+       "end_date": "2500-12-31",
+       "id": 1071510,
+       "rate_per_day": 1000,
+       "total_rewards": 0,
+       "total_days": 173231
+      }
+     ],
+     "rewards_max_spread": 2.5,
+     "rewards_min_size": 200,
+     "market_competitiveness": 8.905012
+    }
+   ],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 1
+  },
+  "will-flvio-bolsonaro-win-the-2026-brazilian-presidential-election": {
+   "data": [
+    {
+     "condition_id": "0x1a01bf78f56a507fcb666d564d8c8b91b0750679163ed6e96746102c9b7d285d",
+     "question": "Will Fl\u00e1vio Bolsonaro win the 2026 Brazilian presidential election?",
+     "market_slug": "will-flvio-bolsonaro-win-the-2026-brazilian-presidential-election",
+     "event_slug": "brazil-presidential-election",
+     "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/will-flvio-bolsonaro-win-the-2026-brazilian-presidential-election-LUNiqIvy01pf.jpg",
+     "tokens": [
+      {
+       "token_id": "109876868437950584369987384406356259939519193117253465815665152916226511121427",
+       "outcome": "Yes",
+       "price": 0.7845
+      },
+      {
+       "token_id": "38310927461258927563020508025396887688249787380193911540547071417200646834355",
+       "outcome": "No",
+       "price": 0.2155
+      }
+     ],
+     "rewards_config": [
+      {
+       "asset_address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+       "start_date": "2026-10-15",
+       "end_date": "2500-12-31",
+       "id": 287355,
+       "rate_per_day": 970,
+       "total_rewards": 0,
+       "total_days": 173203
+      }
+     ],
+     "rewards_max_spread": 6.5,
+     "rewards_min_size": 150,
+     "market_competitiveness": 55.588171
+    }
+   ],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 1
+  },
+  "will-the-fed-increase-interest-rates-by-25-bps-after-the-october-2026-meeting-20260617190324032": {
+   "data": [
+    {
+     "condition_id": "0x12aa13b3da17ceae1b0a59b5d5b77121e91bb79b4bb0b52bf6543ed3f8d0953b",
+     "question": "Will the Fed increase interest rates by 25 bps after the October 2026 meeting?",
+     "market_slug": "will-the-fed-increase-interest-rates-by-25-bps-after-the-october-2026-meeting-20260617190324032",
+     "event_slug": "fed-decision-in-october-20260617190323537",
+     "image": "",
+     "tokens": [
+      {
+       "token_id": "55159722761418013044126414276680602270318000841690689684819994448621694923050",
+       "outcome": "Yes",
+       "price": 0.275
+      },
+      {
+       "token_id": "78632395083310670734315205502061249602319069653915932320155846460019107676757",
+       "outcome": "No",
+       "price": 0.725
+      }
+     ],
+     "rewards_config": [
+      {
+       "asset_address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+       "start_date": "2026-09-17",
+       "end_date": "2500-12-31",
+       "id": 1074655,
+       "rate_per_day": 1000,
+       "total_rewards": 0,
+       "total_days": 173231
+      }
+     ],
+     "rewards_max_spread": 2.5,
+     "rewards_min_size": 200,
+     "market_competitiveness": 8.307027
+    }
+   ],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 1
+  },
+  "will-the-us-invade-iran-before-2027": {
+   "data": [
+    {
+     "condition_id": "0x5db999fad322cea2914535aae5517060c3f80ad6d8c0231cde2124a434d16846",
+     "question": "Will the U.S. invade Iran before 2027?",
+     "market_slug": "will-the-us-invade-iran-before-2027",
+     "event_slug": "will-the-us-invade-iran-before-2027",
+     "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/will-the-us-invade-iran-in-2025-0Eh3J0ku_Fbj.jpg",
+     "tokens": [
+      {
+       "token_id": "55115078421062885512539156303747803058407616201213034911037320915726138659123",
+       "outcome": "Yes",
+       "price": 0.165
+      },
+      {
+       "token_id": "1910830010387565971650098373488592514702818137344973088263643820608151819241",
+       "outcome": "No",
+       "price": 0.835
+      }
+     ],
+     "rewards_config": [
+      {
+       "asset_address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+       "start_date": "2026-04-29",
+       "end_date": "2500-12-31",
+       "id": 288102,
+       "rate_per_day": 30,
+       "total_rewards": 0,
+       "total_days": 173372
+      }
+     ],
+     "rewards_max_spread": 3.5,
+     "rewards_min_size": 200,
+     "market_competitiveness": 2244.615644
+    }
+   ],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 1
+  },
+  "will-the-fed-decrease-interest-rates-by-25-bps-after-the-october-2026-meeting-20260617190324030": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "will-the-fed-decrease-interest-rates-by-50-bps-after-the-october-2026-meeting-20260617190324029": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "2026-balance-of-power-r-senate-r-house-537": {
+   "data": [
+    {
+     "condition_id": "0xc5eae79d1ffe716572353962eb926b1e3964c500a4880a7a94f58408218ee76b",
+     "question": "2026 Balance of Power: R Senate, R House",
+     "market_slug": "2026-balance-of-power-r-senate-r-house-537",
+     "event_slug": "balance-of-power-2026-midterms",
+     "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/balance-of-power-2024-election-r-Fp-y4ONJBS.jpg",
+     "tokens": [
+      {
+       "token_id": "103704141773947678931823410030956181918562062788486034785782641603149828893320",
+       "outcome": "Yes",
+       "price": 0.085
+      },
+      {
+       "token_id": "25869296386911654049715489068824757745174681288397238521780118949553760488529",
+       "outcome": "No",
+       "price": 0.915
+      }
+     ],
+     "rewards_config": [
+      {
+       "asset_address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+       "start_date": "2026-10-14",
+       "end_date": "2500-12-31",
+       "id": 632971,
+       "rate_per_day": 169,
+       "total_rewards": 0,
+       "total_days": 173204
+      }
+     ],
+     "rewards_max_spread": 4.5,
+     "rewards_min_size": 200,
+     "market_competitiveness": 1837.089311
+    }
+   ],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 1
+  },
+  "putin-out-before-2027-346": {
+   "data": [
+    {
+     "condition_id": "0x6bd56627aa21311850825edb27e53434a0e17a4f782be0086bc07f71eee00d0d",
+     "question": "Putin out as President of Russia by December 31, 2026?",
+     "market_slug": "putin-out-before-2027-346",
+     "event_slug": "putin-out-before-2027",
+     "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/putin-out-as-president-of-russia-in-2025-nWuurkC8qfbi.jpg",
+     "tokens": [
+      {
+       "token_id": "350977769852917329387037893294763093471844346281449484439085576212613048126",
+       "outcome": "Yes",
+       "price": 0.0365
+      },
+      {
+       "token_id": "87073899845581463485186346288398658568334162612963837182986759797304993556208",
+       "outcome": "No",
+       "price": 0.9635
+      }
+     ],
+     "rewards_config": [
+      {
+       "asset_address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+       "start_date": "2026-04-29",
+       "end_date": "2500-12-31",
+       "id": 277460,
+       "rate_per_day": 70,
+       "total_rewards": 0,
+       "total_days": 173372
+      }
+     ],
+     "rewards_max_spread": 3.5,
+     "rewards_min_size": 200,
+     "market_competitiveness": 1087.970077
+    }
+   ],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 1
+  },
+  "will-benjamin-netanyahu-be-the-next-prime-minister-of-israel": {
+   "data": [
+    {
+     "condition_id": "0x7586a96520578acaaaa4ea84a2582f197f84255da1f3392a7aa300386c187b37",
+     "question": "Will Benjamin Netanyahu be the next Prime Minister of Israel?",
+     "market_slug": "will-benjamin-netanyahu-be-the-next-prime-minister-of-israel",
+     "event_slug": "who-will-be-the-next-prime-minister-of-israel-after-the-next-election",
+     "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/israel-benjamin-netanyahu-9221e795d7.jpg",
+     "tokens": [
+      {
+       "token_id": "20006732765674855733524007935991362439352594042415161039767275461950712817548",
+       "outcome": "Yes",
+       "price": 0.285
+      },
+      {
+       "token_id": "54533569528927082430133047556849600511985191158927477533124630301934489498530",
+       "outcome": "No",
+       "price": 0.715
+      }
+     ],
+     "rewards_config": [
+      {
+       "asset_address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+       "start_date": "2026-10-15",
+       "end_date": "2500-12-31",
+       "id": 275072,
+       "rate_per_day": 218,
+       "total_rewards": 0,
+       "total_days": 173203
+      }
+     ],
+     "rewards_max_spread": 6.5,
+     "rewards_min_size": 100,
+     "market_competitiveness": 278.349199
+    }
+   ],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 1
+  },
+  "will-the-democratic-party-control-the-house-after-the-2026-midterm-elections": {
+   "data": [
+    {
+     "condition_id": "0xd5d9fc47718bd553592d126b1fa5e87183d27f3936975b0c04cc0f2dec1f1bb4",
+     "question": "Will the Democratic Party control the House after the 2026 Midterm elections?",
+     "market_slug": "will-the-democratic-party-control-the-house-after-the-2026-midterm-elections",
+     "event_slug": "which-party-will-win-the-house-in-2026",
+     "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/will-the-democratic-party-control-the-senate-after-the-2026-midterm-elections-JJ9h02JGR09z.png",
+     "tokens": [
+      {
+       "token_id": "83247781037352156539108067944461291821683755894607244160607042790356561625563",
+       "outcome": "Yes",
+       "price": 0.905
+      },
+      {
+       "token_id": "33156410999665902694791064431724433042010245771106314074312009703157423879038",
+       "outcome": "No",
+       "price": 0.095
+      }
+     ],
+     "rewards_config": [
+      {
+       "asset_address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+       "start_date": "2026-10-08",
+       "end_date": "2500-12-31",
+       "id": 2866189,
+       "rate_per_day": 222,
+       "total_rewards": 0,
+       "total_days": 173210
+      }
+     ],
+     "rewards_max_spread": 4.5,
+     "rewards_min_size": 50,
+     "market_competitiveness": 1544.676479
+    }
+   ],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 1
+  },
+  "us-announces-end-of-iranian-blockade-by-october-31-2026-20260727171711632-895-372-622-413-171-454-592-696": {
+   "data": [
+    {
+     "condition_id": "0xcee04ba47d02f6c64642369b34193c355f64de1b9ae425c71ea4efef1989d271",
+     "question": "US announces end of Iranian blockade by October 31, 2026?",
+     "market_slug": "us-announces-end-of-iranian-blockade-by-october-31-2026-20260727171711632-895-372-622-413-171-454-592-696",
+     "event_slug": "us-announces-end-of-iranian-blockade-byptptpt-20260713152715080",
+     "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-announces-blockade-on-iran-byptptpt-20260622191049039-hE3ZTZ51JJy3.jpg",
+     "tokens": [
+      {
+       "token_id": "87712920673252297509200151045391015262449055764880659907762503287643101055970",
+       "outcome": "Yes",
+       "price": 0.065
+      },
+      {
+       "token_id": "77737603049704371401985143030203551130624520784925815473217168646825527075459",
+       "outcome": "No",
+       "price": 0.935
+      }
+     ],
+     "rewards_config": [
+      {
+       "asset_address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+       "start_date": "2026-09-15",
+       "end_date": "2500-12-31",
+       "id": 1043176,
+       "rate_per_day": 200,
+       "total_rewards": 0,
+       "total_days": 173233
+      }
+     ],
+     "rewards_max_spread": 4.5,
+     "rewards_min_size": 200,
+     "market_competitiveness": 57.954847
+    }
+   ],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 1
+  },
+  "us-announces-end-of-iranian-blockade-by-october-15-2026": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "strait-of-hormuz-traffic-returns-to-normal-by-december-31": {
+   "data": [
+    {
+     "condition_id": "0x5c79dfde05559b79a9cb9f7c4187e4d49632dd042572ae676952f812732591cc",
+     "question": "Strait of Hormuz traffic returns to normal by December 31?",
+     "market_slug": "strait-of-hormuz-traffic-returns-to-normal-by-december-31",
+     "event_slug": "strait-of-hormuz-traffic-returns-to-normal-by-december-31",
+     "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/will-ships-transit-the-strait-of-hormuz-on-any-day-in-march-ERARnetK0FJm.jpg",
+     "tokens": [
+      {
+       "token_id": "83783489454659420807679723574840032660002326710045123865554753994450797728825",
+       "outcome": "Yes",
+       "price": 0.12
+      },
+      {
+       "token_id": "48727431314333088243693016929623363710488980152833544156961659445129455301311",
+       "outcome": "No",
+       "price": 0.88
+      }
+     ],
+     "rewards_config": [
+      {
+       "asset_address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+       "start_date": "2026-05-11",
+       "end_date": "2500-12-31",
+       "id": 335942,
+       "rate_per_day": 300,
+       "total_rewards": 0,
+       "total_days": 173360
+      }
+     ],
+     "rewards_max_spread": 4.5,
+     "rewards_min_size": 200,
+     "market_competitiveness": 808.804394
+    }
+   ],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 1
+  },
+  "us-x-iran-ceasefire-continues-through-october-31-20260917": {
+   "data": [
+    {
+     "condition_id": "0x3738ad9665480991affe3ba286cd035516e17d1f8b7703e05088ec19c70c21a4",
+     "question": "US x Iran ceasefire continues through October 31?",
+     "market_slug": "us-x-iran-ceasefire-continues-through-october-31-20260917",
+     "event_slug": "us-iran-ceasefire-continues-throughptptpt",
+     "image": "",
+     "tokens": [
+      {
+       "token_id": "67102598924726349989742049657609063097299442010642912942032681022413402597017",
+       "outcome": "Yes",
+       "price": 0.785
+      },
+      {
+       "token_id": "114475889232765203212032217024645308497828327658421967586050553616813506019119",
+       "outcome": "No",
+       "price": 0.215
+      }
+     ],
+     "rewards_config": [
+      {
+       "asset_address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+       "start_date": "2026-10-09",
+       "end_date": "2500-12-31",
+       "id": 3353472,
+       "rate_per_day": 2000,
+       "total_rewards": 0,
+       "total_days": 173209
+      }
+     ],
+     "rewards_max_spread": 4.5,
+     "rewards_min_size": 200,
+     "market_competitiveness": 68.086549
+    }
+   ],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 1
+  },
+  "will-the-republican-party-control-the-house-after-the-2026-midterm-elections": {
+   "data": [
+    {
+     "condition_id": "0x4e4f77e7dbf4cab666e9a1943674d7ae66348e862df03ea6f44b11eb95731928",
+     "question": "Will the Republican Party control the House after the 2026 Midterm elections?",
+     "market_slug": "will-the-republican-party-control-the-house-after-the-2026-midterm-elections",
+     "event_slug": "which-party-will-win-the-house-in-2026",
+     "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/will-the-republican-party-control-the-senate-after-the-2026-midterm-elections-JSsqogfn0U0u.png",
+     "tokens": [
+      {
+       "token_id": "65139230827417363158752884968303867495725894165574887635816574090175320800482",
+       "outcome": "Yes",
+       "price": 0.095
+      },
+      {
+       "token_id": "17371217118862125782438074585166210555214661810823929795910191856905580975576",
+       "outcome": "No",
+       "price": 0.905
+      }
+     ],
+     "rewards_config": [
+      {
+       "asset_address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+       "start_date": "2026-10-08",
+       "end_date": "2500-12-31",
+       "id": 2866191,
+       "rate_per_day": 278,
+       "total_rewards": 0,
+       "total_days": 173210
+      }
+     ],
+     "rewards_max_spread": 4.5,
+     "rewards_min_size": 50,
+     "market_competitiveness": 1289.660601
+    }
+   ],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 1
+  },
+  "will-david-lisnard-win-the-2027-french-presidential-election": {
+   "data": [
+    {
+     "condition_id": "0xce610556ec78cfd7894f4169d91fe70e31c2fb49f927fffd7fe7d06530f88d56",
+     "question": "Will David Lisnard win the 2027 French presidential election?",
+     "market_slug": "will-david-lisnard-win-the-2027-french-presidential-election",
+     "event_slug": "next-french-presidential-election",
+     "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/fr27-david-lisnard-04e491dec1.jpg",
+     "tokens": [
+      {
+       "token_id": "55404192439775628931124671719520886657525387168536821457706619003199189099864",
+       "outcome": "Yes",
+       "price": 0.1205
+      },
+      {
+       "token_id": "79358475953126059185096320578578995575874288599466094920037110232928386404141",
+       "outcome": "No",
+       "price": 0.8795
+      }
+     ],
+     "rewards_config": [
+      {
+       "asset_address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+       "start_date": "2026-10-15",
+       "end_date": "2500-12-31",
+       "id": 2355236,
+       "rate_per_day": 49,
+       "total_rewards": 0,
+       "total_days": 173203
+      }
+     ],
+     "rewards_max_spread": 6.5,
+     "rewards_min_size": 100,
+     "market_competitiveness": 994.905671
+    }
+   ],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 1
+  },
+  "will-china-invade-taiwan-before-2027": {
+   "data": [
+    {
+     "condition_id": "0xd9fb1184af0064e5e34b129f5b79afa5a17b7e32f2953ab05efed82315fee6d4",
+     "question": "Will China invade Taiwan by end of 2026?",
+     "market_slug": "will-china-invade-taiwan-before-2027",
+     "event_slug": "will-china-invade-taiwan-before-2027",
+     "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/china-invades-taiwan-in-2025-CCSd9dX2mrea.jpg",
+     "tokens": [
+      {
+       "token_id": "94559586571241563470235664821564670251180951772614764383113614156422396181162",
+       "outcome": "Yes",
+       "price": 0.0205
+      },
+      {
+       "token_id": "90772332434487149264114862115632028379978765245278600275169585501290867536237",
+       "outcome": "No",
+       "price": 0.9795
+      }
+     ],
+     "rewards_config": [
+      {
+       "asset_address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+       "start_date": "2026-04-30",
+       "end_date": "2500-12-31",
+       "id": 303428,
+       "rate_per_day": 50,
+       "total_rewards": 0,
+       "total_days": 173371
+      }
+     ],
+     "rewards_max_spread": 3.5,
+     "rewards_min_size": 200,
+     "market_competitiveness": 2740.269657
+    }
+   ],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 1
+  },
+  "2026-balance-of-power-d-senate-r-house-692": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "2026-balance-of-power-d-senate-d-house-949": {
+   "data": [
+    {
+     "condition_id": "0x16c63b7cc37f012b9f59ee164ec03877914c701d06d48291ae8d6fc08a088b0d",
+     "question": "2026 Balance of Power: D Senate, D House",
+     "market_slug": "2026-balance-of-power-d-senate-d-house-949",
+     "event_slug": "balance-of-power-2026-midterms",
+     "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/balance-of-power-2024-election-r-Fp-y4ONJBS.jpg",
+     "tokens": [
+      {
+       "token_id": "34722410608062854697106861099776685947172185964394483545370684749662285977831",
+       "outcome": "Yes",
+       "price": 0.625
+      },
+      {
+       "token_id": "24483563228660028121020430722896740519524131851526579619586176931221901842798",
+       "outcome": "No",
+       "price": 0.375
+      }
+     ],
+     "rewards_config": [
+      {
+       "asset_address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+       "start_date": "2026-10-14",
+       "end_date": "2500-12-31",
+       "id": 632970,
+       "rate_per_day": 1356,
+       "total_rewards": 0,
+       "total_days": 173204
+      }
+     ],
+     "rewards_max_spread": 4.5,
+     "rewards_min_size": 200,
+     "market_competitiveness": 465.214109
+    }
+   ],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 1
+  },
+  "will-raphael-warnock-win-the-2028-democratic-presidential-nomination-914": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "us-x-iran-ceasefire-continues-through-october-15": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "will-chris-van-hollen-win-the-2028-democratic-presidential-nomination": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "strait-of-hormuz-traffic-returns-to-normal-by-october-31-20260810151043583": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "us-announces-end-of-iranian-blockade-by-december-31-2026-20260727171803489-375-949-645-919-269-157-255-857": {
+   "data": [
+    {
+     "condition_id": "0x46ca741da4abd7ffa993f59ac65bfe83de43ae027accac71d263a493e44064e7",
+     "question": "US announces end of Iranian blockade by December 31, 2026?",
+     "market_slug": "us-announces-end-of-iranian-blockade-by-december-31-2026-20260727171803489-375-949-645-919-269-157-255-857",
+     "event_slug": "us-announces-end-of-iranian-blockade-byptptpt-20260713152715080",
+     "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/us-announces-blockade-on-iran-byptptpt-20260622191049039-hE3ZTZ51JJy3.jpg",
+     "tokens": [
+      {
+       "token_id": "86011229287950365043519117852041614651767455889324682112682327985496937935368",
+       "outcome": "Yes",
+       "price": 0.3665
+      },
+      {
+       "token_id": "39147524522707536456910747992621671433032838141439193264830818731544404472030",
+       "outcome": "No",
+       "price": 0.6335
+      }
+     ],
+     "rewards_config": [
+      {
+       "asset_address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+       "start_date": "2026-09-18",
+       "end_date": "2500-12-31",
+       "id": 1205124,
+       "rate_per_day": 100,
+       "total_rewards": 0,
+       "total_days": 173230
+      }
+     ],
+     "rewards_max_spread": 4.5,
+     "rewards_min_size": 200,
+     "market_competitiveness": 69.261056
+    }
+   ],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 1
+  },
+  "will-sarah-huckabee-sanders-win-the-2028-republican-presidential-nomination": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "xi-jinping-out-before-2027": {
+   "data": [
+    {
+     "condition_id": "0xa467b14d51f01b957109d9cbb1d6c124fab2a089d52ed8f471d23c2812e743b7",
+     "question": "Xi Jinping out before 2027?",
+     "market_slug": "xi-jinping-out-before-2027",
+     "event_slug": "xi-jinping-out-before-2027",
+     "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/xi-jinping-out-in-2025-EjF4SM20eaa3.jpg",
+     "tokens": [
+      {
+       "token_id": "32338220190071351435772801779725302244575775216413325951443816017994629993401",
+       "outcome": "Yes",
+       "price": 0.0295
+      },
+      {
+       "token_id": "25659310674993675562345759665114759892400026242514633218387667107987341231962",
+       "outcome": "No",
+       "price": 0.9705
+      }
+     ],
+     "rewards_config": [
+      {
+       "asset_address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+       "start_date": "2026-09-16",
+       "end_date": "2500-12-31",
+       "id": 303430,
+       "rate_per_day": 100,
+       "total_rewards": 0,
+       "total_days": 173232
+      }
+     ],
+     "rewards_max_spread": 3.5,
+     "rewards_min_size": 200,
+     "market_competitiveness": 1585.860308
+    }
+   ],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 1
+  },
+  "israel-x-iran-ceasefire-continues-through-october-31": {
+   "data": [
+    {
+     "condition_id": "0xc3d5708780de5528998aeb53ca90e7ade64804f9f2386392a681435d5c42b44d",
+     "question": "Israel x Iran ceasefire continues through October 31?",
+     "market_slug": "israel-x-iran-ceasefire-continues-through-october-31",
+     "event_slug": "israel-x-iran-ceasefire-continues-throughptptpt-20260716224448963",
+     "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/israel-x-iran-ceasefire-continues-throughptptpt-20260716224448963-FEQHrNm5Q53X.jpg",
+     "tokens": [
+      {
+       "token_id": "36595575197199846398267481972385180643951985822505187477756829088194676076340",
+       "outcome": "Yes",
+       "price": 0.825
+      },
+      {
+       "token_id": "34386684966925037477701889915132575610574649191623462027976379158560146275115",
+       "outcome": "No",
+       "price": 0.175
+      }
+     ],
+     "rewards_config": [
+      {
+       "asset_address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+       "start_date": "2026-10-05",
+       "end_date": "2500-12-31",
+       "id": 1282274,
+       "rate_per_day": 100,
+       "total_rewards": 0,
+       "total_days": 173213
+      }
+     ],
+     "rewards_max_spread": 5.5,
+     "rewards_min_size": 50,
+     "market_competitiveness": 83.674029
+    }
+   ],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 1
+  },
+  "will-marine-le-pen-win-the-2027-french-presidential-election": {
+   "data": [
+    {
+     "condition_id": "0x8126317d621047fb13d508a2651eecc8d38305904671822a62309c5aabd353aa",
+     "question": "Will Marine Le Pen win the 2027 French presidential election?",
+     "market_slug": "will-marine-le-pen-win-the-2027-french-presidential-election",
+     "event_slug": "next-french-presidential-election",
+     "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/will-marine-le-pen-win-the-2027-french-presidential-election-8hg67PHSk27M.jpg",
+     "tokens": [
+      {
+       "token_id": "55764212211467781322980371912612507865974994976253196346176314491480419639168",
+       "outcome": "Yes",
+       "price": 0.478
+      },
+      {
+       "token_id": "5649717099758674861276159343380402289083378331461490840325685141994171250523",
+       "outcome": "No",
+       "price": 0.522
+      }
+     ],
+     "rewards_config": [
+      {
+       "asset_address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+       "start_date": "2026-10-15",
+       "end_date": "2500-12-31",
+       "id": 816456,
+       "rate_per_day": 299,
+       "total_rewards": 0,
+       "total_days": 173203
+      }
+     ],
+     "rewards_max_spread": 6.5,
+     "rewards_min_size": 100,
+     "market_competitiveness": 98.970407
+    }
+   ],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 1
+  },
+  "will-hakeem-jeffries-win-the-2028-democratic-presidential-nomination": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "nato-x-russia-military-clash-by-october-31-2026": {
+   "data": [
+    {
+     "condition_id": "0x2a4fcda5c1598fc8621cf96cabc410f9f23a2d0336c3bff5070a37a663d39e94",
+     "question": "NATO x Russia military clash by October 31, 2026?",
+     "market_slug": "nato-x-russia-military-clash-by-october-31-2026",
+     "event_slug": "nato-x-russia-military-clash-in-2025",
+     "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/nato-x-russia-military-clash-in-2025-DteCDkmbVLj_.jpg",
+     "tokens": [
+      {
+       "token_id": "90103249718343334756773580827701144244122903469501608441410963092372041632343",
+       "outcome": "Yes",
+       "price": 0.055
+      },
+      {
+       "token_id": "66797176836865406644675050248194264952001579179703527537658211196864343226792",
+       "outcome": "No",
+       "price": 0.945
+      }
+     ],
+     "rewards_config": [
+      {
+       "asset_address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+       "start_date": "2026-09-19",
+       "end_date": "2500-12-31",
+       "id": 1040587,
+       "rate_per_day": 20,
+       "total_rewards": 0,
+       "total_days": 173229
+      }
+     ],
+     "rewards_max_spread": 4.5,
+     "rewards_min_size": 200,
+     "market_competitiveness": 200.473884
+    }
+   ],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 1
+  },
+  "2026-balance-of-power-r-senate-d-house-444": {
+   "data": [
+    {
+     "condition_id": "0x998bc71817b2d76921d1999ce0f3431cfd5945583667a371280ca2b430b0c06e",
+     "question": "2026 Balance of Power: R Senate, D House",
+     "market_slug": "2026-balance-of-power-r-senate-d-house-444",
+     "event_slug": "balance-of-power-2026-midterms",
+     "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/balance-of-power-2024-election-r-Fp-y4ONJBS.jpg",
+     "tokens": [
+      {
+       "token_id": "6302359956133594764084277082169634158291609371270652093164054687145970756151",
+       "outcome": "Yes",
+       "price": 0.285
+      },
+      {
+       "token_id": "558600218792430158020964384658762756367786275998757133304987611939841005404",
+       "outcome": "No",
+       "price": 0.715
+      }
+     ],
+     "rewards_config": [
+      {
+       "asset_address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+       "start_date": "2026-10-14",
+       "end_date": "2500-12-31",
+       "id": 632969,
+       "rate_per_day": 975,
+       "total_rewards": 0,
+       "total_days": 173204
+      }
+     ],
+     "rewards_max_spread": 4.5,
+     "rewards_min_size": 200,
+     "market_competitiveness": 464.739562
+    }
+   ],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 1
+  },
+  "will-the-republicans-win-the-texas-senate-race-in-2026": {
+   "data": [
+    {
+     "condition_id": "0x94521176f57d2ce81dde01e0b7699ca4279423042d37ed53908f0c8bfefe7e14",
+     "question": "Will the Republicans win the Texas Senate race in 2026?",
+     "market_slug": "will-the-republicans-win-the-texas-senate-race-in-2026",
+     "event_slug": "texas-senate-election-winner",
+     "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/will-ken-paxton-win-the-2026-republican-primary-VUklJjUUDQCq.jpg",
+     "tokens": [
+      {
+       "token_id": "21265207456609426291246075480390336499088453711419597084147957999650569091884",
+       "outcome": "Yes",
+       "price": 0.375
+      },
+      {
+       "token_id": "9846414914422486942750462555692240718767368950832862364324602361738794436048",
+       "outcome": "No",
+       "price": 0.625
+      }
+     ],
+     "rewards_config": [
+      {
+       "asset_address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+       "start_date": "2026-10-15",
+       "end_date": "2500-12-31",
+       "id": 38065,
+       "rate_per_day": 254,
+       "total_rewards": 0,
+       "total_days": 173203
+      }
+     ],
+     "rewards_max_spread": 6.5,
+     "rewards_min_size": 100,
+     "market_competitiveness": 370.567116
+    }
+   ],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 1
+  },
+  "will-the-iranian-regime-fall-by-the-end-of-2026": {
+   "data": [
+    {
+     "condition_id": "0xbb4d51e6364066d92eb6f9b8413dd7193de70966736044463b205834805a1f3b",
+     "question": "Will the Iranian regime fall before 2027?",
+     "market_slug": "will-the-iranian-regime-fall-by-the-end-of-2026",
+     "event_slug": "will-the-iranian-regime-fall-by-the-end-of-2026",
+     "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/will-the-iranian-regime-fall-in-2025-YLXIniTmQs4q.png",
+     "tokens": [
+      {
+       "token_id": "10991849228756847439673778874175365458450913336396982752046655649803657501964",
+       "outcome": "Yes",
+       "price": 0.055
+      },
+      {
+       "token_id": "106181075047366745139197108801635573283215248045056329679360376976893016488727",
+       "outcome": "No",
+       "price": 0.945
+      }
+     ],
+     "rewards_config": [
+      {
+       "asset_address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+       "start_date": "2026-04-30",
+       "end_date": "2500-12-31",
+       "id": 303431,
+       "rate_per_day": 70,
+       "total_rewards": 0,
+       "total_days": 173371
+      }
+     ],
+     "rewards_max_spread": 3.5,
+     "rewards_min_size": 200,
+     "market_competitiveness": 1118.829295
+    }
+   ],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 1
+  },
+  "will-the-democrats-win-the-texas-senate-race-in-2026": {
+   "data": [
+    {
+     "condition_id": "0x34918035a590555ba1fb1d6a019d766ab6e557d63e7f3140b63b4550eee7f417",
+     "question": "Will the Democrats win the Texas Senate race in 2026?",
+     "market_slug": "will-the-democrats-win-the-texas-senate-race-in-2026",
+     "event_slug": "texas-senate-election-winner",
+     "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/will-james-talarico-be-the-democratic-nominee-for-senate-in-texas-4mrHmuZYe7GR.jpg",
+     "tokens": [
+      {
+       "token_id": "15290572385458522370285732869432740297199321382471116558439914335588167718663",
+       "outcome": "Yes",
+       "price": 0.625
+      },
+      {
+       "token_id": "25172545206000541692667496253531562288536270988826888609620735617040533835056",
+       "outcome": "No",
+       "price": 0.375
+      }
+     ],
+     "rewards_config": [
+      {
+       "asset_address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+       "start_date": "2026-10-15",
+       "end_date": "2500-12-31",
+       "id": 38080,
+       "rate_per_day": 246,
+       "total_rewards": 0,
+       "total_days": 173203
+      }
+     ],
+     "rewards_max_spread": 6.5,
+     "rewards_min_size": 100,
+     "market_competitiveness": 301.0416
+    }
+   ],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 1
+  },
+  "will-nithya-raman-win-the-2026-los-angeles-mayoral-election-876": {
+   "data": [
+    {
+     "condition_id": "0x694595d0a008f10e4701285d071e4b08407495f6f8a6bd8cbdd7de522fa9b463",
+     "question": "Will Nithya Raman win the 2026 Los Angeles mayoral election?",
+     "market_slug": "will-nithya-raman-win-the-2026-los-angeles-mayoral-election-876",
+     "event_slug": "los-angeles-mayoral-election-117",
+     "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/will-nithya-raman-win-the-2026-los-angeles-mayoral-election-sVKhbp4tGVUy.jpg",
+     "tokens": [
+      {
+       "token_id": "50292933818751585369672690878774599873941191925538325333138798248932182222864",
+       "outcome": "Yes",
+       "price": 0.562
+      },
+      {
+       "token_id": "58507084608782512565480280053882807505189448738098588563704773804344223603355",
+       "outcome": "No",
+       "price": 0.438
+      }
+     ],
+     "rewards_config": [
+      {
+       "asset_address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+       "start_date": "2026-10-15",
+       "end_date": "2500-12-31",
+       "id": 304699,
+       "rate_per_day": 99,
+       "total_rewards": 0,
+       "total_days": 173203
+      }
+     ],
+     "rewards_max_spread": 6.5,
+     "rewards_min_size": 50,
+     "market_competitiveness": 167.005593
+    }
+   ],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 1
+  },
+  "will-the-democratic-party-control-the-senate-after-the-2026-midterm-elections": {
+   "data": [
+    {
+     "condition_id": "0x307a1ed89d60b61002dd5bbf00e1408c5ed2ab3fcdb056191ca7ef9bc34d38f3",
+     "question": "Will the Democratic Party control the Senate after the 2026 Midterm elections?",
+     "market_slug": "will-the-democratic-party-control-the-senate-after-the-2026-midterm-elections",
+     "event_slug": "which-party-will-win-the-senate-in-2026",
+     "image": "https://polymarket-upload.s3.us-east-2.amazonaws.com/will-the-democratic-party-control-the-senate-after-the-2026-midterm-elections-JJ9h02JGR09z.png",
+     "tokens": [
+      {
+       "token_id": "113287701564209339913693347405685749986285999146352375265161592243948562084773",
+       "outcome": "Yes",
+       "price": 0.635
+      },
+      {
+       "token_id": "107118433685650702332040991454078902188473746599223732907923581436160160612542",
+       "outcome": "No",
+       "price": 0.365
+      }
+     ],
+     "rewards_config": [
+      {
+       "asset_address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+       "start_date": "2026-10-01",
+       "end_date": "2500-12-31",
+       "id": 633271,
+       "rate_per_day": 40,
+       "total_rewards": 0,
+       "total_days": 173217
+      }
+     ],
+     "rewards_max_spread": 3.5,
+     "rewards_min_size": 200,
+     "market_competitiveness": 3581.331528
+    }
+   ],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 1
+  },
+  "will-glenn-youngkin-win-the-2028-us-presidential-election": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "will-franois-ruffin-win-the-2027-french-presidential-election": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "will-elon-musk-win-the-2028-republican-presidential-nomination": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "will-there-be-no-change-in-fed-interest-rates-after-the-september-2026-meeting-615": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "will-the-fed-decrease-interest-rates-by-25-bps-after-the-september-2026-meeting-586": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "will-the-fed-increase-interest-rates-by-25-bps-after-the-september-2026-meeting-649": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "will-the-fed-increase-interest-rates-by-50-bps-after-the-september-2026-meeting-664": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "will-united-russia-er-gain-the-most-seats-in-the-next-russian-parliamentary-election": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "will-renan-santos-win-the-2026-brazilian-presidential-election": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "will-tarcisio-de-frietas-win-the-2026-brazilian-presidential-election": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "strait-of-hormuz-traffic-returns-to-normal-by-september-30-20260702154339440": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "will-carlos-roberto-massa-jnior-win-the-2026-brazilian-presidential-election": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "will-eduardo-bolsonaro-win-the-2026-brazilian-presidential-election": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "fed-rate-hike-in-2026": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "will-new-people-nl-gain-the-most-seats-in-the-next-russian-parliamentary-election": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "us-announces-end-of-iranian-blockade-by-september-30-2026-20260727171615364-722-649-646-561-213-644-414-831": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "will-the-liberal-democratic-party-of-russia-ldpr-gain-the-most-seats-in-the-next-russian-parliamentary-election": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "bab-el-mandeb-strait-effectively-closed-by-september-30-999-671-939": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "will-a-just-russia-for-truth-srzp-gain-the-most-seats-in-the-next-russian-parliamentary-election": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "israel-closes-its-airspace-by-september-30": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "will-lula-win-the-most-votes-in-the-first-round-of-the-2026-brazil-presidential-election": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "israel-x-iran-ceasefire-continues-through-september-30": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  },
+  "kharg-island-no-longer-under-iranian-control-by-september-30-20260730004207224": {
+   "data": [],
+   "next_cursor": "LTE=",
+   "limit": 100,
+   "count": 0
+  }
+ }
+}
