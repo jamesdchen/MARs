@@ -90,11 +90,13 @@ def aggregate(runs, seeds=None):
     return rows
 
 
-def portfolio(rows):
-    """Per length: the specialist (any mask covering it) with the best seed-mean val P&L on that length."""
+def portfolio(rows, min_seeds=2, need_d13=False):
+    """Per length: the specialist (any mask covering it) with the best seed-mean val P&L on that length
+    (need_d13: only specialists whose own-length view passes D1.3 on every seed)."""
     pick = {}
     for L in ('5m', '15m', '4h'):
-        cands = [(r[f'len/{L}'][0], n) for n, r in rows.items() if L in LENS[r['mask']] and r['n_seeds'] >= 3]
+        cands = [(r[f'len/{L}'][0], n) for n, r in rows.items() if L in LENS[r['mask']] and r['n_seeds'] >= min_seeds
+                 and (not need_d13 or r['own_d13'] == 1.0)]
         best = max(cands) if cands else (float('-inf'), None)
         pick[L] = {'model': best[1] if best[0] > 0 else None, 'val_pnl': best[0] if best[0] > 0 else 0.0,
                    'best_candidate': best[1], 'best_candidate_pnl': best[0]}
@@ -130,23 +132,26 @@ def fmt(m):
 
 def main():
     runs = load_runs()
-    rows = aggregate(runs, seeds={1, 2, 3})
+    rows = aggregate(runs)
     pick = portfolio(rows)
+    pick_d13 = portfolio(rows, need_d13=True)
     print('| run | seeds | own-length val P&L $ | per mkt | fills/mkt | T6 | D1.3 | 5m | 15m | 4h |')
     for n in sorted(rows, key=lambda n: -rows[n]['pnl_total'][0]):
         r = rows[n]
         print(f"| {n} | {r['n_seeds']} | {fmt(r['pnl_total'])} | {fmt(r['own_pnl_per_mkt'])} | "
               f"{r['own_fills_per_mkt'][0]:.1f} | {r['own_t6'][0]:.2f} | {r['own_d13']:.2f} | "
               f"{fmt(r['len/5m'])} | {fmt(r['len/15m'])} | {fmt(r['len/4h'])} |")
-    print(json.dumps(pick, indent=1))
-    allrows = aggregate(runs)
-    port = portfolio_eval(runs, pick, sorted({r['seed'] for r in runs}))
-    for s, p in port:
-        print('portfolio seed', s, {k: p.get(k) for k in ('pnl_total', 'fills_per_market', 't6_share',
-                                                           't5_max_share', 'makes_markets', 'len/5m/pnl_total',
-                                                           'len/15m/pnl_total', 'len/4h/pnl_total')})
-    json.dump({'rows_s123': rows, 'rows_all_seeds': allrows, 'portfolio': pick,
-               'portfolio_by_seed': [{'seed': s, **nan_to_none(p)} for s, p in port]},
+    out = {'rows': rows}
+    for nm, pk in (('portfolio', pick), ('portfolio_d13', pick_d13)):
+        print(nm, json.dumps(pk))
+        port = portfolio_eval(runs, pk, sorted({r['seed'] for r in runs}))
+        for s, p in port:
+            print('  seed', s, {k: p.get(k) for k in ('pnl_total', 'fills_per_market', 't6_share',
+                                                       't5_max_share', 'makes_markets', 'len/5m/pnl_total',
+                                                       'len/15m/pnl_total', 'len/4h/pnl_total')})
+        out[nm] = pk
+        out[nm + '_by_seed'] = [{'seed': s, **nan_to_none(p)} for s, p in port]
+    json.dump(out,
               open(os.path.join(W2, 'summary.json'), 'w'), indent=1, default=float)
 
 

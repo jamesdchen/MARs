@@ -50,7 +50,7 @@ print("rewards programme:", n, "markets, $", round(total), "/day; universe rows"
 # ---- resolution
 res = {}
 for r in U:
-    g = get(f"{G}/markets?slug={r['slug']}")
+    g = get(f"{G}/markets?slug={r['slug']}") or get(f"{G}/markets?slug={r['slug']}&closed=true")
     g = g[0] if g else {}
     res[r["slug"]] = {k: g.get(k) for k in ("closed", "closedTime", "outcomePrices", "umaResolutionStatuses", "endDate",
                                             "lastTradePrice", "bestBid", "bestAsk", "spread", "liquidityNum", "volume24hrClob")}
