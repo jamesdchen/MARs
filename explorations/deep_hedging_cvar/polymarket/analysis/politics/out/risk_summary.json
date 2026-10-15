@@ -1,0 +1,100 @@
+{
+ "jumps_by_category": {
+  "economics": {
+   "markets": 10,
+   "market_days": 163.29861111111111,
+   "mean_abs_10m_c": 0.07206445796709489,
+   "p99_abs_10m_c": 1.0000000000000009,
+   "share_gt5c": 0.0011043553941571444,
+   "jumps5_per_day": 0.1590271767586288,
+   "jumps10_per_day": 0.07401807117831459,
+   "top1pct_share_of_variation": 0.56773303590353,
+   "max_abs_10m_c": 25.0
+  },
+  "geopolitics": {
+   "markets": 24,
+   "market_days": 527.7569444444445,
+   "mean_abs_10m_c": 0.04574346885631486,
+   "p99_abs_10m_c": 1.0000000000000002,
+   "share_gt5c": 0.0005033626870144306,
+   "jumps5_per_day": 0.07248422693007801,
+   "jumps10_per_day": 0.014910322483055481,
+   "top1pct_share_of_variation": 0.416749648240632,
+   "max_abs_10m_c": 32.99999999999999
+  },
+  "politics": {
+   "markets": 26,
+   "market_days": 740.0138888888889,
+   "mean_abs_10m_c": 0.006299301329727294,
+   "p99_abs_10m_c": 0.07500000000000007,
+   "share_gt5c": 0.00013912493663866885,
+   "jumps5_per_day": 0.020033990875968313,
+   "jumps10_per_day": 0.007479282048282746,
+   "top1pct_share_of_variation": 0.9356909430438842,
+   "max_abs_10m_c": 48.5
+  }
+ },
+ "maker_jump": [
+  {
+   "category": "economics",
+   "jump2h": false,
+   "fills": 9216,
+   "shares": 9609954.530841,
+   "edge_usd": 28151.689795277423,
+   "mo2h_usd": -9868.885788411617,
+   "mo2h_c_per_share": -0.1026944066877698,
+   "edge_c_per_share": 0.2929430072216353
+  },
+  {
+   "category": "economics",
+   "jump2h": true,
+   "fills": 1522,
+   "shares": 917285.989237,
+   "edge_usd": 10277.535326433694,
+   "mo2h_usd": -16801.210525571645,
+   "mo2h_c_per_share": -1.8316218412478882,
+   "edge_c_per_share": 1.1204286827691072
+  },
+  {
+   "category": "geopolitics",
+   "jump2h": false,
+   "fills": 40661,
+   "shares": 13042943.493368,
+   "edge_usd": 85698.99190693571,
+   "mo2h_usd": 39160.299714505825,
+   "mo2h_c_per_share": 0.3002412740223695,
+   "edge_c_per_share": 0.657052543013097
+  },
+  {
+   "category": "geopolitics",
+   "jump2h": true,
+   "fills": 727,
+   "shares": 193648.505799,
+   "edge_usd": 3784.8012901820475,
+   "mo2h_usd": -3371.074033627509,
+   "mo2h_c_per_share": -1.7408210921733418,
+   "edge_c_per_share": 1.954469658604302
+  },
+  {
+   "category": "politics",
+   "jump2h": false,
+   "fills": 53225,
+   "shares": 33577648.205677,
+   "edge_usd": 148413.89347534074,
+   "mo2h_usd": 64665.2409881962,
+   "mo2h_c_per_share": 0.19258418752884304,
+   "edge_c_per_share": 0.4420020501919734
+  },
+  {
+   "category": "politics",
+   "jump2h": true,
+   "fills": 8282,
+   "shares": 1656077.917179,
+   "edge_usd": 15468.716023279512,
+   "mo2h_usd": 15221.956720283426,
+   "mo2h_c_per_share": 0.9191570373822051,
+   "edge_c_per_share": 0.9340572603992732
+  }
+ ],
+ "resolution": []
+}
