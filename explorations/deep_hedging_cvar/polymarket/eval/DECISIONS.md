@@ -267,3 +267,27 @@ The coordinator then trains or collects 5 seeds of that method, or uses a pre-sp
 of them, and freezes the plan.
 
 **Unchanged:** D7's stopping rule and the 03:00 UTC deadline.
+
+## D9. Exploring a pivot to other market categories (recorded 2026-10-15 ~19:35 UTC)
+
+The user asked whether market making might work better outside crypto up/down, e.g. in sports
+or politics. Three workers study this using keyless data: complete on-chain fills, price history,
+live books and reward configs.
+
+| Worker | Scope |
+|---|---|
+| w6 | politics, economics, geopolitics |
+| w7 | census of maker economics across every category |
+| w8 | sports deep-dive |
+
+This is exploratory analysis. It selects no model, and it does not affect the crypto v2 protocol
+(D7/D8), which continues as planned.
+
+**If we pivot.** If the census shows a category with clearly positive maker economics and we
+pivot to it, a new protocol v3 will be pre-registered **before** any model is tuned for that
+category. It will fix:
+- that category's data;
+- its train/validation/test split by date;
+- a test set that nobody has touched.
+
+Nothing learned from the census is reported as a test result.
