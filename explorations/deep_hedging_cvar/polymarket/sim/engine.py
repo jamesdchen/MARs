@@ -66,6 +66,7 @@ class Model:
         self.mid = {i: mid[cm.LEN_NAME[L]] for i, L in enumerate(cm.LENS)}
         g = f["glm"]
         self.tau_cell = np.asarray(g["tau_cell"])
+        self.tau_cell_shift = np.asarray(g.get("tau_cell_shift", np.zeros_like(self.tau_cell)))
         self.b_gap, self.b_z5, self.b_os = g["b_absgap"], g["b_absz5"], g["b_onesided"]
         self.eta, self.decay = g["hawkes_eta"], np.exp(-1.0 / g["hawkes_tau_s"])
         me = f["market_effect"]
@@ -243,7 +244,7 @@ def simulate(model: Model, L: int, inp: dict, rng, knobs: dict) -> dict:
     lnS = np.log(S)
     lnS5 = np.concatenate([np.repeat(lnS[:, :1], 5, 1), lnS[:, :-5]], 1)
     z5 = np.minimum(np.abs(lnS - lnS5) / (np.maximum(np.asarray(inp["sigma"]), 1e-7) * np.sqrt(5)), 6.0)
-    cell = model.tau_cell[li][tb_row]                                      # [n]
+    cell = model.tau_cell[li][tb_row] + model.tau_cell_shift[li][tb_row]   # [n]
     mu_sz, sd_sz = model.size[li]
     pi_bar = float(np.mean(np.asarray(mp["update_prob"])))
     keep_sz = float(np.clip(1 - (1 - model.size_acf1[li]) / max(pi_bar, 1e-3), 0.0, 0.98))

@@ -32,6 +32,12 @@ Every run trains --steps (default 25M, the main sweep's budget) except R4.
   R5  pretraining on the simulator (data/build_sim, same obs layout) then fine-tuning
       on the replay; refused unless sim/validation_env.json "overall" is true.
   R6  recurrent PufferNet replica (layers {1, 2} x hidden {64, 128}).
+  R7  (DECISIONS.md D5; runs after R2) env reward_mode 2: each fill credited with its
+      markout over markout_h s {30, 60, 120} plus rebate, inventory penalty, no MTM;
+      on the best of R1/R2 (its BC init or off prior), sampled over inv_penalty, lr,
+      ent_coef (--r7-configs, default 16). Selection and reports stay on true P&L.
+      Refused until the env accepts reward_mode=2 (a test call); `auto` waits up to
+      --r7-wait minutes for it.
 Resuming: re-run the same command; finished runs are reused (never retrained or
 re-ledgered), killed runs restart (partial logs kept as *.killedN).
 """
@@ -56,9 +62,9 @@ PY = sys.executable
 sys.path.insert(0, HERE)
 import ledger  # noqa: E402
 
-ORDER = ('R1', 'R2', 'R3', 'R4', 'R5', 'R6')
-TITLES = {'R1': 'bc_warmstart', 'R2': 'off_prior', 'R3': 'mark_mode', 'R4': 'longer',
-          'R5': 'sim_pretrain', 'R6': 'recurrent'}
+ORDER = ('R1', 'R2', 'R7', 'R3', 'R4', 'R5', 'R6')   # D4 + D5 (R7 right after R2)
+TITLES = {'R1': 'bc_warmstart', 'R2': 'off_prior', 'R7': 'markout_reward', 'R3': 'mark_mode',
+          'R4': 'longer', 'R5': 'sim_pretrain', 'R6': 'recurrent'}
 DEADLINE = '2026-10-15T15:30:00+00:00'
 ROOT = os.path.join(HERE, 'runs', 'rounds')
 SIM_DIR = os.path.join(PM, 'data', 'build_sim')
@@ -249,6 +255,19 @@ class Rounds:
             for pre_steps in a.pretrain_steps:
                 c = fresh(bcfg)
                 variant(f'pre{pre_steps / 1e6:g}M', c, pre={'kind': 'pretrain', 'steps': int(pre_steps)})
+        elif rnd == 'R7':
+            init_base = self.r1r2_best() or base
+            icfg = copy.deepcopy(init_base['cfg'])
+            lr1 = icfg['ppo']['learning_rate']
+            for i in range(a.r7_configs):
+                c = copy.deepcopy(icfg)
+                c['total_timesteps'] = steps
+                h = (30, 60, 120)[i % 3]
+                c['env']['kw'].update(reward_mode=2, markout_h=h,
+                                      inv_penalty=float(10 ** rng.uniform(-5, -1.5)))
+                c['ppo']['learning_rate'] = float(lr1 * 10 ** rng.uniform(-0.3, 0.3))
+                c['ppo']['ent_coef'] = float(10 ** rng.uniform(-4, -2))
+                variant(f'c{i:02d}_h{h}', c)
         elif rnd == 'R6':
             for layers in (1, 2):
                 for hidden in (64, 128):
@@ -258,6 +277,28 @@ class Rounds:
         if a.max_configs:
             V = V[:a.max_configs]
         return V
+
+    def r1r2_best(self):
+        """The better of R1's and R2's best configs (D1.3 first, then any with 3 seeds)."""
+        for need in (True, False):
+            cands = [best_of(configs_from_index(self.runs_path, tag=self.tag(r)), require_d13=need)
+                     for r in ('R1', 'R2')]
+            cands = [c for c in cands if c]
+            if cands:
+                return max(cands, key=lambda c: c['mean'])
+        return None
+
+    def env_ready_r7(self):
+        """Test call: does the installed env accept reward_mode=2 and markout_h?"""
+        if self.standin:
+            return True, 'stand-in'
+        code = ('import numpy as np, env as E\n'
+                'e = E.MmEnv(num_envs=2, seed=0, reward_mode=2, markout_h=60)\n'
+                'e.reset(0)\n'
+                'for _ in range(400): e.step(np.full((2, 3), 3, np.int32))\n'
+                'e.close(); print("R7-ENV-OK")')
+        r = subprocess.run([PY, '-c', code], cwd=PM, capture_output=True, text=True, timeout=300)
+        return r.returncode == 0 and 'R7-ENV-OK' in r.stdout, (r.stderr or r.stdout)[-400:]
 
     def tag(self, rnd):
         return f'{rnd}_{TITLES[rnd]}' + (f'_{self.a.suffix}' if self.a.suffix else '')
@@ -357,6 +398,17 @@ class Rounds:
         base = self.fallback_base() if before is None else before
         if base is None:
             raise SystemExit('no base config: run the main pipeline (or any 3-seed config) first')
+        if rnd == 'R7' and not a.dry_run:
+            waited = 0
+            while True:
+                ok, why = self.env_ready_r7()
+                if ok:
+                    break
+                if a.mode != 'auto' or waited >= a.r7_wait:
+                    raise SystemExit(f'R7 refused: the env does not accept reward_mode=2 yet ({why.strip()[-200:]})')
+                print(json.dumps({'round': 'R7', 'waiting_for_env': waited}), flush=True)
+                time.sleep(120)
+                waited += 2
         V = self.plan(rnd, base)
         seeds = list(range(a.seeds))
         est = self.estimate_min(V, seeds)
@@ -371,8 +423,9 @@ class Rounds:
             print(json.dumps({'round': tag, 'skipped': f'estimate {est:.0f} min > {left:.0f} min to the deadline'}))
             return None
         state = {'round': tag, 'type': rnd, 'status': 'running', 'started': state.get('started') or now().isoformat(),
-                 'best_before': before, 'plan': plan}
+                 'best_before': before, 'plan': plan, 'mm_h_sha256_start': self.mm_sha()}
         jdump(state, state_path)
+        jdump({'pid': os.getpid(), 'round': tag, 'started': state['started']}, os.path.join(self.root, 'active.json'))
         self.append_history({k: state[k] for k in ('round', 'type', 'status', 'started')})
 
         # pre-steps (BC checkpoints, simulator pretraining), in parallel
@@ -425,6 +478,13 @@ class Rounds:
         delta = (rb['mean'] - before['mean']) if rb and before else None
         improved = bool(rb and (before is None or (rb['se'] == rb['se'] and delta > rb['se'])))
         pooled = math.sqrt(rb['se'] ** 2 + (before.get('se') or 0) ** 2) if rb and before and before.get('se') == before.get('se') else None
+        try:
+            os.remove(os.path.join(self.root, 'active.json'))
+        except OSError:
+            pass
+        end_sha = self.mm_sha()
+        state['mm_h_sha256_end'] = end_sha
+        state['env_changed_during_round'] = end_sha != state.get('mm_h_sha256_start')
         state.update({'status': 'done', 'finished': now().isoformat(), 'table': table, 'round_best': rb,
                       'delta': delta, 'improved': improved, 'pooled_se': pooled,
                       'rule': 'improved iff round best (D1.3, >= 3 seeds) - best before > round best seed SE'})
@@ -444,6 +504,9 @@ class Rounds:
                           'table': [{k: t[k] for k in ('variant', 'mean', 'se', 'n', 'fills_per_market', 't6_share', 'd13')}
                                     for t in table]}, default=float), flush=True)
         return state
+
+    def mm_sha(self):
+        return None if self.standin else sha256(os.path.join(PM, 'mm.h'))
 
     def append_history(self, row):
         h = self.history()
@@ -542,6 +605,8 @@ def main():
     p.add_argument('--steps', type=float, default=25e6,
                    help='steps per run in R1-R3, R5 (fine-tune), R6 (the main sweep\'s budget)')
     p.add_argument('--configs', type=int, default=16, help='R1: sampled configs')
+    p.add_argument('--r7-configs', type=int, default=16, help='R7: sampled configs')
+    p.add_argument('--r7-wait', type=int, default=90, help='auto: minutes to wait for reward_mode 2')
     p.add_argument('--max-configs', type=int, default=None, help='cap the variants of a round (smoke)')
     p.add_argument('--long-steps', type=float, default=200e6, help='R4 steps per run')
     p.add_argument('--pretrain-steps', type=float, nargs='*', default=[50e6, 100e6], help='R5 variants')

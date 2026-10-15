@@ -154,6 +154,20 @@ def grid(name: str, base: dict) -> list[dict]:
                 la["kappa"] = la["kappa"] * km
                 c[f"flow.lookahead.{L}"] = la
             cands.append(c)
+    elif name == "random":
+        rng = np.random.default_rng(2026)
+        la0 = {L: dict(base["flow"]["lookahead"][L]) for L in LENS}
+        cands = [{}]
+        for _ in range(16):
+            km = float(np.exp(rng.uniform(np.log(0.5), np.log(2.0))))
+            im = float(np.exp(rng.uniform(np.log(0.5), np.log(2.0))))
+            c = {f"flow.lookahead.{L}": {**la0[L], "kappa": la0[L]["kappa"] * km} for L in LENS}
+            c.update({f"flow.impact.{L}.kappa": imp0[L] * im for L in LENS})
+            c["flow.refill_prob"] = float(rng.choice([0.7, 0.8, 0.9, 0.95]))
+            w = float(rng.choice([0.0, 0.0, 0.1, 0.2]))
+            c.update({f"flow.informed.{L}.w": w for L in LENS})
+            c["flow.actual_book_tracking"] = float(rng.choice([1.0, 1.0, 0.75]))
+            cands.append(c)
     elif name == "copy5m":
         for k5, c5 in ((1.0, 0.0), (0.5, 0.0), (1.0, 0.1)):
             cands.append({"flow.direction.rho_copy_by_len.5m": c5, "flow.direction.rho_copy_by_len.15m": 0.1,

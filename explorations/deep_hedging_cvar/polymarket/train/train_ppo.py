@@ -93,6 +93,8 @@ FLAGS = {
     'Q': (('env', 'kw', 'Q'), float),
     'mark_mode': (('env', 'kw', 'mark_mode'), int),
     'off_prior': (('policy', 'off_prior'), float),  # MLP: initial logit bonus of 'off' (absent = 0)
+    'reward_mode': (('env', 'kw', 'reward_mode'), int),  # 0 MTM, 1 join probe, 2 fill markout (D5)
+    'markout_h': (('env', 'kw', 'markout_h'), float),    # reward_mode 2: markout horizon (s)
 }
 
 

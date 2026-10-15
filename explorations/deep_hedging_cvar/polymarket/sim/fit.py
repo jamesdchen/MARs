@@ -696,6 +696,34 @@ def fit_flow(P: dict, mk: pd.DataFrame, mid, reg, pre: pd.DataFrame | None = Non
     return out
 
 
+def calibrate_cell_rate(P: dict, mk: pd.DataFrame, params: dict, reps: int = 10) -> np.ndarray:
+    """Per-(length, tau bucket) log shift of the arrival baseline so the simulated mean taker-tx rate per cell
+    matches train (cells with >= 15 real txs; clipped to +-1.5). Adds to flow.glm.tau_cell_shift."""
+    import copy
+    import metrics as mt
+    import engine as en
+    ul = cm.train_underlying()
+    prices = [cm.market_pricing(ul[r.coin][1], ul[r.coin][2], ul[r.coin][0], r.open_ts, r.end_ts)
+              for r in mk.itertuples()]
+    tb_r = cm.tau_bucket(np.minimum(P["seconds_to_close"], P["L"] - 1))
+    li_r = np.searchsorted(cm.LENS, P["L"])
+    real = np.zeros((3, cm.NTAU))
+    np.add.at(real, (li_r, tb_r), P["trade_count"])
+    model = en.Model(copy.deepcopy(params))
+    sim = np.zeros((3, cm.NTAU))
+    nrep = 0
+    for d in mt.sim_datasets(model, mk, prices, reps, 31, reps):
+        tb_s = cm.tau_bucket(np.minimum(d.tau, d.L - 1))
+        np.add.at(sim, (d.li, tb_s), d.X[:, cm.C["trade_count"]])
+        nrep += 1
+    sim /= max(nrep, 1)
+    old = np.asarray(params["flow"]["glm"].get("tau_cell_shift", np.zeros((3, cm.NTAU))), float)
+    ratio = np.where((real >= 15) & (sim > 0), real / np.maximum(sim, 1e-9), 1.0)
+    new = np.clip(old + np.log(ratio), -1.5, 1.5)
+    print("  cell rate ratios real/sim:\n", np.round(ratio, 2))
+    return new
+
+
 def calibrate_rate(P: dict, mk: pd.DataFrame, params: dict, reps: int = 2, iters: int = 2) -> dict:
     """Per-length level shift of log A_m so the simulated total taker-tx count on the train schedule equals the
     real one (the lognormal market effect is fitted on log scale, so its mean differs from the data's)."""
@@ -916,6 +944,7 @@ def main():
                                                            "refill_prob", "actual_book_tracking",
                                                            "lookahead_calibration")}
         keep_shift = params.get("flow", {}).get("market_effect", {}).get("a_len_shift")
+        keep_cell = params.get("flow", {}).get("glm", {}).get("tau_cell_shift")
         pre = cm.pre_period_trades(*a.pre_trades) if a.pre_trades else None
         if pre is not None:
             print(f"pre-period trades: {len(pre)} legs, {int(pre.is_taker.sum())} taker txs, "
@@ -928,7 +957,12 @@ def main():
                                and not (k == "stamp_delay" and "delay" in a.parts)})
         if keep_shift is not None and "rate" not in a.parts:
             params["flow"]["market_effect"]["a_len_shift"] = keep_shift
+        if keep_cell is not None and "cellrate" not in a.parts:
+            params["flow"]["glm"]["tau_cell_shift"] = keep_cell
         print(f"flow done {time.time()-t0:.1f}s")
+    if "cellrate" in a.parts:
+        params["flow"]["glm"]["tau_cell_shift"] = calibrate_cell_rate(P, mk, params)
+        print(f"cell rate calibration done {time.time()-t0:.1f}s")
     if "rate" in a.parts:
         params["flow"]["market_effect"]["a_len_shift"] = calibrate_rate(P, mk, params, reps=10, iters=1)["a_len_shift"]
         print(f"rate calibration done {time.time()-t0:.1f}s")

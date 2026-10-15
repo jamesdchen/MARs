@@ -1,7 +1,7 @@
 {
  "meta": {
   "fitted_on": "train split 0 only: 431 markets (5m 248, 15m 146, 4h 37), opens 2026-08-21..22 UTC; Binance < 2026-08-23",
-  "created_utc": "2026-10-15T08:35:24.349850+00:00",
+  "created_utc": "2026-10-15T08:43:27.263554+00:00",
   "n_rows": 739031,
   "pricer": {
    "halflife_s": 300,
@@ -91437,7 +91437,39 @@
    "loglik_hawkes": -32710.761068,
    "loglik_poisson": -41330.105149,
    "lr_stat_hawkes": 17238.688162,
-   "note": "lambda_t = A_m * exp(tau_cell[len,tau_b] + b_absgap*min(|p-mid|,0.3) + b_absz5*min(|z5|,6) + b_onesided*O) + hawkes_eta * H_t,  H_t = d*H_{t-1} + (1-d)*n_{t-1}, d = exp(-1/hawkes_tau); baseline shape from a Poisson GLM with market fixed effects, (eta, tau) and A_m by profile MLE; covariates at match time (block time - 3 s); lambda = 0 in the hollow state"
+   "note": "lambda_t = A_m * exp(tau_cell[len,tau_b] + b_absgap*min(|p-mid|,0.3) + b_absz5*min(|z5|,6) + b_onesided*O) + hawkes_eta * H_t,  H_t = d*H_{t-1} + (1-d)*n_{t-1}, d = exp(-1/hawkes_tau); baseline shape from a Poisson GLM with market fixed effects, (eta, tau) and A_m by profile MLE; covariates at match time (block time - 3 s); lambda = 0 in the hollow state",
+   "tau_cell_shift": [
+    [
+     0.011058,
+     -0.097451,
+     0.336247,
+     -0.044553,
+     -0.072362,
+     0.0,
+     0.0,
+     0.0
+    ],
+    [
+     -0.819027,
+     -0.864108,
+     0.048774,
+     0.171343,
+     0.061442,
+     0.034897,
+     0.0,
+     0.0
+    ],
+    [
+     0.304489,
+     -0.082836,
+     0.14964,
+     0.101137,
+     -0.133916,
+     -0.152346,
+     -0.192985,
+     -0.220184
+    ]
+   ]
   },
   "market_effect": {
    "a_len": {
