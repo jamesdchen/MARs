@@ -1,0 +1,6 @@
+out/census_markets.parquet
+out/maker_legs.parquet
+out/*.big.parquet
+out/all_legs.parquet
+out/maker_legs_crypto.parquet
+out/all_legs_crypto.parquet

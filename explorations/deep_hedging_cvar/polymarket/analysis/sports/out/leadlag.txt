@@ -1,0 +1,15 @@
+Polymarket (polyrec books, 1 Hz) vs Smarkets (exchange quotes, ~3 s polls) lead/lag for tonight's games.
+
+For each matched outcome: Polymarket mid of that outcome's token and Smarkets mid (best bid/offer, bps/1e4).
+Both on a 3 s grid (last value), pre-game and live separately:
+  level gap (Polymarket - Smarkets, cents): mean |gap|, share of time the Polymarket touch excludes Smarkets mid;
+  cross-correlation of 3 s mid changes at lags -60..+60 s (positive lag = Polymarket leads);
+  big moves: for every Polymarket 30 s move >= 4 cents in-play, the time until Smarkets has moved half as much in
+  the same direction (negative = Smarkets moved first).
+Note Smarkets polling (3 s) and their own in-play bet delay make this a coarse test (resolution ~3 s).
+Usage: leadlag.py <rec_out_dir> <smarkets.jsonl>
+
+## level agreement
+Empty DataFrame
+Columns: []
+Index: []

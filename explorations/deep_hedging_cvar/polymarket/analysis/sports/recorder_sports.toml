@@ -1,0 +1,16 @@
+# polyrec config for the sports live-book sample (w8). Sports endDate == game start, so book rows
+# and the subscription continue 5 h past "end" to cover in-play.
+out_dir = "/tmp/claude-0/-home-user-MARs/fc9de0c5-c81f-55ee-a203-afdadaace9c8/scratchpad/rec"
+discovery_interval_s = 120
+[[source]]
+name = "sports"
+params = { tag_id = "100639" }
+slug_regex = '^(nfl-sea-den-2026-10-16|nfl-sea-den-2026-10-16-spread-away-2pt5|nfl-sea-den-2026-10-16-total-40pt5|nhl-nyi-ott-2026-10-15|nhl-utah-edm-2026-10-15|nhl-nyr-nj-2026-10-15|nhl-buf-tor-2026-10-15|nba-tor-nyk-2026-10-15|nba-okc-hou-2026-10-15|cfb-gas-old-2026-10-15|uel-cel1-juv-2026-10-15-juv|uel-hof-bes-2026-10-15-hof|uel-olm-oly-2026-10-15-oly|uel-ben-cel-2026-10-15-ben|col-bha-kau-2026-10-15-kau|cs2-lgc-furia-2026-10-15|lol-c9-kc-2026-10-15|uel-din-and-2026-10-15-din)$'
+window = "end_date"
+horizon_s = 43200
+pre_open_s = 86400
+post_close_s = 18000
+linger_s = 18000
+max_pages = 60
+[trades]
+enabled = true

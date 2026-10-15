@@ -1,0 +1,43 @@
+{
+ "args": {
+  "data": "runs/data_s3.npz",
+  "cv": false,
+  "folds": 4,
+  "hidden": 128,
+  "layers": 2,
+  "epochs": 3,
+  "seed": 3,
+  "threads": 1,
+  "out": "models/edge_s3.pt"
+ },
+ "train_fit": {
+  "n": 235750,
+  "fills": 51321,
+  "auc_fill": 0.8067893926397156,
+  "calib_fill": 1.0242525339126587,
+  "edge_corr_on_fills": 0.34084734804529354,
+  "realised_edge_cents_per_share": -6.498263835906982,
+  "pred_edge_cents_per_share_on_fills": -6.418012619018555,
+  "fac_sel_frac@-0.005": 0.7662,
+  "fac_credit@-0.005": 0.00497,
+  "fac_sel_frac@0.0": 0.3394,
+  "fac_credit@0.0": 0.01429,
+  "fac_sel_frac@0.002": 0.1185,
+  "fac_credit@0.002": 0.04081,
+  "fac_sel_frac@0.005": 0.0675,
+  "fac_credit@0.005": 0.0664,
+  "fac_corr": 0.31436253428626554,
+  "fac_credit_top10": 0.15613,
+  "dir_sel_frac@-0.005": 0.4626,
+  "dir_credit@-0.005": 0.00538,
+  "dir_sel_frac@0.0": 0.4031,
+  "dir_credit@0.0": 0.00583,
+  "dir_sel_frac@0.002": 0.378,
+  "dir_credit@0.002": 0.00603,
+  "dir_sel_frac@0.005": 0.3397,
+  "dir_credit@0.005": 0.00632,
+  "dir_corr": 0.227958952863437,
+  "dir_credit_top10": 0.02832,
+  "realised_credit_per_decision_all": -0.023403635248541832
+ }
+}

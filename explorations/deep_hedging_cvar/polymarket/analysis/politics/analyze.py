@@ -117,6 +117,51 @@ def ph_at(ph_t, ph_p, t):
     return np.where(ok, ph_p[np.clip(i, 0, None)] if len(ph_p) else np.nan, np.nan)
 
 
+MATCH_LAG = 3
+
+
+def l2_books():
+    if SET == "crypto":
+        fr = []
+        for cl in ("5m", "15m", "4h"):
+            b = pd.read_parquet(PM / f"data/raw/updown_{cl}.parquet", columns=["market_slug", "outcome", "captured_at", "best_bid", "best_ask"],
+                                filters=[("outcome", "=", "Up")])
+            fr.append(b)
+    else:
+        rec = HERE / "rec_out"
+        if not rec.exists():
+            return None
+        sys.path.insert(0, str(PM / "recorder"))
+        from polyrec.sinks import read_dataset
+        fr = [read_dataset(rec, "books").to_pandas()[["market_slug", "outcome", "captured_at", "best_bid", "best_ask"]]]
+        fr[0] = fr[0][fr[0].outcome == "Yes"]
+    b = pd.concat(fr, ignore_index=True)
+    b["t"] = (b.captured_at - pd.Timestamp("1970-01-01", tz="UTC")).dt.total_seconds()
+    b["mid"] = (b.best_bid + b.best_ask) / 2
+    return {s: (g.t.values.astype(float), g.mid.values) for s, g in b.dropna(subset=["mid"]).sort_values("t").groupby("market_slug")}
+
+
+_L2 = {}
+
+
+def l2_mid(M, h=0):
+    if "b" not in _L2:
+        _L2["b"] = l2_books()
+    B = _L2["b"]
+    if not B:
+        return None
+    out = np.full(len(M), np.nan)
+    for slug, idx in M.groupby("slug").indices.items():
+        if slug not in B:
+            continue
+        t, m = B[slug]
+        q = M.block_time.values[idx].astype(float) - MATCH_LAG + h
+        i = np.searchsorted(t, q, side="right") - 1
+        ok = (i >= 0) & (q - t[np.clip(i, 0, None)] <= 3600)
+        out[idx] = np.where(ok, m[np.clip(i, 0, None)], np.nan)
+    return out
+
+
 def main():
     fills, tm, ph = setup()
     f = fills
@@ -165,6 +210,12 @@ def main():
         mk_all.append(out)
     M = pd.concat(mk_all, ignore_index=True)
     M["edge_c"] = 100 * M.side0 * (M.mid0 - M.p0)
+    l2 = l2_mid(M)
+    if l2 is not None:          # validation of the book-free proxy against the recorded L2 mid 3 s before the block
+        M["mid_l2"] = l2
+        M["edge_l2_c"] = 100 * M.side0 * (M.mid_l2 - M.p0)
+        for k, h in H.items():
+            M[f"mo_l2_{k}_c"] = 100 * M.side0 * (np.where(M.block_time + h >= M.end, M.pay0, l2_mid(M, h)) - M.p0)
     for k in list(H) + ["res"]:
         M[f"mo_{k}_c"] = 100 * M.side0 * (M[f"mid_{k}"] - M.p0)
     for k in H:
@@ -178,7 +229,7 @@ def main():
     M.to_parquet(HERE / f"data/maker_fills_{SET}.parquet")
 
     # ------------------------------------------------------------------ summaries (size-weighted, cents/share)
-    cols = ["edge_c", "edge_ph_c"] + [f"mo_{k}_c" for k in list(H) + ["res"]] + [f"moph_{k}_c" for k in H] + ["rebate_c"]
+    cols = ["edge_c", "edge_ph_c"] + [c for c in M.columns if c.startswith(("edge_l2", "mo_l2"))] +  [f"mo_{k}_c" for k in list(H) + ["res"]] + [f"moph_{k}_c" for k in H] + ["rebate_c"]
 
     def summ(d):
         w = d["size"]
@@ -202,7 +253,8 @@ def main():
     with pd.option_context("display.width", 250, "display.max_columns", 40, "display.float_format", "{:.3g}".format):
         for k in ("all", "category", "plevel", "ttr"):
             print(f"== {SET} by {k}\n", tabs[k][["maker_fills", "shares", "notional_usd", "mid_from_trades", "edge_c", "edge_ph_c",
-                                                   "mo_1m_c", "mo_5m_c", "mo_30m_c", "mo_2h_c", "mo_res_c", "moph_2h_c", "rebate_c"]])
+                                                   "mo_1m_c", "mo_5m_c", "mo_30m_c", "mo_2h_c", "mo_res_c", "moph_2h_c", "rebate_c"]
+                                                  + [c for c in tabs[k].columns if c.startswith(("edge_l2", "mo_l2"))]])
 
     # ------------------------------------------------------------------ wallet P&L
     end_mark = {}
