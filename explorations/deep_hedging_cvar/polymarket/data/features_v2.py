@@ -157,7 +157,8 @@ class CoinGrid:
         lo = np.where(np.isnan(B["lo"]), np.inf, B["lo"])
         H = np.max(np.stack([hi[bt - j] for j in range(BPS)]), 0)
         L = np.min(np.stack([lo[bt - j] for j in range(BPS)]), 0)
-        self.hl1 = np.where(np.isfinite(H) & np.isfinite(L), np.log(H / np.where(np.isfinite(L), L, 1.0)), 0.0)
+        ok = np.isfinite(H) & np.isfinite(L)
+        self.hl1 = np.log(np.where(ok, H, 1.0) / np.where(ok, L, 1.0))
         # typical activity: EWMA (half-life 300 s) of USD volume and trade count per second,
         # over complete seconds up to t (causal); seconds start at bucket 0 of base
         nsec = nbk // BPS
