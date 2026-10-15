@@ -90,7 +90,10 @@ def do_plan(a):
 
 def job_cmd(c, seed, steps):
     rdir = os.path.join(RUNS, f'{c["name"]}_s{seed}')
-    cfg = {'env': {'backend': 'real', 'kw': {**BASE_ENV, 'markout_h': c['markout_h'], 'inv_penalty': c['inv_penalty']}},
+    kw = {**BASE_ENV, 'markout_h': c['markout_h'], 'inv_penalty': c['inv_penalty']}
+    if c.get('reward_scale'):
+        kw['reward_scale'] = c['reward_scale']
+    cfg = {'env': {'backend': 'real', 'kw': kw},
            'policy': dict(POLICY),
            'ppo': {'learning_rate': c['lr'], 'ent_coef': c['ent_coef'], 'gamma': 0.9988214282795336,
                    'gae_lambda': 0.9794307540969474, 'bptt_horizon': 64, 'minibatch_size': 8192,
@@ -104,6 +107,31 @@ def job_cmd(c, seed, steps):
            '--init', bc_path(c['teacher'], c['off_bias']), '--kl-coef', str(c['kl_coef']),
            '--kl-decay', str(c['kl_decay']), '--kl-teacher', bc_path(c['teacher'])]
     return rdir, cmd
+
+
+def do_plan2(a):
+    """Round 2 (appended to plan.json): larger reward_scale so the value head learns from the
+    markout credit (round 1: explained variance ~0.03 at the default 1/Q), lower KL."""
+    path = os.path.join(W5, 'plan.json')
+    plan = json.load(open(path))
+    if any(c.get('round') == 2 for c in plan):
+        raise SystemExit('round 2 already planned')
+    rng = np.random.RandomState(a.plan_seed + 2)
+    i0 = len(plan)
+    specs = [('asl_act', rs, h) for rs in (0.1, 1.0) for h in (60, 120, 300)] + \
+            [('fv_act', rs, h) for rs in (0.1, 1.0) for h in (120, 300)] + \
+            [('asl_act', 0.1, 120), ('asl_act', 0.1, 300), ('asl_act', 1.0, 120), ('fv', 0.1, 120)]
+    for j, (t, rs, h) in enumerate(specs):
+        plan.append({'name': f'c{i0 + j:02d}_{t}_h{h}_rs{rs:g}', 'round': 2, 'teacher': t, 'markout_h': h,
+                     'reward_scale': rs,
+                     'kl_coef': float(10 ** rng.uniform(-2, np.log10(0.05))),
+                     'kl_decay': float(rng.choice([0.25, 0.5])),
+                     'inv_penalty': float(10 ** rng.uniform(-5, -3)),
+                     'off_bias': 0.0,
+                     'lr': float(6.8e-4 * 10 ** rng.uniform(-0.5, 0.2)),
+                     'ent_coef': float(10 ** rng.uniform(-4, -2.5))})
+    json.dump(plan, open(path, 'w'), indent=1)
+    print(json.dumps(plan[i0:], indent=1))
 
 
 def do_run(a):
@@ -146,7 +174,7 @@ def do_run(a):
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument('mode', choices=['bc', 'plan', 'run'])
+    p.add_argument('mode', choices=['bc', 'plan', 'plan2', 'run'])
     p.add_argument('--bc-envs', type=int, default=1024)
     p.add_argument('--bc-steps', type=int, default=2048)
     p.add_argument('--bc-epochs', type=int, default=20)
@@ -158,7 +186,7 @@ def main():
     p.add_argument('--steps', type=float, default=25e6)
     p.add_argument('--jobs', type=int, default=4)
     a = p.parse_args()
-    {'bc': do_bc, 'plan': do_plan, 'run': do_run}[a.mode](a)
+    {'bc': do_bc, 'plan': do_plan, 'plan2': do_plan2, 'run': do_run}[a.mode](a)
 
 
 if __name__ == '__main__':
