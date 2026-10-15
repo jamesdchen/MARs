@@ -31,11 +31,15 @@ QUOTE_AGE = 600.0                                     # s
 H = {"1m": 60, "5m": 300, "30m": 1800, "2h": 7200}
 
 
-def load_fills(src):
+COLS = ["block_time", "tx_hash", "log_index", "exchange", "maker", "side", "token_id", "fee", "price", "size", "role"]
+
+
+def load_fills(src, tokens=None):
     fs = sorted((PM / "onchain/data" / src / "fills").glob("date=*/day.parquet"))
     if not fs:      # partial day (live window): segment part files
         fs = sorted((PM / "onchain/data" / src / "fills").glob("date=*/part-*.parquet"))
-    f = pd.concat([pd.read_parquet(p) for p in fs], ignore_index=True)
+    flt = [("token_id", "in", sorted(tokens))] if tokens is not None else None
+    f = pd.concat([pd.read_parquet(p, columns=COLS, filters=flt) for p in fs], ignore_index=True)
     return f.drop_duplicates(["tx_hash", "log_index"])
 
 
@@ -86,6 +90,9 @@ def setup():
         import markets as MK
         tm = pd.concat([pd.read_parquet(p) for p in sorted((PM / "onchain/data/crypto_more/markets").glob("date=*.parquet"))])
         tm = tm.drop_duplicates("token_id")
+        # memory: same coins as the train data, and a deterministic third of the markets (~15M legs in total)
+        coins = set(pd.read_parquet(PM / "data/raw/markets.parquet", columns=["coin"]).coin)
+        tm = tm[tm.coin.isin(coins) & (tm.condition_id.str[-2:].apply(lambda x: int(x, 16) % 3 == 0))]
         tm = tm[(tm.event_start_ts >= pd.Timestamp("2026-08-15", tz="UTC").timestamp())
                 & (tm.end_ts <= pd.Timestamp("2026-08-21", tz="UTC").timestamp())]
         raw = MK.Gamma().raw(sorted(tm.slug.unique()))
@@ -101,7 +108,7 @@ def setup():
                                pay0=tm.slug.map(pay).astype(float), fee_rate=0.07, rebate_rate=0.20, resolved_flag=True,
                                start=tm.event_start_ts.astype(float)))
         ph = None
-        fills = load_fills("crypto_more")
+        fills = load_fills("crypto_more", set(tm.token_id))
     else:
         mk = pd.read_parquet(PM / "data/raw/markets.parquet")
         mk = mk[(mk.event_start >= pd.Timestamp("2026-08-21", tz="UTC")) & (mk.end < pd.Timestamp("2026-08-23", tz="UTC"))]

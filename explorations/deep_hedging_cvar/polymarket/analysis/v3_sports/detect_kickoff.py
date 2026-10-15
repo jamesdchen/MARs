@@ -1,9 +1,13 @@
 #!/usr/bin/env python
 """Track S (D11): offline kickoff detection from the recorder's own data (the clearBookOnStart wipe).
 
-Sports game markets have clearBookOnStart=true. When the game begins, the exchange cancels every
-resting order, so the book of both outcome tokens empties at once. Market makers then re-quote
-in-play. This script finds that wipe for each recorded market and compares it with the scheduled
+Sports game markets have clearBookOnStart=true: the exchange cancels every resting order, the book of
+both outcome tokens collapses at once (observed: ~55 levels -> 3+3 within 0.3 s), and market makers
+re-quote. OBSERVED 2026-10-15 (val-flyr-mibrf, dota2-amaru-skyrea, scheduled 21:00:00 UTC): the wipe
+fires at the SCHEDULED gameStartTime (+0.06..0.32 s), although val went live 8 min later and dota2
+later still. The wipe is therefore a schedule-driven event, which matches the docs' warning that
+early starts may not be cleared in time. It tells you when the book was cleared, not when the game
+began. kickoff_watch.py supplies the game start, and actual_kickoffs() merges the two. This script finds that wipe for each recorded market and compares it with the scheduled
 kickoff (gamma gameStartTime, from kickoff/meta.json, else the books' market_end_at) and with
 kickoff_watch's observed start (kickoff/kickoffs.csv logic), when that is available.
 
@@ -382,18 +386,33 @@ def detect(recs: list[Path] | None = None, kdir: Path = KDIR, pre_s: float = PRE
 
 
 def actual_kickoffs(recs: list[Path] | None = None, kdir: Path = KDIR, min_watch_conf: str = "medium") -> dict[str, dict]:
-    """{slug: {"t": actual kickoff unix, "source", "confidence", "scheduled", "delta_s"}} merging
-    the book wipe (detect) and kickoff_watch. Priority: a strong wipe (high), the watch's observation
-    (its own confidence), then a mass-cancel-only wipe (medium)."""
-    out = kw.load_actual_kickoffs(kdir, min_conf=min_watch_conf) if (Path(kdir) / "meta.json").exists() else {}
+    """{slug: {"t", "source", "confidence", "wipe", "game_start", "scheduled", "delta_s"}}.
+
+    t = the END OF THE PRE-GAME REGIME = the earlier of (a) the clearBookOnStart book wipe found in the
+    recorder data and (b) the game start observed by kickoff_watch (confidence >= min_watch_conf).
+    Observed 2026-10-15: the wipe fires at the SCHEDULED gameStartTime (to 0.3 s) even when the game
+    starts later, so (a) pins the scheduled cut and (b) catches early starts. A wipe counts when it is
+    strong (empty book) or a mass cancel of >= 20 levels; a smaller mass cancel is used only if
+    nothing else exists (confidence low)."""
+    watch = kw.load_actual_kickoffs(kdir, min_conf=min_watch_conf) if (Path(kdir) / "meta.json").exists() else {}
+    wipes = {}
     for r in detect(recs, kdir, write=False):
         if r["wipe_unix"] == "":
             continue
-        strong = any(k in r["wipe_kind"] for k in STRONG)
-        if strong or r["slug"] not in out:
-            out[r["slug"]] = dict(t=float(r["wipe_unix"]), source="wipe_" + r["wipe_kind"],
-                                  confidence="high" if strong else "medium",
-                                  scheduled=r["scheduled_unix"], delta_s=r["wipe_delta_s"])
+        strong = any(k in r["wipe_kind"] for k in STRONG) or (r["levels_before"] or 0) >= 20
+        wipes[r["slug"]] = (float(r["wipe_unix"]), r["wipe_kind"], "high" if strong else "low", r["scheduled_unix"])
+    out = {}
+    for s in set(watch) | set(wipes):
+        w, g = wipes.get(s), watch.get(s)
+        cands = []
+        if w and (w[2] == "high" or not g):
+            cands.append((w[0], "wipe_" + w[1], w[2]))
+        if g:
+            cands.append((g["t"], g["source"], g["confidence"]))
+        t, src, conf = min(cands)
+        sched = (w[3] if w else None) or (float(g["scheduled"]) if g and g["scheduled"] != "" else None)
+        out[s] = dict(t=t, source=src, confidence=conf, wipe=w[0] if w else None, game_start=g["t"] if g else None,
+                      scheduled=sched, delta_s=round(t - sched, 1) if sched else None)
     return out
 
 

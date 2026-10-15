@@ -101,3 +101,50 @@ These are open games via `build_sports --allow-open`: each game is cut at its la
 ### Results (real kicked-off games)
 
 To be filled from `baseline_out/summary.md` after the rerun.
+
+## Kickoff detection
+
+Two tools find the ACTUAL game start. They exist because `clearBookOnStart` wipes the book when the game
+begins, and that can happen before or after the scheduled `gameStartTime`. An early start means the
+pre-game book already contains in-play quotes. A late start means the episode ends while the game is still pre-game.
+
+| tool | what it does | output (`kickoff/`) |
+|---|---|---|
+| `kickoff_watch.py` (long-running) | Logs every message of `wss://sports-api.polymarket.com/ws` with its local receive time, starting a new file each UTC day and reconnecting with backoff. Polls gamma `/markets?slug=..` (20 per request) every 30 s for every recorded game, from scheduled −20 min to +40 min, and on up to +3 h while the game is not yet live. The recorded slugs come from `rec_out/coverage` "live" events. Every 5 min it re-derives `kickoffs.csv`. | `ws_<day>.jsonl`, `gamma_<day>.jsonl`, `meta.json` (slug → gameStartTime, endDate, event slug, gameId), `kickoffs.csv`, `watch.log` |
+| `detect_kickoff.py` (offline) | Rebuilds each token's book from the recorder raw log (`book`/`rest_book` snapshots + `price_change` deltas). It looks for the wipe in [sched − 3 h, sched + 1 h]: a `book` snapshot with empty ladders, the book emptied on both sides, or a mass cancel (≥ 80 % of the levels on each side removed within 10 s). The books parquet (both ladders empty) is the fallback. It compares the wipe with the schedule and with kickoff_watch. | `detect.csv` (+ `detect_cache.json`) |
+
+Run them:
+
+    nohup nice -n 10 ../../../.venv/bin/python kickoff_watch.py >> kickoff/watch.log 2>&1 & echo $! > kickoff/watch.pid
+    python kickoff_watch.py --derive        # rebuild kickoffs.csv from the logs
+    python detect_kickoff.py                # rec_out -> kickoff/detect.csv, prints the games already past kickoff
+    python detect_kickoff.py --synthetic    # self-test: early empty-book wipe, late per-level wipe, no wipe, a pre-game 60 % pull (must not fire)
+
+How each tool reports an actual kickoff:
+* `kickoffs.csv` takes the first live observation (ws `live`/`status` running/InProgress, or gamma `live`/`ended`/`elapsed>0`). It brackets that with the last not-live observation; ws sends `status: not_started, live: false` around the scheduled time. Confidence is
+  `high` (bracket ≤ 60 s), `medium` (≤ 10 min), `low`, or `upper_bound` (already live when first seen, e.g. games that were running when the watcher started).
+* `detect.csv` reports the wipe time and kind (`book_empty` | `emptied` | `books_empty` = strong; `mass_cancel` = medium; `mass_cancel+emptied`
+  = a mass cancel that ends with an empty book, timed at its first cancel).
+
+**Observed 2026-10-15 (first live test).** `val-flyr-mibrf` and `dota2-amaru-skyrea` were both scheduled for 21:00:00.
+Their books collapsed at 21:00:00.06–0.32 (val: about 64 levels down to 3+3 within 0.3 s, then MMs re-quoted at wide spreads).
+The games themselves started later: the ws sent `status: not_started` at 21:00:15, and val went `running` at 21:08:15 (+496 s), while dota2 had not started at 21:09.
+**The clearBookOnStart wipe is driven by the scheduled gameStartTime, not by the actual start.** The wipe gives the cut time
+the book actually saw, while kickoff_watch gives the game start. An early start (game before wipe) appears only in kickoff_watch, as the docs warn.
+A late start leaves the wipe at the scheduled time, followed by a re-quoted pre-game book until the real start.
+
+**Coverage limit.** `recorder_pregame.toml` writes book rows until gamma endDate + 300 s and stays subscribed until endDate + 600 s. Traditional sports have endDate = gameStartTime. **A start more than ~10 min late leaves no wipe in `rec_out`.** Such a start is visible only to kickoff_watch, whose ws runs all the time and whose gamma polls run until the game shows live, or for at most 3 h. Early starts are fully visible in the recorder data.
+Esports are different: their gamma endDate is gameStartTime + 6 h (all 80 cs2/dota2/lol/val markets on 2026-10-15). The recorder therefore keeps up to 6 h of in-play esports book as well, and late esports starts appear in its data. build_sports.py already cuts at gameStartTime, not endDate.
+
+**Hook for build_sports.py.** Not applied: build_sports.py is unchanged. Add 3 lines. Before the metadata loop (`# ---- metadata, kickoff, eligibility`):
+
+    from detect_kickoff import actual_kickoffs; AK = actual_kickoffs([Path(r) for r in args.rec], HERE / "kickoff")
+
+and right after `ko_true = ko`:
+
+    if slug in AK and AK[slug]["t"] < ko: ko = ko_true = int(AK[slug]["t"])   # early start: cut at the observed wipe/start
+
+Only EARLY starts move the cut. A late start leaves the cut at gameStartTime, which is where the wipe happens anyway.
+`actual_kickoffs()` returns `{slug: {"t", "source": "wipe_<kind>" | "watch_ws" | "watch_gamma", "confidence", "wipe", "game_start", "scheduled", "delta_s"}}`.
+`t` is the end of the pre-game regime: the earlier of the wipe and the game start observed by kickoff_watch (confidence ≥ medium).
+A wipe counts as high when the book emptied or ≥ 20 levels were mass-cancelled. A smaller mass cancel counts only when nothing else exists, and its confidence is low. Use `kickoff_watch.load_actual_kickoffs()` alone to skip reading the raw log, which takes about 10 s of CPU per 35 min of raw log (about 7 min per recorded day).
