@@ -11,6 +11,8 @@ Writes to --out (default data/build_sim/), byte-compatible with data/build/:
   fills.parquet every fill leg in data/raw/trades.parquet's schema (taker + maker legs; maker legs at resting
                 prices, timestamp = block time = match + 3..4 s), the input data/features.py expects
   sim_markets.parquet  per-market generator draws (coin, length, segment, strike, randomisation knobs)
+  feat.bin, book.bin, fills.bin, fill_index.bin, feat_meta.json   from data/features.py, run unmodified on
+                this directory by sim/features_sim.py (--no-features to skip), so mm.h reads it as data_dir
 
 Schedules:
   --schedule random  markets with random coin / length / aligned open time inside the cached Binance days

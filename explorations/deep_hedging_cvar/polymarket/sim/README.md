@@ -12,9 +12,20 @@ It writes markets in exactly the on-disk format the C replay env reads:
 
 So `mm.h` replays synthetic markets unchanged: pass `data_dir=data/build_sim`.
 
-**Status.** The consistency gate of SIMULATOR.md §5 **fails** (see `VALIDATION.md`). Per that spec,
-use the sim only as an initialiser for pretraining, followed by replay fine-tuning, and quote no
-sim result. The book side passes. The baseline P&L and fill attribution do not.
+**Status.** The consistency gate of SIMULATOR.md §5 **fails** (`VALIDATION.md`: C env, central fills,
+L = 1 s, 20 replications on the train schedule). Per that spec, use the sim only as an initialiser for
+pretraining, followed by replay fine-tuning, and quote no sim result.
+
+| gate | result |
+|---|---|
+| G1 | sym_touch total inside the band, but median and hourly KS outside. fair_value fails: +1289 sim vs -797 real. |
+| G2 | fails: the sim ranks fair_value above no_quote |
+| G3 | fails: fill volume and spread capture too high, markouts too mild |
+| G4 | the book passes (spread/depth KS <= 0.05, one-sided 19/19, trades/market KS <= 0.13). It fails on a few trade-rate and P(buy\|gap) cells and on 5m sign ACF. |
+
+The main defect: real takers adversely select fair-value quotes much harder than the sim's takers do.
+The fair_value baseline's markout is -4.7 c/share at 60 s real vs -1.4 sim. VALIDATION.md has the fix
+to try next.
 
 ## Quick start
 
@@ -51,7 +62,22 @@ Every synthetic market:
 
 `sim_markets.parquet` holds each market's draws: segment, strike, winner and every randomisation knob.
 
-Throughput: see the report at the end of this file.
+Throughput and size.
+* 500 random markets (296 x 5m, 159 x 15m, 45 x 4h) with randomisation:
+  - 0.88 M rows and 0.78 M fill legs;
+  - 375 MB in total: ticks 141 MB, feat 155 MB, book 56 MB, fills.parquet 27 MB;
+  - 53 s single-threaded: engine 20 s, data/features.py 25 s.
+* The engine runs B same-length markets in lockstep. A 4h batch is 14,401 sequential numpy steps, so
+  the cost is dominated by 4h markets: about 45 k rows/s for the engine.
+* The C env replays the build like data/build (`load.verify` passes; baselines run through
+  `runner.Runner` with `runner.DATA_DIR` set to it).
+* `fit.py` takes about 10 min single-threaded:
+  - book 10 s;
+  - mid simulated moments 3.5 min;
+  - flow Hawkes 1.5-3.5 min;
+  - informed/impact grid 5 min;
+  - rate correction 1 min.
+* The gate takes 9 min for 20 replications.
 
 ## Leakage controls
 
