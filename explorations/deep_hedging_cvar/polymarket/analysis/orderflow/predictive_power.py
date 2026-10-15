@@ -35,6 +35,8 @@ WINS = (0.001, 0.999)
 sys.path.insert(0, str(HERE))
 from panel import GROUPS, CAND  # noqa: E402
 
+PRED = ["pred_dp1", "pred_dp2", "pred_dp5"]   # analysis/orderflow/pred_dp.py
+
 GBM = dict(learning_rate=0.05, num_leaves=31, min_data_in_leaf=500, feature_fraction=0.8,
            bagging_fraction=0.8, bagging_freq=1, lambda_l2=10.0, num_threads=2, verbose=-1, seed=0)
 ROUNDS = 300
@@ -91,6 +93,31 @@ def gbm_fit(X, y, binary):
     return b.predict
 
 
+def add_quotes(P):
+    """Quote-level target on 5m/15m decision rows (dt = 1): for row t and side s (+1 bid, -1 ask),
+    q_y = sum of edge60 (cents) of the touch fills on that side whose match row is t + 1, i.e. what
+    a touch quote decided at t (latency 1) would have faced; 0 if none. Two entries per row."""
+    keep = P["r_clen"] < 14400
+    rid = np.flatnonzero(keep)
+    key_r = P["r_market"][rid].astype(np.int64) * 10**7 + (P["r_t"][rid] - T0 + 10**5)
+    o = np.argsort(key_r)
+    key_f = P["f_market"].astype(np.int64) * 10**7 + (P["f_t"] - 1 - T0 + 10**5)   # decision row tau - 1
+    pos = np.searchsorted(key_r[o], key_f)
+    pos = np.minimum(pos, len(o) - 1)
+    hit = key_r[o][pos] == key_f
+    yb = np.zeros(len(rid))
+    ya = np.zeros(len(rid))
+    j = o[pos[hit]]
+    e, mm = P["f_edge60"][hit], P["f_m"][hit]
+    np.add.at(yb, j[mm > 0], e[mm > 0])
+    np.add.at(ya, j[mm < 0], e[mm < 0])
+    P["q_row"] = np.r_[rid, rid]
+    P["q_m"] = np.r_[np.ones(len(rid)), -np.ones(len(rid))]
+    P["q_y"] = np.r_[yb, ya]
+    P["q_t"] = P["r_t"][P["q_row"]]
+    P["q_mapped_fills"] = int(hit.sum())
+
+
 def folds(t):
     blk = ((t - T0) // 3600) // 8
     return blk
@@ -98,6 +125,14 @@ def folds(t):
 
 def design(P, kind, idx, cand_idx, linear):
     """Feature matrix: base columns + selected candidate columns; fills add m (and m*x if linear)."""
+    if kind == "quotes":
+        rows = P["q_row"][idx]
+        X = [P["r_base"][rows]]
+        if len(cand_idx):
+            X.append(P["r_cand"][rows][:, cand_idx])
+        X = np.column_stack(X)
+        m = P["q_m"][idx][:, None]
+        return np.column_stack([m, X, m * X]) if linear else np.column_stack([m, X])
     pre = "r_" if kind == "rows" else "f_"
     X = [P[pre + "base"][idx]]
     if len(cand_idx):
@@ -125,12 +160,14 @@ TARGETS = {
     "mo5": ("fills", "mo5", None, "reg"),
     "mo60_toxic": ("fills", "mo60", "neg", "cls"),
     "edge60": ("fills", "edge60", None, "reg"),
+    "quote_edge": ("quotes", "y", None, "reg"),
 }
+PREFIX = {"rows": "r_", "fills": "f_", "quotes": "q_"}
 
 
 def target(P, name):
     kind, key, tr, typ = TARGETS[name]
-    pre = "r_" if kind == "rows" else "f_"
+    pre = PREFIX[kind]
     y = P[pre + key].astype(np.float64)
     ok = np.isfinite(y)
     if tr == "sign":
@@ -150,7 +187,7 @@ def evaluate(P, Pv, name, cand_idx, model):
     """OOF metric on train (blocked CV) or, with Pv, the train-fit metric on val. Returns
     (metric, oof predictions or val predictions, index)."""
     kind, idx, y, typ = target(P, name)
-    pre = "r_" if kind == "rows" else "f_"
+    pre = PREFIX[kind]
     linear = model == "lin"
     fit = (lambda X, yy: gbm_fit(X, yy, typ == "cls")) if not linear else \
           (logit_fit if typ == "cls" else ridge_fit)
@@ -195,6 +232,15 @@ def evaluate(P, Pv, name, cand_idx, model):
     return auc(yy, pred), pred, idv
 
 
+def quote_value(P, pred, idx, frac):
+    """Total quote edge (cents, summed over kept (row, side) pairs, per 1000 pairs) when only the
+    top (1 - frac) of pairs by predicted value are quoted, and the share of all touch-fill loss
+    avoided."""
+    y = P["q_y"][idx]
+    keep = pred > np.quantile(pred, frac)
+    return y[keep].sum() / len(y) * 1000, 1 - y[keep].sum() / y.sum()
+
+
 def selection_value(P, pred, idx, frac):
     """Edge (cents/share, per touch fill) kept when the fills with the lowest predicted edge
     (fraction frac) are skipped, vs keeping all."""
@@ -207,23 +253,37 @@ def selection_value(P, pred, idx, frac):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--gbm", action="store_true")
+    ap.add_argument("--models", default=None, help="comma list of lin,gbm (default: lin, plus gbm with --gbm)")
     ap.add_argument("--confirm", action="store_true", help="fit on train, score val (frozen choices)")
     ap.add_argument("--targets", default=",".join(TARGETS))
     ap.add_argument("--groups", default="all," + ",".join(GROUPS))
     ap.add_argument("--select", default=None, help="comma list of candidate columns (the chosen set)")
     ap.add_argument("--out", default=None)
+    ap.add_argument("--tag", default="", help="panel variant, e.g. _D1 (panel.py --dmatch 1 what-if)")
     a = ap.parse_args()
-    P = dict(np.load(CACHE / "panel_train.npz"))
-    Pv = dict(np.load(CACHE / "panel_val.npz")) if a.confirm else None
+    P = dict(np.load(CACHE / f"panel_train{a.tag}.npz"))
+    Pv = dict(np.load(CACHE / f"panel_val{a.tag}.npz")) if a.confirm else None
+    add_quotes(P)
+    if Pv is not None:
+        add_quotes(Pv)
+    if "r_pred" in P:                      # pred_dp.py columns (out-of-fold on train)
+        for Q in (P, Pv) if Pv is not None else (P,):
+            for pre in ("r_", "f_"):
+                Q[pre + "cand"] = np.column_stack([Q[pre + "cand"], Q[pre + "pred"]])
+        if "pred_dp1" not in CAND:
+            CAND.extend(PRED)
+            GROUPS["pred_dp"] = list(PRED)
     sets = {"base": []}
     for g in a.groups.split(","):
+        if g == "pred_dp" and "pred_dp" not in GROUPS:
+            continue
         if g == "all":
             sets["+all"] = list(range(len(CAND)))
         elif g:
             sets["+" + g] = [CAND.index(c) for c in GROUPS[g]]
     if a.select:
         sets["+chosen"] = [CAND.index(c) for c in a.select.split(",")]
-    models = ["lin"] + (["gbm"] if a.gbm else [])
+    models = a.models.split(",") if a.models else ["lin"] + (["gbm"] if a.gbm else [])
     res = {}
     for name in a.targets.split(","):
         for model in models:
@@ -232,6 +292,12 @@ def main():
                 t1 = time.time()
                 met, pred, idx = evaluate(P, Pv, name, ci, model)
                 row[sname] = met
+                if name == "quote_edge" and sname in ("base", "+all", "+chosen", "+staleness", "+pred_dp"):
+                    src = Pv if a.confirm else P
+                    for frac in (0.5, 0.9, 0.99):
+                        v, avoided = quote_value(src, pred, idx, frac)
+                        row[f"{sname}:top{round((1 - frac) * 100)}%"] = v
+                    row["keep_all"] = src["q_y"][idx].sum() / len(idx) * 1000
                 if name == "edge60" and sname in ("base", "+all", "+chosen"):
                     src = Pv if a.confirm else P
                     for frac in (0.1, 0.25, 0.5):
@@ -243,7 +309,7 @@ def main():
             line = "  ".join(f"{k} {v:+.4f}" if k == "base" else f"{k} {v - b:+.4f}"
                              for k, v in row.items() if ":" not in k and k != "keep_all")
             extra = "  ".join(f"{k} {v:+.3f}" for k, v in row.items() if ":" in k or k == "keep_all")
-            print(f"{name:12s} {model}: {line}" + (f"\n    selection (cents/fill): {extra}" if extra else ""),
+            print(f"{name:12s} {model}: {line}" + (f"\n    selection (edge60: cents/fill; quote_edge: cents per 1000 row-sides): {extra}" if extra else ""),
                   flush=True)
     if a.out:
         Path(a.out).write_text(json.dumps(res, indent=1))
