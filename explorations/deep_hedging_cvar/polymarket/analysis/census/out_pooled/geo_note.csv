@@ -1,0 +1,21 @@
+cut,key,events,usd_day,xr_30,xr_30_lo,xr_30_hi,xr_2h,xr_2h_lo,xr_2h_hi,top5_events_share_of_edge$,xr_30_ex_top5,xr_30_ex_top10,top_event
+week,w1,440,2.054e+06,83.8,-3.317,213.1,55.86,-44.96,197.7,1.007,-0.6888,-14.93,saudi-arabia-military-action-against-yemen-on-20260916
+week,w2,427,1.456e+06,23.1,-16.35,83.82,19.11,-29.21,82.5,1.492,-13.53,-22.78,pakistan-military-action-against-afghanistan-by-20260925
+week,w3,449,1.535e+06,88.06,24.79,193.4,105.2,38.39,209.9,0.8773,13.25,-20,israel-military-action-against-lebanon-on-october-2026
+week,w4,437,2.065e+06,12.26,-92.46,91.22,1.215,-148.3,103.1,3.754,-45.99,-68.35,who-will-putin-meet-bilaterally-in-turkmenistan
+price (pooled),p.15-.85,332,5.566e+05,66.5,-9.553,174.2,51.47,-35.54,171.2,1.093,-8.039,-57.67,nobel-peace-prize-winner-2026-139
+price (pooled),p<.15,503,5.359e+04,1070,461,2210,823.7,354.7,1580,0.6212,412.8,201.5,saudi-arabia-military-action-against-yemen-on-20260916
+price (pooled),p>.85,490,1.167e+06,-2.009,-25.46,17.56,3.659,-18.45,24.45,-4.225,-12.1,-18.1,saudi-arabia-military-action-against-yemen-on-20260916
+week x price,w1 p.15-.85,228,6.973e+05,81.33,-52.45,318.1,24.42,-138.5,214.8,1.515,-51.41,-85.6,houthi-military-action-against-saudi-arabia-on-20260916
+week x price,w1 p<.15,393,5.444e+04,1451,383.6,3800,1332,15.78,3288,0.8628,254.3,155,saudi-arabia-military-action-against-yemen-on-20260916
+week x price,w1 p>.85,376,1.302e+06,27.77,8.169,65.92,19.23,-5.24,52.59,0.7517,8.991,3.421,saudi-arabia-military-action-against-yemen-on-20260916
+week x price,w2 p.15-.85,197,4.219e+05,25.52,-54.21,134.6,10.8,-154.1,178,2.616,-58.86,-84.82,will-netanyahu-use-a-visual-aid-during-his-unga-speech
+week x price,w2 p<.15,379,4.855e+04,664.2,49.22,1775,609.9,-3.786,1690,0.8249,126.5,53.75,pakistan-military-action-against-afghanistan-by-20260925
+week x price,w2 p>.85,363,9.852e+05,-9.234,-32.69,11.83,-6.178,-21.92,9.984,-0.7588,-19.03,-24.61,next-us-iran-senior-diplomatic-meeting-byptptpt
+week x price,w3 p.15-.85,213,4.549e+05,159.4,10.83,462.6,165.6,27.55,413.2,1.087,-19.44,-163.4,israel-military-action-against-lebanon-on-october-2026
+week x price,w3 p<.15,408,5.369e+04,963.5,-19.2,2311,440.7,-131.3,977,0.989,14.73,-84.68,will-russia-target-kyiv-on-october-2026
+week x price,w3 p>.85,373,1.026e+06,11.96,-1.495,22.57,61.42,9.533,152.4,0.9523,0.8366,-5.508,us-announces-end-of-iranian-blockade-byptptpt-20260713152715080
+week x price,w4 p.15-.85,216,6.524e+05,12.35,-155,147.4,27.08,-200.3,212.4,7.156,-116.6,-149.5,nobel-peace-prize-winner-2026-139
+week x price,w4 p<.15,376,5.769e+04,1147,162.7,3349,868.7,120.9,2493,0.9264,104.4,46.75,who-will-putin-meet-bilaterally-in-turkmenistan
+week x price,w4 p>.85,363,1.355e+06,-35.8,-111.3,5.363,-48.03,-176.3,10.86,-0.1009,-47.91,-53.47,us-announces-end-of-iranian-blockade-byptptpt-20260713152715080
+pooled,all,523,1.777e+06,51.47,15.79,108.5,43.14,1.986,99.8,0.6588,17.71,0.8095,saudi-arabia-military-action-against-yemen-on-20260916

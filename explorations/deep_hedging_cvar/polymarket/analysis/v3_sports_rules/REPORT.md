@@ -1,5 +1,23 @@
 # Track S: pre-game sports quoting rules, book-free on on-chain fills (w2)
 
+> **CORRECTION (2026-10-15 ~22:30 UTC): see `RECONCILE.md`.**
+>
+> **Superseded:** the at-touch pool (−26/−33 bps) and every rule result in §2–3. They come from a book-free
+> fill model that values all volume at or beyond our level at our price. That credits sweep volume, which in
+> reality filled deeper makers at better prices, to the touch. It is biased against quoting by about 70 bps.
+>
+> **Corrected estimate:** census-definition legs at their own price, with the 30 min mark capped at kickoff.
+> - Pre-game makers earn +31 bps [12, 50] to kickoff on Sep 24 – Oct 7.
+> - At the touch: +20 [1, 37].
+> - One tick behind: +81 [34, 124].
+>
+> The gap with the census is definitional, not a regime effect. The census's instability across weeks comes
+> from its in-play 30 min mark.
+>
+> **Still valid:** the fair-value anchor survey, ENV_SPEC.md, and the observation that window and league
+> choices don't transfer across weeks.
+
+
 Worker w2, 2026-10-15. This answers the coordinator's track-S assignment (D11):
 1. simple pre-game quoting rules, backtested without a book, with edge per $ and a CI;
 2. a fair-value anchor;
