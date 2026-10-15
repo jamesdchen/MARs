@@ -388,7 +388,7 @@ def _is_val(rec) -> bool | None:
 
 
 def _config_key(rec) -> str:
-    for k in ("config_sha256", "config_hash", "params_sha256", "cfg_sha256"):
+    for k in ("config_sha256", "config_hash", "cfg_hash", "params_sha256", "cfg_sha256"):
         if isinstance(rec.get(k), str):
             return rec[k]
     for k in ("config", "params", "cfg"):

@@ -1,0 +1,895 @@
+{
+ "schema": "polymarket-mm-test-plan/1",
+ "created_utc": "2026-10-15T05:44:22+00:00",
+ "dry_run_only": true,
+ "protocol": {
+  "path": "eval/EVALUATION.md",
+  "sha256": "e54e2d8ba7a56e428f6f4425eabca4bfb2a17d5eab15a59c26375203b4fb0a26",
+  "amendments": {
+   "path": "eval/DECISIONS.md",
+   "sha256": "8d3fc2c1a9c24225fe127e81448ddfc4fee7dd91ff1de457f97fa84e5d7ae600",
+   "applied": [
+    "D1 comparators (no-quote a candidate; constrained secondary baselines; market-making classification)",
+    "D2 T5 rule on artifact flags only"
+   ]
+  }
+ },
+ "test_split": {
+  "id": 2,
+  "name": "test",
+  "dates": "2026-08-24 UTC",
+  "dry_run_split": {
+   "id": 1,
+   "name": "val"
+  }
+ },
+ "git": {
+  "commit": "f1239c51a0b87b1a862c9de4dc4109c55a399716",
+  "dirty": true,
+  "n_dirty": 4,
+  "dirty_files": [
+   "xplorations/deep_hedging_cvar/polymarket/final/common.py",
+   "final/make_plan.py",
+   "final/report.py",
+   "final/run_test.py"
+  ]
+ },
+ "allow_dirty": true,
+ "dirty_code_at_plan_time": [
+  "final/make_plan.py",
+  "final/report.py",
+  "final/run_test.py"
+ ],
+ "code_sha256": {
+  "final/adapters.py": "da873bc780de056285bb0f377b75074cc824988fabd24857a79e1d640721a874",
+  "final/cenv.py": "33b1d88ef6a7ddcb476b51c962284d1c6c24862ceb65064fa1e8fc6ecbe9e3e2",
+  "final/common.py": "3b5db58ab238971a9eb6512cd3a0ef49305ddeb12320ec5a3bf5abb8eab435cf",
+  "final/make_plan.py": "3676d8eeb7a6946935ce46ba84fe2c265a5b819ea7b704716636389f8be97b9c",
+  "final/mirror.py": "78bdc5f3083244b42330e990279737a8f66992b8c1a6aec19910a5f1a095f4ed",
+  "final/pyreplay.py": "6d33784142e3d1c111afcaaf94195cd363cf49ab2d85cfcf953cbe6484a2aaf2",
+  "final/reduce.py": "83793532888514191296d06a9266e5de23a7b6992707507fa329b8730d2efb1c",
+  "final/report.py": "66ab4d2023022e3722a46156f374458b126a47453221030a06b97006ac88713e",
+  "final/run_test.py": "3c99de3bd0090c71a3d00e3d0fba3f5544682a394b8a3212dea3616e34ef6ace",
+  "final/standins.py": "c1f7af26a6ac02a4e2d8d0aa0276a8b046e9d54c9f67a19639e50a8aac6b51ad",
+  "final/synth.py": "61c02fc1bbe9e79a7c1496e18061e9c883c923957c25013e1eff6f763e178432",
+  "eval/stats.py": "624569e6d729940ee786f1b303b96cb29d27e663549dc0e66026dc0555c0521c",
+  "baselines/baselines.py": "cc67304da277aadbfde7dc5fba5b2dba6b8709a1cee22f1aed250e575dad03c2",
+  "baselines/obs_spec.py": "7d5e876714ff8a52a4b2c573986cfe3a872ee30f9f035f97d93675a4362e4499",
+  "train/policy.py": "2bee61d00e211e040cbf3b8e986e5c798a2d093d55618a58f283fbe51ba5e292",
+  "puffer5/puffernet_mm.py": "cbc91f3049c26ed079f3791e67ddadb4f72aed4a925be389cd8887d08d2c5325",
+  "env.py": "e2b8209e681350618cfd3bbb64995ac738bdbba16effe6362d5c742d732413a9",
+  "reference.py": "2204eac508d8b55cca4c961bc487c0704d1965ffc27102b879c9c6cee7d296e5",
+  "mm.h": "746dd7dea250eee035a8cb08a7be479eacf2d44ac1b7251503bc0d0e468566a9",
+  "binding.c": "03adf9f954243b2baf4a10d5a762b544822f2abb86c904b53519a97edab398c0",
+  "mm_harness.c": "b36b5b946154021ba752d9b4945df712c2fa4af3865f21d0923224a2d56169c7",
+  "binding.cpython-313-x86_64-linux-gnu.so": "5125a1fc988c061d7af1f9e0d015a14e7fb965705d23f51a32dd775905d67bed",
+  "ENV.md": "1bbac87d8447e5683b9198f53861ae62fc53391149411f3f8a39102504977be4",
+  "data/load.py": "8208b248bd54dbbecf0e814fea8b33e4a91c85f7c408e27d7bf7ed6b64f1e502"
+ },
+ "artifact_root": ".",
+ "data": {
+  "build_dir": "data/build",
+  "synthetic": false,
+  "file_sha256": {
+   "meta.json": "da2f22efe5d595a723dcb8e04a36eeff35d7adbca984b23cb7e632cfa855ce54",
+   "markets.bin": "bcecae968c3d7db608c10690e82f80963f0056891777d28351338bfa185b41c9",
+   "ticks.bin": "8539fe962cd5cc5f6d0934291ea9aa0b8ea98b8096f073ea29f9bd05c4437521",
+   "splits.json": "d2ee6ed29817581f8ff35d59c3560b895e3dd0ecc6612bcaec9c3329c3f45d21",
+   "feat.bin": "122176d8a2795551ed84376a34e1236f88e1cedc7bb7ccef046616767dd6435c",
+   "feat_meta.json": "0656b0540ced7d4daf55538ba11c736d29594b061842cd335c11dc7243d17283",
+   "book.bin": "c9caad1c3c01edaaf6b358504a42f4b0032aa6737d1b06d8757431693634d934",
+   "fills.bin": "8c59307b8eed1df7ff53db9176d91bff4be9f9925ddddc29ecf1e4092769542f",
+   "fill_index.bin": "1c296215a4c04763f93f17008f2b2ecd1bf1f86a5f3cae7bb92cc319b60dc5ae"
+  },
+  "test_rows": {
+   "row_lo": 1142778,
+   "row_hi": 1374205,
+   "sha256": "40a81d59f1bdbfa375dc42dde500b1bc7a8303f6cc9b3bd364797c30afcb171e"
+  },
+  "test_markets": {
+   "n": 127,
+   "indices": [
+    678,
+    679,
+    680,
+    681,
+    682,
+    683,
+    684,
+    685,
+    686,
+    687,
+    688,
+    689,
+    690,
+    691,
+    692,
+    693,
+    694,
+    695,
+    696,
+    697,
+    698,
+    699,
+    700,
+    701,
+    702,
+    703,
+    704,
+    705,
+    706,
+    707,
+    708,
+    709,
+    710,
+    711,
+    712,
+    713,
+    714,
+    715,
+    716,
+    717,
+    718,
+    719,
+    720,
+    721,
+    722,
+    723,
+    724,
+    725,
+    726,
+    727,
+    728,
+    729,
+    730,
+    731,
+    732,
+    733,
+    734,
+    735,
+    736,
+    737,
+    738,
+    739,
+    740,
+    741,
+    742,
+    743,
+    744,
+    745,
+    746,
+    747,
+    748,
+    749,
+    750,
+    751,
+    752,
+    753,
+    754,
+    755,
+    756,
+    757,
+    758,
+    759,
+    760,
+    761,
+    762,
+    763,
+    764,
+    765,
+    766,
+    767,
+    768,
+    769,
+    770,
+    771,
+    772,
+    773,
+    774,
+    775,
+    776,
+    777,
+    778,
+    779,
+    780,
+    781,
+    782,
+    783,
+    784,
+    785,
+    786,
+    787,
+    788,
+    789,
+    790,
+    791,
+    792,
+    793,
+    794,
+    795,
+    796,
+    797,
+    798,
+    799,
+    800,
+    801,
+    802,
+    803,
+    804
+   ],
+   "slugs": [
+    "btc-updown-4h-1787529600",
+    "doge-updown-4h-1787529600",
+    "hype-updown-4h-1787529600",
+    "xrp-updown-5m-1787529600",
+    "zec-updown-15m-1787529600",
+    "zec-updown-4h-1787529600",
+    "doge-updown-5m-1787530800",
+    "bnb-updown-5m-1787531100",
+    "xrp-updown-5m-1787531100",
+    "sol-updown-15m-1787531400",
+    "sol-updown-5m-1787531400",
+    "bnb-updown-5m-1787532600",
+    "bnb-updown-5m-1787533500",
+    "btc-updown-5m-1787533800",
+    "eth-updown-15m-1787534100",
+    "btc-updown-5m-1787534400",
+    "doge-updown-5m-1787534400",
+    "zec-updown-5m-1787534400",
+    "hype-updown-15m-1787535000",
+    "xrp-updown-15m-1787535000",
+    "zec-updown-5m-1787537700",
+    "btc-updown-5m-1787538000",
+    "doge-updown-15m-1787538600",
+    "bnb-updown-5m-1787539200",
+    "doge-updown-5m-1787539200",
+    "zec-updown-5m-1787539200",
+    "bnb-updown-5m-1787540100",
+    "xrp-updown-5m-1787540700",
+    "doge-updown-5m-1787541000",
+    "hype-updown-5m-1787541000",
+    "doge-updown-15m-1787541300",
+    "hype-updown-5m-1787541600",
+    "bnb-updown-5m-1787542200",
+    "doge-updown-15m-1787542200",
+    "btc-updown-5m-1787542800",
+    "sol-updown-5m-1787542800",
+    "btc-updown-15m-1787543100",
+    "xrp-updown-5m-1787543100",
+    "hype-updown-5m-1787543700",
+    "btc-updown-4h-1787544000",
+    "eth-updown-4h-1787544000",
+    "hype-updown-4h-1787544000",
+    "xrp-updown-4h-1787544000",
+    "zec-updown-4h-1787544000",
+    "bnb-updown-5m-1787544600",
+    "bnb-updown-5m-1787544900",
+    "hype-updown-15m-1787544900",
+    "sol-updown-5m-1787545200",
+    "btc-updown-5m-1787545500",
+    "doge-updown-5m-1787546100",
+    "btc-updown-15m-1787546700",
+    "zec-updown-5m-1787547000",
+    "sol-updown-15m-1787547600",
+    "eth-updown-5m-1787548200",
+    "hype-updown-5m-1787548500",
+    "eth-updown-5m-1787548800",
+    "doge-updown-15m-1787549400",
+    "zec-updown-5m-1787549400",
+    "bnb-updown-5m-1787549700",
+    "zec-updown-5m-1787549700",
+    "sol-updown-5m-1787550000",
+    "bnb-updown-15m-1787551200",
+    "sol-updown-15m-1787551200",
+    "zec-updown-15m-1787551200",
+    "sol-updown-5m-1787552700",
+    "btc-updown-15m-1787553000",
+    "eth-updown-5m-1787553000",
+    "xrp-updown-5m-1787553000",
+    "hype-updown-15m-1787553900",
+    "btc-updown-5m-1787554500",
+    "eth-updown-5m-1787554500",
+    "doge-updown-5m-1787554800",
+    "bnb-updown-5m-1787555400",
+    "bnb-updown-5m-1787555700",
+    "btc-updown-5m-1787555700",
+    "xrp-updown-15m-1787555700",
+    "zec-updown-5m-1787555700",
+    "eth-updown-5m-1787556000",
+    "btc-updown-5m-1787556300",
+    "bnb-updown-15m-1787556600",
+    "eth-updown-15m-1787556600",
+    "sol-updown-15m-1787556600",
+    "zec-updown-15m-1787556600",
+    "bnb-updown-15m-1787557500",
+    "sol-updown-15m-1787557500",
+    "xrp-updown-5m-1787557500",
+    "bnb-updown-4h-1787558400",
+    "btc-updown-4h-1787558400",
+    "doge-updown-4h-1787558400",
+    "btc-updown-5m-1787558700",
+    "zec-updown-5m-1787559900",
+    "bnb-updown-5m-1787560200",
+    "xrp-updown-15m-1787560200",
+    "doge-updown-5m-1787560800",
+    "sol-updown-5m-1787561700",
+    "doge-updown-15m-1787562000",
+    "eth-updown-5m-1787562300",
+    "hype-updown-5m-1787563800",
+    "hype-updown-15m-1787564700",
+    "btc-updown-5m-1787565000",
+    "zec-updown-5m-1787565000",
+    "bnb-updown-5m-1787565300",
+    "doge-updown-5m-1787565900",
+    "bnb-updown-5m-1787566200",
+    "doge-updown-15m-1787566500",
+    "eth-updown-15m-1787566500",
+    "zec-updown-15m-1787566500",
+    "zec-updown-5m-1787566500",
+    "xrp-updown-5m-1787566800",
+    "doge-updown-5m-1787567100",
+    "bnb-updown-5m-1787567400",
+    "btc-updown-5m-1787567400",
+    "zec-updown-5m-1787567400",
+    "hype-updown-5m-1787567700",
+    "hype-updown-5m-1787568000",
+    "sol-updown-15m-1787568300",
+    "zec-updown-15m-1787569200",
+    "xrp-updown-15m-1787570100",
+    "sol-updown-5m-1787570400",
+    "eth-updown-15m-1787571000",
+    "zec-updown-15m-1787571000",
+    "bnb-updown-5m-1787571300",
+    "sol-updown-5m-1787571600",
+    "hype-updown-15m-1787571900",
+    "sol-updown-15m-1787571900",
+    "eth-updown-15m-1787573700",
+    "hype-updown-15m-1787573700"
+   ],
+   "by_length": {
+    "300": 75,
+    "900": 40,
+    "14400": 12
+   }
+  },
+  "val_markets": {
+   "n": 247
+  },
+  "note": "test_rows.sha256 is copied from meta.json; run_test.py recomputes it from ticks.bin before running (as data/load.py verify does)"
+ },
+ "backend": {
+  "name": "cenv",
+  "options": {
+   "env_params": {
+    "split": 0.0,
+    "allow_test": 0.0,
+    "fill_model": 1.0,
+    "latency": 1.0,
+    "match_delay": -1.0,
+    "dt": 0.0,
+    "dt_5m": 1.0,
+    "dt_15m": 1.0,
+    "dt_4h": 5.0,
+    "Q": 100.0,
+    "inv_penalty": 0.001,
+    "reward_scale": 0.0,
+    "size_mult": 1.0,
+    "part_cap": -1.0,
+    "fee_rate": -1.0,
+    "rebate_rate": -1.0,
+    "liq_rewards": 0.0,
+    "liq_moas": 1.0,
+    "mark_mode": 0.0,
+    "reward_mode": 0.0,
+    "tick_rule": 0.0,
+    "len_mask": 7.0,
+    "fixed_market": -1.0,
+    "fixed_start": -1.0,
+    "cycle_stride": 0.0,
+    "start_frac": 0.2
+   },
+   "obs_size": 50
+  },
+  "of_record": true,
+  "note": "cenv = the C env (polymarket/env.py over mm.h); pyreplay is a stand-in, never a number of record"
+ },
+ "execution": {
+  "deterministic_actions": true,
+  "start_offset": 0,
+  "episodes": "every market of the split once",
+  "run_once": true
+ },
+ "methods": [
+  {
+   "id": "baseline/no_quote",
+   "group": "baseline",
+   "kind": "baseline",
+   "name": "no_quote",
+   "params": {},
+   "params_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+   "val_metric": 0.0,
+   "tuned": false,
+   "note": "sanity anchor (P&L 0 + reward-only check); not a tuned baseline"
+  },
+  {
+   "id": "baseline/sym_touch",
+   "group": "baseline",
+   "kind": "baseline",
+   "name": "sym_touch",
+   "params": {
+    "size": 2,
+    "q_cap": 1.7282523578130833,
+    "cap_mode": "pull"
+   },
+   "params_sha256": "b7a00e8d3102afc1e2de15a3814f8a26fe0e49328f06f88b8b43024fcf095001",
+   "val_metric": 0.0,
+   "tuned": true,
+   "ledger_config_sha256": null
+  },
+  {
+   "id": "baseline/fair_value",
+   "group": "baseline",
+   "kind": "baseline",
+   "name": "fair_value",
+   "params": {
+    "k_skew": 3.6327244199825366e-05,
+    "spread_mult": 3.991267466565512,
+    "gap_max": 0.044229076964366607,
+    "pull_s": 103.39263362307024,
+    "size": 2
+   },
+   "params_sha256": "f0142f9da434e7f3c2fbc6f6d68d661c9f516b8e57fadfcd94ef6f7507c36b68",
+   "val_metric": 0.579074492701612,
+   "tuned": true,
+   "ledger_config_sha256": null
+  },
+  {
+   "id": "baseline/as_logit",
+   "group": "baseline",
+   "kind": "baseline",
+   "name": "as_logit",
+   "params": {
+    "gamma": 5.451656861073253,
+    "k": 2.236007868024544,
+    "h_risk": 11.892152719498597,
+    "size": 0
+   },
+   "params_sha256": "0a06c40fba46ca89b51bb4b5c47817f36bd46a669bd40c2cdd7c09c2a0135f80",
+   "val_metric": 0.100508563310876,
+   "tuned": true,
+   "ledger_config_sha256": null
+  },
+  {
+   "id": "baseline/fv_smart",
+   "group": "baseline",
+   "kind": "baseline",
+   "name": "fv_smart",
+   "params": {
+    "k_skew": 1.4156820015250045e-05,
+    "spread_mult": 2.5366926489559924,
+    "g_adv": 0.04205319796222186,
+    "pull_s": 90.18328113009305,
+    "size": 2
+   },
+   "params_sha256": "58e312c53a43d6758281d212e26661991f30b7e0b1207bfa0924561a1188dd2e",
+   "val_metric": 0.0599385007786063,
+   "tuned": true,
+   "ledger_config_sha256": null
+  },
+  {
+   "id": "baseline_c/sym_touch",
+   "group": "baseline_c",
+   "kind": "baseline",
+   "name": "sym_touch",
+   "params": {
+    "size": 0,
+    "q_cap": 1.22464420791979,
+    "cap_mode": "pull"
+   },
+   "params_sha256": "b3b44eb5fed2e448af5a172e41845df47ada73ddd3e96d44ae5037bf1c2bcb2b",
+   "val_metric": -2.109869133684829,
+   "tuned": true,
+   "constrained": true
+  },
+  {
+   "id": "baseline_c/fair_value",
+   "group": "baseline_c",
+   "kind": "baseline",
+   "name": "fair_value",
+   "params": {
+    "k_skew": 0.008154378091721821,
+    "spread_mult": 1.0091446250933702,
+    "gap_max": 0.027317916457896146,
+    "pull_s": 111.82928002112294,
+    "size": 0
+   },
+   "params_sha256": "7e38f62c4de92f4949dadf05ff132f3e45402f8a36fde58a407e184305d9134c",
+   "val_metric": -0.461273688737205,
+   "tuned": true,
+   "constrained": true
+  },
+  {
+   "id": "baseline_c/as_logit",
+   "group": "baseline_c",
+   "kind": "baseline",
+   "name": "as_logit",
+   "params": {
+    "gamma": 0.018596532763910514,
+    "k": 2.224337294288256,
+    "h_risk": 1780.7208989134238,
+    "size": 0
+   },
+   "params_sha256": "c9d3cca750eb278b1b4273bb5ea9c0ab89b8bba66663646b12dae0445b969445",
+   "val_metric": -0.3004450711116137,
+   "tuned": true,
+   "constrained": true
+  },
+  {
+   "id": "baseline_c/fv_smart",
+   "group": "baseline_c",
+   "kind": "baseline",
+   "name": "fv_smart",
+   "params": {
+    "k_skew": 3.6793418431692186e-05,
+    "spread_mult": 0.39007092338462585,
+    "g_adv": 0.18686797203329114,
+    "pull_s": 25.3209299562493,
+    "size": 1
+   },
+   "params_sha256": "d857caa0a58037f010623c1123e6d4eaa03a23b542d40cbdb4f49ed213978bdf",
+   "val_metric": -2.0747525782535523,
+   "tuned": true,
+   "constrained": true
+  }
+ ],
+ "groups": {
+  "baseline": {
+   "n": 5,
+   "source": {
+    "path": "baselines/tuned.json",
+    "sha256": "d18043240c11d859bb9e55747e94e4b4009b8600efa9be3183abfe74ff3ad392"
+   }
+  },
+  "rl": {
+   "missing": "several selected.json under train/runs/sweeps (['/home/user/MARs/explorations/deep_hedging_cvar/polymarket/train/runs/sweeps/pipe_smoke/selected.json', '/home/user/MARs/explorations/deep_hedging_cvar/polymarket/train/runs/sweeps/smoke_standin/selected.json']); pass --selected",
+   "n_seeds": 0,
+   "seeds": []
+  },
+  "baseline_c": {
+   "n": 4,
+   "source": {
+    "path": "baselines/tuned_active.json",
+    "sha256": "7feb3507ab5bbb2800c5ab86c72ee773bff282c5e68ef6904af49de36b865a7b",
+    "rule": "tuned with >= 5 fills/market and two-sided uptime >= 0.25 (DECISIONS.md D1.2)"
+   }
+  }
+ },
+ "primary_group": "rl",
+ "best_baseline": {
+  "id": "baseline/fair_value",
+  "rule": "highest val P&L (central fills, 1 s) in tuned.json among the tuned baselines and no-quote (DECISIONS.md D1.1)",
+  "val_metric": 0.579074492701612,
+  "candidates": {
+   "baseline/sym_touch": 0.0,
+   "baseline/fair_value": 0.579074492701612,
+   "baseline/as_logit": 0.100508563310876,
+   "baseline/fv_smart": 0.0599385007786063,
+   "baseline/no_quote": 0.0
+  }
+ },
+ "secondary_comparators": [
+  "baseline_c/sym_touch",
+  "baseline_c/fair_value",
+  "baseline_c/as_logit",
+  "baseline_c/fv_smart"
+ ],
+ "variants": [
+  {
+   "fill_model": "optimistic",
+   "fill_model_id": 0,
+   "latency_s": 0,
+   "size_mult": 1.0,
+   "mirror": false,
+   "roles": [
+    "grid",
+    "never_headline"
+   ],
+   "id": "optimistic_lat0_x1"
+  },
+  {
+   "fill_model": "optimistic",
+   "fill_model_id": 0,
+   "latency_s": 1,
+   "size_mult": 1.0,
+   "mirror": false,
+   "roles": [
+    "grid"
+   ],
+   "id": "optimistic_lat1_x1"
+  },
+  {
+   "fill_model": "optimistic",
+   "fill_model_id": 0,
+   "latency_s": 2,
+   "size_mult": 1.0,
+   "mirror": false,
+   "roles": [
+    "grid"
+   ],
+   "id": "optimistic_lat2_x1"
+  },
+  {
+   "fill_model": "central",
+   "fill_model_id": 1,
+   "latency_s": 0,
+   "size_mult": 1.0,
+   "mirror": false,
+   "roles": [
+    "grid",
+    "never_headline"
+   ],
+   "id": "central_lat0_x1"
+  },
+  {
+   "fill_model": "central",
+   "fill_model_id": 1,
+   "latency_s": 1,
+   "size_mult": 1.0,
+   "mirror": false,
+   "roles": [
+    "grid",
+    "headline",
+    "primary_endpoint"
+   ],
+   "id": "central_lat1_x1"
+  },
+  {
+   "fill_model": "central",
+   "fill_model_id": 1,
+   "latency_s": 2,
+   "size_mult": 1.0,
+   "mirror": false,
+   "roles": [
+    "grid",
+    "success_rule"
+   ],
+   "id": "central_lat2_x1"
+  },
+  {
+   "fill_model": "pessimistic",
+   "fill_model_id": 2,
+   "latency_s": 0,
+   "size_mult": 1.0,
+   "mirror": false,
+   "roles": [
+    "grid",
+    "never_headline"
+   ],
+   "id": "pessimistic_lat0_x1"
+  },
+  {
+   "fill_model": "pessimistic",
+   "fill_model_id": 2,
+   "latency_s": 1,
+   "size_mult": 1.0,
+   "mirror": false,
+   "roles": [
+    "grid",
+    "success_rule"
+   ],
+   "id": "pessimistic_lat1_x1"
+  },
+  {
+   "fill_model": "pessimistic",
+   "fill_model_id": 2,
+   "latency_s": 2,
+   "size_mult": 1.0,
+   "mirror": false,
+   "roles": [
+    "grid"
+   ],
+   "id": "pessimistic_lat2_x1"
+  },
+  {
+   "fill_model": "central",
+   "fill_model_id": 1,
+   "latency_s": 1,
+   "size_mult": 0.5,
+   "mirror": false,
+   "roles": [
+    "size_sweep"
+   ],
+   "id": "central_lat1_x0.5"
+  },
+  {
+   "fill_model": "central",
+   "fill_model_id": 1,
+   "latency_s": 1,
+   "size_mult": 2.0,
+   "mirror": false,
+   "roles": [
+    "size_sweep"
+   ],
+   "id": "central_lat1_x2"
+  },
+  {
+   "fill_model": "central",
+   "fill_model_id": 1,
+   "latency_s": 1,
+   "size_mult": 1.0,
+   "mirror": true,
+   "roles": [
+    "mirror_test"
+   ],
+   "id": "central_lat1_x1_mirror"
+  }
+ ],
+ "headline_variant": "central_lat1_x1",
+ "metrics": [
+  "P&L per day and per market (mean, median, distribution), with and without rewards+rebates",
+  "P&L by contract length and coin",
+  "hourly MTM Sharpe (per hour, not annualised) with block-bootstrap CI",
+  "CVaR95 of per-market P&L (stats.cvar)",
+  "max |inventory| per market and max combined portfolio delta (sum inv x dp/dlnS, USD)",
+  "fill rate (fills per quoted market-minute) and our share of taker volume",
+  "quote uptime (two-sided; one-sided separately) over live seconds",
+  "attribution (stats.attribute_pnl): spread capture, adverse selection (+60 s), inventory carry, resolution, fees, rebates, rewards; markouts at 1/5/10/30/60 s",
+  "exploit-flag table (stats.flag_pnl_share)",
+  "concentration (stats.concentration)",
+  "fill/latency sensitivity grid, size sweep, mirror test",
+  "seed mean, min/max, std",
+  "trial count N and deflated Sharpe (stats.deflated_sharpe)",
+  "test-day vs train/val realised vol, trade counts, spread (T9)"
+ ],
+ "units": {
+  "pnl": "USDC",
+  "mtm_grid": "per-second inventory marked to the mark (feat.bin `mark`: book mid if two-sided and valid, else the fair value), to the settlement value on the closing row; summed over all live markets into zero-filled UTC bins",
+  "bins_seconds": {
+   "primary": 3600,
+   "secondary": 900
+  }
+ },
+ "bootstrap": {
+  "kind": "stationary",
+  "method": "percentile",
+  "alpha": 0.05,
+  "n_boot": 10000,
+  "seed": 20260824,
+  "block_length": "Politis-White (stats.optimal_block_length) on the series, floored at 2 h (2 bins at 1 h, 8 bins at 15 min)",
+  "min_block_hours": 2
+ },
+ "attribution": {
+  "horizon_s": 60,
+  "markout_horizons_s": [
+   1,
+   5,
+   10,
+   30,
+   60
+  ],
+  "mid_close_seconds_to_close": 10,
+  "identity": "components sum to total; checked against the env's cash accounting"
+ },
+ "exploit_detectors": {
+  "flags": {
+   "crossed": "book crossed in the raw data (last uncrossed book forward-filled)",
+   "stale": "book_age > 10 s",
+   "onesided": "either side of the book empty",
+   "last30": "fewer than 30 s to the close (end - tau < 30)",
+   "last10": "fewer than 10 s to the close",
+   "inside2": "our quote more than 2 ticks inside the touch",
+   "extreme": "our quote <= 0.02 or >= 0.98",
+   "outside": "the print is outside [best bid, best ask] (includes every sweep through the touch; reported, not an exploit detector: DECISIONS.md D2)",
+   "inspread": "the print is on the wrong side of the hit touch (a sell above the best bid or a buy below the best ask): the snapshot cannot explain it",
+   "crossed_or_stale": "crossed or stale book (union)"
+  },
+  "rule_flags": [
+   "inspread",
+   "crossed_or_stale",
+   "onesided",
+   "last30"
+  ],
+  "max_single_flag_share": 0.25,
+  "fill_pnl": "per fill: spread capture + 60 s markout, sq (mid +60 s - price), as the env's pnl_X",
+  "invalid_if": "any rule flag (DECISIONS.md D2: inspread, crossed or stale, one-sided, last 30 s) carries > 25% of the total fill edge, or the edge excluding all rule-flagged fills is <= 0 while the total is > 0; the other flags (outside, inside2, extreme, last10) are reported"
+ },
+ "market_making": {
+  "min_fills_per_market": 5.0,
+  "max_t6_share": 0.5,
+  "max_t5_share": 0.25,
+  "rule": "DECISIONS.md D1.3: counts as making markets only if all three hold; otherwise report what the policy does"
+ },
+ "directional": {
+  "max_inventory_share": 0.5,
+  "rule": "directional if inventory/resolution P&L > 0 and > 50% of total P&L (total > 0) or > 50% of the positive components",
+  "mirror_test": "mirrored (Up<->Down) minus original hourly P&L, paired block-bootstrap 95% CI; 'unchanged' if it contains 0"
+ },
+ "concentration": {
+  "ks": [
+   1,
+   3,
+   5,
+   10
+  ],
+  "ex_top_markets": 5,
+  "ex_top_hours": 3
+ },
+ "primary_endpoint": {
+  "description": "test-day total P&L of the selected RL config (seed mean) minus the best tuned baseline, central fills, 1 s latency, rewards+rebates included",
+  "group": "rl",
+  "methods": [],
+  "comparator": "baseline/fair_value",
+  "variant": "central_lat1_x1",
+  "statistic": "sum over hourly bins of (seed-mean RL MTM P&L - baseline MTM P&L)",
+  "ci": "95% stationary block bootstrap over hourly bins spanning all markets (stats.paired_difference_ci, statistic='total')"
+ },
+ "decision_rule": {
+  "success_requires_all": [
+   {
+    "id": "ci_lower_gt_0",
+    "text": "primary endpoint 95% CI lower bound > 0"
+   },
+   {
+    "id": "pessimistic_1s_gt_0",
+    "text": "point estimate > 0 under pessimistic fills at 1 s",
+    "variant": "pessimistic_lat1_x1"
+   },
+   {
+    "id": "central_2s_gt_0",
+    "text": "point estimate > 0 under central fills at 2 s",
+    "variant": "central_lat2_x1"
+   },
+   {
+    "id": "not_directional",
+    "text": "RL (seed mean) not classified directional (T6)"
+   },
+   {
+    "id": "no_exploit_flag",
+    "text": "no invalidating exploit flag (T5), seed-pooled fills"
+   },
+   {
+    "id": "ex_top_positive",
+    "text": "RL seed-mean P&L excluding the top 5 markets and excluding the top 3 hours both > 0 (T7)"
+   },
+   {
+    "id": "counts_as_market_making",
+    "text": "RL counts as making markets: >= 5 fills per market, T6 share <= 50%, T5 artifact share <= 25% (D1.3)"
+   }
+  ],
+  "note": "everything else is secondary and descriptive; 0 s latency is never the headline"
+ },
+ "ledger": {
+  "files": [
+   {
+    "path": "baselines/trials.jsonl",
+    "sha256": "bef868be0aba70e6a465ac8d6ba878f4acf24ed5a41c80ed78962c785542228c",
+    "n_records": 997,
+    "n_val_records": 996,
+    "n_assumed_val": 0,
+    "n_unparseable_lines": 0
+   },
+   {
+    "path": "train/trials.jsonl",
+    "sha256": "ebfaa500ad8e2863581d82a5d711afc264229fccfabddba8d22807e6f68b60c5",
+    "n_records": 29,
+    "n_val_records": 27,
+    "n_assumed_val": 0,
+    "n_unparseable_lines": 0
+   }
+  ],
+  "n_trials": 1023,
+  "n_records_all_splits": 1023,
+  "n_annotation_rows": 3,
+  "n_assumed_val": 0,
+  "n_distinct_configs": 984,
+  "by_kind": {
+   "tune": 831,
+   "variant": 165,
+   "val_eval": 27
+  },
+  "n_with_sharpe": 0,
+  "var_trial_sharpes": null
+ },
+ "seeds_rule": "selected config only, >= 5 seeds, reported as mean with min/max/std; never the best seed",
+ "n_runs": 108
+}

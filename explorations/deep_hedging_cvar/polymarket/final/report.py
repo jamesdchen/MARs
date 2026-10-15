@@ -463,7 +463,9 @@ def build(R: Results, fig_dir: Path, out_path: Path, ds: Dataset | None) -> str:
         L.append(f"Protocol amendments applied ({am['path']}, sha256 `{(am.get('sha256') or '')[:16]}`): "
                  + "; ".join(am["applied"]) + ".\n")
     if D.get("missing"):
-        L.append("_Not evaluable: the RL group or the comparator was not run at the headline variant._\n")
+        why = (P["groups"].get("rl") or {}).get("missing")
+        L.append("_Not evaluable: the RL group or the comparator was not run at the headline variant"
+                 + (f" (this plan has no RL methods: {why})" if why else "") + "._\n")
     else:
         p = D["primary"]
         L.append(table(["statistic", "estimate", "95% CI", "block length (h)", "hours", "corr(RL, baseline)"],

@@ -179,6 +179,31 @@ def test_plan_rules():
     assert p["best_baseline"]["id"] == "baseline/no_quote"
 
 
+def test_dry_run_plan_without_selected():
+    """make_plan --dry-run tolerates a missing selected.json (val only); a real plan does not, and
+    run_test refuses a dry-run plan on the test split."""
+    w = world()
+    root4 = _TMP / "root_nosel"
+    shutil.copytree(w["root"], root4)
+    (root4 / "train" / "selected.json").unlink()
+    try:
+        make_plan.build_plan(root4, w["build"], "pyreplay", allow_dirty=True)
+        raise AssertionError("plan without selected.json accepted")
+    except common.PlanError:
+        pass
+    out = _TMP / "plan_dry" / "TEST_PLAN.json"
+    assert make_plan.main(["--root", str(root4), "--build-dir", str(w["build"]), "--out", str(out),
+                           "--backend", "pyreplay", "--allow-dirty", "--dry-run"]) == 0
+    p = json.loads(out.read_text())
+    assert p["dry_run_only"] and not any(m["group"] == "rl" for m in p["methods"])
+    assert make_plan.main(["--root", str(root4), "--build-dir", str(w["build"]), "--out",
+                           str(HERE / "TEST_PLAN.json"), "--dry-run", "--allow-dirty"]) == 2
+    with Env(MM_FINAL="1"):
+        assert rt("--plan", out, "--split", 2, "--results-dir", _TMP / "res_dry",
+                  "--skip-registration-check", "t") == 3
+    assert not (_TMP / "res_dry" / "runs.jsonl").exists()
+
+
 def test_count_trials_excludes_final_and_caches():
     d = _TMP / "ledgers"
     for rel, recs in {"results/trials.jsonl": [{"split": 1, "config_sha256": "a"}, {"split": 0}],

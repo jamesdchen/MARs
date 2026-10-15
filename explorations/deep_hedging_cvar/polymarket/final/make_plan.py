@@ -261,7 +261,8 @@ def _check_obs_size(methods, root, obs):
 
 def build_plan(root=CODE_ROOT, build_dir=BUILD, backend="cenv", backend_options=None,
                best_baseline=None, puffer5=None, min_seeds=5, allow_dirty=False,
-               code_root=CODE_ROOT, n_boot=10_000, selected=None, env_params=None, secondary=None) -> dict:
+               code_root=CODE_ROOT, n_boot=10_000, selected=None, env_params=None, secondary=None,
+               dry_run=False) -> dict:
     root, build_dir, code_root = Path(root), Path(build_dir), Path(code_root)
     methods, tuned_info = baseline_methods(root, code_root)
     tuned = [m for m in methods if m["tuned"]]
@@ -285,8 +286,13 @@ def build_plan(root=CODE_ROOT, build_dir=BUILD, backend="cenv", backend_options=
                     candidates={m["id"]: m["val_metric"] for m in scored})
     sec, sec_info = secondary_methods(root, secondary)
     methods += sec
-    sel = _find_selected(root, selected)
-    rl, rl_info = rl_methods(sel, root, "rl", "ppo3", min_seeds)
+    try:
+        sel = _find_selected(root, selected)
+        rl, rl_info = rl_methods(sel, root, "rl", "ppo3", min_seeds)
+    except PlanError as e:
+        if not dry_run:
+            raise
+        rl, rl_info = [], dict(missing=str(e), n_seeds=0, seeds=[])  # dry run before PPO exists
     groups = {"baseline": dict(n=len(methods) - len(sec), source=tuned_info), "rl": rl_info}
     if sec:
         groups["baseline_c"] = dict(n=len(sec), source=sec_info)
@@ -342,6 +348,7 @@ def build_plan(root=CODE_ROOT, build_dir=BUILD, backend="cenv", backend_options=
     plan = dict(
         schema=PLAN_SCHEMA,
         created_utc=utcnow(),
+        dry_run_only=bool(dry_run),
         protocol=dict(path="eval/EVALUATION.md",
                       sha256=S.sha256_file(code_root / "eval" / "EVALUATION.md")
                       if (code_root / "eval" / "EVALUATION.md").exists() else None,
@@ -457,8 +464,14 @@ def main(argv=None) -> int:
     ap.add_argument("--min-seeds", type=int, default=5)
     ap.add_argument("--n-boot", type=int, default=10_000)
     ap.add_argument("--allow-dirty", action="store_true", help="plan with uncommitted code (recorded)")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="a plan for the val dry run only: tolerates a missing selected.json (no RL "
+                         "methods); run_test.py refuses it for split 2. Use another --out.")
     a = ap.parse_args(argv)
     out = Path(a.out)
+    if a.dry_run and out.resolve() == (FINAL / "TEST_PLAN.json").resolve():
+        print("make_plan: a --dry-run plan must not take final/TEST_PLAN.json (use --out)", file=sys.stderr)
+        return 2
     hp = out.parent / "plan_sha256.txt"
     for p in (out, hp):
         if p.exists():
@@ -468,7 +481,7 @@ def main(argv=None) -> int:
     try:
         plan = build_plan(a.root, a.build_dir, a.backend, json.loads(a.backend_options), a.best_baseline,
                           a.puffer5, a.min_seeds, a.allow_dirty, n_boot=a.n_boot, selected=a.selected,
-                          env_params=json.loads(a.env_params), secondary=a.secondary)
+                          env_params=json.loads(a.env_params), secondary=a.secondary, dry_run=a.dry_run)
     except PlanError as e:
         print(f"make_plan: {e}", file=sys.stderr)
         return 1
@@ -482,6 +495,10 @@ def main(argv=None) -> int:
     print(f"TEST_PLAN.json sha256 = {h}")
     print(f"stored in {hp}. Before `MM_FINAL=1 run_test.py --split 2`: add it to the amendment log of "
           "eval/EVALUATION.md and to a commit message (run_test.py checks both).")
+    if a.dry_run:
+        print("DRY-RUN plan: val only (run_test.py refuses it for split 2)"
+              + ("; no RL methods: " + plan["groups"]["rl"]["missing"] if plan["groups"]["rl"].get("missing") else ""),
+              file=sys.stderr)
     if plan["groups"]["rl"].get("standin"):
         print("WARNING: the RL methods are stand-ins (callable), not trained checkpoints", file=sys.stderr)
     if os.environ.get("MM_FINAL"):

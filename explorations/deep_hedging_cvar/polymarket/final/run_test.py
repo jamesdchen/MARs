@@ -73,6 +73,8 @@ def preflight(plan, plan_hash, split, args, ds) -> dict:
 def preflight_meta(plan, plan_hash, split, args, synthetic) -> dict:
     """Checks that read no data: MM_FINAL, dry-run options, registration, env of record."""
     chk = dict(plan_sha256=plan_hash, split=split)
+    if split == 2 and plan.get("dry_run_only"):
+        raise RunRefused("this plan was written with make_plan.py --dry-run (val only)")
     if split == 2:
         if os.environ.get("MM_FINAL") != "1":
             raise RunRefused("split 2 (test) requires MM_FINAL=1 in the environment")
