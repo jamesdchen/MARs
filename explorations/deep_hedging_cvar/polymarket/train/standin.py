@@ -12,9 +12,12 @@ it is only a cheap, deterministic, learnable market-making toy:
   `fv` (random walk), a sticky mid that chases fv with a lag, and taker
   arrivals (uniforms and sweep depths) whose direction leans toward fv - mid,
   so quotes near a stale mid get adversely selected.
-- Action: bid/ask choice 0 = no quote, k = 1..6 = quote k-1 ticks behind the
-  mid (k = 1 at the mid); size 0/1/2 = 1/2/4 lots. A taker sell (buy) fills
-  our bid (ask) when its sweep depth reaches our level. |inventory| <= Q.
+- Action, laid out like the real env's (baselines/baselines.py): price choice
+  {off, improve 2, improve 1, join, 1 behind, 2 behind, 4 behind} ticks
+  relative to the best quote on that side, size {1, 2, 5} lots. The book is
+  always best bid = mid - 2 ticks, best ask = mid + 2 ticks, so "improve 2"
+  quotes at the mid. A taker sell (buy) fills our bid (ask) when its sweep
+  depth from the mid reaches our level. |inventory| <= Q.
 - Reward per step = reward_scale * (change of mark-to-market P&L
   - inv_penalty * q^2); at the end of the market the inventory settles at the
   binary outcome 1{fv_end > 0.5}, which is a terminal (no truncation).
@@ -29,17 +32,24 @@ import numpy as np
 import pufferlib
 
 TICK = 0.01
+HALF_SPREAD_TICKS = 2
+IMPROVE = (None, 2, 1, 0, -1, -2, -4)      # price choice -> ticks of improvement (None = off)
+SIZE_MULTS = (1.0, 2.0, 5.0)
+ACTION_LABELS = (('off', 'improve', 'improve', 'join', 'behind', 'behind', 'behind'),) * 2 + (
+    ('1x', '2x', '5x'),)
+JOIN = 3
 LENGTHS = (300, 900, 3600)
+GROUP_NAMES = ('5m', '15m', '1h')
 N_MARKETS = {0: 96, 1: 48, 2: 24}
 LOG_KEYS = ('pnl', 'spread_pnl', 'inventory_pnl', 'fills', 'volume', 'max_abs_inv',
             'quote_uptime', 'episode_length', 'score', 'perf')
 
 
-def build_split(split, n_markets=None, seed=1234):
+def build_split(split, n_markets=None, seed=1234, lengths=LENGTHS):
     """Deterministic synthetic market data for a split (a flat row table + offsets)."""
     rng = np.random.default_rng(seed + 7919 * split)
     n = n_markets or N_MARKETS[split]
-    lens = rng.choice(LENGTHS, size=n, p=(0.6, 0.3, 0.1))
+    lens = rng.choice(lengths, size=n, p=(0.6, 0.3, 0.1))
     off = np.concatenate([[0], np.cumsum(lens)]).astype(np.int64)
     rows = int(off[-1])
     fv = np.empty(rows, np.float32)
@@ -65,10 +75,13 @@ def build_split(split, n_markets=None, seed=1234):
                 buy_depth=buy_depth, sell_depth=sell_depth)
 
 
+_IMPROVE = np.array([0 if x is None else x for x in IMPROVE], np.float64)
+
+
 class StandInMM(pufferlib.PufferEnv):
     def __init__(self, num_envs=1024, split=0, seed=0, eval_mode=False, obs_size=16,
                  Q=20.0, inv_penalty=0.0, reward_scale=1.0, n_markets=None, log_interval=64,
-                 buf=None, **unused):
+                 lengths=LENGTHS, buf=None, **unused):
         if split == 2:
             raise ValueError('the stand-in has no test split for the trainer to touch')
         assert obs_size >= 12
@@ -76,7 +89,8 @@ class StandInMM(pufferlib.PufferEnv):
         self.single_observation_space = gymnasium.spaces.Box(-np.inf, np.inf, (obs_size,), np.float32)
         self.single_action_space = gymnasium.spaces.MultiDiscrete([7, 7, 3])
         super().__init__(buf)
-        self.d = build_split(split, n_markets)
+        self.lengths = tuple(lengths)
+        self.d = build_split(split, n_markets, lengths=self.lengths)
         self.n_markets = len(self.d['lens'])
         self.eval_mode, self.Q = eval_mode, float(Q)
         self.inv_penalty, self.reward_scale = float(inv_penalty), float(reward_scale)
@@ -141,10 +155,10 @@ class StandInMM(pufferlib.PufferEnv):
         bid_c, ask_c, sz_c = a[:, 0], a[:, 1], a[:, 2]
         r = d['off'][self.m] + self.t
         mid = d['mid'][r].astype(np.float64)
-        size = np.array([1.0, 2.0, 4.0])[sz_c]
+        size = np.asarray(SIZE_MULTS)[sz_c]
         pnl_before = self.cash + self.q * mid
-        bid_k = bid_c - 1.0  # ticks behind mid; -1 = no quote
-        ask_k = ask_c - 1.0
+        bid_k = HALF_SPREAD_TICKS - _IMPROVE[bid_c]  # ticks behind the mid
+        ask_k = HALF_SPREAD_TICKS - _IMPROVE[ask_c]
         can_buy = self.q + size <= self.Q
         can_sell = self.q - size >= -self.Q
         fill_b = (bid_c > 0) & can_buy & (d['sell_depth'][r] >= bid_k)
@@ -197,5 +211,24 @@ class StandInMM(pufferlib.PufferEnv):
         self._obs()
         return self.observations, self.rewards, self.terminals, self.truncations, info
 
+    def group_labels(self):
+        """Contract-length index (0 5m, 1 15m, 2 1h) of the market each agent is in."""
+        return np.searchsorted(self.lengths, self.d['lens'][self.m])
+
     def close(self):
         pass
+
+
+def teacher_policy(obs):
+    """A hand-made quoter for the stand-in (the BC teacher until baselines/ can
+    drive the real env): join both sides, pull the side the fair-value gap says
+    is about to be picked off, lean against inventory."""
+    gap, inv = obs[:, 2] * 5, obs[:, 4]
+    n = obs.shape[0]
+    a = np.full((n, 3), JOIN, np.int32)
+    a[:, 2] = 0
+    a[gap < -1, 0] = 0          # fv below mid: takers will sell into our bid
+    a[gap > 1, 1] = 0
+    a[inv > 0.5, 0] = 5         # long: back the bid off
+    a[inv < -0.5, 1] = 5
+    return a

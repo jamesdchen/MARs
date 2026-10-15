@@ -234,6 +234,19 @@ def sample_actions(logits, generator=None):
     return torch.cat(acts, -1).int(), torch.cat(lps, -1).sum(-1)
 
 
+def logprob_entropy(logits, actions):
+    """Summed log-prob of `actions` (B, H) (any leading shape, flattened) and summed
+    entropy (B,) over the heads: the values pufferlib.pytorch.sample_logits returns
+    for a MultiDiscrete, without its -inf padding to the widest head (3x faster)."""
+    a = actions.reshape(-1, len(logits)).long()
+    lp, ent = 0.0, 0.0
+    for h, l in enumerate(logits):
+        logp = torch.log_softmax(l.float(), -1)
+        lp = lp + logp.gather(-1, a[:, h:h + 1]).squeeze(-1)
+        ent = ent - (logp.exp() * logp).sum(-1)
+    return lp, ent
+
+
 def load_checkpoint(path, env=None, map_location='cpu'):
     """Rebuild a policy from a train_ppo.py checkpoint. Returns (policy, ckpt dict)."""
     ck = torch.load(path, map_location=map_location, weights_only=False)

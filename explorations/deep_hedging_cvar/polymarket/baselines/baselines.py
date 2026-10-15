@@ -178,10 +178,12 @@ def price_to_choice(amap: ActionMap, desired, best, other_best, tick, side: int,
     desired = np.asarray(desired, dtype=np.float64)
     o = side * (desired - best) / tick                   # ticks of improvement wanted
     o = np.round(o, 6)
-    spread_t = np.round(np.abs(other_best - best) / tick, 6)
-    cap = np.where(np.isfinite(spread_t), np.floor(spread_t) - 1.0, amap.ticks.max())
+    spread_t = np.rint(np.abs(other_best - best) / tick)     # quotes sit on the tick grid
+    cap = np.where(np.isfinite(spread_t), spread_t - 1.0, amap.ticks.max())
     cap = np.maximum(cap, 0.0)                           # joining is always allowed
     allowed = amap.ticks[None, :] <= cap[:, None]
+    if inside_only:
+        allowed &= amap.ticks[None, :] >= 0
     dist = np.abs(o[:, None] - amap.ticks[None, :]) + 1e-6 * amap.ticks[None, :]
     dist = np.where(allowed, dist, np.inf)
     choice = amap.idx[np.argmin(dist, axis=1)]
@@ -189,6 +191,39 @@ def price_to_choice(amap: ActionMap, desired, best, other_best, tick, side: int,
     if inside_only:
         off |= o < -0.5
     return np.where(off, amap.off, choice).astype(np.int32)
+
+
+def _uncross(amap: ActionMap, st: dict, a: np.ndarray, bid_px, ask_px, inside_only=False):
+    """Our own bid must stay below our own ask (the core otherwise moves the ask to bid + tick).
+    While both sides are on and the chosen prices touch or cross, step the side whose desired price
+    is less hurt by it one choice more passive (ties: the ask, as the core would). With
+    inside_only, a side pushed behind the touch goes off instead."""
+    order = np.full(7, -1)                               # choice index -> rank (0 most aggressive)
+    ranks = amap.idx[np.argsort(-amap.ticks)]
+    order[ranks] = np.arange(len(ranks))
+    by_rank = ranks
+    tk = np.zeros(7)
+    tk[amap.idx] = amap.ticks
+    for _ in range(len(ranks)):
+        on = (a[:, 0] != amap.off) & (a[:, 1] != amap.off)
+        pb = st["bid"] + tk[a[:, 0]] * st["tick"]
+        pa = st["ask"] - tk[a[:, 1]] * st["tick"]
+        bad = on & (pb >= pa - 1e-9)
+        if not bad.any():
+            break
+        rb, ra = order[a[:, 0]], order[a[:, 1]]
+        nb = np.where(rb + 1 < len(ranks), by_rank[np.minimum(rb + 1, len(ranks) - 1)], amap.off)
+        na = np.where(ra + 1 < len(ranks), by_rank[np.minimum(ra + 1, len(ranks) - 1)], amap.off)
+        if inside_only:
+            nb = np.where(tk[nb] < 0, amap.off, nb)
+            na = np.where(tk[na] < 0, amap.off, na)
+        cost_b = np.abs(bid_px - (st["bid"] + tk[nb] * st["tick"])) - np.abs(bid_px - pb)
+        cost_a = np.abs(ask_px - (st["ask"] - tk[na] * st["tick"])) - np.abs(ask_px - pa)
+        move_b = bad & (cost_b < cost_a)
+        move_a = bad & ~move_b
+        a[:, 0] = np.where(move_b, nb, a[:, 0])
+        a[:, 1] = np.where(move_a, na, a[:, 1])
+    return a
 
 
 def to_actions(amap: ActionMap, st: dict, bid_px, ask_px, size_idx, inside_only=False):
@@ -199,6 +234,9 @@ def to_actions(amap: ActionMap, st: dict, bid_px, ask_px, size_idx, inside_only=
                               st["tick"], +1, st["bid_ok"], inside_only)
     a[:, 1] = price_to_choice(amap, ask_px, st["ask"], np.where(st["bid_ok"], st["bid"], np.nan),
                               st["tick"], -1, st["ask_ok"], inside_only)
+    with np.errstate(invalid="ignore"):
+        a = _uncross(amap, st, a, np.asarray(bid_px, np.float64), np.asarray(ask_px, np.float64),
+                     inside_only)
     a[:, 2] = np.broadcast_to(np.asarray(size_idx, dtype=np.int32), (B,))
     return a
 
@@ -240,6 +278,7 @@ def no_quote(spec: ObsSpec, params=None):
 def sym_touch(spec: ObsSpec, params=None):
     p = {**DEFAULTS["sym_touch"], **(params or {})}
     amap = ActionMap(spec)
+    spec.check(need_fair=False)
     size = int(p["size"])
     q_max = _q_max(spec, p)
 
@@ -264,6 +303,7 @@ def sym_touch(spec: ObsSpec, params=None):
 def as_logit(spec: ObsSpec, params=None):
     p = {**DEFAULTS["as_logit"], **(params or {})}
     amap = ActionMap(spec)
+    spec.check(need_fair=False)
     gamma, k, h, size = float(p["gamma"]), float(p["k"]), float(p["h_risk"]), int(p["size"])
     base = math.log1p(gamma / k) / gamma
     q_max = _q_max(spec, p)
@@ -299,6 +339,7 @@ def fv_quotes(st, p):
 def fair_value(spec: ObsSpec, params=None):
     p = {**DEFAULTS["fair_value"], **(params or {})}
     amap = ActionMap(spec)
+    spec.check(need_fair=True)
     size = int(p["size"])
     q_max = _q_max(spec, p)
 
@@ -316,6 +357,7 @@ def fair_value(spec: ObsSpec, params=None):
 def fv_smart(spec: ObsSpec, params=None):
     p = {**DEFAULTS["fv_smart"], **(params or {})}
     amap = ActionMap(spec)
+    spec.check(need_fair=True)
     size = int(p["size"])
     q_max = _q_max(spec, p)
 

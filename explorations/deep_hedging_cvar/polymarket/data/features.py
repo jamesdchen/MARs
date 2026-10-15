@@ -104,7 +104,7 @@ CI = {c: i for i, c in enumerate(COLS)}
 BOOK_DTYPE = np.dtype([("bid_px", "<i2", 5), ("ask_px", "<i2", 5), ("bid_sz", "<f4", 5),
                        ("ask_sz", "<f4", 5), ("flags", "u1"), ("tick", "u1"), ("pad", "u1", 2)])
 assert BOOK_DTYPE.itemsize == 64
-BOOK_VALID, BOOK_CROSSED, BOOK_STALE, BOOK_FROM_DOWN = 1, 2, 4, 8
+BOOK_VALID, BOOK_CROSSED, BOOK_STALE, BOOK_FROM_DOWN, BOOK_SAME = 1, 2, 4, 8, 16
 LIQ = rt.AUG_2026          # liquidity-reward preset baked into liq_* (v = 1.5 c, min size 50, c = 3)
 LIQ_SEED = 20260821        # sample-second draws (one uniform second per UTC minute)
 FILL_DTYPE = np.dtype([("row", "<i4"), ("side", "i1"), ("first", "u1"), ("px", "<i2"),
@@ -318,8 +318,10 @@ def main():
         rec["ask_px"] = am
         rec["bid_sz"] = bs
         rec["ask_sz"] = asz
+        lad = np.concatenate([bm, am, bs, asz], 1)
+        same = np.r_[False, (lad[1:] == lad[:-1]).all(1)]       # ladder identical to the previous row
         rec["flags"] = (valid * BOOK_VALID | crossed * BOOK_CROSSED | (age > STALE_S) * BOOK_STALE
-                        | (X[:, c["book_from_down"]] > 0) * BOOK_FROM_DOWN)
+                        | (X[:, c["book_from_down"]] > 0) * BOOK_FROM_DOWN | same * BOOK_SAME)
         rec["tick"] = np.where(fine, 1, 10)
         rec["pad"][:, 0] = np.where(fine_alt, 1, 10)
 
@@ -423,7 +425,8 @@ def main():
             {"name": "bid_sz", "type": "float[5]", "offset": 20, "doc": "shares, 0 = empty"},
             {"name": "ask_sz", "type": "float[5]", "offset": 40, "doc": "shares"},
             {"name": "flags", "type": "uint8_t", "offset": 60,
-             "doc": f"bit0 book_valid, bit1 crossed_raw, bit2 book_age > {STALE_S:g} s, bit3 book_from_down"},
+             "doc": f"bit0 book_valid, bit1 crossed_raw, bit2 book_age > {STALE_S:g} s, bit3 book_from_down, "
+                    "bit4 ladder (top-5 prices and sizes) identical to the previous row of the market"},
             {"name": "tick", "type": "uint8_t", "offset": 61, "doc": "tick in mils: 10 or 1"},
             {"name": "tick_alt", "type": "uint8_t", "offset": 62,
              "doc": "tick (mils) under tick_rule 1: also 1 once the two-sided mid left [0.04, 0.96] (sticky)"},

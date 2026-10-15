@@ -1,0 +1,651 @@
+#!/usr/bin/env python3
+"""Fit every generator parameter on the TRAIN split only (431 markets, opens 2026-08-21..22 UTC) -> sim/params.json.
+
+Data used (all train-only, see common.py loaders and their leakage asserts):
+  * data/build/ticks.bin rows of split-0 markets (1 s book + trade aggregates, block-time stamped)
+  * data/raw/trades.parquet legs of split-0 slugs (taker + maker legs)
+  * data/raw/markets.parquet price_to_beat / final_price of split-0 slugs (settlement basis)
+  * Binance 1 s closes 2026-08-20..22 (08-20 = EWMA warm-up), via fair_value.load_underlying()
+
+Components (each simple, documented in README.md):
+  settlement   open-level basis per coin, basis drift sd                     (moments)
+  mid          logit(mid) = s*logit(p) + b(len,tau) + h + u                   (distributed lag on snapshot pairs,
+               h: partial adjustment (a0 same-second, phi_h decay)            AR(1) of the residual)
+  book         regime {normal, hollow, one-sided}: persistent Markov,        (empirical conditional tables)
+               spread / level gaps / log-sizes / depth ratio / refresh rate
+  flow         taker counts: Poisson GLM with market effects + self-excitation (profile MLE)
+               direction P(buy | gap bucket), copy prob; size quantiles; sweep depth; legs; tokens
+"""
+from __future__ import annotations
+
+import json
+import time
+
+import numpy as np
+import pandas as pd
+from scipy.optimize import minimize
+from scipy.signal import lfilter
+
+import common as cm
+
+MATCH_LAG = 3             # block time - match time used to align flow covariates (COVERAGE: 3-4 s)
+EXCL_END = 30             # mid fits drop the last 30 s (p saturates, books one-sided)
+P_LO, P_HI = 0.03, 0.97   # mid fits use rows with p and mid inside this band (logit well behaved)
+
+
+def bucket_table(keys, states, n_states, shape, alpha=20.0, parent=None):
+    """Smoothed conditional distribution table. keys: tuple of int arrays (cell index); states: int array."""
+    cnt = np.zeros(shape + (n_states,))
+    np.add.at(cnt, keys + (states,), 1.0)
+    if parent is None:
+        parent = cnt.reshape(-1, n_states).sum(0)
+        parent = np.broadcast_to(parent / parent.sum(), cnt.shape)
+    tab = cnt + alpha * parent
+    tab /= tab.sum(-1, keepdims=True)
+    return tab, cnt
+
+
+def rounded(x, nd=6):
+    if isinstance(x, dict):
+        return {k: rounded(v, nd) for k, v in x.items()}
+    if isinstance(x, (list, tuple)):
+        return [rounded(v, nd) for v in x]
+    if isinstance(x, np.ndarray):
+        return rounded(x.tolist(), nd)
+    if isinstance(x, (float, np.floating)):
+        return float(round(float(x), nd))
+    if isinstance(x, (np.integer,)):
+        return int(x)
+    return x
+
+
+# ============================================================================================ settlement
+def fit_settlement(mk: pd.DataFrame) -> dict:
+    raw = pd.read_parquet(cm.RAW / "markets.parquet", columns=["slug", "price_to_beat", "final_price", "winner_up"])
+    d = mk.merge(raw, on="slug", how="left", suffixes=("", "_g"))
+    ok = d.price_to_beat.notna() & d.final_price.notna() & (d.price_to_beat > 0)
+    d = d[ok]
+    b_open = 1e4 * np.log(d.price_to_beat / d.K)
+    b_end = 1e4 * np.log(d.final_price / d.twap_end)
+    drift = b_end - b_open
+    agree = int(((d.twap_end >= d.K).astype(int) == d.winner_up).sum())
+    out = {
+        "open_basis_bp_by_coin": {c: float(np.median(b_open[d.coin == c])) for c in cm.COINS if (d.coin == c).any()},
+        "sigma_basis_bp": float(np.std(drift)),
+        "sigma_basis_bp_by_len": {cm.LEN_NAME[L]: float(np.std(drift[d.L == L])) for L in cm.LENS},
+        "binance_twap_outcome_agrees": f"{agree}/{len(d)}",
+        "n_markets": int(len(d)),
+        "note": "price_to_beat (Chainlink) = K_binance * exp(open_basis); sim settles Up iff "
+                "TWAP60_binance(end) * exp(eps) >= K_binance, eps ~ N(0, sigma_basis^2) (0 in the base sim)",
+    }
+    return out
+
+
+# ============================================================================================ mid process
+MID_H = {300: [1, 5, 30, 120], 900: [1, 5, 30, 120, 300], 14400: [1, 5, 30, 120, 300, 900]}
+ACF_LAGS = [5, 30, 120]
+
+
+def mid_moments(y, x, good, mi, fine_unused=None, H=(1, 5, 30), ok_y=None):
+    """Moments of the displayed logit mid y vs model logit x on `good` rows (same market for lagged pairs)."""
+    ok = good if ok_y is None else (good & ok_y)
+    out = {}
+    idx = np.flatnonzero(ok)
+    for h in H:
+        j = idx + h
+        v = j < len(x)
+        i_, j_ = idx[v], j[v]
+        v = (mi[i_] == mi[j_]) & ok[j_]
+        i_, j_ = i_[v], j_[v]
+        dx, dy = x[j_] - x[i_], y[j_] - y[i_]
+        out[f"slope_{h}"] = float(np.sum(dx * dy) / np.sum(dx * dx))
+    xs, ys = x[ok], y[ok]
+    out["level_slope"] = float(np.cov(xs, ys)[0, 1] / np.var(xs))
+    g = ys - xs
+    out["sd_gap"] = float(g.std())
+    for k in ACF_LAGS:
+        i_ = idx[(idx + k) < len(x)]
+        j_ = i_ + k
+        v = (mi[i_] == mi[j_]) & ok[j_]
+        a, b = (y - x)[i_[v]], (y - x)[j_[v]]
+        out[f"acf_{k}"] = float(np.corrcoef(a, b)[0, 1])
+    i_ = idx[idx >= 1]
+    v = (mi[i_ - 1] == mi[i_]) & ok[i_ - 1]
+    out["p_change"] = float((np.abs(y[i_[v]] - y[i_[v] - 1]) > 1e-9).mean())
+    return out
+
+
+MOM_SCALE = dict(level_slope=0.03, sd_gap=0.03, p_change=0.02, **{f"acf_{k}": 0.03 for k in ACF_LAGS})
+
+
+def sim_mid_paths(X, TB, pi_prof, th, U, Z, b_tau=None):
+    """Sticky mid on padded arrays [n_mkt, T]: target = s_f*x + (s_l-s_f)*ewma(x) + u (+ b[tau]);
+    the displayed latent mid jumps to the target at update events (prob pi per second), else holds."""
+    s_f, s_l, hl_slow, hl_u, sig_u, pi_mult = th
+    d = 0.5 ** (1.0 / hl_slow)
+    xb = lfilter([1 - d], [1, -d], X, axis=1, zi=(d * X[:, :1]))[0]
+    phi = 0.5 ** (1.0 / hl_u)
+    u = lfilter([sig_u], [1, -phi], Z, axis=1, zi=(phi * Z[:, :1] * sig_u / np.sqrt(1 - phi ** 2)))[0]
+    T = s_f * X + (s_l - s_f) * xb + u
+    if b_tau is not None:
+        T = T + b_tau[TB]
+    ev = U < np.clip(pi_mult * pi_prof[TB], 0, 1)
+    ev[:, 0] = True
+    last = np.where(ev, np.arange(X.shape[1])[None, :], 0)
+    last = np.maximum.accumulate(last, axis=1)
+    return np.take_along_axis(T, last, axis=1)
+
+
+def quantize_mid(ell, fine):
+    m = cm.sigmoid(ell)
+    q = np.where(fine, 0.0005, 0.005)
+    return np.round(m / q) * q
+
+
+def fit_mid(P: dict, mk: pd.DataFrame, reg, mid, fine, pi_prof) -> dict:
+    """Simulated method of moments on the real train Binance paths (common random numbers).
+    pi_prof[len, tau_b]: profile of the per-second book-update probability (scaled by pi_mult)."""
+    off = np.concatenate([[0], np.cumsum(mk.n_rows.values)])
+    tau = P["seconds_to_close"]
+    x_all = cm.logit(P["p"], 1e-4)
+    y_all = cm.logit(np.clip(mid, 1e-4, 1 - 1e-4), 1e-4)
+    good = ((reg == cm.NORMAL) & (P["book_valid"] == 1) & (P["p"] > P_LO) & (P["p"] < P_HI)
+            & (mid > P_LO) & (mid < P_HI) & (tau > EXCL_END))
+    rng = np.random.default_rng(12345)
+    out = {}
+    for li, L in enumerate(cm.LENS):
+        mis = np.flatnonzero(mk.L.values == L)
+        n = L + 1
+        rows = np.concatenate([np.arange(off[m], off[m + 1]) for m in mis])
+        X = x_all[rows].reshape(len(mis), n)
+        Y = y_all[rows].reshape(len(mis), n)
+        G = good[rows].reshape(len(mis), n)
+        FN = fine[rows].reshape(len(mis), n)
+        TB = cm.tau_bucket(np.minimum(tau[rows], L - 1)).reshape(len(mis), n)
+        MI = np.repeat(np.arange(len(mis)), n)
+        H = MID_H[L]
+        real = mid_moments(Y.ravel(), X.ravel(), G.ravel(), MI, H=H)
+        U = rng.random(X.shape)
+        Z = rng.standard_normal(X.shape)
+        prof = np.asarray(pi_prof[li])
+
+        def run(th, final=False):
+            ell0 = sim_mid_paths(X, TB, prof, th, U, Z)
+            r = np.where(G, Y - ell0, np.nan)
+            b = np.array([np.nanmean(r[TB == k]) if np.isfinite(r[TB == k]).sum() > 100 else np.nan
+                          for k in range(cm.NTAU)])
+            okb = np.flatnonzero(np.isfinite(b))
+            for k in range(cm.NTAU):
+                if not np.isfinite(b[k]):
+                    b[k] = b[okb[np.argmin(np.abs(okb - k))]]
+            ell = sim_mid_paths(X, TB, prof, th, U, Z, b_tau=b)
+            ms = quantize_mid(ell, FN)
+            ys = cm.logit(np.clip(ms, 1e-4, 1 - 1e-4), 1e-4)
+            okm = (ms > P_LO) & (ms < P_HI)
+            mom = mid_moments(ys.ravel(), X.ravel(), G.ravel(), MI, H=H, ok_y=okm.ravel())
+            return mom, b
+
+        def loss(z):
+            th = (z[0], z[1], np.exp(z[2]), np.exp(z[3]), np.exp(z[4]), np.exp(z[5]))
+            if not (0 < th[0] < 2 and 0 < th[1] < 2 and 2 < th[2] < 5000 and 2 < th[3] < 50000 and th[5] < 5):
+                return 1e6
+            mom, _ = run(th)
+            return sum(((mom[k] - real[k]) / MOM_SCALE.get(k, 0.03)) ** 2 for k in real)
+
+        z0 = np.array([0.5, 0.9, np.log(120.0), np.log(300.0), np.log(0.03), 0.0])
+        best = None
+        for start in (z0, z0 + np.array([0.2, -0.1, 1.0, 1.5, 0.5, -0.5])):
+            res = minimize(loss, start, method="Nelder-Mead",
+                           options=dict(maxiter=500, xatol=1e-3, fatol=1e-3, adaptive=True))
+            if best is None or res.fun < best.fun:
+                best = res
+        z = best.x
+        th = (z[0], z[1], np.exp(z[2]), np.exp(z[3]), np.exp(z[4]), np.exp(z[5]))
+        mom, b = run(th)
+        out[cm.LEN_NAME[L]] = dict(
+            s_fast=th[0], s_slow=th[1], halflife_slow_s=th[2], halflife_u_s=th[3], sigma_u=th[4],
+            update_prob_mult=th[5], update_prob=np.clip(th[5] * prof, 0, 1), b_tau=b,
+            moments_real=real, moments_sim=mom, smm_loss=float(best.fun), n_markets=int(len(mis)),
+            note="target = s_fast*logit(p) + (s_slow-s_fast)*EWMA_hl(logit p) + b(tau) + u, u AR(1) "
+                 "(half-life halflife_u_s, innovation sd sigma_u); the book re-aligns to the target only at "
+                 "update events (prob update_prob[tau_b] per second) and holds otherwise")
+        print(f"  mid {cm.LEN_NAME[L]}: loss {best.fun:.2f} th={np.round(th, 4)}")
+        print("    real", {k: round(v, 3) for k, v in real.items()})
+        print("    sim ", {k: round(v, 3) for k, v in mom.items()})
+    return out
+
+
+# ============================================================================================ book
+def fine_flags(P: dict, mk: pd.DataFrame):
+    """Per row: market already on the 0.001 grid (any top-5 price off the 0.01 grid so far; sticky)."""
+    pr = np.column_stack([P[f"{s}_px_{k}"] for s in ("bid", "ask") for k in range(cm.NLEV)])
+    off = (np.abs(np.round(pr * 100) - pr * 100) > 1e-3) & (pr > 0) & (pr < 1)
+    offr = off.any(1)
+    fine = np.zeros(len(offr), bool)
+    o = np.concatenate([[0], np.cumsum(mk.n_rows.values)])
+    for m in range(len(mk)):
+        fine[o[m]:o[m + 1]] = np.maximum.accumulate(offr[o[m]:o[m + 1]])
+    return fine
+
+
+def fit_book(P: dict, mk: pd.DataFrame, reg, mid, spread) -> dict:
+    o = np.concatenate([[0], np.cumsum(mk.n_rows.values)])
+    valid = P["book_valid"] == 1
+    tau = P["seconds_to_close"]
+    Lr = P["L"]
+    li = np.searchsorted(cm.LENS, Lr)
+    tb = cm.tau_bucket(np.minimum(tau, Lr - 1))
+    eb = cm.ext_bucket(P["p"])
+    fine = fine_flags(P, mk)
+    same_mkt = np.r_[False, P["m"][1:] == P["m"][:-1]]
+    out = {}
+
+    # ---- tick switch: max |mid-0.5| on normal rows before the switch, markets that switched
+    pre_max, switched = [], []
+    for m in range(len(mk)):
+        a, b = o[m], o[m + 1]
+        f = fine[a:b]
+        nr = (reg[a:b] == cm.NORMAL) & valid[a:b] & ~f
+        if f.any():
+            switched.append(m)
+            if nr.any():
+                pre_max.append(np.abs(mid[a:b][nr] - 0.5).max())
+    out["tick_switch"] = dict(ext_threshold=float(np.median(pre_max)), n_switched=len(switched), n_markets=len(mk),
+                              note="tick 0.01 -> 0.001 (sticky) once |latent mid - 0.5| exceeds ext_threshold")
+
+    # ---- regime table pi*(len, tau_b, ext_b) and persistence per state
+    v = valid
+    tab, cnt = bucket_table((li[v], tb[v], eb[v]), reg[v], 3, (3, cm.NTAU, cm.NEXT), alpha=20.0)
+    keep = {}
+    for k, name in ((cm.NORMAL, "normal"), (cm.HOLLOW, "hollow"), (cm.ONESIDED, "onesided")):
+        prev = np.r_[-1, reg[:-1]]
+        sel = same_mkt & v & (prev == k)
+        keep[name] = [float((reg[sel & (li == j)] == k).mean()) if (sel & (li == j)).sum() > 50 else 0.99
+                      for j in range(3)]
+    # side that is empty when one-sided: the extreme side (ask empty when p > 0.5)?
+    os_ = v & (reg == cm.ONESIDED)
+    noask = P["ask_px_0"] >= 1
+    agree_side = float(((P["p"] > 0.5) == noask)[os_].mean())
+    hollow_open = [float((reg[o[:-1]][mk.L.values == L] == cm.HOLLOW).mean()) for L in cm.LENS]
+    out["regime"] = dict(states=["normal", "hollow", "onesided"], table=tab, counts_total=cnt.sum((0, 1, 2)),
+                         p_keep=keep, onesided_extreme_side_agree=agree_side, p_hollow_at_open=hollow_open,
+                         note="per second: keep current state w.p. p_keep[state], else redraw from "
+                              "pi'(s) ~ table(s) * (1 - p_keep[s]) (so the marginal matches the table); one-sided "
+                              "removes the side beyond the extreme (ask if p_model > 0.5)")
+
+    # ---- spread (normal rows) by (len, tau_b, ext_b, fine) over pruned support (mils)
+    nr = v & (reg == cm.NORMAL)
+    smils = np.round(spread * 1000).astype(int)
+    vals, cts = np.unique(smils[nr], return_counts=True)
+    keepv = vals[(cts / cts.sum() > 2e-4)]
+    keepv = keepv[keepv >= 1]
+    sidx = np.abs(smils[:, None] - keepv[None, :]).argmin(1)
+    spr = {}
+    for fflag in (0, 1):
+        sel = nr & (fine == fflag)
+        if fflag == 0:   # coarse grid: only multiples of 10 mils are reachable
+            allowed = (keepv % 10) == 0
+        else:
+            allowed = np.ones(len(keepv), bool)
+        sup = keepv[allowed]
+        idxmap = -np.ones(len(keepv), int)
+        idxmap[allowed] = np.arange(allowed.sum())
+        si = idxmap[sidx[sel]]
+        okk = si >= 0
+        par_cnt = np.zeros((3, cm.NEXT, len(sup)))
+        np.add.at(par_cnt, (li[sel][okk], eb[sel][okk], si[okk]), 1.0)
+        par = (par_cnt + 1.0) / (par_cnt + 1.0).sum(-1, keepdims=True)
+        par = np.broadcast_to(par[:, None, :, :], (3, cm.NTAU, cm.NEXT, len(sup)))
+        t_, c_ = bucket_table((li[sel][okk], tb[sel][okk], eb[sel][okk]), si[okk], len(sup),
+                              (3, cm.NTAU, cm.NEXT), alpha=30.0, parent=par)
+        spr["fine" if fflag else "coarse"] = dict(support_mils=sup, table=t_, n=int(okk.sum()))
+    out["spread"] = spr
+
+    # ---- level gaps (normal rows, both sides pooled) by (fine, level)
+    gaps = {}
+    for fflag in (0, 1):
+        sel = nr & (fine == fflag)
+        per = []
+        for k in range(1, cm.NLEV):
+            g = []
+            for s_, sign in (("bid", 1), ("ask", -1)):
+                p0, p1 = P[f"{s_}_px_{k-1}"], P[f"{s_}_px_{k}"]
+                pres = (p1 > 0) & (p1 < 1) & (p0 > 0) & (p0 < 1)
+                g.append(np.round(sign * (p0 - p1) * 1000)[sel & pres])
+            g = np.concatenate(g).astype(int)
+            g = g[g >= 1]
+            vv, cc = np.unique(g, return_counts=True)
+            m_ = cc / cc.sum() > 0.002
+            per.append(dict(support_mils=vv[m_], p=cc[m_] / cc[m_].sum()))
+        gaps["fine" if fflag else "coarse"] = per
+    out["gaps"] = gaps
+
+    # ---- sizes: log-normal per level and length (normal rows); persistence at refresh
+    sizes = {}
+    for j, L in enumerate(cm.LENS):
+        mu, sd = [], []
+        for k in range(cm.NLEV):
+            z = np.concatenate([np.log(P[f"{s_}_sz_{k}"][nr & (li == j) & (P[f"{s_}_sz_{k}"] > 0)])
+                                for s_ in ("bid", "ask")])
+            mu.append(z.mean())
+            sd.append(z.std())
+        sizes[cm.LEN_NAME[L]] = dict(mu=mu, sd=sd)
+    # book-change profile: P(book_age == 0) by (len, tau_b) -> profile of the update probability (the mid fit
+    # scales it); per-second autocorrelation of log size at level 0 while best prices are unchanged
+    fresh = P["book_age"] == 0
+    age0 = np.zeros((3, cm.NTAU))
+    for j in range(3):
+        for k in range(cm.NTAU):
+            sel = v & (li == j) & (tb == k)
+            age0[j, k] = fresh[sel].mean() if sel.sum() > 100 else np.nan
+        good = np.isfinite(age0[j])
+        age0[j, ~good] = np.interp(np.flatnonzero(~good), np.flatnonzero(good), age0[j, good])
+    unchanged = same_mkt & v & np.r_[False, (P["bid_px_0"][1:] == P["bid_px_0"][:-1])
+                                     & (P["ask_px_0"][1:] == P["ask_px_0"][:-1])]
+    r1 = []
+    for j in range(3):
+        sel = unchanged & (li == j) & nr & np.r_[False, nr[:-1]]
+        z1 = np.log(np.maximum(P["bid_sz_0"][sel], 1e-3))
+        z0 = np.log(np.maximum(np.r_[0, P["bid_sz_0"][:-1]][sel], 1e-3))
+        r1.append(float(np.corrcoef(z0, z1)[0, 1]))
+    sizes["acf1_log_size_per_second"] = r1
+    sizes["note"] = ("log size ~ N(mu[level], sd[level]); redrawn at update events as AR(1) with "
+                     "rho = (acf1 - (1 - pi_update)) / pi_update so the per-second autocorrelation matches")
+    out["size"] = sizes
+    out["book_change_profile"] = dict(p_age0=age0, note="P(book_age == 0) per (len, tau_b) in train ticks")
+    # depth total / top-5 ratio
+    top5 = sum(P[f"bid_sz_{k}"] for k in range(cm.NLEV))
+    ratio = np.log(np.maximum(P["bid_depth_total"], 1e-6) / np.maximum(top5, 1e-6))
+    out["depth_ratio"] = {cm.LEN_NAME[L]: dict(mu=float(ratio[nr & (li == j) & (top5 > 0)].mean()),
+                                               sd=float(ratio[nr & (li == j) & (top5 > 0)].std()))
+                          for j, L in enumerate(cm.LENS)}
+    # ---- hollow configurations (absolute top-5 prices), sizes
+    hr = v & (reg == cm.HOLLOW)
+    cfg = np.round(np.column_stack([P[f"bid_px_{k}"] for k in range(cm.NLEV)]
+                                   + [P[f"ask_px_{k}"] for k in range(cm.NLEV)])[hr], 3)
+    u_, inv, cc = np.unique(cfg, axis=0, return_inverse=True, return_counts=True)
+    top = np.argsort(-cc)[:12]
+    hs = np.concatenate([np.log(P[f"{s_}_sz_{k}"][hr & (P[f"{s_}_sz_{k}"] > 0)]) for s_ in ("bid", "ask")
+                         for k in range(cm.NLEV)])
+    out["hollow"] = dict(bid_px=u_[top, :cm.NLEV], ask_px=u_[top, cm.NLEV:], p=cc[top] / cc[top].sum(),
+                         coverage=float(cc[top].sum() / cc.sum()), log_size_mu=float(hs.mean()),
+                         log_size_sd=float(hs.std()))
+    return out, fine
+
+
+# ============================================================================================ flow
+def flow_covariates(P: dict, mk: pd.DataFrame, mid, reg):
+    """Match-time covariates aligned to block-time rows (row t uses state at row t - MATCH_LAG)."""
+    o = np.concatenate([[0], np.cumsum(mk.n_rows.values)])
+    n = len(P["p"])
+    src = np.arange(n) - MATCH_LAG
+    first = o[P["m"]]
+    src = np.maximum(src, first)
+    gap = (P["p"] - mid)[src]
+    S = P["S"]
+    i5 = np.maximum(np.arange(n) - 5, first)
+    z5 = np.abs(np.log(S / S[i5])) / (np.maximum(P["sigma"], 1e-7) * np.sqrt(5))
+    z5 = z5[src]
+    return dict(gap=gap, z5=z5, reg=reg[src], tau=P["seconds_to_close"][src])
+
+
+def glm_design(cov, Lr, tau):
+    li = np.searchsorted(cm.LENS, Lr)
+    tb = cm.tau_bucket(np.minimum(tau, Lr - 1))
+    cell = li * cm.NTAU + tb
+    X = np.column_stack([np.minimum(np.abs(cov["gap"]), 0.3), np.minimum(cov["z5"], 6.0),
+                         (cov["reg"] == cm.ONESIDED).astype(float)])
+    return cell, X
+
+
+def fit_flow(P: dict, mk: pd.DataFrame, mid, reg) -> dict:
+    o = np.concatenate([[0], np.cumsum(mk.n_rows.values)])
+    n_t = P["trade_count"]
+    cov = flow_covariates(P, mk, mid, reg)
+    cell, Xc = glm_design(cov, P["L"], cov["tau"])
+    ncell = 3 * cm.NTAU
+    # reference cell per length (bucket of the opening second) is fixed at 0 (market effects absorb level)
+    ref = [li * cm.NTAU + cm.tau_bucket(L - 1) for li, L in enumerate(cm.LENS)]
+    free_cells = np.array([c for c in range(ncell) if c not in ref and (cell == c).any()])
+    cpos = -np.ones(ncell, int)
+    cpos[free_cells] = np.arange(len(free_cells))
+    m_idx = P["m"]
+    # hollow seconds (stub quotes only) carry 0.0065 trades/s vs 0.245 in normal books and are concentrated in
+    # a few dead markets: they are excluded from the likelihood and the sim generates no flow in that state
+    w_row = (cov["reg"] != cm.HOLLOW).astype(float)
+    rate_hollow = float(n_t[w_row == 0].mean()) if (w_row == 0).any() else 0.0
+    rate_other = float(n_t[w_row == 1].mean())
+    N_m = np.bincount(m_idx, weights=n_t * w_row, minlength=len(mk))
+
+    def excitation(tau_e):
+        d = np.exp(-1.0 / tau_e)
+        E = np.zeros_like(n_t)
+        for m in range(len(mk)):
+            a, b = o[m], o[m + 1]
+            x = np.r_[0.0, n_t[a:b - 1]]
+            E[a:b] = lfilter([1.0], [1.0, -d], x)
+        return np.log1p(E)
+
+    def negll(theta, ex):
+        k = len(free_cells)
+        th_c = np.zeros(ncell)
+        th_c[free_cells] = theta[:k]
+        beta = theta[k:k + Xc.shape[1]]
+        gam = theta[-1]
+        eta = th_c[cell] + Xc @ beta + gam * ex
+        eta = np.minimum(eta, 30)
+        w = np.exp(eta) * w_row
+        Sm = np.bincount(m_idx, weights=w, minlength=len(mk))
+        ll = np.sum(w_row * n_t * eta) - np.sum(N_m[N_m > 0] * np.log(Sm[N_m > 0]))
+        # gradient
+        coefm = np.where(Sm > 0, N_m / np.maximum(Sm, 1e-300), 0.0)
+        r = w_row * n_t - coefm[m_idx] * w
+        g_c = np.bincount(cell, weights=r, minlength=ncell)[free_cells]
+        g_b = Xc.T @ r
+        g_g = np.sum(r * ex)
+        return -ll, -np.r_[g_c, g_b, g_g]
+
+    best = None
+    for tau_e in (2.0, 5.0, 10.0, 30.0, 60.0):
+        ex = excitation(tau_e)
+        th0 = np.zeros(len(free_cells) + Xc.shape[1] + 1)
+        res = minimize(negll, th0, args=(ex,), jac=True, method="L-BFGS-B")
+        if best is None or res.fun < best[1].fun:
+            best = (tau_e, res, ex)
+    tau_e, res, ex = best
+    k = len(free_cells)
+    th_c = np.zeros(ncell)
+    th_c[free_cells] = res.x[:k]
+    beta = res.x[k:k + Xc.shape[1]]
+    gam = float(res.x[-1])
+    eta = th_c[cell] + Xc @ beta + gam * ex
+    Sm = np.bincount(m_idx, weights=np.exp(eta) * w_row, minlength=len(mk))
+    okm = Sm > 1.0                                  # markets with >= ~1 s-equivalent of non-hollow exposure
+    logA = np.log((N_m[okm] + 0.5) / Sm[okm])
+    # market effect = length + coin effects + iid normal
+    D = np.column_stack([(mk.L.values[okm] == L).astype(float) for L in cm.LENS]
+                        + [(mk.coin.values[okm] == c).astype(float) for c in cm.COINS[1:]])
+    coef, *_ = np.linalg.lstsq(D, logA, rcond=None)
+    resid = logA - D @ coef
+    # also: Poisson null (no excitation) log-lik for the record
+    res0 = minimize(lambda th: negll(np.r_[th, 0.0], ex)[0], res.x[:-1], method="L-BFGS-B",
+                    jac=lambda th: negll(np.r_[th, 0.0], ex)[1][:-1])
+    glm = dict(tau_cell=th_c.reshape(3, cm.NTAU), b_absgap=beta[0], b_absz5=beta[1], b_onesided=beta[2],
+               rate_hollow_per_s=rate_hollow, rate_non_hollow_per_s=rate_other,
+               gamma_excite=gam, tau_excite_s=tau_e, loglik=-res.fun,
+               loglik_no_excitation=-res0.fun, lr_stat_excitation=2 * (res0.fun - res.fun),
+               note="lambda_t = A_m * exp(tau_cell[len,tau_b] + b_absgap*min(|p-mid|,0.3) + b_absz5*min(|z5|,6) "
+                    "+ b_onesided*O) * (1 + E_t)^gamma, E_t = decay*E_{t-1} + n_{t-1}, "
+                    "decay = exp(-1/tau_excite); covariates at match time (block time - 3 s); "
+                    "lambda = 0 in the hollow state (fit excludes hollow seconds)")
+    meff = dict(a_len={cm.LEN_NAME[L]: coef[j] for j, L in enumerate(cm.LENS)},
+                a_coin={"btc": 0.0, **{c: coef[3 + j] for j, c in enumerate(cm.COINS[1:])}},
+                sd=float(resid.std()), n_markets=int(okm.sum()),
+                note="log A_m = a_len + a_coin + N(0, sd^2); A_m = (N_m + 0.5) / exposure_m (non-hollow seconds)")
+
+    # ---- taker transactions (direction, size, sweep, legs, tokens)
+    tr = cm.train_trades(mk.slug)
+    mk_by_slug = mk.set_index("slug")
+    tk = tr[tr.is_taker].copy()
+    mkl = tr[~tr.is_taker].copy()
+    tk["o"] = mk_by_slug.loc[tk.slug, "open_ts"].values
+    tk["e"] = mk_by_slug.loc[tk.slug, "end_ts"].values
+    tk["mpos"] = mk_by_slug.index.get_indexer(tk.slug)
+    tk = tk[(tk.timestamp >= tk.o) & (tk.timestamp <= tk.e)]
+    tk["L"] = mk.L.values[tk.mpos.values]
+    row = o[tk.mpos.values] + np.maximum(tk.timestamp.values - tk.o.values - MATCH_LAG, 0)
+    tk["gap"] = (P["p"] - mid)[row]
+    tk["gb"] = cm.gap_bucket(tk.gap.values)
+    buy = tk.aggressor_up.values == 1
+    dirn = {}
+    for j, L in enumerate(cm.LENS):
+        sel = tk.L.values == L
+        nb = np.bincount(tk.gb.values[sel], weights=buy[sel], minlength=cm.NGAP)
+        nn = np.bincount(tk.gb.values[sel], minlength=cm.NGAP)
+        dirn[cm.LEN_NAME[L]] = dict(p_buy=(nb + 5) / (nn + 10), n=nn)
+    # copy probability from sign persistence of consecutive txs within a market
+    tk = tk.sort_values(["mpos", "timestamp"], kind="stable")
+    q = np.array([dirn[cm.LEN_NAME[L]]["p_buy"][g] for L, g in zip(tk.L.values, tk.gb.values)])
+    sg = tk.aggressor_up.values
+    same_m = tk.mpos.values[1:] == tk.mpos.values[:-1]
+    p_same = float((sg[1:] == sg[:-1])[same_m].mean())
+    p_ind = float((q[1:] * q[:-1] + (1 - q[1:]) * (1 - q[:-1]))[same_m].mean())
+    rho_copy = (p_same - p_ind) / (1 - p_ind)
+    rho_copy_len = {}
+    for L in cm.LENS:
+        s2 = same_m & (tk.L.values[1:] == L)
+        ps = (sg[1:] == sg[:-1])[s2].mean()
+        pi_ = (q[1:] * q[:-1] + (1 - q[1:]) * (1 - q[:-1]))[s2].mean()
+        rho_copy_len[cm.LEN_NAME[L]] = float((ps - pi_) / (1 - pi_))
+    # sizes
+    qs = np.linspace(0, 1, 101)
+    size_q = {cm.LEN_NAME[L]: np.quantile(np.log(np.maximum(tk["size"].values[tk.L.values == L], 1e-3)), qs)
+              for L in cm.LENS}
+    # sweep depth (distinct maker price levels per tx) and legs per level
+    mkl["pxr"] = mkl.px_up.round(4)
+    g = mkl.groupby("tx")
+    nlev = g.pxr.nunique().values
+    legs_per_level = float((g.size() / g.pxr.nunique()).mean())
+    jlev = np.minimum(nlev - 1, cm.NLEV - 1)
+    p_lim = np.bincount(jlev, minlength=cm.NLEV) / len(jlev)
+    # token mix
+    t_all = tr[tr.is_taker]
+    m_all = tr[~tr.is_taker]
+    tok = dict(
+        taker_up_given_buy=float((t_all.outcome_idx[t_all.aggressor_up == 1] == 0).mean()),
+        taker_up_given_sell=float((t_all.outcome_idx[t_all.aggressor_up == -1] == 0).mean()),
+        maker_up_given_buy=float((m_all.outcome_idx[m_all.aggressor_up == 1] == 0).mean()),
+        maker_up_given_sell=float((m_all.outcome_idx[m_all.aggressor_up == -1] == 0).mean()),
+        note="probability that a leg is on the Up token, by aggressor direction (Up frame); Down legs carry "
+             "price 1-p and the opposite side")
+    out = dict(glm=glm, market_effect=meff,
+               direction=dict(gap_edges=cm.GAP_EDGES, **dirn, rho_copy=rho_copy, rho_copy_by_len=rho_copy_len,
+                              p_same_sign_observed=p_same, p_same_sign_independent=p_ind,
+                              note="P(taker buys Up | p_model - mid at match time); with prob rho_copy a trade "
+                                   "repeats the previous trade's direction in that market"),
+               size_log_quantiles=dict(q=qs, **size_q),
+               sweep=dict(p_extra_levels=p_lim, legs_per_level_mean=legs_per_level,
+                          note="taker limit allows j extra levels beyond the best (j ~ p_extra_levels); size is "
+                               "capped at the displayed depth within the limit; each level touched yields "
+                               "a geometric number of maker legs"),
+               tokens=tok,
+               stamp_delay=dict(values=[3, 4], p=[0.5, 0.5],
+                                note="block time - match time (COVERAGE.md: alignment with the book peaks at 3-4 s)"),
+               n_taker_tx=int(len(tk)))
+    return out
+
+
+def fit_fees(mk: pd.DataFrame) -> dict:
+    rw = {}
+    for L in cm.LENS:
+        d = mk[mk.L == L]
+        pairs, cnt = np.unique(np.column_stack([d.rewards_min_size, d.rewards_max_spread]), axis=0,
+                               return_counts=True)
+        rw[cm.LEN_NAME[L]] = dict(pairs=pairs, p=cnt / cnt.sum())
+    return dict(taker_fee_rate=float(np.median(mk.taker_fee_rate)), fee_exponent=1.0,
+                maker_rebate_rate=float(np.median(mk.maker_rebate_rate)), min_order_size=5.0, rewards=rw)
+
+
+RANDOMIZATION = {
+    "note": "per market (episode), applied only with --randomize; uniform unless 'log' (log-uniform)",
+    "mid_extra_lag_s": {"kind": "int", "lo": 0, "hi": 3},
+    "passthrough_a0_mult": {"kind": "uniform", "lo": 0.7, "hi": 1.15, "clip_hi_a0": 1.0},
+    "lag_halflife_mult": {"kind": "log", "lo": 0.5, "hi": 2.0},
+    "sigma_u_mult": {"kind": "log", "lo": 0.5, "hi": 2.0},
+    "refresh_rate_mult": {"kind": "log", "lo": 0.5, "hi": 2.0},
+    "taker_intensity_mult": {"kind": "log", "lo": 0.5, "hi": 2.0},
+    "taker_size_mult": {"kind": "log", "lo": 0.5, "hi": 2.0},
+    "informed_mult": {"kind": "uniform", "lo": 0.5, "hi": 2.0,
+                      "doc": "scales (P(buy|gap) - 0.5) and the |gap| intensity coefficient"},
+    "excitation_mult": {"kind": "uniform", "lo": 0.0, "hi": 1.5},
+    "depth_mult": {"kind": "log", "lo": 0.3, "hi": 3.0},
+    "spread_mult": {"kind": "log", "lo": 0.5, "hi": 2.0},
+    "onesided_logit_shift": {"kind": "uniform", "lo": -0.5, "hi": 0.5},
+    "hollow_logit_shift": {"kind": "uniform", "lo": -0.5, "hi": 0.5},
+    "fee_rate_mult": {"kind": "uniform", "lo": 0.5, "hi": 1.5, "p_fee_free": 0.1},
+    "rebate_mult": {"kind": "uniform", "lo": 0.5, "hi": 1.5},
+    "sigma_basis_mult": {"kind": "uniform", "lo": 0.0, "hi": 2.0,
+                         "doc": "base sim uses 0 (pure Binance settlement proxy)"},
+}
+
+
+def main():
+    import argparse
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--parts", nargs="+", default=["settlement", "book", "mid", "flow", "fees"],
+                    help="refit only these components (others are kept from the existing params.json)")
+    a = ap.parse_args()
+    t0 = time.time()
+    P, mk = cm.train_panel()
+    reg, mid, spread = cm.book_state(P)
+    print(f"train panel: {len(P['p'])} rows, {len(mk)} markets  {time.time()-t0:.1f}s")
+    params = cm.load_params() if cm.PARAMS.exists() and set(a.parts) != {"settlement", "book", "mid", "flow", "fees"} else {}
+    params["meta"] = dict(
+        fitted_on="train split 0 only: %d markets (%s), opens 2026-08-21..22 UTC; Binance < 2026-08-23"
+                  % (len(mk), ", ".join(f"{cm.LEN_NAME[L]} {int((mk.L == L).sum())}" for L in cm.LENS)),
+        created_utc=pd.Timestamp.now("UTC").isoformat(), n_rows=int(len(P["p"])),
+        pricer=cm.PRICER, tau_edges=cm.TAU_EDGES, ext_edges=cm.EXT_EDGES, gap_edges=cm.GAP_EDGES,
+        hollow_spread=cm.HOLLOW_SPREAD, match_lag_s=MATCH_LAG)
+    if "settlement" in a.parts:
+        params["settlement"] = fit_settlement(mk)
+    book, fine = fit_book(P, mk, reg, mid, spread)
+    if "book" in a.parts:
+        params["book"] = book
+        print(f"book done {time.time()-t0:.1f}s")
+    if "mid" in a.parts:
+        params["mid"] = fit_mid(P, mk, reg, mid, fine, np.asarray(params["book"]["book_change_profile"]["p_age0"]))
+        print(f"mid done {time.time()-t0:.1f}s")
+    if "flow" in a.parts:
+        params["flow"] = fit_flow(P, mk, mid, reg)
+        print(f"flow done {time.time()-t0:.1f}s")
+    if "fees" in a.parts:
+        params["fees"] = fit_fees(mk)
+    params["randomization"] = RANDOMIZATION
+    cm.PARAMS.write_text(json.dumps(rounded(params), indent=1))
+    print(f"wrote {cm.PARAMS} ({cm.PARAMS.stat().st_size/1e3:.0f} kB)  {time.time()-t0:.1f}s")
+    summary(params)
+
+
+def summary(p):
+    print("settlement:", {k: v for k, v in p["settlement"].items() if k != "note"})
+    for L, d in p["mid"].items():
+        print(f"mid {L}: s_fast={d['s_fast']:.3f} s_slow={d['s_slow']:.3f} hl_slow={d['halflife_slow_s']:.0f}s "
+              f"hl_u={d['halflife_u_s']:.0f}s sigma_u={d['sigma_u']:.4f} upd_mult={d['update_prob_mult']:.2f} "
+              f"b_tau={np.round(d['b_tau'], 3)} loss={d['smm_loss']:.2f}")
+    b = p["book"]
+    print("tick switch", b["tick_switch"]["ext_threshold"], "keep", b["regime"]["p_keep"],
+          "extreme-side agree", b["regime"]["onesided_extreme_side_agree"])
+    print("p_age0", np.round(np.array(b["book_change_profile"]["p_age0"]), 3))
+    print("size", {k: (np.round(v["mu"], 2) if isinstance(v, dict) else v) for k, v in b["size"].items()})
+    f = p["flow"]
+    g = f["glm"]
+    print("glm:", {k: (np.round(v, 3) if not isinstance(v, str) else None) for k, v in g.items() if k != "note"})
+    print("market effect:", f["market_effect"])
+    print("direction rho_copy", f["direction"]["rho_copy"], f["direction"]["rho_copy_by_len"])
+    for L in ("5m", "15m", "4h"):
+        print(" p_buy", L, np.round(f["direction"][L]["p_buy"], 3))
+    print("sweep", f["sweep"]["p_extra_levels"], f["sweep"]["legs_per_level_mean"], "tokens", f["tokens"])
+
+
+if __name__ == "__main__":
+    main()

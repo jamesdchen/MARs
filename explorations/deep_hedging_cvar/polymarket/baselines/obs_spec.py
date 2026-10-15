@@ -2,15 +2,21 @@
 
 The policies in `baselines.py` never index the observation directly. They read a `State`
 (a dict of float64 arrays of shape (B,)), produced here from the env's documented
-feature-name -> obs-index mapping. The mapping is loaded at runtime from (first found):
+feature-name -> obs-index mapping, loaded at runtime:
 
-  1. `../data/build/feat_meta.json`   (machine-readable; preferred)
-  2. `../ENV.md`                      (a fenced ```json block holding the same object, or a
-                                       markdown table whose rows are `| idx | name | ... |`)
+  * market block: `../data/build/feat_meta.json` (`column_index`, `n_obs_features`: columns
+    0..n_obs_features-1 of feat.bin are copied into the observation). Each column used here has
+    a known inverse of its documented encoding (`FEAT_META_DECODERS`), checked against
+    `column_docs` at load time, so a changed encoding fails loudly instead of silently.
+  * agent block (inventory, ...): `../ENV.md`, either a fenced ```json block holding a spec object
+    (shapes below) or a markdown table whose rows start `| idx | name |`. The inventory slot and
+    its scale are also parsed from the C source (`../mm.h`, mm_write_obs: `o[k] = (float)(m->inv
+    / Q)` after the MM_FEAT_OBS market columns); that is used when ENV.md is absent or silent, and
+    must agree with ENV.md's index when both exist.
 
-and loading fails with a clear error if neither exists or a required feature is absent.
+Loading fails with `SpecError` naming what is missing if a file or a required feature is absent.
 
-Accepted spec shapes (whichever the env writes):
+Accepted spec-object shapes:
   {"features": [{"name": str, "index": int, <decode keys>}, ...]}
   {"obs_index" | "column_index" | "feature_index": {name: idx}}
   {"obs_names" | "obs_columns" | "features": [name, ...]}      (index = position)
@@ -20,26 +26,19 @@ Decode keys of a feature entry (all optional; identity if absent):
   "transform"           applied after the linear inverse: "logit" (raw = sigmoid(x)),
                         "log" (raw = exp(x)), "log1p" (raw = expm1(x)), "signed_log1p".
 
-Raw quantities the baselines need (`State` keys) and the env feature names accepted for each
-(first match wins). A quantity is derived when it is not observed directly:
+Raw quantities the baselines need (`State` keys), and where they come from:
 
-  bid, ask      best Up-frame bid / ask price in $        best_bid | bid_px_0 ...
-                derived from mid +- spread/2 if only those are observed, or from
-                mid and (bid|ask) offsets in ticks.
-  bid_ok/ask_ok side present                              derived: bid > 0, ask < 1
-  tick          current tick size in $                    tick | tick_size; derived from the
-                Polymarket rule (0.001 if bid < 0.04 or ask > 0.96, else 0.01) if absent
-  q             our inventory, Up shares (signed)         inventory | inv | q | position
-  tau           seconds to close                          seconds_to_close | tau
-                (or tau_frac * T)
-  T             contract length, seconds                  contract_len_s | T; or one-hot
-                                                          len_5m/len_15m/len_4h
-  p_model       model fair value of Up                    p_model | fair_value | fv;
-                (or mid + gap if only `gap` is observed)  (only the fair-value quoters)
-  valid         book usable                               book_valid (default 1)
-  min_size      base order size in shares                 min_order_size (default 5)
-
-A required feature that cannot be found or derived raises `SpecError` naming what is missing.
+  bid, ask        best Up-frame bid / ask ($). From best_bid/bid_px_0 if observed; with the
+                  feat_meta block: mid = sigmoid(3 mark_logit), spread = tick exp(2 spread_ticks),
+                  bid/ask = mid -+ spread/2 snapped to the tick grid; NaN unless two-sided
+                  (mark_is_fv = 0), since the obs carries no price level for a one-sided book.
+  bid_ok, ask_ok  side present (bid_present / ask_present; else bid > 0 / ask < 1)
+  tick            0.001 if tick_fine else 0.01 (else the tick feature, else the 0.04/0.96 rule)
+  q               our inventory, Up shares, signed       (agent block: inventory | inv | q ...)
+  tau             seconds to close = tau_frac * T (rounded to whole seconds)
+  T               contract length from len_5m/len_15m/len_4h (or contract_len_s)
+  p_model         sigmoid(3 p_logit) (or p_model / mid + gap)   (fair-value quoters only)
+  min_size        5 shares unless observed / documented (`min_order_size`)
 """
 from __future__ import annotations
 
@@ -53,11 +52,12 @@ HERE = Path(__file__).resolve().parent
 PM = HERE.parent
 FEAT_META = PM / "data" / "build" / "feat_meta.json"
 ENV_MD = PM / "ENV.md"
+MM_H = PM / "mm.h"
 
 ALIASES = {
     "bid": ["best_bid", "bid_px_0", "bid0", "bid", "best_bid_px"],
     "ask": ["best_ask", "ask_px_0", "ask0", "ask", "best_ask_px"],
-    "mid": ["mid", "mid_px", "book_mid"],
+    "mid": ["mid", "mid_px", "book_mid", "mark"],
     "spread": ["spread", "spread_px"],
     "spread_ticks": ["spread_ticks"],
     "bid_ticks": ["bid_ticks_from_mid", "bid_off_ticks", "bid0_ticks"],
@@ -74,6 +74,10 @@ ALIASES = {
     "gap": ["gap", "fv_gap", "gap_model_mid"],
     "valid": ["book_valid", "valid"],
     "min_size": ["min_order_size", "min_size"],
+    "bid_present": ["bid_present"],
+    "ask_present": ["ask_present"],
+    "tick_fine": ["tick_fine"],
+    "mark_is_fv": ["mark_is_fv"],
 }
 
 # action head layout of MultiDiscrete([7, 7, 3]); overridable by the spec ("actions" key)
@@ -83,6 +87,46 @@ SIZE_MULTS = [1, 2, 5]                            # index -> multiple of min ord
 
 class SpecError(RuntimeError):
     pass
+
+
+def _sigmoid3(x):
+    return 1.0 / (1.0 + np.exp(-3.0 * x))
+
+
+# feat_meta.json column -> (logical name, documented encoding (must match column_docs), inverse)
+FEAT_META_DECODERS = {
+    "p_logit": ("p_model", "logit(p_model) / 3, p clipped to [1e-4, 1 - 1e-4]", _sigmoid3),
+    "mark_logit": ("mark", "logit(mark) / 3; mark = book mid if two-sided and valid, else p_model",
+                   _sigmoid3),
+    "gap_c": ("gap", "(p_model - mark) in cents / 5", lambda x: x * 0.05),
+    "tau_frac": ("tau_frac", "seconds_to_close / contract_len_s", lambda x: x),
+    "spread_ticks": ("spread_ticks", "ln(spread / tick) / 2 if two-sided, else 0",
+                     lambda x: np.exp(2.0 * x)),
+    "bid_present": ("bid_present", "best bid exists (book valid and bid_px_0 > 0)", lambda x: x),
+    "ask_present": ("ask_present", "best ask exists (book valid and ask_px_0 < 1)", lambda x: x),
+    "len_5m": ("len_5m", "contract length one-hot", lambda x: x),
+    "len_15m": ("len_15m", "contract length one-hot", lambda x: x),
+    "len_4h": ("len_4h", "contract length one-hot", lambda x: x),
+    "tick_fine": ("tick_fine", "1 once the data shows sub-cent prices (tick 0.001), sticky",
+                  lambda x: x),
+    "mark_is_fv": ("mark_is_fv", "1 if the mark fell back to p_model (one-sided or no valid book)",
+                   lambda x: x),
+}
+
+
+def _from_feat_meta(obj: dict, obs_offset: int = 0) -> dict:
+    """Market-block features of feat_meta.json (observed columns only), with decoders."""
+    n_obs = int(obj["n_obs_features"])
+    ci, docs = obj["column_index"], obj.get("column_docs", {})
+    feats = {}
+    for col, (logical, doc, inv) in FEAT_META_DECODERS.items():
+        if col not in ci or ci[col] >= n_obs:
+            continue
+        if docs.get(col) != doc:
+            raise SpecError(f"feat_meta.json encoding of {col!r} changed: {docs.get(col)!r} "
+                            f"(baselines decode {doc!r}); update obs_spec.FEAT_META_DECODERS")
+        feats[logical] = {"index": obs_offset + int(ci[col]), "decoder": inv, "column": col}
+    return feats
 
 
 # ----------------------------------------------------------------------------- spec loading
@@ -117,6 +161,19 @@ def _from_obj(obj: dict) -> dict:
     return {}
 
 
+def inventory_from_core(mm_h: Path = MM_H) -> dict | None:
+    """{"index", "scale_param"} of the inventory slot, from mm.h's observation writer."""
+    if not Path(mm_h).exists():
+        return None
+    src = Path(mm_h).read_text()
+    base = re.search(r"#define MM_FEAT_OBS (\d+)", src)
+    blk = re.search(r"float\* o = obs \+ MM_FEAT_OBS;", src)
+    inv = re.search(r"o\[(\d+)\] = \(float\)\(m->inv / (\w+)\);", src)
+    if not (base and blk and inv):
+        return None
+    return {"index": int(base.group(1)) + int(inv.group(1)), "scale_param": inv.group(2)}
+
+
 def _from_markdown(text: str) -> tuple[dict, dict]:
     for block in re.findall(r"```json\s*(.*?)```", text, flags=re.S):
         try:
@@ -134,22 +191,58 @@ def _from_markdown(text: str) -> tuple[dict, dict]:
     return feats, {}
 
 
-def load_spec(path: str | Path | None = None) -> "ObsSpec":
-    """ObsSpec from an explicit path, else feat_meta.json, else ENV.md."""
-    cands = [Path(path)] if path else [FEAT_META, ENV_MD]
-    for p in cands:
+def load_spec(path: str | Path | None = None, feat_meta: str | Path | None = None,
+              env_md: str | Path | None = None, env_params: dict | None = None,
+              mm_h: str | Path | None = None) -> "ObsSpec":
+    """ObsSpec from an explicit spec file (json or md), else feat_meta.json (market block)
+    merged with ENV.md (agent block and any overrides); the inventory slot is cross-checked
+    against (or, if ENV.md is absent or silent, taken from) mm.h, scaled by the env parameter it
+    is divided by (`env_params`, e.g. Q=100)."""
+    if path is not None:
+        p = Path(path)
         if not p.exists():
-            continue
+            raise SpecError(f"no observation spec found at {p}")
         if p.suffix == ".json":
             obj = json.loads(p.read_text())
-            feats = _from_obj(obj)
+            feats = _from_feat_meta(obj) if "n_obs_features" in obj else _from_obj(obj)
         else:
             feats, obj = _from_markdown(p.read_text())
-        if feats:
-            return ObsSpec(feats, meta=obj, source=str(p))
-    raise SpecError("no observation spec found: looked for "
-                    + ", ".join(str(c) for c in cands)
-                    + " (the env must document its feature-name -> obs-index mapping)")
+        if not feats:
+            raise SpecError(f"{p} holds no feature-name -> obs-index mapping")
+        return ObsSpec(feats, meta=obj, source=str(p))
+    fm, md = Path(feat_meta or FEAT_META), Path(env_md or ENV_MD)
+    feats, meta, src = {}, {}, []
+    md_feats, md_obj = ({}, {}) if not md.exists() else _from_markdown(md.read_text())
+    if fm.exists():
+        obj = json.loads(fm.read_text())
+        off = int(md_obj.get("market_obs_offset", 0)) if isinstance(md_obj, dict) else 0
+        feats.update(_from_feat_meta(obj, off))
+        src.append(str(fm))
+    if md_feats:
+        feats.update(md_feats)
+        meta.update(md_obj if isinstance(md_obj, dict) else {})
+        src.append(str(md))
+    if not feats:
+        raise SpecError(f"no observation spec found: looked for {fm} and {md} "
+                        "(the env must document its feature-name -> obs-index mapping)")
+    core = inventory_from_core(Path(mm_h or MM_H))
+    inv_name = next((n for n in ALIASES["q"] if n in feats), None)
+    if core is not None:
+        if env_params is None or core["scale_param"] not in env_params:
+            raise SpecError(f"inventory is obs / {core['scale_param']}: pass env_params with "
+                            f"{core['scale_param']!r} to load_spec")
+        scale = float(env_params[core["scale_param"]])
+        if inv_name is None:
+            feats["inventory"] = {"index": core["index"], "scale": scale}
+            src.append(f"mm.h mm_write_obs (inventory = obs[{core['index']}] * {core['scale_param']}; "
+                       "not in ENV.md)")
+        else:
+            if feats[inv_name]["index"] != core["index"]:
+                raise SpecError(f"ENV.md puts {inv_name} at obs[{feats[inv_name]['index']}] but mm.h "
+                                f"writes inventory at obs[{core['index']}]")
+            if not any(k in feats[inv_name] for k in ("scale", "std", "decoder")):
+                feats[inv_name] = {**feats[inv_name], "scale": scale}
+    return ObsSpec(feats, meta=meta, source=" + ".join(src))
 
 
 # ----------------------------------------------------------------------------- decoding
@@ -169,6 +262,15 @@ class ObsSpec:
         self.size_mults = acts.get("size_mults", SIZE_MULTS)
         self.obs_size = self.meta.get("obs_size")
 
+    @property
+    def width(self) -> int:
+        return int(self.obs_size or 1 + max(f["index"] for f in self.features.values()))
+
+    def check(self, need_fair: bool = False) -> None:
+        """Raise SpecError now (not mid-rollout) if a required quantity cannot be decoded."""
+        with np.errstate(all="ignore"):
+            self.decode(np.zeros((1, self.width), np.float32), need_fair=need_fair)
+
     def find(self, logical: str) -> str | None:
         for n in ALIASES.get(logical, [logical]):
             if n in self.features:
@@ -178,6 +280,8 @@ class ObsSpec:
     def raw(self, obs: np.ndarray, name: str) -> np.ndarray:
         f = self.features[name]
         x = np.asarray(obs[:, f["index"]], dtype=np.float64)
+        if "decoder" in f:
+            return f["decoder"](x)
         if "std" in f or "mean" in f:
             x = x * float(f.get("std", 1.0)) + float(f.get("mean", 0.0))
         if "scale" in f or "shift" in f or "offset" in f:
@@ -209,11 +313,14 @@ class ObsSpec:
         missing = []
 
         tick = g("tick")
+        if tick is None and g("tick_fine") is not None:
+            tick = np.where(g("tick_fine") > 0.5, 0.001, 0.01)
+        bp, ap = g("bid_present"), g("ask_present")
         bid, ask = g("bid"), g("ask")
         if bid is None or ask is None:
             mid, spread = g("mid"), g("spread")
             if spread is None and g("spread_ticks") is not None and tick is not None:
-                spread = g("spread_ticks") * tick
+                spread = np.rint(g("spread_ticks")) * tick
             bt, at = g("bid_ticks"), g("ask_ticks")
             if mid is not None and spread is not None:
                 bid, ask = mid - spread / 2, mid + spread / 2
@@ -221,6 +328,15 @@ class ObsSpec:
                 bid, ask = mid - np.abs(bt) * tick, mid + np.abs(at) * tick
             else:
                 missing.append("best bid/ask (or mid + spread)")
+            if bid is not None and tick is not None:     # snap to the grid (float32 obs)
+                bid, ask = np.rint(bid / tick) * tick, np.rint(ask / tick) * tick
+            if bid is not None:                          # price levels known only if two-sided
+                two = np.ones(B, bool)
+                if bp is not None and ap is not None:
+                    two &= (bp > 0.5) & (ap > 0.5)
+                if g("mark_is_fv") is not None:
+                    two &= g("mark_is_fv") < 0.5
+                bid, ask = np.where(two, bid, np.nan), np.where(two, ask, np.nan)
         q = g("q")
         if q is None:
             missing.append("inventory")
@@ -235,7 +351,7 @@ class ObsSpec:
         if tau is None:
             tf = g("tau_frac")
             if tf is not None and T is not None:
-                tau = tf * T
+                tau = np.rint(tf * T)
             else:
                 missing.append("seconds to close")
         p_model = g("p_model")
@@ -248,12 +364,12 @@ class ObsSpec:
         if missing:
             raise SpecError(f"obs spec {self.source} lacks: {', '.join(missing)}")
 
-        bid_ok = (bid > 1e-9) & (bid < 1)
-        ask_ok = (ask < 1 - 1e-9) & (ask > 0)
-        if tick is None:
-            tick = np.where((bid_ok & (bid < 0.04 - 1e-9)) | (ask_ok & (ask > 0.96 + 1e-9)), 0.001, 0.01)
         valid = g("valid")
         valid = np.ones(B, bool) if valid is None else valid > 0.5
+        bid_ok = (bp > 0.5) if bp is not None else (bid > 1e-9) & (bid < 1)
+        ask_ok = (ap > 0.5) if ap is not None else (ask < 1 - 1e-9) & (ask > 0)
+        if tick is None:
+            tick = np.where((bid_ok & (bid < 0.04 - 1e-9)) | (ask_ok & (ask > 0.96 + 1e-9)), 0.001, 0.01)
         ms = g("min_size")
         ms = np.full(B, float(self.meta.get("min_order_size", 5.0))) if ms is None else ms
         st = dict(bid=bid, ask=ask, bid_ok=bid_ok & valid, ask_ok=ask_ok & valid, tick=tick, q=q,

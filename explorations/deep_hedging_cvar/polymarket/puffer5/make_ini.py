@@ -3,62 +3,99 @@
     python make_ini.py [--data-dir PATH]
 
 polymarket_mm.ini goes to PufferLib/config/. sweep.ini is appended to it
-before `./puffer sweep` (the notebook does this, after removing the generic
-[sweep.*] blocks from PufferLib's config/default.ini; patch_pufferlib.py).
+before `./puffer sweep`, after patch_pufferlib.py has removed the generic
+[sweep.*] blocks from PufferLib's config/default.ini.
 
-[env] holds every knob of the core (../mm.h, ENV.md), read by
-polymarket_mm.h's puf_init. data_dir is a string: 5.0 keeps the raw text of
-every ini value (DictItem.str), and a relative path resolves against the
-PufferLib root, the trainer's working directory. The default assumes the
-repo is cloned next to PufferLib, as in the notebook.
+[env] holds every knob of the core, read from ../mm.h (MM_PARAM_NAMES and
+MM_DEFAULTS, documented in ../ENV.md), so the ini and the core cannot drift
+apart, plus data_dir, seed and the wrapper's log_episodes. data_dir is a
+string: 5.0 keeps the raw text of every ini value (DictItem.str), and a
+relative path resolves against the PufferLib root, the trainer's working
+directory. The default assumes the repo is cloned next to PufferLib.
 
 [eval_env] overrides [env] for the trainer's final evaluation only (needs
-patch_pufferlib.py). It switches that evaluation to the validation split, so
-the score each run reports, and the only point Protein sees (downsample = 1),
-is validation P&L. Test (split 2) never appears here: the core refuses it
-unless allow_test = 1 and the process has MM_FINAL=1.
+patch_pufferlib.py). That evaluation becomes one full episode of every
+validation market, each played k times: split = 1, episodes from the open
+(fixed_start = 0), env i starts on validation market i mod n_val
+(cycle_stride > 0; the wrapper seeds the core with the env index), and each
+env logs only its first episode (log_episodes = 1). With eval_agents =
+eval_episodes = k * n_val, the trainer's eval loop (which stops at
+eval_episodes finished episodes) ends when every env has finished its market,
+so the score is the mean P&L per validation market with every market weighted
+equally; without log_episodes the first episodes to finish, the 5-minute
+markets, would dominate it. That score is what a run reports and the only
+point Protein sees (sweep.downsample = 1). Test (split 2) never appears here:
+the core refuses it unless allow_test = 1 and the process has MM_FINAL=1.
 
-check() asserts the trainer's shape rules (pufferl.cu: horizon % 8 == 0,
-minibatch_size % horizon == 0, total_agents % (minibatch_size / horizon)
-== 0, minibatch_size <= horizon * total_agents) for the defaults and for
-every horizon/minibatch pair the sweep can draw, hidden_size % 8 == 0 for
-Muon (PUFFER5.md rule 5), and that every default lies inside its sweep
-range (`./puffer sweep` exits otherwise).
+check() asserts the trainer's shape rules (launch_train in pufferl.cu:
+horizon % 8 == 0, minibatch_size % horizon == 0, total_agents %
+(minibatch_size / horizon) == 0, minibatch_size <= horizon * total_agents)
+for the defaults and for every horizon/minibatch pair the sweep can draw,
+hidden_size % 8 == 0 for Muon (PUFFER5.md rule 5), and that every default
+lies inside its sweep range (`./puffer sweep` exits otherwise).
 """
 
 import argparse
 import itertools
 import math
 import os
+import re
+
+import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+CORE = os.path.join(HERE, '..', 'mm.h')
+LOCAL_DATA = os.path.join(HERE, '..', 'data', 'build')
 DEFAULT_DATA_DIR = '../MARs/explorations/deep_hedging_cvar/polymarket/data/build'
+MARKET_ITEMSIZE, SPLIT_OFFSET = 88, 40      # data/README.md: MarketRec, int32 split at byte 40
 
-# Knobs of the core, in the order of ENV.md. Values are the core's defaults.
-ENV = {
-    'data_dir': DEFAULT_DATA_DIR,
-    'split': 0,            # 0 train, 1 val, 2 test (guarded), see data/README.md
-    'allow_test': 0,       # split 2 also needs MM_FINAL=1 in the environment
-    'fill_model': 1,       # 0 optimistic, 1 central, 2 pessimistic (eval/EVALUATION.md T1)
-    'latency': 1,          # quote placement and cancel delay, seconds (T2; headline 1 s)
-    'dt': 1,               # seconds of replay per env step
-    'Q': 10,               # shares per size unit of the size head
-    'inv_penalty': 0.0,    # training-only shaping on |inventory|; not in score
-    'reward_scale': 0.1,   # reward = reward_scale * (P&L change in $, minus shaping)
-    'seed': 0,             # mixed with the env index (env->rng) per env
-}
-EVAL_ENV = {'split': 1}
+
+def core_params(path=CORE):
+    """(name, default) of every MmParams field, in order, from mm.h."""
+    text = re.sub(r'//[^\n]*|/\*.*?\*/', '', open(path).read(), flags=re.S)
+    enums = {k: int(v) for k, v in re.findall(r'\b(MM_\w+)\s*=\s*(-?\d+)', text)}
+    names = re.search(r'MM_PARAM_NAMES\[\]\s*=\s*\{(.*?)\};', text, re.S)[1]
+    values = re.search(r'MM_DEFAULTS\[\]\s*=\s*\{(.*?)\};', text, re.S)[1]
+    names = re.findall(r'"(\w+)"', names)
+    values = [v.strip() for v in values.split(',') if v.strip()]
+    assert len(names) == len(values), (len(names), len(values))
+    out = []
+    for n, v in zip(names, values):
+        out.append((n, float(enums[v]) if v in enums else float(v)))
+    return out
+
+
+def val_market_count(data_dir=LOCAL_DATA):
+    path = os.path.join(data_dir, 'markets.bin')
+    if not os.path.exists(path):
+        raise SystemExit(f'{path} not found: build the data first (data/build.py)')
+    raw = np.fromfile(path, np.uint8).reshape(-1, MARKET_ITEMSIZE)
+    split = raw[:, SPLIT_OFFSET:SPLIT_OFFSET + 4].copy().view('<i4')[:, 0]
+    return int((split == 1).sum())
+
+
+def eval_agents(n_val, target=4096):
+    """k * n_val, a multiple of 16 (equal buffers, aligned batches), near target."""
+    base = n_val * 16 // math.gcd(n_val, 16)
+    return base * max(1, round(target / base))
+
+
+CORE_PARAMS = core_params()
+# [env]: the core's defaults; the 5.0 wrapper adds data_dir, seed and log_episodes
+# (0 = log every episode; the final evaluation sets 1).
+ENV = {'data_dir': DEFAULT_DATA_DIR, **dict(CORE_PARAMS), 'seed': 0, 'log_episodes': 0}
+EVAL_ENV = {'split': 1, 'fixed_start': 0, 'cycle_stride': 1, 'log_episodes': 1}
 
 BASE = {
     'env_name': 'polymarket_mm',
-    # Episodes for the final (validation) evaluation of every train/sweep run.
-    'eval_episodes': 4096,
-    # Epochs between checkpoints (one epoch = horizon * total_agents steps),
-    # so a run leaves intermediate checkpoints to score on validation.
+    'eval_agents': None,       # k * n_val, set in main()
+    'eval_episodes': None,     # = eval_agents (one logged episode per env)
+    # Epochs between checkpoints (one epoch = horizon * total_agents steps), so a
+    # run leaves intermediate checkpoints to score on validation.
     'checkpoint_interval': 50,
 }
 VEC = {'total_agents': 4096}
-POLICY = {'hidden_size': 128, 'num_layers': 4}   # PufferNet defaults (default.ini)
+POLICY = {'hidden_size': 128, 'num_layers': 4}   # PufferNet's defaults (default.ini)
 TRAIN = {
     'total_timesteps': 100_000_000,
     'horizon': 128,
@@ -109,9 +146,9 @@ SECTIONS = {'base': BASE, 'vec': VEC, 'policy': POLICY, 'train': TRAIN}
 def fmt(v):
     if isinstance(v, str):
         return v
-    if isinstance(v, float) and v != int(v):
-        return repr(v)
-    return str(int(v)) if float(v).is_integer() and abs(v) < 1e15 else repr(v)
+    if float(v).is_integer() and abs(v) < 1e15:
+        return str(int(v))
+    return repr(float(v))
 
 
 def pow2_range(lo, hi):
@@ -123,7 +160,7 @@ def shape_ok(horizon, minibatch, agents):
             and agents % (minibatch // horizon) == 0)
 
 
-def check():
+def check(n_val):
     agents = VEC['total_agents']
     assert shape_ok(TRAIN['horizon'], TRAIN['minibatch_size'], agents), 'default shapes'
     _, h_lo, h_hi, _ = SPACE['train', 'horizon']
@@ -139,37 +176,45 @@ def check():
         assert lo <= v <= hi, f'default {sec}.{key} = {v} outside [{lo}, {hi}]'
         if dist == 'uniform_pow2':
             assert v & (v - 1) == 0, f'{sec}.{key} = {v} is not a power of 2'
-    assert ENV['split'] != 2 and EVAL_ENV['split'] == 1 and ENV['allow_test'] == 0
-    assert set(EVAL_ENV) <= set(ENV)
+    assert ENV['split'] == 0 and ENV['allow_test'] == 0 and EVAL_ENV['split'] == 1
+    assert set(EVAL_ENV) <= set(ENV) and EVAL_ENV['cycle_stride'] > 0
+    assert BASE['eval_episodes'] == BASE['eval_agents'] and BASE['eval_agents'] % n_val == 0
+    assert BASE['eval_agents'] % 16 == 0
     assert SWEEP['downsample'] == 1, 'only the final validation eval may reach Protein'
 
 
-def ini_text(data_dir):
+def ini_text(data_dir, n_val):
     env = {**ENV, 'data_dir': f'"{data_dir}"'}   # quoted: ';' or '#' would start a comment
-    out = ['# Generated by make_ini.py; do not edit by hand.']
-    for name, sec in [('base', BASE), ('vec', VEC), ('policy', POLICY)]:
-        out += ['', f'[{name}]'] + [f'{k} = {fmt(v)}' for k, v in sec.items()]
-    out += ['', '# Every knob of ../mm.h (see ../ENV.md). data_dir: absolute, or relative to',
-            '# the PufferLib root. Rewards are clamped to [-1, 1] by the trainer.', '[env]']
-    out += [f'{k} = {fmt(v)}' for k, v in env.items()]
+    k = BASE['eval_agents'] // n_val
+    out = ['# Generated by make_ini.py from ../mm.h and the data build; do not edit by hand.']
+    out += ['', '[base]'] + [f'{k_} = {fmt(v)}' for k_, v in BASE.items()]
+    out[-3:-3] = [f'# Final evaluation: each of the {n_val} validation markets played {k} times,',
+                  '# one logged episode per env ([eval_env]).']
+    for name, sec in [('vec', VEC), ('policy', POLICY)]:
+        out += ['', f'[{name}]'] + [f'{k_} = {fmt(v)}' for k_, v in sec.items()]
+    out += ['', '# The core\'s knobs and defaults (../mm.h, ../ENV.md), data_dir (absolute, or',
+            '# relative to the PufferLib root), seed (mixed with the env index) and the',
+            '# wrapper\'s log_episodes. The trainer clamps rewards to [-1, 1].', '[env]']
+    out += [f'{k_} = {fmt(v)}' for k_, v in env.items()]
     out += ['', '# [env] overrides for the trainer\'s final evaluation only (patch_pufferlib.py):',
-            '# every run, and every sweep trial, is scored on the validation split.',
+            '# every train run and sweep trial is scored on the validation split.',
             '[eval_env]']
-    out += [f'{k} = {fmt(v)}' for k, v in EVAL_ENV.items()]
-    out += ['', '# 1 s steps, episodes of 301 to 14401 steps (one market each) with dense',
-            '# mark-to-market rewards: gamma 0.995 looks ~200 s ahead, past the 60 s',
-            '# markout. horizon is a multiple of 8, minibatch_size of horizon.', '[train]']
-    out += [f'{k} = {fmt(v)}' for k, v in TRAIN.items()]
+    out += [f'{k_} = {fmt(v)}' for k_, v in EVAL_ENV.items()]
+    out += ['', '# 1 s steps (5 s on 4h markets), episodes of up to 300 (5m), 900 (15m) and',
+            '# 2880 (4h) decisions, dense mark-to-market rewards: gamma 0.995 looks ~200',
+            '# steps ahead, past the 60 s markout. horizon is a multiple of 8,',
+            '# minibatch_size of horizon.', '[train]']
+    out += [f'{k_} = {fmt(v)}' for k_, v in TRAIN.items()]
     return '\n'.join(out) + '\n'
 
 
 def sweep_text():
     out = ['# Generated by make_ini.py; appended to config/polymarket_mm.ini before',
-           '# `./puffer sweep`, after the generic [sweep.*] blocks of default.ini are removed',
-           '# (patch_pufferlib.py), so this is the whole space. Not swept: vec.total_agents',
+           '# `./puffer sweep`, after patch_pufferlib.py removed the generic [sweep.*]',
+           '# blocks of default.ini, so this is the whole space. Not swept: vec.total_agents',
            '# (4096 keeps every horizon/minibatch pair valid) and the env knobs.',
-           '# metric = score is the env Log\'s per-episode P&L (scaled $) of the final',
-           '# evaluation, which [eval_env] puts on the validation split; downsample = 1',
+           '# metric = score is the env Log\'s mean P&L per episode, in $, of the final',
+           '# evaluation, which [eval_env] runs on the validation split; downsample = 1',
            '# keeps the training curve (train split) out of Protein.', '', '[sweep]']
     out += [f'{k} = {fmt(v)}' for k, v in SWEEP.items()]
     for (sec, key), (dist, lo, hi, scale) in SPACE.items():
@@ -180,14 +225,20 @@ def sweep_text():
 
 def main():
     p = argparse.ArgumentParser()
-    p.add_argument('--data-dir', default=DEFAULT_DATA_DIR)
+    p.add_argument('--data-dir', default=DEFAULT_DATA_DIR,
+                   help='data/build as the trainer sees it (from the PufferLib root)')
     p.add_argument('--out-dir', default=HERE)
     args = p.parse_args()
-    check()
+    n_val = val_market_count()
+    BASE['eval_agents'] = BASE['eval_episodes'] = eval_agents(n_val)
+    check(n_val)
     with open(os.path.join(args.out_dir, 'polymarket_mm.ini'), 'w') as f:
-        f.write(ini_text(args.data_dir))
+        f.write(ini_text(args.data_dir, n_val))
     with open(os.path.join(args.out_dir, 'sweep.ini'), 'w') as f:
         f.write(sweep_text())
+    print(f'polymarket_mm.ini: {len(CORE_PARAMS)} core knobs; final eval on {n_val} validation '
+          f'markets x {BASE["eval_agents"] // n_val} = {BASE["eval_agents"]} envs; sweep.ini: '
+          f'{len(SPACE)} parameters')
 
 
 if __name__ == '__main__':
