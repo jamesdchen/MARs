@@ -1,9 +1,13 @@
 """Synthetic builder outputs for test_env3.py: small sports and election builds in the exact schemas
 of analysis/v3_sports/build_sports.py and analysis/v3_elections/build_elections.py (the five v2
-files, meta.json, feat_meta.json, plus sports_feat.bin / feat_x.bin), and a hand-made reward-hook
-market with a static book. Each is then made loadable with adapt3.py, as a real build would be.
+files, meta.json, feat_meta.json, plus sports_feat.bin / sports_x3.bin / feat_x.bin), and a hand-made
+reward-hook market with a static book. Each is then made loadable with adapt3.py, as a real build
+would be. The sports builds: `sports` (sports-2 schema, legacy settle copy on), `sports1` (the
+sports-1 layout, rewards through adapt3 --rewards), `sports2_nolegacy` (--no-legacy-settle) and
+`sports2_buckets` (--bucket-segments); the first three hold the same six games and adapt to the same
+markets3.bin / x3.bin.
 
-    python fixtures3.py OUT_DIR          # writes OUT_DIR/{sports,elections,unit}
+    python fixtures3.py OUT_DIR          # writes OUT_DIR/{sports,sports1,sports2_nolegacy,sports2_buckets,elections,unit}
 """
 from __future__ import annotations
 
@@ -161,41 +165,128 @@ def write_build(out: Path, recs, feats, books, legs, meta_extra, fmeta_extra):
     return mk
 
 
-def make_sports(out: Path, seed=1):
-    """Pre-game sports build (build_sports.py schema): episodes of arbitrary length ending at kickoff,
-    settlement price = the last pre-kickoff mark (log_strike_vs_ul_open, flag SETTLE_PX 16)."""
+SPORTS_RATES = [50.0, 20.0, 0.0, 100.0, 5.0, 30.0]       # reward pool USD/day per game (game 2: no program)
+SPORTS_BUCKETS = [(">24h", 86400), ("6-24h", 21600), ("1-6h", 3600), ("1h-30m", 1800), ("30-5m", 300), ("5-0m", 0)]
+FLAG_SETTLE_PX, FLAG_AT_CUT, FLAG_HAS_TRADES, FLAG_IN_PROGRAM = 16, 128, 1, 2048
+FLAG_TRUNC_S1, FLAG_TRUNC_S2 = 32, 1024
+
+
+def bucket_of(sec):
+    """build_sports.bucket_of: index into SPORTS_BUCKETS (upper bounds inclusive: 1800 s is 30-5m)."""
+    return int(np.searchsorted(-np.array([b for _, b in SPORTS_BUCKETS[:-1]]), -np.asarray(sec), side="right"))
+
+
+def make_sports(out: Path, seed=1, schema="sports-2", legacy_settle=True, bucket_segments=False):
+    """Pre-game sports build in the build_sports.py schema: six games, each one episode of arbitrary
+    length ending at kickoff (--seg 0), settling at the last pre-kickoff mark.
+
+    schema "sports-2" (default; build_sports.py sports-2): meta.json `segments` (one record per market:
+    kickoff_ts, settle_price, bucket fields, rw.rate_day_last, flags), sports_x3.bin with the reward
+    columns (computed here with adapt3's book scorer, so the sports-1 fallback gives the same x3), feat
+    liq_* = its columns, TRADES_TRUNCATED = flag 1024 (game 3); bit 32 is set on game 5 to check that it
+    is not read. `legacy_settle=False` is --no-legacy-settle (no flag 16, winner_up -1, log_strike 0).
+    `bucket_segments=True` is --bucket-segments: each game is split at the 30 m / 5 m boundaries before
+    kickoff, every piece settling at its own last-row mark (ids #k0 = the piece ending at kickoff).
+    schema "sports-1": the legacy layout (flag 16 + log_strike_vs_ul_open, kickoff from sports_feat.bin,
+    no pools: adapt3.py --rewards rates.json), TRADES_TRUNCATED = flag 32 (game 3)."""
+    from adapt3 import sports_x3_top5
+    assert schema in ("sports-1", "sports-2") and (schema == "sports-2" or (legacy_settle and not bucket_segments))
     rng = np.random.default_rng(seed)
-    lens = [1800, 2401, 3000, 1201, 2000, 2700]           # rows - 1 is the episode length
+    lens = [1800, 2401, 3000, 1201, 2000, 2700]           # rows - 1 is the game window length
     splits = [0, 0, 1, 1, 0, 1]
-    recs, feats, books, legs, sfs = [], [], [], [], []
+    rw_min = [100, 50, 0, 200, 20, 100]
+    rw_v = [3.5, 4.5, 0, 3.0, 2.0, 3.5]
     base = 1_790_000_000
+    eps = []                                               # (game, a, b) row ranges of each episode (inclusive)
+    games = []
     for i, (L, sp) in enumerate(zip(lens, splits)):
         n = L + 1
         b, lg, mid = episode(rng, n, 0.3 + 0.1 * i, deep=400, update_p=0.25, fill_p=0.35)
         f = features(b, mid, n)
         ko = base + i * 86400
-        open_ts = ko - L
+        games.append(dict(book=b, legs=lg, feat=f, ko=ko, open_ts=ko - L, L=L, split=sp,
+                          slug=f"nhl-aaa-bb{i}-2026-10-0{i + 1}"))
+        cuts = [0, L]
+        if bucket_segments:
+            cuts = sorted({0, L} | {L - bnd for _, bnd in SPORTS_BUCKETS[:-1] if 0 < L - bnd < L})
+        for k, (a, e) in enumerate(zip(cuts[:-1], cuts[1:])):
+            eps.append((i, a, e, len(cuts) - 2 - k))
+    recs, feats, books, legs, sfs, seg_meta = [], [], [], [], [], []
+    r0 = 0
+    for gi, a, e, kk in eps:
+        g = games[gi]
+        n = e - a + 1
+        f = g["feat"][a:e + 1].copy()
+        bk = g["book"][a:e + 1].copy()
+        lg = g["legs"][(g["legs"]["row"] > a) & (g["legs"]["row"] <= e)].copy()   # legs in (a, e]; row a is the start
+        lg["row"] -= a
+        tau = np.arange(n)[::-1]                                                   # the episode's own clock
+        f[:, CI["tau_frac"]] = tau / (n - 1)
+        open_ts = g["open_ts"] + a
+        end_ts = g["open_ts"] + e
         settle = float(f[-1, CI["mark"]])
-        recs.append(dict(open_ts=open_ts, end_ts=ko, contract_len_s=L, coin_id=i % 3, winner_up=int(settle >= 0.5),
-                         split=sp, flags=16 | 128 | 1, tick_size=0.01, taker_fee_rate=0.05, fee_exponent=1.0,
-                         min_order_size=5.0, rewards_min_size=[100, 50, 0, 200, 20, 100][i],
-                         rewards_max_spread=[3.5, 4.5, 0, 3.0, 2.0, 3.5][i], log_strike_vs_ul_open=settle,
-                         maker_rebate_rate=0.15, tick_size_final=0.01, _slug=f"nhl-aaa-bb{i}-2026-10-0{i + 1}"))
+        to_ko = g["ko"] - (open_ts + np.arange(n))
+        prog = SPORTS_RATES[gi] > 0 and rw_v[gi] > 0
+        flags = FLAG_HAS_TRADES | (FLAG_AT_CUT if kk == 0 else 0)
+        if legacy_settle:
+            flags |= FLAG_SETTLE_PX
+        if gi == 3:
+            flags |= FLAG_TRUNC_S1 if schema == "sports-1" else FLAG_TRUNC_S2
+        if schema == "sports-2":
+            flags |= FLAG_IN_PROGRAM if prog else 0
+            if gi == 5:
+                flags |= 32                               # unused in sports-2: must not read as TRADES_TRUNCATED
+        recs.append(dict(open_ts=open_ts, end_ts=end_ts, contract_len_s=n - 1, coin_id=gi % 3,
+                         winner_up=int(settle >= 0.5) if legacy_settle else -1, split=g["split"], flags=flags,
+                         tick_size=0.01, taker_fee_rate=0.05, fee_exponent=1.0, min_order_size=5.0,
+                         rewards_min_size=rw_min[gi], rewards_max_spread=rw_v[gi],
+                         log_strike_vs_ul_open=settle if legacy_settle else 0.0, maker_rebate_rate=0.15,
+                         tick_size_final=0.01))
         feats.append(f)
-        books.append(b)
+        books.append(bk)
         legs.append(lg)
         sf = np.zeros((n, 4), np.float32)
-        sf[:, 0] = ko - (open_ts + np.arange(n))
-        sf[:, 1] = sf[:, 0]
+        sf[:, 0] = to_ko
+        sf[:, 1] = tau
         sf[:, 2] = -1
         sfs.append(sf)
-    recs = [{k: v for k, v in r.items()} for r in recs]
-    slugs = [r.pop("_slug") + "#k0" for r in recs]
-    mk = write_build(out, recs, feats, books, legs,
-                     {"build_version": "sports-1", "slugs": slugs, "sports": {"dt_s": 1}}, {})
+        cnt = np.bincount([bucket_of(x) for x in to_ko[:-1]], minlength=len(SPORTS_BUCKETS))
+        seg_meta.append({
+            "market_idx": len(seg_meta), "row_offset": r0, "sid": f"{g['slug']}#k{kk}", "slug": g["slug"],
+            "condition_id": f"0x{gi:064x}", "n_rows": n, "open_ts": int(open_ts), "end_ts": int(end_ts), "row_s": 1,
+            "kickoff_ts": int(g["ko"]), "cut_ts": int(g["ko"]), "event_ts": int(end_ts),
+            "kickoff_scheduled_ts": int(g["ko"]), "kickoff_source": "gamma", "at_cut": kk == 0,
+            "segments_before_cut": kk, "to_kickoff_start_s": int(to_ko[0]), "to_kickoff_end_s": int(to_ko[-1]),
+            "bucket": SPORTS_BUCKETS[int(cnt.argmax())][0], "bucket_pure": bool((cnt > 0).sum() == 1),
+            "bucket_rows": {SPORTS_BUCKETS[k][0]: int(c) for k, c in enumerate(cnt) if c},
+            "settle_mode": 1, "settle_price": settle, "actual_start": None, "early_start": False,
+            "rw": {"in_program_any": prog, "in_program_last": prog, "rate_day_last": SPORTS_RATES[gi],
+                   "v_c_last": rw_v[gi], "min_size_last": float(rw_min[gi])}, "flags": flags})
+        r0 += n
+    slugs = [x["sid"] for x in seg_meta]
+    if schema == "sports-1":
+        meta = {"build_version": "sports-1", "slugs": slugs, "sports": {"dt_s": 1}}
+    else:
+        meta = {"build_version": "sports-2", "slugs": slugs, "segments": seg_meta,
+                "settle_source": {"legacy_markets_bin": legacy_settle},
+                "sports": {"dt_s": 1, "seg_rows": 0, "cut_before_kickoff_s": 0,
+                           "buckets": {"bucket_segments": bucket_segments,
+                                       "counts": {b: sum(x["bucket"] == b for x in seg_meta) for b, _ in SPORTS_BUCKETS}}}}
+    mk = write_build(out, recs, feats, books, legs, meta, {})
     np.concatenate(sfs).tofile(out / "sports_feat.bin")
-    rates = {s.split("#")[0]: r for s, r in zip(slugs, [50.0, 20.0, 0.0, 100.0, 5.0, 30.0])}
+    rates = {}
+    for x in seg_meta:
+        rates[x["slug"]] = x["rw"]["rate_day_last"]
     (out / "rates.json").write_text(json.dumps(rates))
+    if schema == "sports-2":                              # the builder's reward columns (sports_x3.bin, feat liq_*)
+        prog = {"rw_v_c": mk["rewards_max_spread"], "rw_min_size": mk["rewards_min_size"],
+                "rw_rate_day": np.array([x["rw"]["rate_day_last"] for x in seg_meta], np.float32)}
+        x3 = sports_x3_top5(np.fromfile(out / "book.bin", BOOK_DTYPE), mk, prog, 1.0)
+        x3.tofile(out / "sports_x3.bin")
+        feat = np.fromfile(out / "feat.bin", np.float32).reshape(-1, 44)
+        for j, c in ((4, "liq_mid"), (5, "liq_comp"), (6, "liq_pi")):
+            feat[:, CI[c]] = x3[:, j]
+        feat.tofile(out / "feat.bin")
     return mk
 
 
@@ -290,8 +381,12 @@ def make_unit(out: Path, mid=0.50, comp=100.0):
 def make_all(root: Path):
     import adapt3
     root = Path(root)
-    make_sports(root / "sports")
+    make_sports(root / "sports")                          # sports-2 (--rewards is ignored: sports_x3.bin is used)
     adapt3.main([str(root / "sports"), "--rewards", str(root / "sports" / "rates.json")])
+    for name, kw in (("sports1", dict(schema="sports-1")), ("sports2_nolegacy", dict(legacy_settle=False)),
+                     ("sports2_buckets", dict(bucket_segments=True))):
+        make_sports(root / name, **kw)
+        adapt3.main([str(root / name)] + (["--rewards", str(root / name / "rates.json")] if name == "sports1" else []))
     make_elections(root / "elections")
     adapt3.main([str(root / "elections")])
     make_unit(root / "unit")

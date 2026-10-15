@@ -1,5 +1,8 @@
 # Market-making replay env v3 (`mm3.h`): pre-game sports and election reward farming
 
+**Build** (once per machine and after every change to `mm3.h` / `binding3.c`; the `.so` is git-ignored):
+`../../.venv/bin/python v3env/setup.py build_ext --inplace` (from `polymarket/`; works from any directory).
+
 v3 of the replay env for protocol v3 (DECISIONS.md D11): track S (pre-game sports, listing to
 kickoff) and track E (US-midterm reward farming). It is `../mm.h` (v2, the frozen crypto env) with
 six extensions. **With every new option at its default and no v3 side files in the data directory,
@@ -15,11 +18,11 @@ called `binding3`, so `env.py` and `env3.py` import side by side in one process.
 | file | role |
 |---|---|
 | `mm3.h` | the core: pure C, no PufferLib includes, compiles as C99 and C++17 |
-| `binding3.c`, `setup.py` | PufferLib 3.0 native binding, extension `binding3` (`python setup.py build_ext --inplace`) |
+| `binding3.c`, `setup.py` | PufferLib 3.0 native binding, extension `binding3` (`python v3env/setup.py build_ext --inplace`; `env3.py` warns when the `.so` is older than its sources) |
 | `env3.py` | `MmEnv3(pufferlib.PufferEnv)` (alias `MmEnv`), MultiDiscrete `[7, 7, 3]`, Box `(obs_size,)` |
 | `reference3.py` | readable numpy reference of the same model (tests only) |
-| `adapt3.py` | makes `build_sports.py` / `build_elections.py` outputs loadable (writes `markets3.bin`, `x3.bin`) |
-| `fixtures3.py` | synthetic sports / election builds in the builders' schemas, and the reward unit market |
+| `adapt3.py` | makes `build_sports.py` (sports-1 and sports-2) / `build_elections.py` outputs loadable (writes `markets3.bin`, `x3.bin`, `meta3.json`) |
+| `fixtures3.py` | synthetic sports (sports-2, its --no-legacy-settle and --bucket-segments variants, and sports-1) / election builds in the builders' schemas, and the reward unit market |
 | `test_env3.py` | tests (section 12); `harness3.c` (ctypes harness), `cmp_harness.c` (v2 and v3 side by side) |
 | `bench3.py` | throughput against v2 (section 13) |
 | `puffer5/polymarket_mm3.h`, `puffer5/test_wrapper3.c`, `PUFFER5_V3.md` | PufferLib 5.0 wrapper, its test and port notes |
@@ -62,8 +65,8 @@ directory, written by `adapt3.py`:
 `rw_v_c`, `rw_min_size`, `rw_rate_day`, `rw_in_program`, `liq_mid`, `liq_comp`, `liq_pi`, pad. When
 present, these replace the per-market program of `markets3.bin` and feat.bin's columns 38–40
 (`liq_mid`, `liq_comp`, `liq_pi`) everywhere: hook, sizes and observations. This lets an election
-program change from hour to hour, and lets the sports adapter supply reward columns that the sports
-builder leaves inert.
+program change from hour to hour. For sports-2 builds it is a copy of the builder's full-ladder
+`sports_x3.bin`; for sports-1 builds `adapt3.py --rewards` computes it from book.bin's top 5 levels.
 
 ### Without side files (v2 data)
 
@@ -148,8 +151,8 @@ Approximations, all inherited from the builders' precomputation:
 - the replay book does not react to us;
 - our orders move neither the adjusted mid nor the competitors' Q;
 - competitors use the 'hi' bound (two-sided as possible);
-- the sports adapter scores only the top 5 levels of `book.bin`, while the elections builder uses
-  the full recorded ladder;
+- sports-2 and elections builds score the full recorded ladder; only the sports-1 fallback
+  (`adapt3.py --rewards`) scores the top 5 levels of `book.bin`;
 - the in-game multiplier b is 1.
 
 Log: `liq_rewards`, `rw_samples` (sample rows while any quote was live), `rw_scored`, `rw_share`
@@ -214,7 +217,27 @@ So the per-category parameters are for sensitivity runs (`analysis/sports/out/do
 
 v2's 42 fields in v2's order (`pnl_trading` now includes the flattening cost), then
 `close_penalty`, `flat_cost`, `settle_px`, `rw_samples`, `rw_scored`, `rw_share` and
-`episode_rows`, then `n`.
+`episode_rows`, then the six D15 netting / flatten diagnostics below, then `n` (56 floats).
+
+**D15 netting and flatten drag** (DECISIONS.md D15; `analysis/v3_sports_rules/RECONCILE.md` section 6
+finds that pre-game makers net only 10–25% of their fills before kickoff and that the flatten drag
+exceeds the edge). They are Log-only: nothing else reads them, so observations, rewards and P&L are
+unchanged (section 12a).
+
+| field | per episode |
+|---|---|
+| `net_gross_sh` | gross filled shares, buys + sells (accumulated in double; = `fill_vol` up to float32 rounding) |
+| `net_notional` | filled notional, sum of price x shares (USD) |
+| `net_end_inv` | \|inventory\| at the episode's end, the settlement row: kickoff for sports (= `final_abs_inv`) |
+| `net_share` | 1 − `net_end_inv` / `net_gross_sh` for an episode with fills, else 0 |
+| `net_eps` | 1 for an episode with fills, else 0 |
+| `net_flat_drag` | flattening cost charged at settlement, `flat_c` / 100 x \|end inv\| USD (= `flat_cost`; already in `pnl`) |
+
+`env3.netting(log)` forms the ratios (the Log is averaged or summed over episodes, and ratios are
+unaffected): `netted_share` = 1 − Σ\|end inv\| / Σ gross (RECONCILE's pooled definition),
+`netted_share_ep` = `net_share` / `net_eps` (the mean over episodes with fills), `flat_drag_usd`
+and `flat_drag_bps` = drag / notional x 1e4. `MmEnv3.step` adds them to every info log;
+`train3/evaluator3.py` reports them per market, group, category and bucket.
 
 ## 10. New parameters (after v2's 27, in `M3_PARAM_NAMES` order)
 
@@ -239,19 +262,34 @@ v2's 42 fields in v2's order (`pnl_trading` now includes the flattening cost), t
 `x3.bin` (when there are per-row rewards) and `meta3.json` into the build directory, and touches
 nothing else.
 
-**Sports** (`analysis/v3_sports/build_sports.py`, `build_version` "sports-1")
+**Sports, sports-2** (`analysis/v3_sports/build_sports.py`, `build_version` "sports-2": `meta.json`
+carries `segments`, one record per markets.bin row, and the build writes `sports_x3.bin`)
 
 | mm3 input | from |
 |---|---|
-| episode | each segment's `n_rows` (any length works now; see proposal S1) |
-| settle_mode / settle_price | 1 / `markets.log_strike_vs_ul_open` (flag `SETTLE_PX` 16: the last pre-kickoff mark) |
+| episode | each market's `n_rows`: `--seg 0` = one episode per game to kickoff (length bit 8), or a bucket piece (`--bucket-segments`), or 300 / 900 / 14400 |
+| settle_mode / settle_price | 1 / `segments[i].settle_price` (the episode's last-row mark). Builds made with `--no-legacy-settle` (no flag 16, `winner_up` −1) load the same way. When the legacy copy is present, it must equal the meta value, or adapt3 refuses the build |
+| event_ts | `segments[i].kickoff_ts`, for every episode. Bucket pieces and episodes cut before kickoff (`--cut-before-kickoff-s`) end earlier, but their time to event (slot 50, `pull_s`, `dt_far`, `close_ramp_s`) is the time to kickoff |
+| row_s | `segments[i].row_s` |
+| category | 1 |
+| rw_v_c / rw_min_size | `markets.rewards_max_spread` / `rewards_min_size` (the program at the last row) |
+| rw_rate_day | `segments[i].rw.rate_day_last` |
+| x3.bin | a byte copy of `sports_x3.bin`: the full recorded ladder, from the daily `/rewards/markets/current` snapshots. It is never recomputed, and `--rewards` is ignored with a warning |
+| TRADES_TRUNCATED | markets.bin flag 1024 (bit 32 is unused in sports-2 and is not read); listed in `meta3.json` `trades_truncated_markets` |
+| fees | markets.bin (gamma `feeSchedule`) |
+
+**Sports, sports-1** (legacy; also a build without `meta.json` `segments`)
+
+| mm3 input | from |
+|---|---|
+| episode | each segment's `n_rows` |
+| settle_mode / settle_price | 1 / `markets.log_strike_vs_ul_open` (flag `SETTLE_PX` 16 required: the last pre-kickoff mark) |
 | event_ts | `open_ts + sports_feat.seconds_to_kickoff[first row]`: the kickoff, also for segments that end before it |
 | row_s | `meta.sports.dt_s` |
-| category | 1 |
 | rw_v_c / rw_min_size | `markets.rewards_max_spread` / `rewards_min_size` (gamma) |
-| rw_rate_day | `--rewards rates.json` {slug: USD/day}, else 0 (the builder records no pools) |
-| x3.bin | with `--rewards`: from `book.bin` top 5 levels: the size-cutoff adjusted mid, competitors' 'hi' Q_min, one seeded sample second per UTC minute, `liq_pi = rate / 1440` |
-| fees | markets.bin (gamma `feeSchedule`) |
+| rw_rate_day | `--rewards rates.json` {slug: USD/day}, else 0 |
+| x3.bin | with `--rewards` (the fallback for builds without `sports_x3.bin`): from `book.bin` top 5 levels: the size-cutoff adjusted mid, competitors' 'hi' Q_min, one seeded sample second per UTC minute, `liq_pi = rate / 1440` |
+| TRADES_TRUNCATED | markets.bin flag 32 |
 
 **Elections** (`analysis/v3_elections/build_elections.py`, split feat layout)
 
@@ -266,7 +304,8 @@ nothing else.
 
 **Crypto** (`data/build`): nothing needed. `--kind crypto` writes the legacy records explicitly.
 
-**Proposals for the builders** (their folders were not edited):
+**Proposals for the builders** (their folders were not edited). S1–S3 landed in build_sports sports-2
+(2026-10-15) and adapt3.py reads them; they are kept here for the record.
 - **S1 (sports): `--seg 0` = one episode per game window.** mm3 accepts any length, so the
   "6 x 4 h segments" tiling and its artificial mid-window settlements are no longer needed.
   Combine it with `dt_far` for the far-from-kickoff cadence. `SEG_LENS` and the `len_*` one-hot
@@ -286,9 +325,9 @@ nothing else.
 - **E2 (elections): add `x_log_days_to_end` and the event start to x3** (pad column) if
   time-to-resolution should be observed. Slot 50 measures time to the window end.
 
-## 12. Tests (`python test_env3.py`, 45 s; `--quick`, `--no-builders`, `--json OUT`)
+## 12. Tests (`python test_env3.py`, 47 s; `--quick`, `--no-builders`, `--json OUT`)
 
-Results of the committed version (2026-10-15, 169 checks, all ok):
+Results of the committed version (2026-10-15 23:00 UTC, full run, 200 checks, all ok):
 
 **(a) v2 bit-exactness** (`cmp_harness.c`: `../mm.h` and `mm3.h` in one translation unit).
 
@@ -306,11 +345,13 @@ inventory / cash / rebates / rewards / wealth / penalty / order state and the Lo
 **bit-identical**. Each episode's P&L, computed in double at its terminal step, differs by
 **0.0 USD** (tolerance 1e-9; sum of |P&L| compared: 187,739 USD).
 
-**(b) C == reference3** on four sets:
-- the synthetic sports build: 6 games of 1201–3001 rows, kickoff at the last row, 7 configs;
+**(b) C == reference3** on five sets:
+- the synthetic sports build (sports-2 schema): 6 games of 1201–3001 rows, kickoff at the last row, 7 configs;
+- its `--bucket-segments` variant (16 pieces of 201–1501 rows, ending 1800 / 300 / 0 s before kickoff):
+  obs 80, liquidity rewards, `pull_s` 600, `flat_c`, close shaping;
 - the synthetic elections build: 5 one-hour windows, programs changing mid-window, 5 configs;
 - crypto markets with v3 options on: 3 configs;
-- the real output of `analysis/v3_sports/build_sports.py --selftest` through `adapt3.py`:
+- the real output of `analysis/v3_sports/build_sports.py --selftest` (sports-2) through `adapt3.py`:
   2 configs.
 
 Configs cover every new option:
@@ -322,7 +363,8 @@ Configs cover every new option:
 - pessimistic / optimistic models, latency 0–2.
 
 Every step compares: reward (1e-7), terminal, every observation slot (1e-6, all were 0.0), the
-30-value state (1e-9 rel), the Log (1e-4 rel) and the auto-reset episode. Telescoping with the
+30-value state (1e-9 rel), the Log including the six `net_*` fields (1e-4 rel; observed ≤ 6e-8)
+and the auto-reset episode. Telescoping with the
 penalty, flattening cost and close shaping holds to 2e-4 USD. Lookahead holds on sports, elections
 and crypto (obs 80, rewards on): perturbing feat / book / fills / x3 after t changes nothing up
 to t, and does change things after.
@@ -353,13 +395,39 @@ The reward observations (current share, head-3 bid share, the out-of-range head 
 eligibility, active / scorable / two-sided-only) equal the hand values. On 2000 random books,
 reference3's Q_min equals `reward_terms.side_scores` + `q_min` (max difference 0).
 
+**(e) adapt3 on the build_sports schemas** (`fixtures3.py`):
+- the same six games built as sports-2, as sports-2 `--no-legacy-settle` and as sports-1 (with
+  `--rewards`) adapt to byte-identical `markets3.bin` and `x3.bin`;
+- sports-2 `x3.bin` is a byte copy of `sports_x3.bin`. With `sports_x3.bin` perturbed and
+  `--rewards` given (999 USD/day for every slug), `x3.bin` follows the perturbed file, and
+  `rw_rate_day` stays `segments[i].rw.rate_day_last`;
+- TRADES_TRUNCATED is read at 1024 in sports-2 and at 32 in sports-1. A stray bit 32 in sports-2
+  is ignored;
+- with `--no-legacy-settle` the build has no flag 16, `winner_up` −1 and `log_strike` 0; it settles
+  at `segments.settle_price` = the last-row mark, mode 1;
+- adapt3 refuses a legacy copy that disagrees with meta, and a sports-1 build without flag 16;
+- bucket pieces: `event_ts` = `kickoff_ts`, every piece pure, ending 1800 / 300 / 0 s before
+  kickoff and settling at its own last-row mark; obs 50 at row 0 decodes to the seconds to kickoff
+  (rel 3e-7).
+
+**(f) D15 netting fields** (sports fixture, join-heavy random policy, Q 1000, `flat_c` 0.5):
+- `net_end_inv` == `final_abs_inv`, and `net_gross_sh` == `fill_vol` == buy + sell (rel 1e-7);
+- `net_flat_drag` == `flat_cost` == |end inv| x 0.005;
+- `net_share` == 1 − end / gross per episode, and it lies in [0, 1];
+- `net_eps` marks the episodes with fills, and notional / gross is a price;
+- `env3.netting` gives the pooled share and the drag in bps;
+- a never-quoting policy gives 0 everywhere.
+- The binding's `vec_log` carries every Log field, the net_* fields included.
+
 **Also tested:**
 - parameter tables: mm3.h == Config3; the first 27 are v2's, and only `len_mask` changed default;
 - the Log's first 42 fields are v2's;
 - the split guard;
 - the PufferLib 3.0 `binding3` == core, bit for bit, on crypto (obs 80, rewards) and elections
   (pull, flat), in subprocesses;
-- the 5.0 wrapper (`puffer5/test_wrapper3.c`) == core under OpenMP.
+- the 5.0 wrapper (`puffer5/test_wrapper3.c`) == core under OpenMP (run before the D15 fields; its
+  Log name table now has 55 names, and a compile against mm3.h confirms the layout check. The 5.0
+  sources are not on this machine, so it was not re-run).
 
 ## 13. Throughput (`python bench3.py`)
 
@@ -383,9 +451,10 @@ policy-bound, as `../ENV.md` section 11 shows.
 
 ## 14. Open issues
 
-1. **Sports reward pools are not in any build** (proposal S2). Until they are, rewards on sports
-   need `adapt3.py --rewards` with externally sourced rates, and that path scores only the top 5
-   levels.
+1. **Sports reward pools** are in sports-2 builds (`sports_x3.bin`, from daily
+   `/rewards/markets/current` snapshots since 2026-10-15). Older games infer their program from the
+   earliest snapshot (flag RW_LATER_SNAPSHOT). Only sports-1 builds need `adapt3.py --rewards`, which
+   scores the top 5 levels.
 2. **Taker delay.** Sports takers are delayed about 1 s (`secondsDelay`), and our cancels can beat
    them (ENV_SPEC section 6). The fill models are unchanged by instruction, so this edge is not
    modelled, which is conservative for adverse selection.
@@ -397,7 +466,9 @@ policy-bound, as `../ENV.md` section 11 shows.
    program day into independent episodes.
 5. **Kickoff accuracy and truncated trade history** are the sports builder's open problems
    (README_build.md). With `pull_s` >= a few minutes, a late `gameStartTime` matters less.
-6. **The trainer adapter.** `train/envs.py` RealAdapter can drive env3:
+6. **The trainer adapter.** `train3/envs3.py` V3Adapter is the v3 adapter (it hashes `v3env/`,
+   groups by category and evaluates with its own MarketSetEnv3, which has no length one-hot assert,
+   so `--seg 0` builds work). `train/envs.py` RealAdapter can also drive env3:
    `ad = envs.get_adapter('real'); ad.mod = env3; ad.obs_size = env3.OBS_SIZE`, with
    `MM3_OBS_SIZE=80` in the environment (tested for make_train). Its `identity()` still hashes v2's
    files, its MarketSetEnv asserts the crypto length one-hot, and its groups are 5m / 15m / 4h. A
