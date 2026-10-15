@@ -72,3 +72,20 @@ the mean of 3 seeds among D1.3-passing configs, then trained on 5 seeds at
   (only if the sim gate passes), R6, then finalize, with the 15:30 deadline
   unchanged.
 - The finalize step that had started was stopped.
+
+### Sim gate (10:44 UTC): still fails, so R5 is skipped
+- **G2 rank order now passes**: no_quote > fair_value > sym_touch, as in the
+  replay. Two fixes got it there:
+  - print impact removed;
+  - bursty, calibrated trade arrivals.
+
+  sym_touch's total P&L and its hourly KS also fall inside the band now.
+- **Still failing:** fair_value quotes are adversely selected less than in the
+  replay. Its 5 s markout is −1.9c in the sim vs −3.05c real, and its total is
+  −54 vs −797. G3 has 5 of 22 components inside the band.
+- **On-chain pre-period trades** (Jul 21 – Aug 20, all 31 days converted) made
+  the gate worse, so the final params don't use them.
+- **Note on the gate's design (from the sim agent):** G1 and G3 together are 26
+  separate checks against 90% bands, so a perfect sim would pass all of them
+  only about 7% of the time. The current sim also fails looser rules, so the
+  gate stays as specified, and R5 does not run.

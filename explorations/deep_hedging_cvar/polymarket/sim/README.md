@@ -12,17 +12,17 @@ It writes markets in exactly the on-disk format the C replay env reads:
 
 So `mm.h` replays synthetic markets unchanged: pass `data_dir=data/build_sim`.
 
-**Status.** The consistency gate of SIMULATOR.md §5 **fails** (`VALIDATION.md`: C env, central fills,
-L = 1 s, 20 replications on the train schedule; it also has the before/after table of the informed-taker
-fix). Per that spec, use the sim only as an initialiser for pretraining, followed by replay fine-tuning,
-and quote no sim result.
+**Status.** The consistency gate of SIMULATOR.md §5 **fails**. `VALIDATION.md` has the C-env gate
+(central fills, L = 1 s, 20 replications on the train schedule) and the history of fixes. Per that spec,
+use the sim only as an initialiser for pretraining, followed by replay fine-tuning, and quote no sim
+result. The current params (sha256 `2fbdc264`) and `data/build_sim/` are the best state:
 
-| gate | result after the informed-taker fix |
+| gate | result |
 |---|---|
-| G1 | sym_touch: the per-market median is inside the band and KS is 0.065, but the total overshoots (-3564 vs -2958) and the hourly KS is 0.18. fair_value: +425 [45, 829] vs real -797, hourly KS 0.25. |
-| G2 | fails: the sim still ranks fair_value above no_quote |
-| G3 | 4/22 components inside the band (was 1). sym_touch spread capture is 2.6x real. |
-| G4 | the book passes (spread/depth/trades-per-market KS, one-sided 19/19), and so does sign ACF 3/3. It fails on 1 spread-median cell, 3 trade-rate cells and 2 P(buy\|gap) cells. |
+| G1 | sym_touch: total -3110 [-3662, -2775] contains real -2958, and hourly KS 0.128 passes, but the real per-market median -3.01 is just outside [-2.83, -1.18]. fair_value: -54 [-344, 271] vs -797, hourly KS 0.19. |
+| G2 | **passes**: no_quote > fair_value > sym_touch, as in replay |
+| G3 | 5/22 components inside the band. Fill volume is 1.2-1.3x real, spread capture 1.3-2.4x, markouts per share milder than real. |
+| G4 | spread/depth KS, one-sided, sign ACF and trades-per-market KS pass. Fails: one 5m spread-median cell, three near-close trade-rate cells, two 5m P(buy\|gap) cells. |
 
 ## Quick start
 
@@ -33,7 +33,7 @@ python fetch_binance.py --coins btc eth sol xrp --start 2026-07-23 --end 2026-08
 python fit.py                          # train-only fit -> params.json + params_book.npz (~10 min)
 python generate.py --n-markets 2000 --coins btc eth sol xrp --seed 1 --randomize      # -> ../data/build_sim/
 python calibrate_env.py --grid refill && python calibrate_env.py --apply --tag refill   # C-env calibration of the flow
-python fit.py --parts rate             # re-match mean trade counts after flow changes
+python fit.py --parts cluster rate     # within-second bursts, then re-match mean trade counts
 python validate_env.py --reps 20 --chunk 5   # gate through the C env -> VALIDATION.md, validation_env.json
 ```
 
@@ -110,8 +110,8 @@ Row t is unix second t, as in `data/README.md`. Within second t, events happen i
 | Regime | Normal, hollow (stub quotes 0.01-0.02 / 0.98-0.99) or one-sided (the extreme side empty). P(one-sided \| len, tau, ext(p)) and P(hollow \| len, coin group, tau). Persistence through per-market Gaussian-copula thresholds. | Hollow is a ZEC effect (69-100%, at most 3% elsewhere). Copula half-lives were fitted to the observed P(same state). |
 | Spread | Empirical categorical by (len, coin group btc/eth/alt/zec, tau, ext(p), tick grid), backed off to coarser cells | Real spread support in mils |
 | Depth | The whole top-5 bid/ask size vector is resampled from the real snapshots of the same (len, coin group, tau) cell, with total/top-5 depth ratio. The previous vector is kept with probability 1 - (1 - acf1)/pi. Level gaps are empirical. | Library of 3000 vectors per cell (`params_book.npz`) |
-| Taker arrivals | Linear Hawkes: lambda = A_m exp(cell(len, tau) + b_gap \|p - mid\| + b_z \|z5\| + b_O O) + eta H_t, with H an exponential kernel. A_m ~ lognormal(len, coin). No flow in hollow books. | eta = 0.43, tau = 5 s (LR 17,239 vs Poisson). b_gap 1.37, b_z 0.28, b_O -2.3. Market sd 0.90. Simulated mean-rate correction per length and per (length, tau) cell (`fit.py --parts rate cellrate`). |
-| Direction | Noise takers follow the fitted P(buy \| gap bucket), plus a copy of the previous sign with probability rho. **Look-ahead informed takers**: each arrival is informed with probability 1 - exp(-kappa_I edge), where edge = (mid target h s ahead, Binance-driven part only) minus the actual touch, net of the taker fee, in cents. An informed arrival takes that side. The older "staleness" informed share w is set to 0. | P(buy) 0.40 -> 0.57/0.60/0.59 by gap. h = 5 s; kappa_I 0.36/6.5/10.8 per cent; rho 0/0.10/0.25 (5m/15m/4h). From the C-env calibration (`calibrate_env.py`). |
+| Taker arrivals | Linear Hawkes: lambda = A_m exp(cell(len, tau) + b_gap \|p - mid\| + b_z \|z5\| + b_O O) + eta H_t, with H an exponential kernel. A_m ~ lognormal(len, coin). No flow in hollow books. Arrivals within a second are **compound Poisson**: Poisson(lambda/mu) bursts of geometric size with mean mu[len, coin group]. Real txs bunch within seconds: BTC 5m has 12.3 txs per active second. | eta = 0.43, tau = 5 s (LR 17,239 vs Poisson). b_gap 1.37, b_z 0.28, b_O -2.3. Market sd 0.90. Simulated mean-rate correction per length and per (length, tau) cell (`fit.py --parts rate cellrate`). Burst mean mu: BTC 5m 5.2, others 1.1-1.9 (`--parts cluster`). |
+| Direction | Noise takers follow the fitted P(buy \| gap bucket), plus a copy of the previous sign with probability rho. **Look-ahead informed takers**: each arrival is informed with probability 1 - exp(-kappa_I edge), where edge = (mid target h s ahead, Binance-driven part only) minus the actual touch, net of the taker fee, in cents. An informed arrival takes that side. The older "staleness" informed share w is set to 0. | P(buy) 0.40 -> 0.57/0.60/0.59 by gap. h = 7 s; kappa_I 0.18/3.2/5.4 per cent; rho 0/0/0.25 (5m/15m/4h). From the C-env calibration (`calibrate_env.py`). |
 | Sizes, sweep | Taker size from empirical quantiles by (len, coin group). It sweeps the **actual** book: the snapshot shape translated to the current mid target. A level a print exhausts is re-posted at the same price with probability r_refill (fresh library size), else removed. Each level gives geometric(mean 1.35) maker legs. | Median 10 (BTC 5m), 0.02 (alt 5m), 15-20 (4h); r_refill = 0.8 |
 | Impact | Implemented but **off** (kappa = 0). Each print would add kappa sign sqrt(min(size, 500)/10) to an accumulator (half-life 300 s) that the target absorbs with a 15 s half-life. Its transient decay made prices revert after trades and gave makers too much inventory P&L (fair_value 1.14 vs real 0.63 $/market), so the look-ahead takers now carry all adverse selection. | C-env calibration |
 | Legs, tokens | The taker leg is on Up with probability 0.73 (buy) / 0.30 (sell). Maker legs are on Up with probability 0.13 (buy) / 0.89 (sell). Down legs are priced 1 - p. | Train legs |
@@ -180,7 +180,7 @@ Not implemented (SIMULATOR.md items left for later):
 |---|---|
 | `common.py` | format constants imported from `data/build.py`; the pricer from `analysis/fair_value`; train-only loaders; bucket definitions |
 | `fetch_binance.py` | caches Binance 1 s closes (excludes 08-22..25); `load_closes` returns contiguous segments |
-| `fit.py` | train-only fit: `--parts settlement book mid flow informed rate fees`. `--pre-trades START END` also pools on-chain pre-period trades (onchain/, days <= 2026-08-20) into the book-free flow parameters: sizes, tokens, legs, sweep depth. |
+| `fit.py` | train-only fit: `--parts settlement book mid flow informed cluster cellrate rate fees`. `--pre-trades START END [--pre-frac 0.03]` also pools on-chain pre-period trades (onchain/, days <= 2026-08-20) into the book-free flow parameters: sizes, tokens, legs, sweep depth. That made the train-day gate worse, so the final params do not use it (VALIDATION.md). |
 | `params.json`, `params_book.npz` | fitted parameters and the empirical size library |
 | `engine.py` | the vectorised batch engine, running B same-length markets in lockstep per second; fill legs |
 | `generate.py` | schedules, pricing, writes the build, calls `features_sim.py` |

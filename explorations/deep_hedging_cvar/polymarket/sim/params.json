@@ -1,7 +1,7 @@
 {
  "meta": {
   "fitted_on": "train split 0 only: 431 markets (5m 248, 15m 146, 4h 37), opens 2026-08-21..22 UTC; Binance < 2026-08-23",
-  "created_utc": "2026-10-15T10:31:36.301338+00:00",
+  "created_utc": "2026-10-15T10:01:38.174693+00:00",
   "n_rows": 739031,
   "pricer": {
    "halflife_s": 300,
@@ -91470,34 +91470,34 @@
    "note": "lambda_t = A_m * exp(tau_cell[len,tau_b] + b_absgap*min(|p-mid|,0.3) + b_absz5*min(|z5|,6) + b_onesided*O) + hawkes_eta * H_t,  H_t = d*H_{t-1} + (1-d)*n_{t-1}, d = exp(-1/hawkes_tau); baseline shape from a Poisson GLM with market fixed effects, (eta, tau) and A_m by profile MLE; covariates at match time (block time - 3 s); lambda = 0 in the hollow state",
    "tau_cell_shift": [
     [
-     0.024018,
-     -0.214753,
-     0.345676,
-     -0.087601,
-     -0.106054,
+     0.011058,
+     -0.097451,
+     0.336247,
+     -0.044553,
+     -0.072362,
      0.0,
      0.0,
      0.0
     ],
     [
-     -1.25334,
-     -1.093769,
-     -0.143389,
-     -0.029664,
-     -0.089361,
-     -0.139794,
+     -0.819027,
+     -0.864108,
+     0.048774,
+     0.171343,
+     0.061442,
+     0.034897,
      0.0,
      0.0
     ],
     [
-     0.247794,
-     -0.210669,
-     0.219981,
-     0.176258,
-     -0.034348,
-     -0.07317,
-     -0.040202,
-     -0.118792
+     0.304489,
+     -0.082836,
+     0.14964,
+     0.101137,
+     -0.133916,
+     -0.152346,
+     -0.192985,
+     -0.220184
     ]
    ]
   },
@@ -93629,15 +93629,15 @@
   "lookahead": {
    "5m": {
     "h": 7,
-    "kappa": 0.17963
+    "kappa": 0.1796305
    },
    "15m": {
     "h": 7,
-    "kappa": 3.233354
+    "kappa": 3.2333535
    },
    "4h": {
     "h": 7,
-    "kappa": 5.388922
+    "kappa": 5.3889225
    }
   },
   "refill_prob": 0.8,
@@ -93794,19 +93794,19 @@
     "cand": {
      "flow.lookahead.5m": {
       "h": 7,
-      "kappa": 0.17963
+      "kappa": 0.1796305
      },
      "flow.lookahead.15m": {
       "h": 7,
-      "kappa": 3.233354
+      "kappa": 3.2333535
      },
      "flow.lookahead.4h": {
       "h": 7,
-      "kappa": 5.388922
+      "kappa": 5.3889225
      },
      "flow.direction.rho_copy_by_len.15m": 0.0
     },
-    "loss": 123.259138,
+    "loss": 123.25913828432016,
     "note": "after adding compound-Poisson bursts: look-ahead h = 7 s, kappa halved, 15m copy prob 0"
    }
   },
