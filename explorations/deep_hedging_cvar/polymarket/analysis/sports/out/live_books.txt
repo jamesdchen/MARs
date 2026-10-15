@@ -10,76 +10,138 @@ the 60 s after each jump.
 Usage: live_books.py <rec_out_dir>
 
 recording: /tmp/claude-0/-home-user-MARs/fc9de0c5-c81f-55ee-a203-afdadaace9c8/scratchpad/rec
-rows: 36664, markets: 18
+rows: 144362, markets: 18
 
 ## per market and phase (outcome-0 token; spread in cents; depth in shares within w of mid, both sides)
-                                   slug league phase  minutes  spread_med  spread_mean  one_tick_share  mid_med   dep1_med   dep2_med   dep5_med  mid_chg_per_min  touch_chg_per_min
-                 cfb-gas-old-2026-10-15    cfb   pre     37.7         1.0        1.000           1.000    0.605   76652.72  401946.29  768915.01            0.027              0.027
-             col-bha-kau-2026-10-15-kau    col  live     37.6         0.1        0.159           1.000    0.002       0.00       0.00       0.00            0.479              0.506
-               cs2-lgc-furia-2026-10-15    cs2  live     38.1         1.0        1.036           0.966    0.695    3764.60   12315.12   59082.47            2.647              2.647
-                   lol-c9-kc-2026-10-15    lol  live     38.1         1.0        1.038           0.970    0.635   26945.03  111062.65  164157.43            2.910              2.936
-                 nba-okc-hou-2026-10-15    nba   pre     37.5         1.0        1.000           1.000    0.585    2842.50   10957.24   37334.41            0.000              0.000
-                 nba-tor-nyk-2026-10-15    nba   pre     38.1         1.0        1.000           1.000    0.665    5116.65   13303.14   65869.50            0.026              0.026
-                 nfl-sea-den-2026-10-16    nfl   pre     38.1         1.0        1.000           1.000    0.565 2525551.95 6674072.79 8638573.20            0.000              0.000
-nfl-sea-den-2026-10-16-spread-away-2pt5    nfl   pre     37.9         1.0        1.000           1.000    0.505 1359002.91 3170267.39 4140687.82            0.000              0.000
-     nfl-sea-den-2026-10-16-total-40pt5    nfl   pre     37.9         1.0        1.000           1.000    0.505  326549.00 1266579.60 1484739.51            0.000              0.000
-                 nhl-buf-tor-2026-10-15    nhl   pre     38.0         1.0        1.000           1.000    0.525  106455.54  313549.16  660112.92            0.053              0.053
-                 nhl-nyi-ott-2026-10-15    nhl   pre     38.1         1.0        1.000           1.000    0.605  161169.08  363233.53  636200.34            0.000              0.000
-                  nhl-nyr-nj-2026-10-15    nhl   pre     38.0         1.0        1.000           1.000    0.445  120275.52  324660.28  629197.90            0.000              0.000
-                nhl-utah-edm-2026-10-15    nhl   pre     38.1         1.0        1.000           1.000    0.515   49654.12  300217.10  648406.88            0.000              0.000
-             uel-ben-cel-2026-10-15-ben    uel  live     38.1         0.5        0.471           1.000    0.996   66894.29   70881.12   82825.45            1.862              1.862
-            uel-cel1-juv-2026-10-15-juv    uel  live     38.1         1.0        1.067           0.960    0.155   18756.70   49104.96  123182.74            3.434              3.486
-             uel-din-and-2026-10-15-din    uel  live     38.1         1.0        1.205           0.943    0.445   15976.41   33154.70   88579.64            2.700              2.805
-             uel-hof-bes-2026-10-15-hof    uel  live     38.1         1.0        1.104           0.955    0.435   13528.52   35005.46   88779.36            2.254              2.280
-             uel-olm-oly-2026-10-15-oly    uel  live     38.1         1.0        1.126           0.912    0.615   16211.28   42150.15  103729.23            4.744              4.823
+                                   slug league phase  minutes  spread_med  spread_mean  one_tick_share  mid_med    dep1_med    dep2_med     dep5_med  mid_chg_per_min  touch_chg_per_min
+                 cfb-gas-old-2026-10-15    cfb   pre    220.0         1.0        1.000           1.000    0.595  159714.020  580488.010   936937.110            0.014              0.014
+             col-bha-kau-2026-10-15-kau    col  live      0.0         NaN          NaN             NaN      NaN         NaN         NaN          NaN              NaN                NaN
+               cs2-lgc-furia-2026-10-15    cs2  live    136.9         1.0        0.959           0.970    0.435    5560.255   17988.650    63176.990            5.864              5.959
+                   lol-c9-kc-2026-10-15    lol  live    184.0         1.0        1.070           0.937    0.545    3407.610    9006.655    41299.525            5.621              5.735
+                 nba-okc-hou-2026-10-15    nba   pre    220.1         1.0        1.050           0.950    0.585    3698.330   12912.610    47116.730            0.041              0.041
+                 nba-tor-nyk-2026-10-15    nba   pre    219.8         1.0        1.017           0.983    0.645    3922.360   14241.870    70379.390            0.091              0.091
+                 nfl-sea-den-2026-10-16    nfl   pre    219.9         1.0        1.000           1.000    0.565 3031225.130 8628387.030 10351116.200            0.000              0.000
+nfl-sea-den-2026-10-16-spread-away-2pt5    nfl   pre    220.1         1.0        1.000           1.000    0.505 1767342.950 4286608.680  5226920.690            0.000              0.000
+     nfl-sea-den-2026-10-16-total-40pt5    nfl   pre    219.5         1.0        1.000           1.000    0.505  327850.470 1073828.960  1433158.660            0.000              0.000
+                 nhl-buf-tor-2026-10-15    nhl  live     23.1         1.0        1.038           0.970    0.515    7585.300   48593.260   123552.240            2.299              2.299
+                 nhl-buf-tor-2026-10-15    nhl   pre    197.1         1.0        1.000           1.000    0.525  137555.680  389339.090   695516.510            0.015              0.015
+                 nhl-nyi-ott-2026-10-15    nhl  live     23.1         1.0        1.028           0.978    0.605   14184.070   27108.210    49407.820            1.345              1.388
+                 nhl-nyi-ott-2026-10-15    nhl   pre    197.1         1.0        1.000           1.000    0.605  211798.040  390457.630   650788.430            0.000              0.000
+                  nhl-nyr-nj-2026-10-15    nhl  live     23.1         1.0        1.095           0.905    0.455    5116.540   13612.740    31883.480            2.603              2.603
+                  nhl-nyr-nj-2026-10-15    nhl   pre    197.1         1.0        1.000           1.000    0.445  141071.340  340595.310   627333.430            0.010              0.010
+                nhl-utah-edm-2026-10-15    nhl   pre    219.7         1.0        1.000           1.000    0.515   53550.350  323799.720   658234.670            0.000              0.000
+             uel-ben-cel-2026-10-15-ben    uel  live      0.1         4.6        3.786           0.143    0.958       0.000       0.000    88082.480           34.286             34.286
+            uel-cel1-juv-2026-10-15-juv    uel  live     69.6         1.0        1.095           0.937    0.155   14646.310   40965.730   115145.630            5.602              5.746
+             uel-din-and-2026-10-15-din    uel  live     72.2         1.0        1.317           0.892    0.405   12276.260   32167.800    87333.070            6.625              6.708
+             uel-hof-bes-2026-10-15-hof    uel  live     53.1         1.0        1.181           0.897    0.415   11773.020   31786.830    80316.900            3.693              3.750
+             uel-olm-oly-2026-10-15-oly    uel  live     69.0         1.0        1.231           0.878    0.630   11924.500   34962.165    80425.390            6.536              6.594
 
 ## medians by phase
-       spread_med  one_tick_share    dep1_med    dep2_med  dep5_med  mid_chg_per_min  touch_chg_per_min
+       spread_med  one_tick_share   dep1_med   dep2_med    dep5_med  mid_chg_per_min  touch_chg_per_min
 phase                                                                                                  
-live          1.0           0.963   16093.845   38577.805   88679.5            2.673              2.726
-pre           1.0           1.000  113365.530  343946.905  654259.9            0.000              0.000
+live          1.0           0.921    9679.16   29447.52   80371.145            5.612              5.741
+pre           1.0           1.000  150392.68  389898.36  676875.590            0.005              0.005
 
 ## around game start (total resting shares both sides, spread)
-                                   slug
-                 cfb-gas-old-2026-10-15
-             col-bha-kau-2026-10-15-kau
-               cs2-lgc-furia-2026-10-15
-                   lol-c9-kc-2026-10-15
-                 nba-okc-hou-2026-10-15
-                 nba-tor-nyk-2026-10-15
-                 nfl-sea-den-2026-10-16
-nfl-sea-den-2026-10-16-spread-away-2pt5
-     nfl-sea-den-2026-10-16-total-40pt5
-                 nhl-buf-tor-2026-10-15
-                 nhl-nyi-ott-2026-10-15
-                  nhl-nyr-nj-2026-10-15
-                nhl-utah-edm-2026-10-15
-             uel-ben-cel-2026-10-15-ben
-            uel-cel1-juv-2026-10-15-juv
-             uel-din-and-2026-10-15-din
-             uel-hof-bes-2026-10-15-hof
-             uel-olm-oly-2026-10-15-oly
+                                   slug  dep_all@-60  spread@-60  dep_all@-5  spread@-5  dep_all@-1  spread@-1  dep_all@+0  spread@+0  dep_all@+1  spread@+1  dep_all@+2  spread@+2  dep_all@+5  spread@+5  dep_all@+10  spread@+10  dep_all@+30  spread@+30  dep_all@+60  spread@+60  dep_all@+300  spread@+300  dep_all@+900  spread@+900
+                 cfb-gas-old-2026-10-15          NaN         NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN          NaN         NaN          NaN         NaN          NaN         NaN           NaN          NaN           NaN          NaN
+             col-bha-kau-2026-10-15-kau          NaN         NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN          NaN         NaN          NaN         NaN          NaN         NaN           NaN          NaN           NaN          NaN
+               cs2-lgc-furia-2026-10-15          NaN         NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN          NaN         NaN          NaN         NaN          NaN         NaN           NaN          NaN           NaN          NaN
+                   lol-c9-kc-2026-10-15          NaN         NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN          NaN         NaN          NaN         NaN          NaN         NaN           NaN          NaN           NaN          NaN
+                 nba-okc-hou-2026-10-15          NaN         NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN          NaN         NaN          NaN         NaN          NaN         NaN           NaN          NaN           NaN          NaN
+                 nba-tor-nyk-2026-10-15          NaN         NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN          NaN         NaN          NaN         NaN          NaN         NaN           NaN          NaN           NaN          NaN
+                 nfl-sea-den-2026-10-16          NaN         NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN          NaN         NaN          NaN         NaN          NaN         NaN           NaN          NaN           NaN          NaN
+nfl-sea-den-2026-10-16-spread-away-2pt5          NaN         NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN          NaN         NaN          NaN         NaN          NaN         NaN           NaN          NaN           NaN          NaN
+     nfl-sea-den-2026-10-16-total-40pt5          NaN         NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN          NaN         NaN          NaN         NaN          NaN         NaN           NaN          NaN           NaN          NaN
+                 nhl-buf-tor-2026-10-15     784530.4         1.0    695782.6        1.0    702354.6        1.0    694431.6        1.0     92179.7        1.0    214337.6        1.0    269225.0        1.0     310111.2         1.0     313497.2         1.0     554874.8         1.0      574498.2          1.0      226195.8          1.0
+                 nhl-nyi-ott-2026-10-15     680151.1         1.0    590225.9        1.0    596547.9        1.0    572643.9        1.0    106001.4        1.0    171433.6        1.0    230539.7        1.0     262605.0         1.0     281033.3         1.0     282053.8         1.0      317334.6          1.0      222239.8          1.0
+                  nhl-nyr-nj-2026-10-15     802398.1         1.0    670801.7        1.0    678313.7        1.0    679825.7        1.0    115456.3        1.0    178809.1        1.0    198041.8        1.0     229952.6         1.0     261521.0         1.0     273161.1         1.0      438270.7          1.0      223725.2          2.0
+                nhl-utah-edm-2026-10-15          NaN         NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN          NaN         NaN          NaN         NaN          NaN         NaN           NaN          NaN           NaN          NaN
+             uel-ben-cel-2026-10-15-ben          NaN         NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN          NaN         NaN          NaN         NaN          NaN         NaN           NaN          NaN           NaN          NaN
+            uel-cel1-juv-2026-10-15-juv          NaN         NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN          NaN         NaN          NaN         NaN          NaN         NaN           NaN          NaN           NaN          NaN
+             uel-din-and-2026-10-15-din          NaN         NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN          NaN         NaN          NaN         NaN          NaN         NaN           NaN          NaN           NaN          NaN
+             uel-hof-bes-2026-10-15-hof          NaN         NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN          NaN         NaN          NaN         NaN          NaN         NaN           NaN          NaN           NaN          NaN
+             uel-olm-oly-2026-10-15-oly          NaN         NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN         NaN        NaN          NaN         NaN          NaN         NaN          NaN         NaN           NaN          NaN           NaN          NaN
 
-## in-play jumps (|dmid| >= 5c within 30 s): 14
+## in-play jumps (|dmid| >= 5c within 30 s): 73
                        slug          t   move  spread_pre  spread_post  spread_post_max  dep2_pre  dep2_post
    cs2-lgc-furia-2026-10-15 1792094450  0.060         1.0          1.0              1.0  7905.280    7833.81
+   cs2-lgc-furia-2026-10-15 1792095975  0.060         1.0          1.0              2.0 10509.735    7276.57
+   cs2-lgc-furia-2026-10-15 1792096112 -0.055         1.0          1.0              2.0 11871.975    8205.45
+   cs2-lgc-furia-2026-10-15 1792098743 -0.075         1.0          1.0              2.0 16847.490   10400.74
+   cs2-lgc-furia-2026-10-15 1792098930 -0.055         1.0          1.0              2.0 18244.410   12971.75
+   cs2-lgc-furia-2026-10-15 1792099394 -0.060         1.0          1.0              2.0  9131.600   16675.89
+   cs2-lgc-furia-2026-10-15 1792099629 -0.060         1.0          1.0              2.0 10095.615    8820.73
+   cs2-lgc-furia-2026-10-15 1792099849 -0.050         1.0          1.0              2.0 12334.585   18393.18
+   cs2-lgc-furia-2026-10-15 1792100218 -0.050         1.0          1.0              1.0 23589.735   17863.89
+   cs2-lgc-furia-2026-10-15 1792101067  0.050         0.6          0.4              1.3 18874.090    9997.82
+   cs2-lgc-furia-2026-10-15 1792101208  0.051         0.5          0.6              1.9 10495.235   14367.74
+   cs2-lgc-furia-2026-10-15 1792101397 -0.053         0.1          0.5              1.5 26862.965   24996.71
+   cs2-lgc-furia-2026-10-15 1792101557  0.089         0.1          0.1              1.7 26951.495   25343.22
        lol-c9-kc-2026-10-15 1792093527  0.055         1.0          1.0              2.0 22263.540    3161.61
        lol-c9-kc-2026-10-15 1792093851  0.065         1.0          1.0              5.0  5703.330    1063.55
+       lol-c9-kc-2026-10-15 1792096441 -0.050         1.0          1.0              2.0  6673.220    3093.85
+       lol-c9-kc-2026-10-15 1792096561  0.080         1.0          1.0              3.0  4468.030    3650.60
+       lol-c9-kc-2026-10-15 1792096815 -0.060         1.0          1.0              2.0  4106.880    1593.46
+       lol-c9-kc-2026-10-15 1792097001  0.055         1.0          1.0              2.0  1227.880    3074.79
+       lol-c9-kc-2026-10-15 1792097196 -0.050         1.0          1.0              2.0  4627.690    2839.68
+       lol-c9-kc-2026-10-15 1792097549  0.065         1.0          1.0              4.0  1889.600    1253.53
+       lol-c9-kc-2026-10-15 1792099094  0.060         1.0          1.0              2.0  8701.920    4332.79
+       lol-c9-kc-2026-10-15 1792100551 -0.055         1.0          1.0              3.0  7438.630    3206.49
+       lol-c9-kc-2026-10-15 1792100895  0.080         1.0          1.0              3.0  7490.110    2118.37
+       lol-c9-kc-2026-10-15 1792101241 -0.060         1.0          1.0              4.0  6418.080    4233.69
+       lol-c9-kc-2026-10-15 1792102704 -0.050         1.0          1.0              1.0 48923.085   35532.18
+       lol-c9-kc-2026-10-15 1792102945 -0.075         1.0          1.0              2.0 13193.990   13280.57
+       lol-c9-kc-2026-10-15 1792103090  0.055         1.0          1.0              2.0  8416.770    8538.05
+       lol-c9-kc-2026-10-15 1792103345  0.070         1.0          1.0              1.0  7912.545    5897.28
+       lol-c9-kc-2026-10-15 1792103465  0.050         1.0          1.0              2.0  8257.120    3746.55
+       lol-c9-kc-2026-10-15 1792103588 -0.080         1.0          1.0              3.0  3599.710    3649.90
+       lol-c9-kc-2026-10-15 1792103810 -0.080         1.0          1.0              5.0  4278.145    1804.41
+       lol-c9-kc-2026-10-15 1792103957 -0.050         1.0          1.0              3.0  2223.135    4065.48
+       lol-c9-kc-2026-10-15 1792104167 -0.145         1.0          1.0              3.0  7151.350    3682.57
+       lol-c9-kc-2026-10-15 1792104287 -0.090         1.0          1.0              3.0  1649.325    2785.70
+       lol-c9-kc-2026-10-15 1792104410  0.065         1.0          1.0              2.0  4516.840       0.00
+     nhl-buf-tor-2026-10-15 1792106139  0.105         1.0          1.0              3.0 14148.785     100.52
+     nhl-buf-tor-2026-10-15 1792106293 -0.105         1.0          1.0              4.0 19733.140     364.87
+     nhl-nyi-ott-2026-10-15 1792106136  0.100         1.0          1.0              5.0 15047.960     382.93
 uel-cel1-juv-2026-10-15-juv 1792095095 -0.060         1.0          1.0              1.0  2660.690   34289.93
 uel-cel1-juv-2026-10-15-juv 1792095368  0.200         1.0          2.0              5.0 44998.950     508.50
+uel-cel1-juv-2026-10-15-juv 1792095656  0.055         1.0          1.0              6.0 48824.970    5359.65
+uel-cel1-juv-2026-10-15-juv 1792096301  0.055         1.0          1.0              4.0 33887.795   37061.06
+uel-cel1-juv-2026-10-15-juv 1792096686 -0.050         2.0          1.0              1.0  2304.940   31725.10
+uel-cel1-juv-2026-10-15-juv 1792097397  0.080         1.0          1.0             12.0 12297.815    7682.31
+uel-cel1-juv-2026-10-15-juv 1792097527 -0.155         1.0          0.1             16.0 31714.805     182.35
  uel-din-and-2026-10-15-din 1792094905  0.050         2.0          1.0             14.0  5686.925   32992.06
  uel-din-and-2026-10-15-din 1792095429  0.055         1.0          1.0              8.0 38007.440   39309.05
- uel-din-and-2026-10-15-din 1792095638 -0.100         1.0          2.0             31.0 46802.530   11010.00
+ uel-din-and-2026-10-15-din 1792095638 -0.100         1.0          1.0             31.0 46802.530   33462.58
+ uel-din-and-2026-10-15-din 1792095760  0.110         1.0          1.0              6.0 44449.575   28316.72
+ uel-din-and-2026-10-15-din 1792096103  0.065         1.0          1.0             12.0 39703.980   32277.73
+ uel-din-and-2026-10-15-din 1792096315 -0.060         1.0          1.0              7.0 37251.010   19965.39
+ uel-din-and-2026-10-15-din 1792096691 -0.065         1.0          1.0             12.0 22738.565   22656.19
+ uel-din-and-2026-10-15-din 1792096811  0.075         1.0          1.0              4.0 26853.215   34860.27
+ uel-din-and-2026-10-15-din 1792097028 -0.050         1.0          1.0              1.0 36229.530   35724.96
+ uel-din-and-2026-10-15-din 1792097424 -0.055         2.0          1.0              3.0  3662.185    5907.38
+ uel-din-and-2026-10-15-din 1792097544  0.125         1.0          4.0             17.0  3905.450      77.50
+ uel-din-and-2026-10-15-din 1792097664  0.090         1.0          1.0             16.0   349.000    3033.22
  uel-hof-bes-2026-10-15-hof 1792094715  0.100         1.0          1.0             17.0 27886.670   26092.03
  uel-hof-bes-2026-10-15-hof 1792095245 -0.050         1.0          1.0              7.0 39448.060   31872.15
  uel-hof-bes-2026-10-15-hof 1792095403 -0.200         1.0          3.0              5.0 26044.410      57.79
+ uel-hof-bes-2026-10-15-hof 1792095900  0.180         1.0          1.0              5.0 37797.370     427.63
+ uel-hof-bes-2026-10-15-hof 1792096165 -0.195         1.0          2.0              6.0  7922.380    8340.42
  uel-olm-oly-2026-10-15-oly 1792093425 -0.075         1.0          1.0              5.0  1925.380     240.06
  uel-olm-oly-2026-10-15-oly 1792093619  0.185         1.0          1.0             10.0 13435.570   14191.72
  uel-olm-oly-2026-10-15-oly 1792095426 -0.080         1.0          2.0             12.0  5732.565    3954.72
+ uel-olm-oly-2026-10-15-oly 1792095855 -0.075         1.0          1.0             12.0 47271.320   25934.29
+ uel-olm-oly-2026-10-15-oly 1792095998  0.080         1.0          1.0              3.0 27390.690   42160.21
+ uel-olm-oly-2026-10-15-oly 1792096226 -0.060         1.0          1.0              2.0 21608.970   31030.04
+ uel-olm-oly-2026-10-15-oly 1792096960 -0.065         1.0          1.0              8.0 38438.995   31296.72
+ uel-olm-oly-2026-10-15-oly 1792097104  0.125         1.0          1.0              3.0 29432.335   27168.97
+ uel-olm-oly-2026-10-15-oly 1792097369  0.055         1.0          1.0              4.0  5291.585   12745.21
+ uel-olm-oly-2026-10-15-oly 1792097506  0.070         1.0          1.0             22.0  4545.350       0.00
 
 ## jump medians
 spread_pre             1.000
 spread_post            1.000
-spread_post_max        6.000
-dep2_pre           17849.555
-dep2_post           9421.905
+spread_post_max        3.000
+dep2_pre           11871.975
+dep2_post           7833.810
