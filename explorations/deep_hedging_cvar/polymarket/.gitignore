@@ -3,3 +3,8 @@ __pycache__/
 *.so
 results/*_ckpt/
 analysis/*/cache/
+data/build_sim/
+sim/cache/
+train/runs/
+train/checkpoints/
+*.pt
