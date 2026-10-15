@@ -309,6 +309,21 @@ def main(argv=None):
 
     eval_every = int(args.eval_every)
     next_eval = eval_every if eval_every else None
+    try:
+        return _loop_and_finish()
+    except BaseException as e:
+        if n_val_evals and not args.no_val:  # T4: val evaluations made before a crash are ledgered too
+            ledger.append({'kind': 'train_run_failed', 'backend': adapter.name, 'tag': args.tag,
+                           'cfg_hash': cfg_hash, 'seed': args.seed, 'cfg': cfg, 'run_dir': out,
+                           'n_val_evals': n_val_evals, 'error': f'{type(e).__name__}: {e}'}, ledger_path)
+        raise
+
+
+def _unused():
+    pass
+
+
+def _loop_body_placeholder():
     while trainer.global_step < cfg['total_timesteps']:
         trainer.evaluate()
         logs = trainer.train()
