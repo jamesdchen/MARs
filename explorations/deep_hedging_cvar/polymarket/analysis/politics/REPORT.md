@@ -84,7 +84,7 @@ the scripts in this folder (see "Files" at the end).
 **Caveats:**
 - The book-free spread proxy is biased in fast markets: it is +1.3 ¢ too high on crypto when measured against
   the recorded L2 mid, and the bias sits in the price tails. Markouts are robust: the crypto proxy markouts
-  match the L2 markouts within about 0.1 ¢. On politics the proxy agrees with the recorded L2 mid (§3.3).
+  match the L2 markouts within about 0.1 ¢. On politics the proxy agrees with the recorded L2 mid: 0.39 vs 0.38 ¢ on 950 fills (§3.3).
 - Reward pools are a snapshot of today's configuration. Many were reset on Oct 14–15, before the midterms and
   the FOMC, so pools over the fills window may have been lower.
 - Aggregate maker markouts describe the average maker. A newcomer joins the back of a $1–3k queue, so it gets
@@ -233,7 +233,12 @@ today it is $0.
     (p < 0.05: −7.1 ¢ against L2; p > 0.95: −2.4 ¢), where the book moves in the market's last seconds.
   - Inside 0.05–0.95 the two agree within 0.1–0.8 ¢.
   - The markouts agree much better: 5 m −0.53 (proxy) vs −0.46 (L2), 30 m −0.46 vs −0.56, 2 h −0.48 vs −0.62.
-- **Politics**: fills during the recording against the recorded L2 mid; see §5 for the final numbers.
+- **Politics** (`analyze.py politics_live`: 1,423 maker legs during 2.6 h of recording, 950 with both mids):
+  - The proxy edge is **0.39 ¢ against 0.38 ¢ vs the recorded L2 mid** (block − 3 s). The median per-fill
+    difference is 0, and the correlation is 0.79.
+  - Markouts: 1 m 0.33 vs 0.21, 5 m 0.29 vs 0.23, 30 m 0.03 vs 0.05.
+  - Politics books move about once an hour, so the latest trades describe the book well. The proxy is
+    reliable here, unlike in fast crypto tails.
 
 **Conclusion:** compare venues on markouts, not on the edge.
 
@@ -277,27 +282,28 @@ latency-advantaged firms rather than passive makers.
 ## 5. Live books (`live_books.py`, `out/books_politics.csv`, `out/rewards_live.csv`, `out/books_crypto.csv`, `out/rec_summary/`)
 
 The recording covers 40 markets with REST reconcile every 60 s; the mismatch rate is about 0.05%. Medians
-across markets (*first hour; see the end-of-session update below*):
+across markets, over 2.7 h of recording (Oct 15, 19:34–22:17 UTC; hourly per-market rows in
+`out/rec_summary/books_hourly.csv`):
 
 | | politics | economics | geopolitics | crypto 5m | crypto 15m | crypto 4h |
 |---|---|---|---|---|---|---|
-| quoted spread, median (¢) | 0.25 | 1.0 | 0.75 | 3 | 2 | 2 |
+| quoted spread, median (¢) | 0.20 | 1.0 | 0.75 | 3 | 2 | 2 |
 | time at one tick | 100% | 100% | 100% | 28% | 31% | 36% |
-| touch depth per side ($) | 1,602 | 3,117 | 780 | 25 | 32 | 57 |
-| depth within 1 ¢ of mid ($) | 15.8k | 12.3k | 8.2k | 2.5 | 1.2 | 14 |
-| depth within the reward band ($) | 133k | 40k | 64k | 164 | 215 | 256 |
-| touch **price** changes per hour | 0 | 0 | 1.3 | 549 | 503 | 159 |
-| touch **size** changes per hour | 25 | 32 | 36 | 569 | 540 | 167 |
-| book updates per hour | 710 | 503 | 660 | 687 | 665 | 485 |
+| touch depth per side ($) | 1,706 | 4,325 | 1,048 | 25 | 32 | 57 |
+| depth within 1 ¢ of mid ($) | 15.7k | 12.3k | 7.6k | 2.5 | 1.2 | 14 |
+| depth within the reward band ($) | 145k | 40k | 57k | 164 | 215 | 256 |
+| touch **price** changes per hour | 0 | 0.7 | 1.5 | 549 | 503 | 159 |
+| touch **size** changes per hour | 26 | 55 | 50 | 569 | 540 | 167 |
+| book updates per hour | 662 | 567 | 644 | 687 | 665 | 485 |
 
 **Liquidity rewards for a hypothetical maker** (one sample per minute, competitors from the recorded book with
 the 'hi' bracket, quoting `rewardsMinSize` on both sides):
 
-- **At the touch** it earns a **0.02–1.1%** share of the pool. The median is about $0.01/h, rising to
-  $0.36–0.45/h in the Fed October markets ($1,000/day pools, 2.5 ¢ band).
+- **At the touch** it earns a **0.0–1.7%** share of the pool. The median is $0.008/h, rising to
+  $0.37–0.55/h in the Fed October markets ($1,000/day pools, 2.5 ¢ band).
 - **Per $1k of capital** (a two-sided quote of X shares ties up X dollars) that is a median of **≈ $0.05/h
-  (0.12%/day)**. The best markets reach **$1.8–2.3/h** (Fed Oct no-change / +25 bp) and $0.5/h (US–Iran
-  ceasefire, Brazil).
+  (0.14%/day)**. The best markets reach **$1.8–2.7/h** (Fed Oct no-change / +25 bp) and $0.6–0.7/h
+  (US–Iran ceasefire, Lula).
 - One tick behind the touch, the reward falls by a factor of 1.4–4.
 
 These are gross of fills. An order resting at the touch of a Fed market gets swept on FOMC news. The trade-off
