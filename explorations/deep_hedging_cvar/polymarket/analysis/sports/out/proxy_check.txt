@@ -1,0 +1,15 @@
+Validate the touch-based mid proxy of maker_econ.py against recorded book mids (tonight's finished markets).
+
+Trades come from data-api /trades (both takerOnly modes): legs of a tx that are not the taker row are maker legs.
+The proxy is rebuilt exactly as in maker_econ.mid_series (YES frame = outcome 0) and compared with the polyrec book
+mid of outcome 0 at the trade (block) time - 3 s (block time lags the CLOB match by ~2-4 s, onchain/README).
+Usage: proxy_check.py <rec_out_dir> slug [slug ...]
+
+                       slug   n  mean_err_c  mae_c  p90_abs_c  within_half_spread  book_spread_c
+uel-cel1-juv-2026-10-15-juv 265      -0.053  0.449       1.50               0.808            1.0
+ uel-hof-bes-2026-10-15-hof  59       0.305  0.508       1.50               0.814            1.0
+ uel-olm-oly-2026-10-15-oly 140       0.011  0.961       1.55               0.679            1.0
+ uel-din-and-2026-10-15-din  40      -0.113  0.538       1.00               0.650            1.0
+   cs2-lgc-furia-2026-10-15 237      -0.004  0.291       1.00               0.831            1.0
+       lol-c9-kc-2026-10-15 402       0.095  0.587       1.50               0.808            1.0
+     nfl-sea-den-2026-10-16  32       0.000  0.000       0.00               1.000            1.0

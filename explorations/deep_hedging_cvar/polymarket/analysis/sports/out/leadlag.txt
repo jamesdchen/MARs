@@ -10,6 +10,71 @@ Note Smarkets polling (3 s) and their own in-play bet delay make this a coarse t
 Usage: leadlag.py <rec_out_dir> <smarkets.jsonl>
 
 ## level agreement
-Empty DataFrame
-Columns: []
-Index: []
+                       slug phase  minutes  mean_gap_c  mean_abs_gap_c  pm_spread_c  sm_spread_c  sm_outside_pm_touch
+     nfl-sea-den-2026-10-16   pre    32.50      -0.485           0.485          1.0         0.97                0.000
+    nhl-utah-edm-2026-10-15   pre    32.55      -0.310           0.310          1.0         2.38                0.000
+      nhl-nyr-nj-2026-10-15   pre    32.45      -0.056           0.266          1.0         2.18                0.000
+     nhl-nyi-ott-2026-10-15   pre    32.55       0.425           0.425          1.0         1.81                0.000
+     nhl-buf-tor-2026-10-15   pre    32.40      -0.285           0.285          1.0         1.95                0.000
+     nba-okc-hou-2026-10-15   pre    31.85       0.715           0.763          1.0         4.06                0.513
+     nba-tor-nyk-2026-10-15   pre    32.50       0.666           0.682          1.0         2.57                0.746
+ uel-olm-oly-2026-10-15-oly  live    32.50       0.173           0.718          1.0         1.83                0.562
+uel-cel1-juv-2026-10-15-juv  live    32.10       0.508           1.294          1.0         2.38                0.494
+ uel-hof-bes-2026-10-15-hof  live    32.45      -1.219           1.527          1.0         1.54                0.341
+ uel-din-and-2026-10-15-din  live    32.45       0.152           0.592          1.0         1.70                0.455
+ uel-ben-cel-2026-10-15-ben  live    31.90       0.442           0.449          0.5         0.98                0.629
+
+## cross-correlation of 3 s mid changes (weighted over markets); lag>0: Polymarket leads
+phase   live    pre
+lag_s              
+-60   -0.007 -0.000
+-57   -0.003 -0.000
+-54    0.005 -0.121
+-51   -0.051  0.121
+-48    0.005 -0.000
+-45    0.042  0.000
+-42   -0.006  0.000
+-39    0.026  0.000
+-36    0.008  0.000
+-33   -0.029  0.000
+-30   -0.009  0.000
+-27   -0.011  0.000
+-24   -0.037  0.000
+-21   -0.007 -0.000
+-18   -0.006 -0.000
+-15   -0.005 -0.000
+-12   -0.023 -0.000
+-9     0.034 -0.000
+-6    -0.009 -0.000
+-3     0.008 -0.000
+ 0     0.002 -0.000
+ 3     0.031 -0.000
+ 6     0.017 -0.000
+ 9     0.080 -0.000
+ 12    0.033 -0.000
+ 15   -0.052 -0.000
+ 18   -0.022 -0.000
+ 21    0.008 -0.000
+ 24   -0.026 -0.000
+ 27    0.021 -0.000
+ 30    0.128  0.125
+ 33    0.079 -0.000
+ 36    0.047 -0.000
+ 39    0.045 -0.000
+ 42    0.006 -0.000
+ 45    0.002  0.231
+ 48   -0.034 -0.000
+ 51   -0.017 -0.000
+ 54    0.006 -0.000
+ 57   -0.054 -0.000
+ 60   -0.002 -0.000
+
+## in-play big moves (>= 4c in 30 s on Polymarket): 6
+                       slug          t  move_c  smk_minus_pm_s
+uel-cel1-juv-2026-10-15-juv 1792095369    21.0            63.0
+uel-cel1-juv-2026-10-15-juv 1792095648     4.0             NaN
+ uel-hof-bes-2026-10-15-hof 1792095405   -20.0             NaN
+ uel-din-and-2026-10-15-din 1792095318     5.0             NaN
+ uel-din-and-2026-10-15-din 1792095459    -5.5             NaN
+ uel-din-and-2026-10-15-din 1792095639    -5.5             NaN
+median Smarkets-minus-Polymarket half-move time: 63.0 s
