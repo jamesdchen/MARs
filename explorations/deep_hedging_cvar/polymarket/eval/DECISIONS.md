@@ -470,3 +470,17 @@ positive. It is unchanged.
 - **Recording** keeps D14's 7-day horizon and includes the last hour, which can now be traded.
 
 **Track S status:** the edge is real but thin, about +20 to +30 bps to kickoff before rewards. It depends on netting inventory before kickoff and on queue position. The deciding test is an L2 replay with queue-aware fills at the touch and one tick behind.
+
+## D16. Recording gaps from container restarts (recorded 2026-10-16 ~02:10 UTC, before any v3 split is fixed or any v3 model is tuned)
+
+**Why.** The cloud workers' containers restart without warning: w1 at about 00:44 UTC (recorder down ~2 min) and w3 at about 02:03 UTC (~50 s). On ephemeral hosts this will keep happening, so whole-day episodes that require gap-free data would throw away most days.
+
+**Rule, for both v3 tracks:**
+- **Splitting at gaps:** any recording gap longer than 15 s splits an episode at the gap, so no episode spans one. Rows inside a gap are never synthesised.
+- **Inventory at a gap:** the policy's inventory is marked at the last pre-gap mid and carried into the next segment. Training and eval treat the gap as a forced quote pull (`pull_s`-style), not as a reset.
+- **Day eligibility for splits:**
+  - A calendar day stays eligible for train, val or test if its total gap time is 30 min or less, per track, and listed in that track's GAPS log.
+  - A day with more than 30 min of gaps is excluded from val and test, but may still be used in train.
+- **Elections:** default windows are 4 h. Longer windows are allowed only where gap-free.
+- **Sports:** a game whose final pre-kickoff hour contains a gap is excluded from val and test for the last-hour buckets. Its earlier buckets remain usable.
+- **Reporting:** all gaps are reported with any result.
