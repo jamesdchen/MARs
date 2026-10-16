@@ -1,0 +1,26 @@
+{
+ "books_stage": {
+  "day": "2026-03-22",
+  "status": "ok",
+  "source_archive": [
+   "v1"
+  ],
+  "tracked": 344,
+  "in_window": 0,
+  "rows": 0,
+  "rg_wanted": 6698,
+  "rg_total": 6722,
+  "requests": 53,
+  "mb_fetched": 3526.6,
+  "rows_read": 671417899,
+  "rows_kept": 94477,
+  "hours_absent": [],
+  "pc_checked": 0,
+  "pc_match_frac": null,
+  "live_frac": null,
+  "carried_in": 38,
+  "s_download": 44.4,
+  "s_read": 50.8,
+  "s_total": 95.2
+ }
+}

@@ -1,0 +1,33 @@
+{
+ "books_rows": 954172,
+ "books_markets": 111,
+ "books_mb": 12.83,
+ "trades_rows": 296731,
+ "trades_mb": 5.75,
+ "markets_rows": 202,
+ "markets_mb": 0.07,
+ "books_stage": {
+  "day": "2026-04-08",
+  "status": "ok",
+  "source_archive": [
+   "v1"
+  ],
+  "tracked": 1505,
+  "in_window": 535,
+  "rows": 1352370,
+  "rg_wanted": 6245,
+  "rg_total": 6245,
+  "requests": 49,
+  "mb_fetched": 3264.0,
+  "rows_read": 626119409,
+  "rows_kept": 8539354,
+  "hours_absent": [],
+  "pc_checked": 4640273,
+  "pc_match_frac": 0.99894,
+  "live_frac": 0.3578,
+  "carried_in": 412,
+  "s_download": 41.6,
+  "s_read": 143.0,
+  "s_total": 189.5
+ }
+}
