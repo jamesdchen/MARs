@@ -461,7 +461,7 @@ def day_gap_totals(track: list, days: list, gap_s: float, max_day_s: float, logg
             t = nxt
     for x in out.values():
         x["total_gap_s"] = round(x["total_gap_s"], 3)
-        x["eligible"] = bool(x["total_gap_s"] <= max_day_s)
+        x["eligible"] = bool(x["total_gap_s"] <= max_day_s and x["all_logged"])   # D16: <= 30 min AND logged
     return dict(sorted(out.items()))
 
 
@@ -1214,6 +1214,7 @@ def build(args) -> dict:
                 else:
                     keep.append(x)
             spans = [(a_, b_, len(keep) - 1 - j, sr, er, gb, ga) for j, (a_, b_, sr, er, gb, ga) in enumerate(keep)]
+        chain_cuts = sorted(set(cuts)) if not seg else []      # non-gap span boundaries (chains of gap pieces)
         mseg = []                                              # this market's kept segments (gap links)
         for a, b, kk, sr, er, gb, ga in spans:
             Ls = b - a                                         # episode rows - 1 (= contract_len_s)
@@ -1233,7 +1234,11 @@ def build(args) -> dict:
             Xs = X[sl].copy()
             Xs[:, TC["seconds_to_close"]] = np.arange(Ls, -1, -1)        # rows to the episode end
             fs = feat[sl].copy()
-            fs[:, CI["tau_frac"]] = np.arange(Ls, -1, -1) / Ls
+            # tau_frac counts to the CHAIN end (D16): a gap-cut piece must not reveal the coming cut, so rows
+            # count to the next non-gap cut (kickoff, or a bucket boundary) over the chain's whole length
+            c_lo = max([c_ for c_ in chain_cuts if c_ <= a], default=a) if sr == "gap" else a
+            c_hi = min([c_ for c_ in chain_cuts if c_ >= b], default=b) if er == "gap" else b
+            fs[:, CI["tau_frac"]] = (c_hi - np.arange(a, b + 1)) / (c_hi - c_lo)
             for L_, c_ in ((300, "len_5m"), (900, "len_15m"), (14400, "len_4h")):   # one-hot of THIS segment
                 fs[:, CI[c_]] = float(Ls == L_)
             sfs = sf[sl].copy()
@@ -1549,7 +1554,7 @@ def build(args) -> dict:
         "p_logit": "logit(p_model) / 3", "mark_logit": "logit(mark) / 3; mark = book mid if two-sided, else p_model",
         "gap_c": "(p_model - mark) cents / 5 (0 with p_model=mid)", "dgap5_c": "5-row change of gap, cents / 2",
         "z": "0 (no underlying)", "sdv_bp": "0", "sigma_1m_bp": "0",
-        "tau_frac": "rows to the segment (episode) end / (episode rows - 1)", "log_tau": "log1p(seconds to KICKOFF) / log1p(14400)",
+        "tau_frac": "rows to the chain end (the next non-gap cut: kickoff or a bucket boundary) / chain rows; equals rows to the episode end / (episode rows - 1) for pieces not cut by a gap (D16)", "log_tau": "log1p(seconds to KICKOFF) / log1p(14400)",
         "in_twap": "0", "delta_usd": "0", "ulz5": "0", "ulz30": "0", "ulz120": "0",
         "len_5m": "segment-length one-hot (seg rows)", "len_15m": "segment-length one-hot",
         "len_4h": "segment-length one-hot (seg = 14400 rows)",
@@ -1672,7 +1677,7 @@ def verify(out: Path) -> None:
             if x["gap"]["next_sid"]:
                 assert by_sid[x["gap"]["next_sid"]]["gap"]["prev_sid"] == x["sid"]
         for d_, v_ in gm["days"].items():
-            assert v_["eligible"] == (v_["total_gap_s"] <= gm["max_day_gap_s"]), d_
+            assert v_["eligible"] == (v_["total_gap_s"] <= gm["max_day_gap_s"] and v_["all_logged"]), d_
     vol = np.bincount(fills["row"], weights=fills["size"].astype(np.float64), minlength=meta["N"])
     tv = np.asarray(ticks[:, TC["buy_vol"]], np.float64) + np.asarray(ticks[:, TC["sell_vol"]], np.float64)
     err = np.abs(vol - tv)   # float32 ticks: relative tolerance for big rows (e.g. 0.031 sh on 730k)
@@ -1835,7 +1840,7 @@ def selftest_gaps(base: dict, tmp: Path, v3: Path | None) -> None:
     d = gm["days"]
     assert d["2026-10-02"]["total_gap_s"] == 2400 and not d["2026-10-02"]["eligible"] and d["2026-10-02"]["all_logged"]
     assert d["2026-10-04"]["n_gaps"] == 1 and abs(d["2026-10-04"]["total_gap_s"] - 60) < 1e-6
-    assert d["2026-10-04"]["eligible"] and not d["2026-10-04"]["all_logged"]          # not in GAPS.txt
+    assert not d["2026-10-04"]["eligible"] and not d["2026-10-04"]["all_logged"]      # not in GAPS.txt -> ineligible
     assert d["2026-10-05"]["total_gap_s"] == 20 and d["2026-10-05"]["all_logged"] and d["2026-10-01"]["n_gaps"] == 0
     assert "2026-10-02" in gm["val_test_days_ineligible"]
     rs = [e for e in gm["recorder_events"] if e["source"].startswith("recorder.log")]
