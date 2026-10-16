@@ -1324,7 +1324,8 @@ def verify(out: Path) -> None:
             assert fills["row"][idx[r0]] >= r0 and fills["row"][idx[r0 + n] - 1] < r0 + n
     vol = np.bincount(fills["row"], weights=fills["size"].astype(np.float64), minlength=meta["N"])
     tv = np.asarray(ticks[:, TC["buy_vol"]], np.float64) + np.asarray(ticks[:, TC["sell_vol"]], np.float64)
-    assert np.abs(vol - tv).max() < 1e-2, "leg volume != ticks volume"
+    err = np.abs(vol - tv)   # float32 ticks: relative tolerance for big rows (e.g. 0.031 sh on 730k)
+    assert (err <= np.maximum(1e-2, 1e-6 * np.abs(tv))).all(), f"leg volume != ticks volume (max err {err.max():.4g})"
     if sp["dt_s"] == 1:
         L.verify(out)
     print(f"sports verify OK: {len(mk)} segments, N={meta['N']}, legs={len(fills)}")
