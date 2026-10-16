@@ -347,3 +347,15 @@ only keeps the binaries compatible.
    and could be repurposed.
 6. **Split guard.** The test guard message names the crypto test day (Aug 24) and should be updated.
    The guard logic itself works unchanged.
+
+## meta.json additions for adapt3 / evaluator3 (D16)
+
+- **`episodes[*]`** now also carries `window_end_ts` (the 4 h window's nominal end), `prev_segment_id`,
+  `next_segment_id` and `gap_before_s`, the same values as in `markets_meta.parquet`.
+  - Segments are linked when an episode ends at a gap and the next kept episode of the same market starts at one.
+  - When a piece between them was dropped for being shorter than `--min-episode-s`, the link spans the dropped
+    piece and `gap_before_s` includes it. Example: 20:46→21:07 on Oct 15 gives 456 s, because the
+    21:00:30–21:07 piece was under 600 s.
+- **`gaps.days`** holds the recorder-wide rows (scope = recorder) of `gaps_per_day.csv`, keyed by UTC day:
+  `{n_gaps, total_gap_s, eligible}`.
+- Fixed: `--trades-source none` crashed on an empty, object-dtype trades frame.

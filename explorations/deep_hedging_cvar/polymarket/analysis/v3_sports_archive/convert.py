@@ -99,8 +99,59 @@ def sel_args(a, day):
                               post_min=a.post_min, min_volume=a.min_volume, order="kickoff", max_markets=0)
 
 
+def _ts(x):
+    if x is None or x == "":
+        return None
+    if isinstance(x, (int, float)):
+        return int(x)
+    return int(bp.parse_ts(str(x)))
+
+
+def load_market_file(path: Path, a) -> dict:
+    """--markets FILE (JSON array or JSON lines) -> {UTC day of kickoff (or window end): [market dicts]}.
+
+    Per entry: `slug`; `condition_id` (or `cond`); `token_ids` (or `tokens`; the FIRST token is replayed and
+    written as outcome 0); and either `window_start` + `window_end` or `kickoff` (window = kickoff -
+    --hours-before .. kickoff + --post-min). Times are unix seconds or ISO strings. Optional: `outcomes`,
+    `league` (default: slug prefix), `market_type`, `volume` (export floor; default kept), `listing` (replay
+    starts there when within --track-days of the window), `gamma` (a gamma market dict; used for resolution,
+    endDate and by the meta stage, which needs it)."""
+    txt = Path(path).read_text().strip()
+    rows = json.loads(txt) if txt.startswith("[") else [json.loads(x) for x in txt.splitlines() if x.strip()]
+    out = defaultdict(list)
+    for r in rows:
+        toks = [str(t) for t in (r.get("token_ids") or r.get("tokens") or [])]
+        cond = r.get("condition_id") or r.get("cond")
+        if not r.get("slug") or not cond or not toks:
+            raise SystemExit(f"--markets: entry needs slug, condition_id and token_ids: {r}")
+        ko = _ts(r.get("kickoff"))
+        ws = _ts(r.get("window_start"))
+        we = _ts(r.get("window_end"))
+        if ws is None or we is None:
+            if ko is None:
+                raise SystemExit(f"--markets: {r['slug']}: give window_start/window_end or kickoff")
+            ws = ko - int(a.hours_before * 3600) if ws is None else ws
+            we = ko + int(a.post_min * 60) if we is None else we
+        g = dict(r.get("gamma") or {})
+        g.setdefault("slug", r["slug"])
+        g.setdefault("conditionId", cond)
+        if r.get("listing") is not None and not g.get("acceptingOrdersTimestamp"):
+            g["acceptingOrdersTimestamp"] = dt.datetime.fromtimestamp(_ts(r["listing"]), dt.timezone.utc).isoformat()
+        g.setdefault("endDate", dt.datetime.fromtimestamp(ko or we, dt.timezone.utc).isoformat())
+        m = {"slug": r["slug"], "league": r.get("league") or r["slug"].split("-")[0],
+             "smt": r.get("market_type") or g.get("sportsMarketType") or "", "kickoff": ko or we, "ws": ws, "we": we,
+             "tokens": toks, "outcomes": list(r.get("outcomes") or [""] * len(toks)), "cond": cond,
+             "volume": float(r.get("volume") if r.get("volume") is not None else float("inf")), "g": g}
+        out[dt.datetime.fromtimestamp(m["kickoff"], dt.timezone.utc).date().isoformat()].append(m)
+    return out
+
+
 def selection(a, kday: str) -> list[dict]:
-    """Markets with kickoff on UTC day kday (cached)."""
+    """Markets with kickoff on UTC day kday: from --markets FILE if given, else gamma (cached)."""
+    if a.markets:
+        if getattr(a, "_mfile", None) is None:
+            a._mfile = load_market_file(a.markets, a)
+        return a._mfile.get(kday, [])
     p = a.cache / "selection" / f"{kday}.json.gz"
     if p.exists():
         return read_json(p, gz=True)
@@ -117,6 +168,11 @@ def selection(a, kday: str) -> list[dict]:
 def targets_for_day(a, day: str) -> list[dict]:
     """Markets whose replay window [listing or ws - track_days, we) may intersect archive day `day`."""
     lo, hi = d0(day), d0(day) + 86400
+    if a.markets:                                   # any window length: scan the whole list
+        if getattr(a, "_mfile", None) is None:
+            a._mfile = load_market_file(a.markets, a)
+        return [m for v in a._mfile.values() for m in v
+                if m["we"] > lo and m["ws"] - a.track_days * 86400 < hi]
     span = int((a.hours_before * 3600 + a.post_min * 60) // 86400 + a.track_days) + 2
     out = []
     for k in range(-1, span + 1):
@@ -168,6 +224,36 @@ def rg_hour_stats(sp):
         t = s.get("event_ts")
         out.append((None if t is None else int(t[0]) // 3600 * 3600, t, s.get("condition_id")))
     return out
+
+
+_W = {}
+
+
+def _winit(local, toks, we_ms, t0_ms):
+    _W.update(pf=pq.ParquetFile(local), toks=pa.array(toks), we=pa.array(we_ms, pa.int64()),
+              t0=pa.array(t0_ms, pa.int64()))
+
+
+def _filter_hour(idx):
+    """Worker: rows of the target tokens inside their replay windows, from row groups idx (one archive hour)."""
+    pf, toks, we_ms, t0_ms = _W["pf"], _W["toks"], _W["we"], _W["t0"]
+    parts, nread, src = [], 0, set()
+    for i in idx:
+        key = pf.read_row_group(i, columns=["asset_id", "event_ts_ms"])
+        nread += key.num_rows
+        pos = pc.index_in(key["asset_id"], value_set=toks)
+        ok = pc.is_valid(pos)
+        if not pc.any(ok).as_py():
+            continue
+        ts_ = key["event_ts_ms"].cast(pa.int64())
+        pz = pc.fill_null(pos, 0)
+        ok = pc.and_(ok, pc.and_(pc.less(ts_, pc.take(we_ms, pz)), pc.greater_equal(ts_, pc.take(t0_ms, pz))))
+        if not pc.any(ok).as_py():
+            continue
+        tab = pf.read_row_group(i, columns=COLS + ["source_archive"]).filter(ok)
+        src.update(x for x in pc.unique(tab["source_archive"]).to_pylist() if x)
+        parts.append(tab.drop_columns(["source_archive", "condition_id"]))
+    return (pa.concat_tables(parts) if parts else None), nread, src
 
 
 def track_window(m: dict, a) -> tuple[int, int, bool]:
@@ -245,33 +331,48 @@ def run_books_day(a, day: str) -> dict:
                     dictionary_cols=bp.BOOK_DICT)
     nrows, nread, nkept, src, trades_all = 0, 0, 0, set(), []
     rows_by_tok = defaultdict(list)
+    nrows_tok = defaultdict(int)
+
+    def flush_rows():
+        by_hour = defaultdict(list)
+        for tok, rows in rows_by_tok.items():
+            if not rows:
+                continue
+            t = book_rows_table(by_tok[tok], rows)
+            hrs = np.asarray([r[0] for r in rows]) // 3600
+            for hh in np.unique(hrs):
+                by_hour[int(hh)].append(t.take(pa.array(np.flatnonzero(hrs == hh))))
+            nrows_tok[tok] += len(rows)
+            rows.clear()
+        for hh, ts_ in by_hour.items():
+            hk = dt.datetime.fromtimestamp(hh * 3600, dt.timezone.utc).strftime("%Y-%m-%dT%H")
+            sink.write_part(hk, pa.concat_tables(ts_))
     hours = sorted(set(want) | set(range(lo, hi, 3600)), key=lambda x: (x is None, x))
-    for h in hours:
+    import multiprocessing as mp
+    pool = mp.get_context("fork").Pool(a.procs, initializer=_winit,
+                                       initargs=(sp.local, toks_sorted, [tw[t][1] * 1000 for t in toks_sorted],
+                                                 [tw[t][0] * 1000 for t in toks_sorted]))
+    jobs, inflight = {}, a.procs + 1                  # bounded look-ahead: results are held by this process
+
+    def submit(k):
+        if k < len(hours) and want.get(hours[k]):
+            jobs[k] = pool.apply_async(_filter_hour, (want[hours[k]],))
+    for k in range(inflight):
+        submit(k)
+    for k, h in enumerate(hours):
+        submit(k + inflight)
+        job = jobs.pop(k, None)
         if h is not None and h not in present and lo <= h < hi:     # archive hour missing: books unknown
             for tb in books.values():
                 tb.set_verified(False, h)
             continue
-        parts = []
-        for i in want.get(h, []):
-            key = pf.read_row_group(i, columns=["asset_id", "event_ts_ms"])
-            nread += key.num_rows
-            pos = pc.index_in(key["asset_id"], value_set=toks)
-            ok = pc.is_valid(pos)
-            if not pc.any(ok).as_py():
-                continue
-            ts_ = key["event_ts_ms"].cast(pa.int64())
-            pz = pc.fill_null(pos, 0)
-            ok = pc.and_(ok, pc.and_(pc.less(ts_, pc.take(we_ms, pz)), pc.greater_equal(ts_, pc.take(t0_ms, pz))))
-            if not pc.any(ok).as_py():
-                continue
-            tab = pf.read_row_group(i, columns=COLS + ["source_archive"]).filter(ok)
-            src.update(x for x in pc.unique(tab["source_archive"]).to_pylist() if x)
-            parts.append(tab.drop_columns(["source_archive", "condition_id"]))
-            del key, tab
-        if not parts:
+        if job is None:
             continue
-        tab = pa.concat_tables(parts)
-        del parts
+        tab, nr, sr = job.get()
+        nread += nr
+        src |= sr
+        if tab is None:
+            continue
         nkept += tab.num_rows
         tab = tab.take(pc.sort_indices(tab, [("asset_id", "ascending"), ("event_ts_ms", "ascending")]))
         aid = tab["asset_id"].to_numpy(zero_copy_only=False)
@@ -288,20 +389,13 @@ def run_books_day(a, day: str) -> dict:
             rp.replay_token(ev, books[tok], max(lo, m["ws"]), min(hi, m["we"]) + 1, rows_by_tok[tok], trades,
                             a.recover_matches)
             trades_all += [(m["slug"],) + tr for tr in trades]
+        del cols, aid
+        flush_rows()
+    flush_rows()
+    pool.close()
+    pool.join()
     sp.close(remove=not a.reuse_dl)
     t_read = time.time() - t0 - t_dl
-    by_hour = defaultdict(list)
-    for tok, rows in rows_by_tok.items():
-        if not rows:
-            continue
-        t = book_rows_table(by_tok[tok], rows)
-        hrs = np.asarray([r[0] for r in rows]) // 3600
-        for hh in np.unique(hrs):
-            by_hour[int(hh)].append(t.take(pa.array(np.flatnonzero(hrs == hh))))
-        nrows += len(rows)
-    for hh, ts_ in by_hour.items():
-        hk = dt.datetime.fromtimestamp(hh * 3600, dt.timezone.utc).strftime("%Y-%m-%dT%H")
-        sink.write_part(hk, pa.concat_tables(ts_))
     for hk in sink.part_hours():
         sink.compact(hk)
     # coverage: live while the replayed book is verified, inside the emit window [ws, we) of the day
@@ -327,9 +421,12 @@ def run_books_day(a, day: str) -> dict:
             cov.append({"t": float(x1), "run": f"hf-{day}", "ev": "down", "slug": m["slug"]})
         if ehi > elo:
             qc[m["slug"]] = {"n_book": tb.n_book, "pc_checked": tb.pc_checked, "pc_match": tb.pc_match,
-                             "ghosts": tb.ghosts, "recovered": tb.recovered, "rows": len(rows_by_tok.get(tok, [])),
+                             "ghosts": tb.ghosts, "recovered": tb.recovered, "rows": nrows_tok.get(tok, 0),
                              "live_s": round(sum(x1 - x0 for x0, x1 in live)), "window_s": ehi - elo,
                              "verified_end": tb.verified}
+    for h in present:                                  # archive heartbeat: silent over missing archive hours
+        for t in range(max(h, lo), min(h + 3600, hi), 10):
+            cov.append({"t": float(t), "run": f"hf-{day}", "ev": "hb"})
     cov.append({"t": float(hi), "run": f"hf-{day}", "ev": "stop"})
     cov.sort(key=lambda e: e["t"])
     cp = out / "coverage" / f"coverage_{day}.jsonl"
@@ -352,7 +449,7 @@ def run_books_day(a, day: str) -> dict:
     ws_ = sum(q["window_s"] for q in qc.values())
     absent = sorted(set(range(lo, hi, 3600)) - set(present))
     st = {"day": day, "status": "ok", "source_archive": sorted(src), "tracked": len(by_tok),
-          "in_window": len(qc), "rows": nrows, "rg_wanted": len(allwant), "rg_total": md.num_row_groups,
+          "in_window": len(qc), "rows": sum(nrows_tok.values()), "rg_wanted": len(allwant), "rg_total": md.num_row_groups,
           "requests": nreq, "mb_fetched": round(sp.bytes_fetched / 1e6, 1), "rows_read": nread, "rows_kept": nkept,
           "hours_absent": [dt.datetime.fromtimestamp(h, dt.timezone.utc).strftime("%H") for h in absent],
           "pc_checked": pcc, "pc_match_frac": round(pcm / pcc, 5) if pcc else None,
@@ -375,22 +472,50 @@ def run_meta_days(a, start: str, end: str) -> dict:
 
 
 # ------------------------------------------------------------------------------------------- export
+def export_volumes(a, day: str) -> dict:
+    vol = {}
+    for k in range(-1, int(a.hours_before // 24) + 3):
+        kd = (dt.date.fromisoformat(day) + dt.timedelta(days=k)).isoformat()
+        if a.markets:
+            vol.update({m["slug"]: m["volume"] for m in selection(a, kd)})
+            continue
+        p = a.cache / "selection" / f"{kd}.json.gz"
+        if p.exists():
+            vol.update({m["slug"]: m["volume"] for m in read_json(p, gz=True)})
+    return vol
+
+
 def export_day(a, day: str) -> dict:
     od = a.daily / day
     od.mkdir(parents=True, exist_ok=True)
     s = {}
     bf = sorted((a.raw / "books" / day).glob("*.parquet"))
     if bf:
-        t = pa.concat_tables([pq.read_table(f) for f in bf])
-        df = t.to_pandas()
-        for c in ("bid_prices", "bid_sizes", "ask_prices", "ask_sizes"):
-            df[c] = df[c].map(lambda x: list(x[:a.levels]) if x is not None else x)
-        df = df.sort_values(["market_slug", "captured_at"]).reset_index(drop=True)
-        df["reconciled"] = False
+        tabs = []
+        for f in bf:
+            t = pq.read_table(f)
+            for col in ("bid_prices", "bid_sizes", "ask_prices", "ask_sizes"):
+                i = t.schema.get_field_index(col)
+                t = t.set_column(i, col, pc.list_slice(t[col], 0, a.levels))
+            tabs.append(t)
+        t = pa.concat_tables(tabs)
+        del tabs
+        vol = export_volumes(a, day)
+        keep_slugs = pa.array(sorted(s_ for s_, v in vol.items() if v >= a.export_min_volume))
+        t = t.filter(pc.is_in(pc.cast(t["market_slug"], pa.string()), value_set=keep_slugs))
+        t = t.take(pc.sort_indices(t, [("market_slug", "ascending"), ("captured_at", "ascending")]))
+        # rows whose top --levels ladder equals the previous row of the same market carry no information here
+        sig = pc.binary_join_element_wise(
+            pc.cast(t["market_slug"], pa.string()),
+            *[pc.binary_join(pc.cast(t[c_], pa.list_(pa.string())), ",") for c_ in
+              ("bid_prices", "bid_sizes", "ask_prices", "ask_sizes")], "|").to_numpy(zero_copy_only=False)
+        t = t.filter(pa.array(np.r_[True, sig[1:] != sig[:-1]] if len(sig) else np.zeros(0, bool)))
+        del sig
+        t = t.append_column("reconciled", pa.array(np.zeros(t.num_rows, bool)))
         p = od / f"books_{day}.parquet"
-        pq.write_table(pa.Table.from_pandas(df, preserve_index=False), p, compression="zstd", compression_level=19)
-        s["books_rows"] = len(df)
-        s["books_markets"] = int(df.market_slug.nunique())
+        pq.write_table(t, p, compression="zstd", compression_level=19, row_group_size=256 * 1024)
+        s["books_rows"] = t.num_rows
+        s["books_markets"] = len(pc.unique(t["market_slug"]))
         s["books_mb"] = round(p.stat().st_size / 1e6, 2)
     for kind in ("trades", "markets"):
         files = sorted((a.raw / kind / day).glob("*.parquet"))
@@ -423,15 +548,19 @@ def main():
     ap.add_argument("--daily", type=Path, default=HERE / "daily")
     ap.add_argument("--cache", type=Path, default=HERE / "cache")
     ap.add_argument("--dl", type=Path, default=HERE / "dl")
+    ap.add_argument("--markets", type=Path, help="market list file (JSON / JSONL, see load_market_file) instead of the "
+                    "gamma sports selection; use with its own --raw / --daily")
     ap.add_argument("--leagues", default="all")
     ap.add_argument("--market-types", default="moneyline")
     ap.add_argument("--min-volume", type=float, default=10000)
     ap.add_argument("--hours-before", type=float, default=48)
     ap.add_argument("--post-min", type=float, default=5)
     ap.add_argument("--levels", type=int, default=10)
+    ap.add_argument("--export-min-volume", type=float, default=50000, help="daily/ export: gamma volume floor")
     ap.add_argument("--track-days", type=float, default=7, help="replay from listing, at most this long before ws")
     ap.add_argument("--recover-matches", type=int, default=rp.RECOVER_MATCHES)
     ap.add_argument("--workers", type=int, default=8)
+    ap.add_argument("--procs", type=int, default=3, help="row-group filter processes")
     ap.add_argument("--meta-workers", type=int, default=3)
     ap.add_argument("--min-free-gb", type=float, default=12)
     ap.add_argument("--reuse-dl", action="store_true", help="dev: reuse a complete local sparse file, keep it")
