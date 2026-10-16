@@ -18,6 +18,8 @@ Two features of sports change the picture:
 - **In-play two-sided wallets earn +1.6¢/share to resolution** including rebates (SE 0.6, 96M shares). That is about
   $1.5M in 13 days on 235 markets, the only maker segment with a significantly positive result.
 - **One-sided "limit-order bettors" pay for it:** −3.4¢/share in-play (SE 1.2).
+- Tonight's 18 recorded games, scored against true book mids, confirm the split at short horizons: two-sided in-play
+  +0.8¢ at 5 min vs one-sided −1.0¢. Too few markets have resolved to recheck the resolution figure (§2.5).
 
 The pick-off happens at scoring events. Maker fills followed within 60 s by a ≥8¢ move are 10% of in-play maker
 shares, and they lose 1.1/1.4/1.7¢ at 10 s/1 min/5 min.
@@ -28,7 +30,7 @@ Structurally, sports offers what crypto lacks:
   ~0.5¢;
 - about 30× more maker volume per market.
 
-But external exchanges cannot protect anyone in-play: Smarkets suspends on goals and reprices ~60 s after
+But external exchanges cannot protect anyone in-play: Smarkets suspends on goals and reprices a median 42 s after
 Polymarket.
 
 **Where it is promising:**
