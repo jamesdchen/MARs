@@ -7,7 +7,7 @@ Rows are interleaved (v2, v3, v2, v3, ...) so both see the same machine load, an
 the best of --repeats. Thread CPU time is reported next to wall time: on a shared machine the CPU
 rate is the steadier one. Cases:
   core v2 / core v3 (options off)    the crypto data/build train split, random actions, central, L 1
-  core v3 obs 80                      + the 28 extra observation slots
+  core v3 obs 80                      + the 29 extra observation slots
   core v3 obs 80 + liq + size_mode 1  + the reward hook (every row matched; no quiet-row skipping)
   binding v2 / binding v3             env-only through PufferLib 3.0's native binding (env.py / env3.py)
 """

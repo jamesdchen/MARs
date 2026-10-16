@@ -5,7 +5,9 @@ same files the C core reads (the five v2 files plus the optional markets3.bin / 
 copy of ../reference.py (the v2 reference, frozen) with the v3 extensions written out:
 per-market episode length, float settlement (settle_mode), flattening cost, close-inventory
 shaping, quote pull before the event, variable dt, per-market / per-row reward program, size heads
-relative to the reward min size, per-category fees and the extra observation slots.
+relative to the reward min size, per-category fees and the extra observation slots, and the D16
+gap chains (`carry=`: a piece that continues a chain starts with the previous piece's inventory and
+cash; `next_market()` names the piece a chain continues into with gap_chain = 1).
 
     from reference3 import Data3, Config3, Episode3
     data = Data3(build_dir)
@@ -33,10 +35,12 @@ BOOK_VALID, BOOK_CROSSED, BOOK_STALE = 1, 2, 4
 LEGACY_V, LEGACY_MIN = 1.5, 50.0
 BAND = (0.10, 0.90)
 REWARD_C = 3.0
-N_FEAT_OBS, OBS_V2, NX = 33, 50, 28
+N_FEAT_OBS, OBS_V2, NX = 33, 50, 29
+GAP_ROWS = 120                     # D16: lagged features look back at most this many rows
 SETTLE_WINNER, SETTLE_PRICE, SETTLE_LAST_MARK = 0, 1, 2
 CAT_CRYPTO, CAT_SPORTS, CAT_ELECTIONS, CAT_OTHER = 0, 1, 2, 3
 FLAG3_LEGACY = 1
+FLAG3_GAP_CUT, FLAG3_AFTER_GAP, FLAG3_EVAL_EXCL, FLAG3_DAY_INELIGIBLE = 2, 4, 8, 16     # D16
 X_COLS = ["rw_v_c", "rw_min_size", "rw_rate_day", "rw_in_program", "liq_mid", "liq_comp", "liq_pi", "pad"]
 FLAGS = ["crossed", "stale", "onesided", "last30", "last10", "inside2", "extreme", "outside", "inspread"]
 
@@ -54,7 +58,7 @@ MARKET_DTYPE = np.dtype([("row_offset", "<i8"), ("open_ts", "<i8"), ("end_ts", "
 EXT_DTYPE = np.dtype([("settle_price", "<f8"), ("event_ts", "<i8"), ("settle_mode", "<i4"), ("category", "<i4"),
                       ("row_s", "<f4"), ("rw_v_c", "<f4"), ("rw_min_size", "<f4"), ("rw_rate_day", "<f4"),
                       ("fee_rate", "<f4"), ("fee_exp", "<f4"), ("rebate_rate", "<f4"), ("flags3", "<i4"),
-                      ("pad", "<i4", 2)])
+                      ("gap_next", "<i4"), ("gap_prev", "<i4")])     # D16 links: index + 1, 0 = none
 assert BOOK_DTYPE.itemsize == 64 and FILL_DTYPE.itemsize == 20
 assert MARKET_DTYPE.itemsize == 88 and EXT_DTYPE.itemsize == 64
 
@@ -113,6 +117,7 @@ class Config3:
     rebate_rate_sports: float = -1
     fee_rate_elections: float = -1
     rebate_rate_elections: float = -1
+    gap_chain: float = 0           # D16: 1 = a piece with a continuation hands its inventory / cash to it
 
     def values(self):
         return np.array([float(getattr(self, f.name)) for f in fields(self)])
@@ -195,7 +200,7 @@ def shown_size(book, side, px):
 
 
 class Episode3:
-    def __init__(self, data: Data3, cfg: Config3, market: int, start: int):
+    def __init__(self, data: Data3, cfg: Config3, market: int, start: int, carry=None):
         self.d, self.cfg = data, cfg
         m, e = data.markets[market], data.ext[market]
         self.market = market
@@ -236,7 +241,11 @@ class Episode3:
             self.settle = float(e["settle_price"])
         else:
             self.settle = float(data.feat[self.r_end, data.col["mark"]])
-        self.flat = 0.0 if mode == SETTLE_WINNER else cfg.flat_c / 100.0
+        # D16: a piece with a continuation settles at its last pre-gap mid, without the flattening cost
+        self.flat = 0.0 if (mode == SETTLE_WINNER or int(e["gap_next"]) > 0) else cfg.flat_c / 100.0
+        self.gap_next = int(e["gap_next"]) - 1
+        self.gap_cut = bool(int(e["flags3"]) & FLAG3_GAP_CUT)
+        self.after_gap = bool(int(e["flags3"]) & FLAG3_AFTER_GAP)
         self.row_s = float(e["row_s"])
         ev = int(e["event_ts"]) if int(e["event_ts"]) > 0 else int(m["end_ts"])
         self.ev_off = float(ev - self.open_ts)
@@ -275,6 +284,41 @@ class Episode3:
         self.last_fill_row = self.t - 1000000
         self.fill_log = []                   # (u, tau, side, qty, px)
         self.decisions = []                  # (t, bid, ask) after the pull rule
+        # D16 gap chain: carry = (inventory, cash incl. the previous pieces' rebates and rewards, wealth
+        # at the previous piece's settlement, filled shares of the chain so far)
+        self.chained, self.cont = carry is not None, False
+        self.w0 = self.gross_chain = 0.0
+        if carry is not None:
+            self.inv, self.cash, self.wealth, self.gross_chain = (float(x) for x in carry)
+            self.w0 = self.wealth
+            self.max_inv = abs(self.inv)
+
+    def next_market(self):
+        """The piece this one continues into with gap_chain = 1 (gap_next, when it is in the config's
+        market list: same split, length bit and category), else None."""
+        if not self.cfg.gap_chain or self.gap_next < 0:
+            return None
+        m = self.d.markets[self.gap_next]
+        lb = {300: 1, 900: 2, 14400: 4}.get(int(m["n_rows"]) - 1, 8)
+        if (int(m["split"]) != int(self.cfg.split) or not lb & int(self.cfg.len_mask)
+                or not (1 << int(self.d.ext[self.gap_next]["category"])) & int(self.cfg.cat_mask)):
+            return None
+        return self.gap_next
+
+    def carry_out(self):
+        """The state the next piece of a chain starts from."""
+        return (self.inv, self.cash + self.rebates + self.liq, self.wealth, self.gross_chain + self.gross)
+
+    def left_frac(self, t):
+        """Rows to the piece end / piece rows; for a GAP_CUT piece the time to the event over the time
+        from the piece start (no announcement of the gap)."""
+        if self.gap_cut and self.ev_off > 0:
+            return max(self.to_event(t) / self.ev_off, 0.0)
+        return (self.r_end - t) / self.len
+
+    def ts(self, u):
+        """Unix second of row u (the minute buckets of the participation cap)."""
+        return self.open_ts + (u - self.r0)
 
     # ---------------------------------------------------------------- data helpers
     def f(self, row, name):
@@ -399,7 +443,7 @@ class Episode3:
             _, bid, ask, size_idx = self.pending.pop(0)
             self.activate(0, bid, size_idx, tau)
             self.activate(1, ask, size_idx, tau)
-        minute = (self.open_ts + (u - self.r0)) // 60
+        minute = self.ts(u) // 60
         if minute != self.minute:
             self.minute, self.minute_vol, self.minute_fill = minute, 0.0, 0.0
         bid_live, ask_live = self.orders[0].live, self.orders[1].live
@@ -554,14 +598,14 @@ class Episode3:
             bid = ask = 0
         cpen = 0.0
         if cfg.close_inv_coef > 0:
-            left = sec / cfg.close_ramp_s if cfg.close_ramp_s > 0 else (self.r_end - t) / self.len / cfg.close_ramp
+            left = sec / cfg.close_ramp_s if cfg.close_ramp_s > 0 else self.left_frac(t) / cfg.close_ramp
             cpen = cfg.close_inv_coef * abs(self.inv) / cfg.Q * max(0.0, 1.0 - max(left, 0.0))
         self.decisions.append((t, bid, ask))
         self.pending.append([t + self.L, bid, ask, min(max(int(act[2]), 0), 2)])
         dt = self.dt
         if cfg.dt_far > 0 and sec > cfg.far_s:
             dt = int(cfg.dt_far)
-        t_next = min(t + dt, self.r_end)
+        t_next = self.next_row(t, dt)
         income0 = self.rebates + self.liq
         self.credit = 0.0
         for u in range(t + 1, t_next + 1):
@@ -591,7 +635,17 @@ class Episode3:
             r = float(np.clip(r, -1, 1))
         self.ret += float(np.float32(r))
         self.steps += 1
+        if done and self.next_market() is not None:
+            self.cont = True                 # the chain goes on: the next piece starts from carry_out()
+        self.after_step(done)
         return (None if done else self.obs()), r, done
+
+    # hooks for test variants (test_env3.py ContinuousGap3: one continuous episode across a gap)
+    def next_row(self, t, dt):
+        return min(t + dt, self.r_end)
+
+    def after_step(self, done):
+        pass
 
     def extra_obs(self):
         """obs 50 .. 50 + NX - 1 (ENV3.md section 5)."""
@@ -599,8 +653,10 @@ class Episode3:
         e = np.zeros(NX, np.float64)
         sec = self.to_event(t)
         e[0] = np.clip(math.log1p(max(sec, 0.0)) / math.log1p(86400.0), 0, 5)
-        e[1] = (self.r_end - t) / self.len
+        e[1] = self.left_frac(t)
         e[2 + min(self.category, 2)] = 1.0 if self.category <= 2 else 0.0
+        if self.after_gap:                   # obs 78 gap_recent
+            e[28] = max(0.0, 1.0 - (t - self.r0) / GAP_ROWS)
         if not cfg.liq_rewards or not self.in_program(t):
             return e
         v, minsz, mid, comp = self.rw_v_at(t), self.rw_min_at(t), self.liq_mid(t), self.liq_comp(t)
@@ -666,11 +722,12 @@ class Episode3:
         return out.astype(np.float32)
 
     def pnl(self):
-        return self.cash + self.rebates + self.liq + self.inv * self.settle - self.flat_cost
+        """The piece's P&L (for a chained piece, its increment over the wealth carried in)."""
+        return self.cash + self.rebates + self.liq + self.inv * self.settle - self.flat_cost - self.w0
 
     def log(self):
-        trading = self.cash + self.inv * self.settle - self.flat_cost
-        pnl = self.wealth
+        trading = self.cash + self.inv * self.settle - self.flat_cost - self.w0
+        pnl = self.wealth - self.w0
         return dict(score=pnl, perf=float(pnl > 0), episode_return=self.ret, episode_length=self.steps,
                     pnl=pnl, pnl_trading=trading, spread_capture=self.spread, markout_5=self.markout[5],
                     markout_30=self.markout[30], markout_60=self.markout[60],
@@ -691,9 +748,13 @@ class Episode3:
         """D15 (RECONCILE.md section 6): gross filled shares, notional, |inventory| at the episode's end,
         the netted share 1 - |end inv| / gross (episodes with fills), the flattening cost charged."""
         end = abs(self.inv)
-        has = self.gross > 0
+        if self.cont:                        # D16: inventory carried into the next piece, no end yet
+            return dict(net_gross_sh=self.gross, net_notional=self.notional, net_end_inv=0.0, net_share=0.0,
+                        net_eps=0.0, net_flat_drag=self.flat_cost)
+        g = self.gross_chain + self.gross    # the chain's filled shares
+        has = g > 0
         return dict(net_gross_sh=self.gross, net_notional=self.notional, net_end_inv=end,
-                    net_share=max(1.0 - end / self.gross, 0.0) if has else 0.0, net_eps=float(has),
+                    net_share=max(1.0 - end / g, 0.0) if has else 0.0, net_eps=float(has),
                     net_flat_drag=self.flat_cost)
 
     def state(self):

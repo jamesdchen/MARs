@@ -9,10 +9,10 @@ the crypto v2 freeze uses it.
 
 | file | role |
 |---|---|
-| `envs3.py` | `V3Adapter`: the train/ adapter interface around `v3env/env3.py` MmEnv3. It hashes the v3env/ code and the build's data, groups markets by category (sports league, elections), refuses the test split unless `MM_FINAL=1`, refuses `jun15` paths, and applies a split map. `MarketSetEnv3` plays every market of a split once. |
-| `evaluator3.py` | per-market and per-category metrics, T5 / T6 / D1.3 (T6 is `final/reduce.py directional_verdict`, imported), seed-pooled verdicts, the reward-income line, D15 netting / flatten drag (`net/*`) and time buckets (`tk/*`, `bucket/*`), and the v3 comparators (no_quote, sym_touch, mid_value, as_mid, reward_farmer; `--pull-grid` sweeps pull_s). CLI: `comparators`, `policy`, `pool`. |
+| `envs3.py` | `V3Adapter`: the train/ adapter interface around `v3env/env3.py` MmEnv3. It hashes the v3env/ code and the build's data, groups markets by category (sports league, elections), refuses the test split unless `MM_FINAL=1`, refuses `jun15` paths, and applies a split map. `MarketSetEnv3` plays every market of a split once, a D16 gap chain as one handle. `market_table` carries the D16 flags, `gap_summary` the per-day gaps. |
+| `evaluator3.py` | per-market and per-category metrics, T5 / T6 / D1.3 (T6 is `final/reduce.py directional_verdict`, imported), seed-pooled verdicts, the reward-income line, D15 netting / flatten drag (`net/*`) and time buckets (`tk/*`, `bucket/*`), the D16 exclusions and gap report (`excl/*`, `chain/*`, `gaps`), and the v3 comparators (no_quote, sym_touch, mid_value, as_mid, reward_farmer; `--pull-grid` sweeps pull_s). CLI: `comparators`, `policy`, `pool`. |
 | `train_ppo3.py` | a thin wrapper over `train/train_ppo.py`: V3 adapter, evaluator3, `--data-dir`, `--split-map`, `--env3-kw`, ledger `train3/trials.jsonl`. |
-| `split3.py` | lists a build's dates per track and writes the D11 split file, with its sha256 recorded. |
+| `split3.py` | lists a build's dates per track and writes the D11 split file, with its sha256 recorded, and the D16 per-day gaps (ineligible days train only). |
 | `smoke3.py` | an end-to-end mechanics check (fixtures, and optionally tiny real builds). |
 | `trials.jsonl`, `runs.jsonl` | the v3 ledger: one row per validation evaluation, every variant, comparators included. A row is written only by real v3 runs; final/common.py's trial count globs every `trials.jsonl`. |
 | `smoke_trials.jsonl`, `smoke_runs.jsonl` | smoke and mechanics runs. They are never counted, never selected from, and no conclusions are drawn from them. |
@@ -183,6 +183,59 @@ does not change the dynamics.
 - `reward_farmer` (elections): while the market is in a reward program, it quotes both sides at
   max_spread / 2 from the mid with size = the reward min size (size_mode 1, head 0). It pulls a side
   once |inventory| would pass `inv_cap_lots` × min size. It needs `liq_rewards=1`.
+
+## D16: recording gaps (DECISIONS.md D16; v3env/ENV3.md section 11a)
+
+Both builders cut an episode at every recording gap longer than 15 s:
+- `build_sports.py` sports-3 links the pieces with `segments[i].gap.prev_sid` / `next_sid`;
+- `build_elections.py` links them with `prev_segment_id` / `next_segment_id`.
+
+`v3env/adapt3.py` carries the links into `markets3.bin` (`gap_next` / `gap_prev`, flags3 GAP_CUT /
+AFTER_GAP / EVAL_EXCL / DAY_INELIGIBLE), and the per-day gap summary into `meta3.json gaps`.
+
+**Inventory across a gap.**
+- **Eval** (`make_eval`, so `evaluator3.py` and the periodic evals of `train_ppo3.py`) uses
+  `gap_chain=1` by default. A chain is played by one handle: when a gap-cut piece ends, mm3 starts
+  its continuation at row 0 with the carried inventory and cash. The quotes are forced off across
+  the gap.
+  - Each piece is still one record, with its own P&L increment. A chain's records therefore add up
+    to one continuous episode, and settlement and `flat_c` happen only at the chain's end.
+  - The time buckets credit the price move across the gap to the continuation's first decision.
+  - Records carry `chain_id`, `chain_pos`, `chain_len` and `chain_end`.
+  - `--env3-kw gap_chain=0` plays every piece on its own.
+- **Training** (`make_train`) keeps the env default `gap_chain=0`. Each piece is its own episode:
+  the pre-gap piece is settled at its last pre-gap mid without the flattening cost, and the
+  post-gap piece starts flat. `--env3-kw gap_chain=1` chains in training too, but each hop is a
+  terminal for PPO (ENV3.md open issue 10).
+
+**Eval filters (val / test only, `evaluator3.d16_filter`).** Excluded pieces are still played, so a
+chain's state runs through them, but they are not scored:
+- **Ineligible days.** A piece is dropped if any UTC day it spans has more than 30 min of gaps
+  (sports: `meta.gaps.days[d].eligible`; elections: `episodes[i].day_eligible` or the
+  `gaps_per_day.csv` day). Those days are train only.
+- **Sports last-hour gaps.** A piece flagged `excluded_from_eval_last_hour` (a gap in the game's
+  last pre-kickoff hour) is dropped from the P&L, verdict, group and per-market lines. Its time
+  buckets outside `eval_excluded_buckets` still count in `tk/*`, because D16 keeps the earlier
+  buckets usable.
+
+**Reporting.** Every evaluation result (and so every ledger row) carries:
+- `excl/total`, `excl/day_ineligible`, `excl/last_hour`, `excl/tk_cells`, `excl/n_played`,
+  `excl/pnl_total` and `excl/markets`;
+- `chain/n_chains`, `chain/n_pieces` and `chain/pnl_total`;
+- `gaps`: the build's per-day `n_gaps`, `total_gap_s` and `eligible`, the totals, the ineligible
+  days and the days of the evaluated markets.
+
+`per_market` rows carry `scored` and the gap flags. `headline` prints the exclusion counts.
+
+**Split files.** `split3.py` records `_gaps_per_day` ({day: n_gaps, total_gap_s, eligible}), `_d16`
+(the rule, train-only days, ineligible days, totals) and `_d16_markets_day_ineligible`. The D11
+rule is applied first. An ineligible day assigned to val or test is then dropped ('exclude', with
+the reason in `_dropped`), as `build_elections --ineligible-day train-only` does; one assigned to
+train stays train. So the chronological order is unchanged.
+
+**Lagged features after a gap.** obs 78 `gap_recent` (obs_size 80) is 1 at the first post-gap row and
+falls to 0 over 120 rows. The builders' lagged features still look back over the forward-filled
+pre-gap book there (ENV3.md section 11a).
 
 ## Split maps (`split3.py`, envs3 `split_map`)
 

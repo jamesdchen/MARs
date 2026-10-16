@@ -9,6 +9,12 @@
 
 Every keyword in PARAM_NAMES (mm3.h M3_PARAM_NAMES; defaults M3_DEFAULTS) can be passed; ENV3.md
 documents them. With the defaults and a v2 data directory the env is v2's (obs 50).
+
+D16 recording gaps (ENV3.md section 11a): `gap_chain=1` hands a gap-cut piece's inventory and cash
+to its linked continuation (markets3.bin gap_next), so a chain plays as one continuous episode
+with the quotes forced off across the gap; each piece still ends with a terminal and its own Log
+(P&L = its increment). The default 0 plays every piece on its own, settled at its last pre-gap mid
+with no flattening cost (training); train3's eval env sets 1.
 """
 from __future__ import annotations
 
@@ -44,7 +50,7 @@ FLAG_KEYS = ["crossed", "stale", "onesided", "last30", "last10", "inside2", "ext
 EXTRA_OBS = ["ev_log", "ep_left", "cat_crypto", "cat_sports", "cat_elections", "rw_active", "rw_rate", "rw_v",
              "rw_min_rel", "rw_scorable", "rw_two_sided_only", "rw_comp", "rw_size_ok0", "rw_size_ok1",
              "rw_size_ok2", "rw_cur_share"] + [f"rw_bid_share_a{a}" for a in range(1, 7)] \
-    + [f"rw_ask_share_a{a}" for a in range(1, 7)]
+    + [f"rw_ask_share_a{a}" for a in range(1, 7)] + ["gap_recent"]
 
 
 def netting(log: dict) -> dict:

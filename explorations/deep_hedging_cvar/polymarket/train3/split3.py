@@ -21,6 +21,13 @@ records per day how many episodes are quotable and how many reach into each time
 (> 24 h, 6-24 h, 1-6 h), the buckets D14 reports by.
 `--exclude DAY ...` drops days (e.g. a partial first recording day) before the rule is applied;
 `--min-markets` drops days with fewer markets.
+D16 (recording gaps): the file records per day the gap count, the gap seconds and the eligibility
+(`_gaps_per_day`, from the build's gap summary: v3env/adapt3.py meta3.json `gaps`, i.e.
+build_sports meta.gaps.days / build_elections gaps_per_day.csv), and per day the markets on an
+ineligible UTC day (`_d16_markets_day_ineligible`). An ineligible day (more than 30 min of gaps) is
+train only: it keeps a train assignment, and a val / test assignment becomes 'exclude' (purged, as
+build_elections --ineligible-day train-only does) with the reason in `_dropped`. The D11 rule is
+applied first, so the chronological order of train / val / test is unchanged.
 
 Output: a JSON file the builders read directly (sports: `build_sports.py --splits FILE`, layout
 {"days": {...}, "default": "exclude"}; elections: `build_elections.py --split-days FILE`, a flat
@@ -108,6 +115,21 @@ def make_split(build, track, exclude=(), cutoff='2026-11-03', min_markets=1, min
         else:
             days.append(d)
     assign = d11_rule(days)
+    gsum = envs3.gap_summary(build) or {}
+    gdays = {d: {k: x.get(k) for k in ('n_gaps', 'total_gap_s', 'eligible')} for d, x in (gsum.get('days') or {}).items()}
+    bad_m = {}
+    for m in envs3.market_table(build):
+        if _track(build, m) == track and not m.get('day_eligible', True):
+            bad_m[m['date']] = bad_m.get(m['date'], 0) + 1
+    train_only = []
+    for d in sorted(assign):                  # D16: an ineligible day is train only
+        if (gdays.get(d) or {}).get('eligible', True) is False:
+            if assign[d] == 'train':
+                train_only.append(d)
+            else:
+                dropped[d] = (f'D16: {gdays[d].get("total_gap_s") or 0:g} s of recording gaps (> 30 min) on this day: train only, '
+                              f'so its {assign[d]} assignment is dropped')
+                del assign[d]
     rule = ('D11 track S: by game day (slug date, else kickoff UTC date); oldest ~60% train, next ~20% val, '
             'newest ~20% test' if track == 'sports' else
             'D11 track E: by UTC day of the window open, days before the cutoff; oldest ~60% train, next ~20% val, '
@@ -115,7 +137,17 @@ def make_split(build, track, exclude=(), cutoff='2026-11-03', min_markets=1, min
     meta = {'_split3': 1, '_track': track, '_rule': rule, '_build': os.path.realpath(build),
             '_build_markets_sha256': envs3.sha256_file(os.path.join(build, 'markets.bin')),
             '_markets_per_day': per_day, '_dropped': dropped, '_created_utc': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
-            '_counts': {s: sorted(d for d, v in assign.items() if v == s) for s in ('train', 'val', 'test')}}
+            '_counts': {s: sorted(d for d, v in assign.items() if v == s) for s in ('train', 'val', 'test')},
+            '_d16': {'rule': 'DECISIONS.md D16: a day with more than 30 min of recording gaps is train only (val / test '
+                             'assignments dropped); markets spanning such a UTC day are excluded from val / test scoring '
+                             'by train3/evaluator3.py; gap chains are played as one episode',
+                     'gap_source': gsum.get('schema'), 'train_only_days': train_only,
+                     'days_ineligible': sorted(d for d, x in gdays.items() if x.get('eligible') is False),
+                     'n_gaps_total': gsum.get('n_gaps_total'), 'total_gap_s': gsum.get('total_gap_s'),
+                     'n_links': gsum.get('n_links')},
+            '_gaps_per_day': {d: gdays.get(d, {'n_gaps': 0, 'total_gap_s': 0.0, 'eligible': True})
+                              for d in sorted(set(per_day) | set(gdays))},
+            '_d16_markets_day_ineligible': bad_m}
     if track == 'sports':
         meta.update({'_quote_window': 'D14: listing (or start of data) to kickoff - 1 h; flat / marked at T - 1 h; '
                                       'reported per time-to-kickoff bucket (> 24 h, 6-24 h, 1-6 h) and per league',

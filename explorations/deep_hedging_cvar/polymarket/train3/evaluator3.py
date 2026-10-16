@@ -42,6 +42,19 @@ sums / means of every Log field) plus:
 For a multi-seed method, `pooled_verdict` averages each attribution component over the seeds
 first and then applies directional_verdict and the T5 shares (DECISIONS.md D13 reading C).
 
+D16 recording gaps (v3env/ENV3.md section 11a):
+- gap chains are played as one continuous episode (envs3 MarketSetEnv3, gap_chain = 1 by default):
+  each piece is a record with its own P&L increment, so per-market lines over a chain add up to the
+  continuous episode (the price move across a gap on the carried inventory lands in the next
+  piece; the time buckets credit it to that piece's first decision);
+- val / test scoring (split 1 / 2) excludes the D16 items: pieces on a day that is not eligible
+  (more than 30 min of gaps: train only) and sports pieces flagged excluded_from_eval_last_hour
+  (a gap in the game's last pre-kickoff hour). The excluded pieces are still played (a chain's
+  state runs through them); a last-hour-excluded piece's time buckets other than its
+  eval_excluded_buckets still count in `tk/*` (D16: the earlier buckets remain usable);
+- every result carries `gaps` (the build's per-day gap counts and seconds, the evaluated days) and
+  `excl/*` (counts of excluded pieces and time-bucket cells), `chain/*` (chains played).
+
 Comparators (D1 / D11: no-quote plus classical quoters; none is tuned here, the defaults below are
 the untuned points; tuning on v3 val is a separate, ledgered step):
 - `no_quote`;
@@ -185,7 +198,9 @@ def per_market(recs):
         v = verdicts(r, 1)
         rows.append({k: r.get(k) for k in ('market', 'slug', 'group', 'category_name', 'bucket', 'date', 'n_rows',
                                              'pnl', 'fills', 'fill_vol', 'max_abs_inv', 'final_abs_inv',
-                                             'uptime_two_sided', 'uptime_any', 'settle_px', 'rw_scored')}
+                                             'uptime_two_sided', 'uptime_any', 'settle_px', 'rw_scored',
+                                             'chain_id', 'chain_pos', 'chain_end', 'gap_cut', 'after_gap',
+                                             'eval_excl_last_hour', 'eval_excluded_buckets', 'day_eligible')}
                     | {k.split('/', 1)[1]: v[k] for k in ('income/trading', 'income/rebates', 'income/rewards',
                                                           'income/spread_capture', 'income/markout_60',
                                                           'income/inventory', 't6/share_of_total',
@@ -194,17 +209,22 @@ def per_market(recs):
     return rows
 
 
-def summarize3(recs):
+def summarize3(recs, tk_extra=()):
+    """tk_extra: records whose time-bucket lines count in tk/* (and the group tk lines) but which are
+    not scored otherwise (D16: last-hour-excluded pieces with their excluded buckets zeroed)."""
     recs = list(recs)
+    tk_extra = list(tk_extra)
     out = summarize(recs)                       # train/evaluator.py (P&L, CVaR, sum/ mean/ fields)
     out = {k: v for k, v in out.items() if not k.startswith(('len/', 't5_', 't6_', 'makes_markets'))}
     if not recs:
+        out.update(time_buckets(tk_extra))
         return out
     out.update(verdicts(_sums(recs), len(recs)))
-    out.update(time_buckets(recs))
+    out.update(time_buckets(recs + tk_extra))
     for key, prefix in (('group', 'group'), ('category_name', 'cat'), ('bucket', 'bucket')):
         for g in sorted({r[key] for r in recs if r.get(key) is not None}):
             rg = [r for r in recs if r.get(key) == g]
+            rx = [r for r in tk_extra if r.get(key) == g]
             pnl = np.array([r['pnl'] for r in rg])
             v = verdicts(_sums(rg), len(rg))
             out.update({f'{prefix}/{g}/n': len(rg), f'{prefix}/{g}/pnl_total': float(pnl.sum()),
@@ -215,7 +235,7 @@ def summarize3(recs):
                         f'{prefix}/{g}/makes_markets': v['d13/makes_markets'],
                         **{f'{prefix}/{g}/{k}': v[k] for k in ('income/trading', 'income/rebates', 'income/rewards')},
                         **{f'{prefix}/{g}/{k}': v[k] for k in NET_KEYS},
-                        **{f'{prefix}/{g}/{k}': v for k, v in time_buckets(rg).items()}})
+                        **{f'{prefix}/{g}/{k}': v for k, v in time_buckets(rg + rx).items()}})
     # train_ppo.py / rounds.py read these names
     out['fills_per_market'] = out['d13/fills_per_market']
     out['t6_share'] = out['t6/share_of_total']
@@ -308,6 +328,8 @@ class TimeBuckets:
         self.w1h = np.full(N, np.nan)
         self.inv1h = np.full(N, np.nan)
         self.last_b = np.zeros(N, np.int64)
+        self.carry = np.zeros(N)             # D16 chains: absolute wealth at the end of the handle's last piece
+        self.fresh = np.zeros(N, bool)       # the handle just entered the next piece of its chain
 
     def before(self, obs, act, active):
         if not self.on:
@@ -315,6 +337,9 @@ class TimeBuckets:
         sec = np.expm1(obs[:, envs3.OBS_EV].astype(np.float64) * LOG86400)
         b = np.select([sec > lo for _, lo in TK_BUCKETS[:-1]], list(range(len(TK_BUCKETS) - 1)), len(TK_BUCKETS) - 1)
         self.b, self.w0 = b, obs[:, OBS_WEALTH].astype(np.float64) * 0.05 * self.Q
+        j = np.flatnonzero(active & self.fresh)  # the move across the gap on the carried inventory
+        self.pnl[j, b[j]] += self.w0[j] - self.carry[j]
+        self.fresh[j] = False
         self.clip += active & (np.abs(obs[:, OBS_WEALTH]) >= 4.999)
         i = np.flatnonzero(active)
         self.steps[i, b[i]] += 1
@@ -332,7 +357,9 @@ class TimeBuckets:
         w1 = obs[:, OBS_WEALTH].astype(np.float64) * 0.05 * self.Q
         self.pnl[i, self.b[i]] += w1[i] - self.w0[i]
 
-    def finish(self, i, pnl):
+    def finish(self, i, pnl, cont=False):
+        """The record lines of handle i's finished piece; `cont`: its chain goes on (D16), so the handle's
+        rows restart and the next piece's lines are measured from this piece's end wealth."""
         if not self.on:
             return {}
         self.pnl[i, self.last_b[i]] += pnl - self.pnl[i].sum()
@@ -343,10 +370,16 @@ class TimeBuckets:
             out[f'tk_quote_steps_{name}'] = float(self.qsteps[i, k])
         reached = not np.isnan(self.w1h[i])
         out['d14_reached_T1h'] = float(reached)
-        out['d14_pnl_marked_T1h'] = float(self.w1h[i]) if reached else float(pnl)
+        out['d14_pnl_marked_T1h'] = float(self.w1h[i] - self.carry[i]) if reached else float(pnl)
         out['d14_inv_T1h'] = float(self.inv1h[i]) if reached else 0.0
         out['d14_pnl_flat_T1h'] = out['d14_pnl_marked_T1h'] - (abs(self.inv1h[i]) * self.flat if reached else 0.0)
         out['tk_clip_steps'] = float(self.clip[i])
+        self.pnl[i] = self.steps[i] = self.qsteps[i] = 0.0
+        self.clip[i] = 0.0
+        self.w1h[i] = self.inv1h[i] = np.nan
+        if cont:
+            self.carry[i] += pnl
+            self.fresh[i] = True
         return out
 
 # ----------------------------------------------------------------------------- evaluation
@@ -367,7 +400,6 @@ def evaluate(policy, adapter, split=1, env_kw=None, seed=0, device='cpu', max_st
     records, steps = {}, 0
     nvec = tuple(int(n) for n in env.single_action_space.nvec)
     hist = [np.zeros(n) for n in nvec]
-    active = np.ones(N, bool)
     tk = TimeBuckets(env, N)
     was = policy.training if is_torch else None
     if is_torch:
@@ -382,6 +414,7 @@ def evaluate(policy, adapter, split=1, env_kw=None, seed=0, device='cpu', max_st
                     act = greedy_actions(logits).cpu().numpy()
                 else:
                     act = np.asarray(policy(obs), np.int32)
+                active = env.active.copy()           # handles still playing (a gap chain spans pieces)
                 for h, n in enumerate(nvec):
                     hist[h] += np.bincount(act[active, h], minlength=n)[:n]
                 tk.before(obs, act, active)
@@ -390,9 +423,8 @@ def evaluate(policy, adapter, split=1, env_kw=None, seed=0, device='cpu', max_st
                 done = torch.as_tensor(np.asarray(term, dtype=np.float32))
                 for rec in adapter.eval_records(env):
                     if rec['market'] not in records:
-                        rec.update(tk.finish(rec['env'], rec['pnl']))
+                        rec.update(tk.finish(rec['env'], rec['pnl'], cont=not rec.get('chain_end', True)))
                         records[rec['market']] = rec
-                        active[rec['env']] = False
                 steps += 1
                 if max_steps is not None and steps >= max_steps:
                     raise RuntimeError(f'eval did not finish {n_markets} markets in {max_steps} steps')
@@ -401,13 +433,78 @@ def evaluate(policy, adapter, split=1, env_kw=None, seed=0, device='cpu', max_st
             policy.train(was)
         env.close()
     recs = [records[k] for k in sorted(records)]
-    out = summarize3(recs)
+    scored, partial, excl = d16_filter(recs, split)
+    out = summarize3(scored, partial)
+    out.update(excl)
+    out.update(chain_report(recs))
+    out['gaps'] = gaps_report(adapter, env_kw, recs)
     out.update(action_histogram(hist, getattr(adapter, 'action_labels', None), prefix='act/'))
     out['eval_steps'] = steps
     out['eval_seconds'] = time.perf_counter() - t0
     if with_markets:
-        out['per_market'] = per_market(recs)
+        ids = {id(r) for r in scored}
+        out['per_market'] = [dict(row, scored=id(r) in ids) for r, row in zip(recs, per_market(recs))]
     return (out, recs) if return_records else out
+
+
+# ----------------------------------------------------------------------------- D16 filters and reports
+def d16_filter(recs, split):
+    """(scored, tk-only, excl/* counts). On val / test (split 1 / 2) a piece on a D16-ineligible day
+    (train only) is not scored at all, and a sports piece flagged excluded_from_eval_last_hour is not
+    scored; its time-bucket lines outside eval_excluded_buckets still count in tk/* (D16: the earlier
+    buckets remain usable). On train every piece is scored."""
+    out = {'excl/day_ineligible': 0, 'excl/last_hour': 0, 'excl/total': 0, 'excl/tk_cells': 0,
+           'excl/pnl_total': 0.0, 'excl/markets': []}
+    if int(split) not in (1, 2):
+        return list(recs), [], out
+    scored, partial = [], []
+    for r in recs:
+        if r.get('day_eligible', True) is False:
+            out['excl/day_ineligible'] += 1
+        elif r.get('eval_excl_last_hour'):
+            out['excl/last_hour'] += 1
+            p = dict(r)
+            for b in r.get('eval_excluded_buckets') or ():
+                if f'tk_pnl_{b}' in p:
+                    out['excl/tk_cells'] += int(p.get(f'tk_steps_{b}', 0.0) > 0)
+                    p[f'tk_pnl_{b}'] = p[f'tk_steps_{b}'] = p[f'tk_quote_steps_{b}'] = 0.0
+            partial.append(p)
+        else:
+            scored.append(r)
+            continue
+        out['excl/total'] += 1
+        out['excl/pnl_total'] += float(r.get('pnl', 0.0))
+        out['excl/markets'].append(r.get('slug'))
+    out['excl/n_played'] = len(recs)
+    return scored, partial, out
+
+
+def chain_report(recs):
+    """chain/*: gap chains played (D16), pieces in them, their summed P&L."""
+    ch = {}
+    for r in recs:
+        if r.get('chain_len', 1) > 1:
+            ch.setdefault(r['chain_id'], []).append(r)
+    return {'chain/n_chains': len(ch), 'chain/n_pieces': sum(len(v) for v in ch.values()),
+            'chain/pnl_total': float(sum(r['pnl'] for v in ch.values() for r in v))}
+
+
+def gaps_report(adapter, env_kw, recs):
+    """D16: every result reports the gaps: the build's per-day gap counts and seconds (meta3.json gaps,
+    else the builder's fields), the days of the evaluated markets, and the ineligible ones."""
+    try:
+        _, d, _ = adapter.resolve(env_kw or {})
+        g = envs3.gap_summary(d)
+    except Exception as e:                      # noqa: BLE001  (a report must not stop an evaluation)
+        return {'error': str(e)}
+    if not g:
+        return {'source': None, 'days': {}, 'note': 'build without D16 gap fields'}
+    days = {k: {f: v.get(f) for f in ('n_gaps', 'total_gap_s', 'eligible')} for k, v in (g.get('days') or {}).items()}
+    seen = sorted({x for r in recs for x in envs3._utc_days(r['open_ts'], r['end_ts'])})
+    return {'source': g.get('schema'), 'days': days, 'n_gaps_total': g.get('n_gaps_total'),
+            'total_gap_s': g.get('total_gap_s'), 'days_ineligible': g.get('days_ineligible', []),
+            'evaluated_days': {x: days.get(x, {'n_gaps': 0, 'total_gap_s': 0.0, 'eligible': True}) for x in seen},
+            'n_links': g.get('n_links', 0)}
 
 
 # ----------------------------------------------------------------------------- baselines (v3)
@@ -601,7 +698,8 @@ def headline(res):
     keys = ('n_markets', 'pnl_total', 'pnl_mean', 'fills_per_market', 'income/trading', 'income/rebates',
             'income/rewards', 'income/flat_cost', 't6/share_of_total', 't6/directional', 't5/worst_flag',
             't5/worst_share', 'd13/makes_markets', 'd12/active', 'mean/uptime_two_sided', 'net/netted_share',
-            'net/flat_drag_bps', 'net/end_abs_inv', 'd14/pnl_flat_T1h_total') + tuple(
+            'net/flat_drag_bps', 'net/end_abs_inv', 'd14/pnl_flat_T1h_total', 'excl/total', 'excl/day_ineligible',
+            'excl/last_hour', 'chain/n_chains') + tuple(
             f'tk/{n}/pnl_total' for n, _ in TK_BUCKETS)
     return {k: (round(res[k], 4) if isinstance(res.get(k), float) else res.get(k)) for k in keys}
 

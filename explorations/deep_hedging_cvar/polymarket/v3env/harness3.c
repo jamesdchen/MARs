@@ -3,7 +3,8 @@
  * m3_h_run: n envs, T steps on given actions (T x n x 3 int32). Env i starts on global market
  * markets[i] at offset starts[i] (or a random episode if markets[i] < 0) and auto-resets on its own
  * RNG. Records observations ((T + 1) x n x obs_size), rewards and terminals (T x n), M3_NSTATE
- * doubles of state after every step and each env's Log right after its first terminal step.
+ * doubles of state after every step and each env's Log right after each of its first nlogs terminal
+ * steps (logs: nlogs x n Logs; a D16 gap chain logs one terminal per piece).
  * m3_h_release: test-only, unmaps the data so the next m3_h_open can load another directory.
  * m3_h_bench: steps per second of the bare core on random actions (single thread). */
 
@@ -67,13 +68,13 @@ static void m3_record(const Mm3* m, double* s) {
 
 int m3_h_run(const double* params, int n, int T, const int* markets, const int* starts,
         const int* actions, uint64_t seed, float* obs, float* rew, float* term, double* state,
-        float* logs, char* err, int errlen) {
+        float* logs, int nlogs, char* err, int errlen) {
     const Mm3Params* P = (const Mm3Params*)params;
     int W = (int)P->obs_size;
     Mm3* ms = (Mm3*)calloc(n, sizeof(Mm3));
     Mm3Log* lg = (Mm3Log*)calloc(n, sizeof(Mm3Log));
-    Mm3Log* first = (Mm3Log*)calloc(n, sizeof(Mm3Log));
-    char* done = (char*)calloc(n, 1);
+    Mm3Log* first = (Mm3Log*)calloc((size_t)n * nlogs, sizeof(Mm3Log));
+    int* done = (int*)calloc(n, sizeof(int));
     int rc = 0;
     for (int i = 0; i < n; i++) {
         if (m3_init(&ms[i], P, seed + i, err, errlen)) {
@@ -94,13 +95,14 @@ int m3_h_run(const double* params, int n, int T, const int* markets, const int* 
             size_t o = (size_t)(t + 1) * n + i;
             m3_step(&ms[i], actions + k * M3_NUM_ATNS, obs + o * W, rew + k, term + k, &lg[i]);
             m3_record(&ms[i], state + o * M3_NSTATE);
-            if (!done[i] && term[k] != 0.0f) {
-                first[i] = lg[i];
-                done[i] = 1;
+            if (done[i] < nlogs && term[k] != 0.0f) {
+                first[(size_t)done[i] * n + i] = lg[i];
+                memset(&lg[i], 0, sizeof(Mm3Log));
+                done[i]++;
             }
         }
     }
-    memcpy(logs, first, (size_t)n * sizeof(Mm3Log));
+    memcpy(logs, first, (size_t)n * nlogs * sizeof(Mm3Log));
 out:
     free(ms);
     free(lg);
