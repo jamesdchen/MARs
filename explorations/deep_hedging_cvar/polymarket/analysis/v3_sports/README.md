@@ -169,6 +169,33 @@ result. Full tables are in `baseline_out/summary.md`, and per-market rows in
   highest. The recorder's 7 d horizon collects these from now on; the PolyOrderBooks backfill
   covers them historically.
 
+### evaluator3 comparators, `--pull-grid`, env3 (run 2026-10-16 00:50 UTC)
+
+**Setup.**
+- Build: `baseline_out/build_seg0`, the same 16 games, `--seg 0` (one episode per game, up to 24 h,
+  ending at kickoff), adapt3 sports-2.
+- Env settings: `obs_size=80 liq_rewards=1 size_mode=1 Q=1000 flat_c=0.5 dt_other=1`.
+- Split: `baseline_out/split3_explore.json`, an exploratory all-val map, not pre-registered.
+- Ledger: `trials.jsonl`, tags `w1_s_comparators_oct15` (17 rows from a run killed by a container
+  restart) and `w1_s_comparators_oct15_rerun`.
+- Full output: `baseline_out/comparators3.json`.
+
+**P&L, USD summed over 16 markets (fills per market in brackets):**
+
+| comparator | fills | pull 0 | 300 | 900 | 1800 | 3600 |
+|---|---|---|---|---|---|---|
+| sym_touch | central | −1.87 (4.0) | −1.94 (3.8) | −1.08 (3.7) | −3.11 (2.7) | +1.75 (1.2) |
+| sym_touch | pess | −5.06 | −5.06 | −4.79 | −4.79 | −2.89 |
+| mid_value | central | −0.98 (2.9) | −1.00 | −0.33 | −3.04 | +1.12 (1.2) |
+| as_mid | central | −2.49 (3.3) | −2.52 | −1.44 | −3.84 | +0.93 (1.1) |
+| no_quote | | 0 | 0 | 0 | 0 | 0 |
+
+**Reading.**
+- This matches `baseline_pregame.py`: no comparator makes markets (all are below 5 fills per
+  market) and none is positive on any pull before 3600 s.
+- The pull-3600 positives come from about 1 fill per market and vanish under pessimistic fills.
+- Rebates of about +1.9 USD (sym_touch at pull 0) do not cover the trading loss of −3.8 USD.
+
 ### Kickoff results (2026-10-16 00:45 UTC)
 
 From `kickoff/kickoffs.csv` and `kickoff/detect.csv`; their tracked copies are in `kickoff/snapshot/`.
