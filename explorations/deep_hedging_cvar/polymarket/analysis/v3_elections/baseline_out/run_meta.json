@@ -7,29 +7,39 @@
   "2026-10-15T21:22:37Z": {
    "selected_pool_per_day": 25752.99616,
    "in_program": 300
+  },
+  "2026-10-15T22:22:32Z": {
+   "selected_pool_per_day": 25502.99616,
+   "in_program": 299
+  },
+  "2026-10-15T23:22:33Z": {
+   "selected_pool_per_day": 25468.99616,
+   "in_program": 300
   }
  },
  "bootstrap": {
   "block_s": 1800,
   "n": 4000,
-  "blocks": 5
+  "blocks": 8
  },
  "window": [
   "2026-10-15T20:21:26Z",
-  "2026-10-15T22:16:00Z"
+  "2026-10-15T23:43:00Z"
  ],
- "hours": 1.9094444444444445,
+ "hours": 3.3594444444444442,
  "markets_simulated": 300,
  "skipped": {},
- "books_up_to": "2026-10-15T22:18:03Z",
- "fills_complete_to": "2026-10-15T22:16:58Z",
+ "books_up_to": "2026-10-15T23:44:08Z",
+ "fills_complete_to": "2026-10-15T23:43:41Z",
  "reward_snapshots": [
   "rewards/2026-10-15/rewards_2026-10-15T20.parquet",
-  "rewards/2026-10-15/rewards_2026-10-15T21.parquet"
+  "rewards/2026-10-15/rewards_2026-10-15T21.parquet",
+  "rewards/2026-10-15/rewards_2026-10-15T22.parquet",
+  "rewards/2026-10-15/rewards_2026-10-15T23.parquet"
  ],
- "trades_legs": 607679,
- "taker_txs_in_window": 236,
- "markets_with_trades_in_window": 66,
+ "trades_legs": 608386,
+ "taker_txs_in_window": 547,
+ "markets_with_trades_in_window": 97,
  "moas": 30.0,
  "lag_s": 3,
  "inv_cap_mult": 5.0,
@@ -42,7 +52,7 @@
   1,
   2
  ],
- "built_at": "2026-10-15T22:22:42.396044+00:00",
- "runtime_s": 261.2,
+ "built_at": "2026-10-15T23:49:59.811853+00:00",
+ "runtime_s": 320.4,
  "build_elections_import": "ok (BE.load_selection/load_reward_cfg/cfg_at/coverage_segments/reward_stats/side_ladder/trades_data_api/LIQ_SEED; reward_terms.S/q_min/competitor_q)"
 }

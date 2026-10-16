@@ -7,3 +7,15 @@ lag = feed receive time - book half-move time (positive: the book moved before t
 Only score changes followed by a book move >= 2 cents are counted (others did not move the price).
 Usage: score_latency.py <rec_out_dir> <sports_ws.jsonl>
 
+                    slug       feed_t score period  move_c  moved  lag_s
+  nhl-nyi-ott-2026-10-15 1.792106e+09   0-1     P1    14.5   True   26.8
+  nhl-nyi-ott-2026-10-15 1.792106e+09   0-0     P1    14.5   True   77.3
+  nhl-buf-tor-2026-10-15 1.792106e+09   0-1     P1    13.0   True   59.1
+  nhl-buf-tor-2026-10-15 1.792106e+09   1-1     P1   -13.0   True   36.5
+    lol-c9-kc-2026-10-15 1.792098e+09   2-1    4/5    -3.5   True   96.1
+    lol-c9-kc-2026-10-15 1.792101e+09   2-2    5/5     7.5   True  140.0
+    lol-c9-kc-2026-10-15 1.792105e+09   2-3    5/5    10.0   True  125.3
+cs2-lgc-furia-2026-10-15 1.792102e+09   1-2    3/3   -12.8   True  105.0
+
+score changes matched: 8, with a >=2c book move: 8
+lag (feed - book half-move), s: median 86.7, mean 83.3, share with book first 1.00

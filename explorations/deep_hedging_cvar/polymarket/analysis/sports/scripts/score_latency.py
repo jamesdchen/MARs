@@ -13,11 +13,13 @@ import numpy as np, pandas as pd
 
 HERE = Path(__file__).resolve().parent.parent
 # polyrec slug -> (substring of homeTeam or awayTeam on the feed, league abbreviation)
-GAMES = {"nfl-sea-den-2026-10-16": ("Broncos", "nfl"), "nhl-utah-edm-2026-10-15": ("Oilers", "nhl"),
-         "nhl-nyr-nj-2026-10-15": ("Devils", "nhl"), "nhl-nyi-ott-2026-10-15": ("Senators", "nhl"),
-         "nhl-buf-tor-2026-10-15": ("Maple Leafs", "nhl"), "nba-okc-hou-2026-10-15": ("Rockets", "nba"),
-         "nba-tor-nyk-2026-10-15": ("Knicks", "nba"), "lol-c9-kc-2026-10-15": ("Cloud9", "lol"),
-         "cs2-lgc-furia-2026-10-15": ("FURIA", "cs2"), "cfb-gas-old-2026-10-15": ("Old Dominion", "cfb")}
+GAMES = {  # polyrec slug -> (league, {team codes/names that must both appear as home/away on the feed})
+    "nfl-sea-den-2026-10-16": ("nfl", {"SEA", "DEN"}), "nhl-utah-edm-2026-10-15": ("nhl", {"EDM", "UTA", "UTAH"}),
+    "nhl-nyr-nj-2026-10-15": ("nhl", {"NJ", "NYR"}), "nhl-nyi-ott-2026-10-15": ("nhl", {"OTT", "NYI"}),
+    "nhl-buf-tor-2026-10-15": ("nhl", {"TOR", "BUF"}), "nba-okc-hou-2026-10-15": ("nba", {"OKC", "HOU"}),
+    "nba-tor-nyk-2026-10-15": ("nba", {"TOR", "NYK", "NY"}), "lol-c9-kc-2026-10-15": ("lol", {"Cloud9", "Karmine Corp"}),
+    "cs2-lgc-furia-2026-10-15": ("cs2", {"Legacy", "FURIA"})}
+ESPORTS = {"lol", "cs2"}  # score "kills|maps|BoN": only map-score changes are counted
 
 
 def feed(path):
@@ -30,6 +32,8 @@ def feed(path):
             m = json.loads(d["m"])
         except ValueError:
             continue
+        if not m.get("score"):
+            continue
         rows.append(dict(r=d["r"], home=m.get("homeTeam") or "", away=m.get("awayTeam") or "", lg=m.get("leagueAbbreviation"),
                          score=m.get("score"), period=m.get("period"), status=m.get("status"), gid=m.get("gameId")))
     return pd.DataFrame(rows)
@@ -41,10 +45,12 @@ def main():
     fs = glob.glob(str(rec / "books" / "*" / "*.parquet")) + glob.glob(str(rec / "books" / "*" / "_parts" / "*.parquet"))
     B = pd.concat([pd.read_parquet(f, columns=["market_slug", "token_id", "captured_at", "best_bid", "best_ask"]) for f in fs])
     out = []
-    for slug, (team, lg) in GAMES.items():
-        f = F[(F.home.str.contains(team, regex=False) | F.away.str.contains(team, regex=False))].sort_values("r")
+    for slug, (lg, teams) in GAMES.items():
+        f = F[(F.lg == lg) & F.home.isin(teams) & F.away.isin(teams)].sort_values("r")
         if f.empty:
             continue
+        if lg in ESPORTS:
+            f = f.assign(score=f.score.str.split("|").str[1])
         ch = f[f.score.ne(f.score.shift())].iloc[1:]
         b = B[B.market_slug == slug]
         if b.empty:
