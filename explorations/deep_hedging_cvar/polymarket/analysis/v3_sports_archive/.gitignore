@@ -1,0 +1,6 @@
+raw_hf/
+cache/
+dl/
+build*/
+__pycache__/
+*.log
