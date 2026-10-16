@@ -99,8 +99,59 @@ def sel_args(a, day):
                               post_min=a.post_min, min_volume=a.min_volume, order="kickoff", max_markets=0)
 
 
+def _ts(x):
+    if x is None or x == "":
+        return None
+    if isinstance(x, (int, float)):
+        return int(x)
+    return int(bp.parse_ts(str(x)))
+
+
+def load_market_file(path: Path, a) -> dict:
+    """--markets FILE (JSON array or JSON lines) -> {UTC day of kickoff (or window end): [market dicts]}.
+
+    Per entry: `slug`; `condition_id` (or `cond`); `token_ids` (or `tokens`; the FIRST token is replayed and
+    written as outcome 0); and either `window_start` + `window_end` or `kickoff` (window = kickoff -
+    --hours-before .. kickoff + --post-min). Times are unix seconds or ISO strings. Optional: `outcomes`,
+    `league` (default: slug prefix), `market_type`, `volume` (export floor; default kept), `listing` (replay
+    starts there when within --track-days of the window), `gamma` (a gamma market dict; used for resolution,
+    endDate and by the meta stage, which needs it)."""
+    txt = Path(path).read_text().strip()
+    rows = json.loads(txt) if txt.startswith("[") else [json.loads(x) for x in txt.splitlines() if x.strip()]
+    out = defaultdict(list)
+    for r in rows:
+        toks = [str(t) for t in (r.get("token_ids") or r.get("tokens") or [])]
+        cond = r.get("condition_id") or r.get("cond")
+        if not r.get("slug") or not cond or not toks:
+            raise SystemExit(f"--markets: entry needs slug, condition_id and token_ids: {r}")
+        ko = _ts(r.get("kickoff"))
+        ws = _ts(r.get("window_start"))
+        we = _ts(r.get("window_end"))
+        if ws is None or we is None:
+            if ko is None:
+                raise SystemExit(f"--markets: {r['slug']}: give window_start/window_end or kickoff")
+            ws = ko - int(a.hours_before * 3600) if ws is None else ws
+            we = ko + int(a.post_min * 60) if we is None else we
+        g = dict(r.get("gamma") or {})
+        g.setdefault("slug", r["slug"])
+        g.setdefault("conditionId", cond)
+        if r.get("listing") is not None and not g.get("acceptingOrdersTimestamp"):
+            g["acceptingOrdersTimestamp"] = dt.datetime.fromtimestamp(_ts(r["listing"]), dt.timezone.utc).isoformat()
+        g.setdefault("endDate", dt.datetime.fromtimestamp(ko or we, dt.timezone.utc).isoformat())
+        m = {"slug": r["slug"], "league": r.get("league") or r["slug"].split("-")[0],
+             "smt": r.get("market_type") or g.get("sportsMarketType") or "", "kickoff": ko or we, "ws": ws, "we": we,
+             "tokens": toks, "outcomes": list(r.get("outcomes") or [""] * len(toks)), "cond": cond,
+             "volume": float(r.get("volume") if r.get("volume") is not None else float("inf")), "g": g}
+        out[dt.datetime.fromtimestamp(m["kickoff"], dt.timezone.utc).date().isoformat()].append(m)
+    return out
+
+
 def selection(a, kday: str) -> list[dict]:
-    """Markets with kickoff on UTC day kday (cached)."""
+    """Markets with kickoff on UTC day kday: from --markets FILE if given, else gamma (cached)."""
+    if a.markets:
+        if getattr(a, "_mfile", None) is None:
+            a._mfile = load_market_file(a.markets, a)
+        return a._mfile.get(kday, [])
     p = a.cache / "selection" / f"{kday}.json.gz"
     if p.exists():
         return read_json(p, gz=True)
@@ -117,6 +168,11 @@ def selection(a, kday: str) -> list[dict]:
 def targets_for_day(a, day: str) -> list[dict]:
     """Markets whose replay window [listing or ws - track_days, we) may intersect archive day `day`."""
     lo, hi = d0(day), d0(day) + 86400
+    if a.markets:                                   # any window length: scan the whole list
+        if getattr(a, "_mfile", None) is None:
+            a._mfile = load_market_file(a.markets, a)
+        return [m for v in a._mfile.values() for m in v
+                if m["we"] > lo and m["ws"] - a.track_days * 86400 < hi]
     span = int((a.hours_before * 3600 + a.post_min * 60) // 86400 + a.track_days) + 2
     out = []
     for k in range(-1, span + 1):
@@ -412,6 +468,9 @@ def export_volumes(a, day: str) -> dict:
     vol = {}
     for k in range(-1, int(a.hours_before // 24) + 3):
         kd = (dt.date.fromisoformat(day) + dt.timedelta(days=k)).isoformat()
+        if a.markets:
+            vol.update({m["slug"]: m["volume"] for m in selection(a, kd)})
+            continue
         p = a.cache / "selection" / f"{kd}.json.gz"
         if p.exists():
             vol.update({m["slug"]: m["volume"] for m in read_json(p, gz=True)})
@@ -481,6 +540,8 @@ def main():
     ap.add_argument("--daily", type=Path, default=HERE / "daily")
     ap.add_argument("--cache", type=Path, default=HERE / "cache")
     ap.add_argument("--dl", type=Path, default=HERE / "dl")
+    ap.add_argument("--markets", type=Path, help="market list file (JSON / JSONL, see load_market_file) instead of the "
+                    "gamma sports selection; use with its own --raw / --daily")
     ap.add_argument("--leagues", default="all")
     ap.add_argument("--market-types", default="moneyline")
     ap.add_argument("--min-volume", type=float, default=10000)
