@@ -954,8 +954,8 @@ def main(argv=None):
     ap.add_argument("--min-episode-s", type=int, default=600, help="drop (sub-)episodes shorter than this")
     ap.add_argument("--day-max-gap-s", type=float, default=1800.0, help="a day whose recorder-wide (or the market's) "
                     "total gap exceeds this is not eligible for train/val/test (D16)")
-    ap.add_argument("--ineligible-day", choices=["purged", "train-only"], default="purged",
-                    help="what an ineligible day becomes: purged (3), or keep train and purge val/test (D16 text)")
+    ap.add_argument("--ineligible-day", choices=["purged", "train-only"], default="train-only",
+                    help="what an ineligible day becomes: train-only (default, D16: keep train, purge val/test) or purged (3)")
     ap.add_argument("--gaps-only", action="store_true", help="only write GAPS.md and gaps_per_day.csv "
                     "(to --gaps-dir, default analysis/v3_elections/) from rec/coverage, build nothing")
     ap.add_argument("--gaps-dir", default=str(HERE))

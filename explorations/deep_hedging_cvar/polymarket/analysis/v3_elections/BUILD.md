@@ -17,7 +17,7 @@ python build_elections.py --emit-tokens tokens.parquet    # token map for onchai
 | `--window-s` | 14400 | Window length (D16: 4 h windows at 00/04/08/12/16/20 UTC). It must divide 86400. Episodes are cut further at gaps, the market end and the cutoff. |
 | `--min-episode-s` | 600 | Drops (sub-)episodes shorter than this. |
 | `--day-max-gap-s` | 1800 | A day is eligible for train/val/test only if its total gap time is at most this, both recorder-wide and for the episode's market. |
-| `--ineligible-day` | purged | `purged` moves ineligible days to split 3, with a warning. `train-only` keeps train and purges only val/test, which is D16's wording. |
+| `--ineligible-day` | train-only | D16: an ineligible day keeps its train assignment and loses val/test (purged), with a warning. `purged` moves the whole day to split 3. |
 | `--gaps-only` | off | Writes `GAPS.md` and `gaps_per_day.csv` to `--gaps-dir` (default this directory) from `rec/coverage`, builds nothing, and needs no `--trades-source`. |
 | `--split-days` | none | JSON file or inline JSON, `{day: train / val / test / purged / exclude}`. A day that is not listed goes to split 3 (purged). Days marked `exclude` are not built. **No default assigns test.** |
 | `--cutoff` | 2026-11-03T00:00Z | Windows must end by this time. Election night is out of scope (D11). |
@@ -53,7 +53,7 @@ python build_elections.py --emit-tokens tokens.parquet    # token map for onchai
 - **Day eligibility (D16).** A day is eligible for train/val/test only if its total gap seconds are
   at most `--day-max-gap-s` (1800), both recorder-wide and for the episode's own market on that day.
   Otherwise the assigned split becomes purged (3) and a warning is printed.
-  - D16's text allows such days in train; `--ineligible-day train-only` does that.
+  - Default `train-only` follows D16: such days may still be used for train, never for val/test.
   - Every build writes `GAPS.md` and `gaps_per_day.csv` next to the binaries (see "Gap report").
 - **Fills.** The fills source must be complete over the episode; otherwise the episode needs
   `--allow-partial`.
