@@ -1,152 +1,204 @@
-# Pivot status (DECISIONS.md D9, D11): crypto v2 → pre-game sports + election reward farming
+# v3 status: crypto closed, elections and pre-game sports open (DECISIONS.md D11, D13–D15)
 
-Status page, updated 2026-10-15 ~21:30 UTC from the worker reports. All numbers are copied from the
-cited reports. "In progress" means the report itself says so.
+Status page, updated 2026-10-16 ~01:00 UTC after every worker report was in. Every number is copied from the cited
+report; nothing here is a test result for v3. Paths are relative to
+`explorations/deep_hedging_cvar/polymarket/`.
 
-## 1. Why we pivoted
+## TL;DR
 
-**Census** (`analysis/census/REPORT.md`, w7): every on-chain fill on Polymarket, Oct 8–14 2026, 25.72M fill
-legs. Edge is per $ of maker notional, with an event-bootstrap 95% CI.
+- **Crypto is closed. Both one-time tests failed:** v1 (Aug 24) +27.65 [−259.07, +293.92] against fair_value, and
+  v2 (Jun 15) −$495 [−1,610, +551], where RL lost $926 against $0 for not quoting. The cause is structural: the 60 s
+  fill P&L was positive in 1 of 493 w4 evaluations.
+- **Elections (Track E) are the strongest lead, and the income is reward money.** w7's contested-market curve gives
+  $36 per $1k per day at $10k, $22 at $25k and $10 at $100k. w3's replay gives 2.6%/day for the spec quoter but only
+  **0.57%/day** for a quoter that never improves the touch. The defensible range is therefore 0.57–2.6%/day.
+- **The gap between those two figures is untested fills.** 79% of the spec's rewards come from quotes that improve the
+  touch in near-empty books, where nobody trades. The fills and adverse selection those quotes would attract are
+  unobserved.
+- **Pre-game sports (Track S) has a real but thin edge**, about +20–30 bps to kickoff before rewards. Pre-game makers
+  net only 14–19% of their inventory before kickoff, and flattening the rest costs ~85 bps, more than the edge.
+  After that drag the maker pool is −52 and −69 bps.
+- **Which pre-kickoff window is best is UNRESOLVED.** w7 finds the last 30 min the best bucket, w8 finds the last hour
+  −130 bps, and w1 finds quoting up to kickoff the worst choice on one evening. On w1's 16 real games, no fixed
+  quoter beats not quoting.
+- **In-play two-sided makers earn +1.48¢/share (SE 0.59)**, but they need a fast score feed. Polymarket's public feed
+  lags the book by a median of 74 s. In-play stays out of scope (D11).
+- **The infrastructure is ready:** env mm3, train3, both recorders and both builders. Recording started Oct 15
+  ~20:20 UTC. **No v3 split can be fixed until about 3 full days exist**, and the sports backfill is blocked on the
+  API key's environment variable name.
+- **Decisions for you (§6):** fix the key variable name, approve w4 and w5, an always-on recording server until Nov 3,
+  whether to prioritise elections, and pre-registering the splits.
 
-| category | before rewards | with rewards | notes |
+## 1. Crypto: closed
+
+| test | primary endpoint (RL − fair_value, central, 1 s) | verdict | source |
 |---|---|---|---|
-| **pre-game sports** | **+64 bps [1, 130]** at +30 min (**not replicated** on Sep 24–Oct 7, §3) | – | the only large category with CI > 0 before rewards; positive 5 of 7 days; top-20 makers +236 bps; $14.9M/day maker volume; edge to resolution +109 [−627, 808], a coin flip, so quotes must come off at kickoff |
-| **elections** | −8 bps [−51, 18] at +2 h | **+133 bps [94, 165]** at +2 h; +122 [74, 156] at +1 d | lowest adverse selection (0.5–0.6¢/share); largest reward pool (~$30k/day); the edge is the reward program's money |
-| **crypto up/down** (our v1/v2 market) | +30 bps [−6, 69] at +2 h | +31 [−6, 69] | top-20 continuous quoters (our agent's profile) **−23 bps**: adverse selection 1.35¢ vs spread 1.02¢ |
-| in-play sports | −40 bps [−134, 51] at +2 h | – | non-top makers −123 bps |
-| weather / economics / tech / culture / finance-prices | negative, CIs below 0 before rewards | – | avoid |
+| v1, Aug 24, 127 markets | +27.65 [−259.07, +293.92] | FAIL (CI; T7) | `final/RESULTS.md` |
+| v2, Jun 15, 288 BTC 5m markets | **−495.16 [−1,609.81, +550.93]** | **FAIL** (5 of 7 criteria) | `final/RESULTS_V2.md` |
 
-**Politics deep-dive** (`analysis/politics/REPORT.md`, w6): 60 politics/economics/geopolitics markets, Sep 1–Oct 14,
-597k maker legs, same code run on crypto fills (CIs clustered by market × day).
-- Politics maker fill, net at 5 min incl. rebate: **+0.23¢/share = +54 bps [0.18, 0.28¢]**; same at 2 h (+55 bps).
-- Crypto up/down on the same yardstick: **+2 bps [−0.18, 0.20¢]** (Aug 15–20), −63 bps [−1.10, 0.46¢] (train days).
-- Revenue split for all makers in the 60 markets per day: spread net of 5-min adverse selection $10.7k, rebates $6.4k,
-  current reward pools $11.3k (38 : 23 : 40).
-- Politics touch is one tick wide 100% of the time and changes price 0–1.3 times/hour (crypto 160–550), so a replay
-  must model the queue. Main risk: jumps (largest 10-min move 48.5¢).
+- **v2:** RL `v2s1/c00` (5 seeds) lost **−$925.68, −$3.21/market**; fair_value −$430.52; no-quote $0. RL was
+  significantly worse than not quoting (−925.68 [−1,626.15, −221.80]); only optimistic fills were positive (+$521).
+  Expected: on val v2 the method was −$35 (3 seeds) and −$111 (5 seeds).
+- **The structural reason (w4).** Write P&L = F + inv, where F is spread capture + 60 s markout + rebates. If F < 0
+  and P&L > 0, inventory exceeds the whole P&L and T6 calls the method directional. Across w4's ledger **F > 0 in 1 of
+  493 val evaluations** (inventory positive in 474), and **0 of 493 both pass D1.3 and make money**. The census
+  agrees: the top-20 continuous crypto quoters lose −23 bps (Oct 8–14) and −12 bps (out of sample).
+- **Workers w1–w5** (`train/workers/*/REPORT.md`, all done; w1–w3 stopped early by D11): w1 no config beats
+  no-quote; w2's 4h profits are directional (T6 1.1–1.7); w3 −$1.36 to −$2.13/market; w4's quoter −$0.059 ± 0.018
+  (D1.3 3/3), its PPO c2 +$0.030 ± 0.007 but directional; w5's best D1.3-passing config −$0.233 ± 0.022.
+  No further crypto work is planned.
 
-**Sports deep-dive** (`analysis/sports/REPORT.md`, w8): 235 sports markets, Oct 2–14, ¢/maker share, SE clustered by
-market. Section 4 (live books) is still a placeholder in the report.
-- **Pre-game, all makers:** +0.25¢ at 1 min (SE 0.03), +0.03 at 5 min (0.08), −0.27 at 30 min (0.45), rebate 0.13.
-- **Crypto up/down on the same yardstick** (Oct 14, 08–14 UTC): +0.69¢ at 30 min (0.26). By this measure the average
-  sports maker does *worse* than crypto; w8 notes this does not contradict our replay, because incumbents with speed
-  and queue priority earn what a new entrant cannot.
-- **In-play, kept separate from the census pre-game figure (they measure different things):** two-sided wallets earn
-  **+1.48¢/share to resolution (SE 0.59)** plus a 0.10¢ rebate on 96M shares; one-sided resting wallets lose −3.36¢
-  (SE 1.24). **This conflicts with the census's and D11's "avoid in-play", and it is unconfirmed:** a single estimate,
-  to be rechecked after tonight's games. The track decision (pre-game only) is unchanged.
-- Pre-game, w8 finds the binding constraint is queue position (NFL: ~2.5M shares within 1¢ vs ~120k maker shares
-  filled per hour), and the last 30 min before the start is −0.9¢.
+## 2. Elections, Track E: the strongest lead
 
-## 2. Crypto v2 epilogue
+**w7's capital curve** (`analysis/census/REPORT.md` §7): live books of the top 300 midterm markets (pool
+$25,960/day), 6 polls 22:10–23:00 UTC Oct 15, one min-size bid and ask about 3¢ from the mid, the conservative
+("hi") competitor bound, capital allocated greedily.
 
-D11 (~20:25 UTC) stopped new crypto runs. The selection (`final/v2/SELECTION.md`, reading C of D13) found
-**no D1.3-passing method with positive val v2 P&L**: 148 methods eligible, 0 with a positive seed mean. Every
-profitable method fails D1.3 through T6 (inventory/resolution P&L, mostly on the 32 4h markets). Comparator
-`fair_value` scores +101.1 on val v2 (374 markets).
+| capital | $/day per $1k, contested markets [95% CI] | %/day | all 300 markets (incl. 6 empty bands) |
+|---|---|---|---|
+| $1k | 125.8 [79.9, 191.6] | 12.6 | 283.8 [155.5, 437.4] |
+| $10k | 36.2 [29.4, 45.9] | 3.6 | 52.2 [38.6, 67.6] |
+| $25k | 22.4 [18.9, 27.2] | 2.2 | 28.8 [23.1, 35.3] |
+| $100k | 10.1 [8.6, 11.7] | 1.0 | 11.7 [9.9, 13.6] |
+| $250k | 6.0 [5.2, 6.8] | 0.6 | 6.6 [5.7, 7.5] |
 
-| line | best result on val v2 (central fills, 1 s) | D1.3 |
-|---|---|---|
-| w1 risk-aware objectives (15 configs) | t04: −$0.33 ± 0.33/market; v1 replica t00 −$0.49 ± 0.28; only positive config t12 (+$0.11, 0.9 fills/mkt) | t04 pass, t12 fail |
-| w2 per-length specialists | 4h_c01: +$169 ± 47 on the 32 4h markets (2 seeds), T6 1.2 (directional); 5m/15m nothing beats $0 | fail; portfolio with D1.3 = all off, $0 |
-| w3 recurrent PufferNet | −$1.36 to −$2.13/market; approx KL ~2e-4/update, price heads near uniform | pass by losing |
-| w4 toxicity quoter + BC/PPO | quoter −$0.059 ± 0.018/market (13.0 fills); best RL c2 +$0.030 ± 0.007 but 0/3 seeds pass D1.3. 60 s fill P&L > 0 in 1 of 475 evaluations | quoter passes 3/3 under w4's reading, fails C (positive-component share 0.58) |
-| local sweep v2s1 (32 configs × 3 seeds) | **winner `v2s1/c00`: −$35.0 ± 98.1** (3 seeds), 17.5 fills/mkt; with seeds 3–4 the 5-seed mean is −111.0 ± 83.3 | pass (C) |
-| D12 Binance sub-second features | nothing passes the pre-set rule; takers react 2–3.5 s before the print, after our 1 s-latency decision | not adopted |
+- **w7's planning number:** $22–36 per $1k per day at $10–25k, before $0.2–2 of fill costs, which is about 2–3.5%/day.
+  The yield is steep in capital because every market's pool is fixed. This reconciles w6's 0.12%/day (w6 assumed a
+  very large book or stiffer competition).
+- **Out-of-sample census:** +101 bps [63, 130] with rewards (D14). Without rewards it is about 0 to slightly positive.
 
-**In progress:** the v2 freeze and the one-time Jun 15 test (`final/v2/`; the full dry run was at 99/168 runs when
-this page was written). A FAIL on the primary endpoint is the expected outcome.
+**w3's measured range** (`analysis/v3_elections/BASELINE.md`, Update section). This is a replay on the recorded
+books and real trades over 3.36 h, 20:21–23:43 UTC, for all 300 markets:
 
-## 3. Track S: pre-game sports (w1 data, w2 rules, w8 context)
+| variant | net $/h | net %/h of capital [market CI] | ×24 |
+|---|---|---|---|
+| spec, ½ max spread, 1× min size | 20.5 | 0.109 [0.059, 0.169] | **2.6%/day** |
+| same, rewards only, no fills | 22.2 | 0.119 | 2.9%/day |
+| ¼ max spread | 18.3 | 0.090 [0.035, 0.152] | 2.2%/day (65 fills) |
+| **spec, join/behind only (never improves the touch)** | 4.5 | 0.024 [0.006, 0.042] | **0.57%/day** |
+| ¼ max spread, join/behind only | 6.2 | 0.031 [0.003, 0.058] | 0.74%/day |
 
-> **Warning: the Track S premise is unconfirmed and may be a one-week artifact.** w2
-> (`analysis/v3_sports_rules/REPORT.md`) tested the two weeks before the census (Sep 24–Oct 7, on-chain, 9.9k games):
-> - at-touch maker flow, valued like the census: **−26 bps [−43, −11] at 30 min, −33 bps [−55, −14] to kickoff**,
->   positive at 30 min on only 2 of 14 days, against the census's **+64 bps [1, 130]** on Oct 8–14;
-> - **0 of 7,680 pre-game rules** (2,880 in pass 1, 4,800 in pass 2) are positive before rewards on the selection
->   period; the best pass-2 rule loses −1,740 bps [−3,291, −480] on the check period;
-> - only the last 5 min before kickoff (+35 bps [12, 58]) and NHL at 30 min (+32 [16, 48]) are positive, and both
->   turn negative with realistic quote size and flatten cost (joining in the last 5–10 min: −57 to −166 bps).
->
-> w8 also finds the average pre-game maker at −0.27¢ at 30 min (SE 0.45). w2 recommends going ahead with sports RL only
-> if the L2 replay shows queue-front fills beat the at-touch pool. Track E rests on rewards and is not affected.
-> The track decision stays with the user.
+**Why the two figures differ: rewards from quotes that improve the touch in empty books.**
+- About 79% of the spec's rewards (58.9 of $74.6) come from quotes inside the touch, mostly in near-empty books such
+  as `closer-governor-race-*` (0.13 / 0.88). In the 1.91 h run those 20 markets had **2 taker transactions in
+  total**, none at or through our quote.
+- **So their fills are unobserved.** A tight quote in a 75¢-wide book would attract flow history cannot price,
+  informed flow included. Where flow exists, adverse selection shows: the ¼-spread variant lost ~$28 of markout over
+  65 fills.
+- **The join/behind-only row is the defensible floor**, and the spec figure is the optimistic case. w7's $10–25k
+  points (2.2–3.6%/day) agree with w3's spec figure. Whether w7's curve leans on the same inside-touch quotes is not
+  measured.
 
-**Recording** (`analysis/v3_sports/`): polyrec running since 2026-10-15 20:22 UTC in w1's container. About 290 pre-game
-moneylines (top leagues) with kickoff in the next 48 h, rotated every 5 min; book rows until kickoff + 5 min.
-Compact daily files committed hourly (~40 MB/day); Oct 15 so far: 303 markets, 19,964 book rows (partial day).
-`kickoff_watch.py` logs the sports websocket and gamma status (312 games in `kickoff/kickoffs.csv`).
+**Risks:**
+- **The Nov 3 jump.** A two-sided min-size quote can be swept for a 20–50¢ loss per share. Quotes come off before
+  the first returns, and election night is out of scope (D11).
+- **Competition.** A second farmer halves the inside-touch rewards, and the 6 empty-band markets would draw
+  competitors within days. Use the contested curve.
+- **Pool drift.** The selected pool fell from $26,412/day to $25,753/day in one hour (−2.5%). The `closer-*` and
+  `*-on-october-23` programs end with their markets, and the program can change or stop.
+- **Thin evidence and model limits:** evening-only (US) windows (six snapshots for w7, 3.36 h for w3); the env has
+  one order per side, and our orders move neither the adjusted mid nor competitor Q (ENV3 §14).
 
-**Data rule (recorded ~21:15 UTC, before any v3 result):**
-- The episode is cut at the **scheduled `gameStartTime`**. The `clearBookOnStart` wipe fires at the scheduled time,
-  not the actual start (val-flyr-mibrf wiped at 21:00:00.1, went live 21:08:15, 496 s late).
-- The observed start only labels games and excludes early starts; it never moves the cut later.
-- Esports (`endDate` = start + 6 h) use a separate recorder source shifted by −6 h since 21:14 UTC.
+## 3. Sports, Track S: the edge is real but thin
 
-**Backfill:** `backfill_pob.py` is ready and **waits for `POLYORDERBOOKS_API_KEY`** (planned range e.g.
-2026-09-16 → 10-14; trades come keyless from data-api). `build_sports.py` turns recorder/backfill data into env binaries.
+**The reconciliation (w2, `analysis/v3_sports_rules/RECONCILE.md`; D15).**
+- **w2's earlier −26 bps was a valuation error.** It priced sweep volume at the touch, a ~70 bps bias. With census
+  definitions, w2's pipeline gives +66 [2, 135] against the census's +64 [1, 130].
+- **With marks capped at kickoff** (w7 §6d), the pre-game edge is stable: **+53, +50, +49 and +71 bps** by week
+  (Sep 17 → Oct 14), +49 [32, 64] out of sample and +57 [34, 79] pooled.
+- **To kickoff the edge is thin:** +31 [12, 50] for the whole pool (Sep 24–Oct 7), **+20 [1, 37] at the touch** and
+  +81 [34, 124] one tick behind.
+- **Selections do not transfer.** Rank correlation is 0.39 from selection to check and −0.36 to Oct 8–14.
 
-**Baseline** (`baseline_pregame.py`, 9 fixed rules, nothing tuned): only a mechanics test so far (20 open markets,
-~33 min of book each; not results). Fills only in the 2 NBA games; optimistic vs central fills differ 20–60× (the queue).
-Real-game results: to be filled after ~00:30 UTC Oct 16.
+**Netting and flatten drag (w2 §6).**
+- Only **19% (Sep 24–Oct 7) and 14% (Oct 8–14)** of pre-game maker inventory nets out before kickoff. At half a
+  spread the drag is **83–86 bps**, more than the +17 to +31 bps edge, so the pool is negative after drag:
+  **−52 [−74, −34]** and **−69 [−104, −23]**. No league or size bucket is positive after drag in both periods.
+- **Break-even needs about 70–80% netting.** Inventory control is the core problem of this env: pulls, skew, the close
+  ramp, and possibly game-level netting across moneyline, spread and 1X2.
 
-**Other pre-game findings:**
-- Fills away from the touch are toxic: books are one tick wide and ~100k shares deep, so a quote 1–3¢ away fills only
-  on sweeps, which lose 300–2,000 bps within 60 s. Pulling quotes when the micro-price is stale (> 30 s) is the most
-  useful filter in every top rule. Per-league selection overfits (e.g. "other" +$167 → −$3,436 on check).
-- **Fair-value anchor** (w2, `fair_value_anchor.md`): Pinnacle, Smarkets, DraftKings, FanDuel and Kalshi agree with the
-  Polymarket mid within ~0.5¢. Use an external price as a guard rail and feature, not as the quote centre. Lead/lag is
-  still unmeasured.
-- Env spec for sports (`ENV_SPEC.md`): queue tracking is required; takers wait ~1 s (`secondsDelay`), makers cancel freely.
+**UNRESOLVED: where before kickoff to quote.** The three sources disagree:
+- **w7 (census §6d, capped, pooled):** the last 30 min is **+69 [2, 128]**, +62 to +69 in every week, and the best
+  bucket. 30–60 min is the weakest at +32 [−6, 91].
+- **w8 (`analysis/sports/REPORT.md` §2.2, D14 table, +30 min mark):** the last hour, 54% of pre-game maker volume,
+  is **−130 [−463, +178]**; 6–24 h is 0 where w7 has +41/+43. The table does not say whether its mark is capped at
+  kickoff.
+- **w1 (one evening, 16 real games, mostly NHL):** quoting to kickoff (pull 0 or 300 s) is **worst** and pulling
+  1 h early is best. w1 itself calls this one noisy data point, not evidence against D15.
+- **How it gets settled.** D15 already makes `pull_s` ∈ {0, 300, 900, 1800, 3600} a val-selected hyperparameter, so the
+  replay on recorded data decides. Nobody should pick a window from these figures.
 
-## 4. Track E: election reward farming (w3; w6 context)
+**In-play (w8, final at commit 4261d56).**
+- **Two-sided wallets** earn **+1.48¢/share to resolution (SE 0.59)** plus a 0.10¢ rebate, on 96M shares; one-sided
+  wallets lose −3.36¢ (SE 1.24). Tonight's recheck on true mids: +0.83¢ against −1.04¢ at 5 min; the resolution
+  figure is unconfirmed (6–8 markets resolved, SE 2–4¢).
+- **It needs a fast score feed.** Polymarket's public score websocket lags the book by a median of **74 s** (21 of 21
+  events), Smarkets by 42 s. A commercial feed or a book-reactive pull rule is required; in-play stays out of scope
+  (D11).
 
-**Recording** (`analysis/v3_elections/`): the top 300 US-midterm markets by reward rate (≥ $20/day) =
-**$26.4k/day of the $36.6k/day midterm pool** (2,892 rewarded midterm markets). Continuous since 20:24:09 UTC Oct 15
-(24 markets with future event dates only since 20:46). Hourly reward snapshots of all 2,892 markets; hourly autopush of
-the compacted parquet. Restarts at 21:00–21:07 for memory (RSS cap now 6 GB, ~2 restarts/day of ~5 s expected).
-**Oct 16 is the first full recorded day.**
+**w1's real-game baseline** (`analysis/v3_sports/README.md`, 00:41 and 00:50 UTC).
+- 16 kicked-off games (9 NHL, 3 CFB, 1 NBA, 3 markets of one Argentine soccer game), 2.6–3.6 h of book each.
+- **No fixed quoter beats no-quote.** Every variant with ≥ 5 fills per market loses $5.5–7 in total after the
+  half-spread flatten; spread capture 0.50¢/share against a −0.4 to −0.5¢ markout at 30 s.
+- **The evaluator3 comparators (sym_touch, mid_value, as_mid) agree:** none makes markets (< 5 fills per market) and
+  none is positive at any pull before 3600 s. The pull-3600 positives (+$0.93 to +1.75) come from ~1 fill per market
+  and vanish under pessimistic fills.
 
-**Reward economics:**
-- Census: +133 bps [94, 165] with rewards at +2 h; the reward proxy is conservative (actual top-20 payouts 2.0× the proxy).
-- w6 live books: a min-size quote at the touch earns 0.02–1.1% of the pool; per $1k of capital a median of ≈ $0.05/h
-  (0.12%/day), $1.8–2.3/h in the best (Fed October) markets.
-- w3 baseline (`baseline_farm.py`, **interim WIP, 0.63 h window 20:21–20:59 UTC, 300 markets**): quoting at ½ the
-  max spread at 1× min size earns $474.9/day of rewards on $18.6k capital, net $432.7/day with 1 fill; at ¼ the max
-  spread, $549.3/day of rewards, net $495.6/day. This per-capital yield is far above w6's median estimate; it needs a
-  full day of data before it is used.
-- Risks: program changes (rates are snapshots), election-night jumps (out of scope per D11), UMA delays.
+**Kickoff (w1).**
+- **Starts.** No game started early. Every confidently timed start came after the schedule, by +5 s to +496 s.
+- **The `clearBookOnStart` wipe is not universal.** It came at the scheduled time for nba-tor-nyk (+0.4 s),
+  nba-okc-hou (−8.8 s) and cfb-gas-old (−7.7 s); **no wipe came within +10 min** for 7 NHL games, nfl-sea-den and 2 CFB
+  games; cs2-fly-offcho was wiped 602 s *before* its scheduled time and an MLB NRFI market 1,117 s after.
+- w8's books show 60–87% depth drops within 1–2 s of the start on NHL, NBA, CFB and NFL; the two detectors are not
+  reconciled. **So the episode is cut at the scheduled `gameStartTime`**; the observed start only labels games and
+  excludes early starts.
 
-**Builder** (`build_elections.py`, `BUILD.md`): ready and smoke-tested. One episode = one market × one UTC-day window;
-the reward hook reads per-market, per-hour program columns (checked 500/500 against `reward_terms.py`); settlement is
-the last mark (markets unresolved). Size: ~50 MB per market-day, ~14 GB/day for all 276 markets (27 GB free).
-`analysis/v3_elections_rules/` does not exist yet.
+**Queues (w8 §4, §6).**
+- Pre-game books are one tick wide 100% of the time. NFL holds **3.0M shares within 1¢ on the moneyline** (1.8M on
+  the spread) against ~120k maker shares filled per hour, so a new quote at the touch would wait hours. NBA turns over
+  far faster: 2–6k shares within 1¢ against 23k per hour.
+- w8: the binding constraint pre-game is queue position, not information.
 
-## 5. v3 env and trainer
+## 4. Infrastructure: ready
 
-**Ready** (`v3env/ENV3.md`, `mm3.h`): v2 plus episode length from the data, kickoff/last-mark settlement with
-`flat_c`, `pull_s` quote pull, per-market/per-row reward hook, reward-relative order sizes, 28 extra observation
-slots, per-category fees. With options off it is **v2 bit for bit** (9.08M steps, 16,218 episodes, P&L difference
-0.0 USD); 169 checks pass; C equals the numpy reference on synthetic sports, elections and the real sports
-selftest build. Throughput 3.89M steps/s options off, 2.06M with obs 80 + rewards. PufferLib 3.0 binding and a 5.0
-wrapper exist; `adapt3.py` adapts both builders' outputs.
+- **`v3env/` (mm3.h, ENV3.md):** v2 plus data-length episodes, kickoff/last-mark settlement with `flat_c`, `pull_s`,
+  a per-row reward hook, reward-relative sizes, obs 80, per-category fees and the D15 netting fields. Options off, it
+  is **v2 bit for bit** (9,079,000 steps, 16,218 episodes); 200 test checks all ok; 3.89M steps/s (2.06M with obs 80
+  and rewards).
+- **`train3/`:** `V3Adapter` (hashes v3env, groups by category, refuses the test split and jun15); `evaluator3.py`
+  (v3 comparators, `--pull-grid`, D13 pooling, netting, time buckets); `train_ppo3.py`; `split3.py` (sha256
+  registry); `smoke3.py` (mechanics pass).
+- **Recorders:** polyrec for sports (`analysis/v3_sports/`) and elections (`analysis/v3_elections/`, supervised,
+  hourly autopush), the kickoff watcher and detector, hourly reward snapshots. **Builders:** `build_sports.py`
+  (sports-2, `--seg 0`, D15 bucket segments) and `build_elections.py` feed `adapt3.py`; `backfill_pob.py` is ready.
 
-**Open:**
-- No v3 trainer adapter: `train/envs.py` RealAdapter can drive env3 with an override, but it hashes v2 files, asserts
-  the crypto length one-hot and groups by 5m/15m/4h. A v3 adapter should hash `v3env/` and group by category.
-- Sports reward pools are in no build (proposal S2); the sports taker delay is not modelled (conservative).
-- Elections end at a window boundary, not a resolution; one order per side (no laddering); no per-market Q against
-  reward min sizes of 20–1000 shares.
+## 5. Data status
 
-## 6. Next steps and blockers
+- **Recording since Oct 15 ~20:20 UTC.** Elections: **300 markets**, continuous since 20:24:09 (24 only since
+  20:46); **Oct 16 is the first full day**. Sports: pre-game books since 20:22, **~700 markets** on the 7-day horizon
+  since 22:19; compact daily files committed hourly.
+- **Incident, Oct 16 00:44.** w1's container restarted during an evaluator3 run (exit 137). The sports recorder was
+  down from 00:44:13 to 00:45:58 UTC and kickoff_watch from 00:42:36 to 00:46 (`kickoff/snapshot/RECORDER_GAPS.txt`).
+  Both recorders still live in ephemeral worker containers and die with them.
+- **The PolyOrderBooks backfill is blocked on the environment variable name.** `backfill_pob.py` reads
+  `POLYORDERBOOKS_API_KEY`; this session's environment has no such variable, and the only Polymarket-related name
+  present is `POLYMARKET_API`. Planned range: e.g. 2026-09-16 → 10-14.
+- **Free L2 archives (w8 §5):** Hugging Face `Joseph3222/polymarket-orderbook` (every market, Feb 22–Aug 10 2026,
+  ~1.2 TB) and `Houroux/polymarket-l2-history` (reward-eligible markets, Jul–Oct 2026, ~310 GB, still updated, with a
+  `sports_ws` score folder). Unchecked: whether Houroux covers rewarded election markets, which would give Track E
+  history before Oct 15. Paid: Marketlens Pro, $39/month, tick-level L2 since Mar 2026.
 
-1. **PolyOrderBooks API key (user).** It unblocks the track S backfill; without it, sports data is only what we record.
-2. **Recording continuity.** Both recorders run in ephemeral containers (w1 sports, w3 elections) and die with them.
-   Multi-week recording (w6: ≥ 4 weeks, Oct 16 → Nov 13; elections data before Nov 3 cannot be re-collected) needs a
-   VPS (`recorder/README.md`, "Deploy").
-3. **Pre-register the splits once the data exists** (D11): sports by game date (oldest ~60% train, ~20% val, newest
-   ~20% test, later days a forward test), fixed once the backfill range is known and before any evaluation;
-   elections by recorded day, with the last days before Nov 3 as the untouched test.
-4. Open checks: the real pre-game baseline run (after ~00:30 UTC Oct 16); w8's in-play two-sided result after tonight's
-   games; Smarkets–Polymarket lead/lag; a full-day rerun of the election farming baseline; the pre-game edge
-   on the next unseen week (w2), before more Track S building.
+## 6. Decisions for you
+
+1. **Fix the key variable name.** Export the PolyOrderBooks key as `POLYORDERBOOKS_API_KEY`, or tell us the name you
+   used. That unblocks the sports backfill: about 4 weeks of pre-game L2 instead of what we record from now on.
+2. **Approve w4 and w5 in their own sessions.** Both are waiting on you there.
+3. **An always-on server for multi-week recording until Nov 3** (`recorder/README.md`, "Deploy"). Election books from
+   before Nov 3 cannot be collected again, and the 00:44 restart shows how fragile the worker containers are.
+4. **Whether to prioritise elections.** It is the stronger lead (0.57–2.6%/day measured; $22–36 per $1k per day at
+   $10–25k). Sports is thin: the edge does not survive the flatten drag without 70–80% netting, and no fixed quoter
+   beats no-quote yet.
+5. **Pre-register the splits once 3 or more full recorded days exist**, with `split3.py`, before any model is
+   evaluated on those dates: elections by recorded day (the last days before Nov 3 are the untouched test); sports
+   by game date, about 60/20/20, once the backfill range is known. Then: evaluator3 comparators over the D15 pull
+   grid, then training; each track's test runs once (D11).

@@ -15,3 +15,4 @@ kickoff/detect_cache.json
 kickoff/meta.json
 kickoff/kickoffs.csv
 kickoff/detect.csv
+baseline_out/build*/

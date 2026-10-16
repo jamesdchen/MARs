@@ -81,6 +81,13 @@ def main():
         txt += [O.to_string(index=False), f"\nscore changes matched: {len(O)}, with a >=2c book move: {len(mv)}",
                 f"lag (feed - book half-move), s: median {mv.lag_s.median():.1f}, mean {mv.lag_s.mean():.1f}, "
                 f"share with book first {np.mean(mv.lag_s > 0):.2f}" if len(mv) else ""]
+    if len(O):
+        mv = O[O.moved].assign(lg=lambda d: d.slug.str.split("-").str[0])
+        g = mv.groupby("lg").lag_s.agg(["size", "median", "min", "max", lambda x: np.mean(x > 0)]).rename(columns={"<lambda_0>": "book_first"})
+        disc = mv[mv.lg != "nba"].lag_s
+        txt += ["\n## by league (NBA baskets come every ~20 s, so a single book move cannot be attributed; excluded below)", g.round(1).to_string(),
+                f"discrete-score sports (NHL goals, NFL scores, esports maps): n={len(disc)}, median lag {disc.median():.1f} s, "
+                f"book first in {np.mean(disc > 0):.0%}"]
     (HERE / "out" / "score_latency.txt").write_text("\n".join(txt) + "\n"); print("\n".join(txt))
 
 
