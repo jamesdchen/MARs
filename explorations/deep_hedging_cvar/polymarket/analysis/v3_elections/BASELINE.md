@@ -10,6 +10,28 @@ books and fills complete at run time (22:18). It covers 300 markets: 276 from th
 markets from 20:46, since `rec/coverage` decides which minutes are quotable. 236 taker transactions fell
 in the window, on only 66 of the 300 markets. Re-run with `python baseline_farm.py [--start ..] [--end ..]`.
 
+## Update, re-run at 23:55 UTC on 3.36 h (20:21:26 to 23:43:00 UTC, all 300 markets)
+
+`baseline_summary.csv/json` now hold this run, and the tables below this section are the original 1.91 h run.
+The numbers barely moved:
+
+| variant | rewards $/h | net $/h [30-min block CI] | net %/h of capital [market-cluster CI] | ×24 (%/day) | fills |
+|---|---|---|---|---|---|
+| **f0.5_x1 (spec)** | 22.2 | 20.5 [17.8, 23.5] | 0.109 [0.059, 0.169] | 2.6 | 19 |
+| f0.5_x1, rewards only, no fills | 22.2 | 22.2 | 0.119 [0.073, 0.176] | 2.9 | 0 |
+| f0.25_x1 | 26.5 | 18.3 [13.2, 22.9] | 0.090 [0.035, 0.152] | 2.2 | 65 |
+| f0.5_x1, join/behind only (never improves the touch) | 6.7 | 4.5 [2.0, 7.3] | 0.024 [0.006, 0.042] | 0.57 | 12 |
+| f0.25_x1, join/behind only | 9.2 | 6.2 [2.7, 10.3] | 0.031 [0.003, 0.058] | 0.74 | 45 |
+
+- Over the window there were 547 taker transactions in 97 of the 300 markets.
+- About 79% of the spec variant's rewards still come from quotes that improve the touch (58.9 of 74.6 $), mostly
+  in near-empty books with almost no taker flow. The fills and adverse selection those quotes would attract are
+  not observed. So the defensible figure is the join/behind-only row, at about 0.02–0.03 %/h of quote collateral.
+- More fills make the tight variant (f0.25) lose more: net is 61 $ against 89 $ of rewards, about 28 $ of markout
+  over 65 fills. That is consistent with adverse selection showing up as soon as flow exists.
+- The ×24 column carries every assumption listed below: stationary programs, unchanged competitors, an evening
+  window representative of the day, and no reaction to our quotes. The recorded window is still evening-only (US time).
+
 ## Method
 
 - **Quotes.** Every UTC minute t, per market, one Yes bid and one Yes ask:
