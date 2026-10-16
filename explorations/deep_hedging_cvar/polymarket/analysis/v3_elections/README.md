@@ -35,6 +35,12 @@ Hourly reward-config snapshots go alongside them. These recordings are the only 
 - Since 21:07:29 RSS is about 590 MB after start-up, then grows about 7 MB/min, so the 6 GB cap is reached after
   about 13 h. That means at most about two 5 s restarts a day, which fits merge.py's coverage rule (max gap 5 s,
   total 15 s per window). Oct 15 is a partial, gappy day. **Oct 16 is the first full recorded day.**
+- **2026-10-16 02:03:16 to about 02:04:05: the container restarted** (platform-side), so the recorder had a gap
+  of about 50 s. The disk survived. supervise.sh, rewards_logger.py and autopush.sh were restarted by hand at
+  02:04, and all 300 markets were live again by 02:05. Under merge.py's rule (total gap 15 s or less) this gap
+  breaks a full Oct 16 day window. Windows that don't contain 02:03–02:05 (for example 4 h windows) are
+  unaffected. A container restart can't be prevented from inside the session; only the hand restart time can
+  be kept short.
 - `rec/coverage/` records every gap, and builds apply `merge.py`'s coverage rule.
 
 ## Operations
