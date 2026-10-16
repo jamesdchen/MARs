@@ -17,6 +17,40 @@ python rewards_snapshot.py                              # daily: rewards/rewards
 cd env_sports && python setup.py build_ext --inplace    # the patched v2 env (fractional settlement)
 ```
 
+## sports-3 changes (2026-10-16, DECISIONS.md D16: recording gaps)
+
+`build_version` is `sports-3`. Everything in sports-2 still holds, and adapt3.py reads a sports-3 build
+through its unchanged `segments` branch. sports-3 adds the following.
+
+| item | sports-3 |
+|---|---|
+| gap sources | Per `--rec` dir: (a) `recorder.log` process restarts: a `polyrec … run <id>` line after an earlier run; the gap runs from the `stopped:` line, or from the last log line after a crash, to the start time in the run id. (b) `GAPS.txt` lines that name the recorder and a time range (`<day> … recorder down HH:MM:SS-HH:MM:SS`; if the end is before the start, it is on the next day; two ISO timestamps also work). Lines that do not mention the recorder, such as kickoff_watch outages, are ignored. Lines that mention it but cannot be parsed go to `meta.gaps.gaps_txt_unparsed`. (c) `coverage/`: heartbeat silences longer than `--gap-s` within a run, dead time between runs, and spans when no market was live. (a), (b) and the run parts of (c) apply to every market the dir recorded. |
+| market gap | The union of the market's own not-live intervals (coverage log) and the recorder-level outages. It is checked over `[max(first grid row, first live), kickoff]`. Gaps longer than `--gap-s` (15) count. `meta.gaps.games[slug]` lists `n_gaps`, `total_gap_s`, `gaps` (at most 50 `[t0, t1]` pairs) and `last_hour_gap`. |
+| split (`--seg 0`, also with `--bucket-segments`) | The piece before a gap ends at the last row with `t <= gap start`: `cut_reason` is `gap`, flag **16384 GAP_CUT**, and it settles at its last-row mark, the last pre-gap mid. The piece after the gap starts at the first row after the gap whose book is a two-sided snapshot captured at or after the gap end: `start_reason` is `gap`, flag **32768 AFTER_GAP**. A piece that touches a gap and is shorter than `--min-window-s` is dropped (`stats.gap_pieces_dropped_short`). Other `cut_reason` values are `cut` (ends at the cut), `bucket` and `tile`. Other `start_reason` values are `first_book`, `trades_truncated`, `bucket` and `tile`. `at_cut` now means "ends at the cut", not "`#k0`". |
+| `--seg 300/900/14400` | Fixed lengths cannot be cut, so a tile that overlaps a gap is dropped (`stats.segments_dropped_gap`). |
+| inventory across a gap | `segments[i].gap` holds `gap_before`, `gap_after` (`{t0, t1, len_s}`), `prev_sid`, `next_sid`, `n_gaps_game` and `total_gap_s_game`. Two pieces of a market are linked when both are kept and they share the gap. D16: the evaluator carries the inventory from a `GAP_CUT` piece into its `next_sid` piece, as a forced quote pull rather than a reset. If `next_sid` is null, nothing continues in the build, so the inventory is flattened at `settle_price`. |
+| days | `meta.gaps.days[day]` = `{n_gaps, total_gap_s, all_logged, eligible}`. These are recorder-level gaps longer than `gap_s`, split at UTC midnight. `eligible` = `total_gap_s <= --max-day-gap-s` (1800). `all_logged` = every gap overlaps a GAPS.txt entry. It also has `market_gaps` and `market_gap_s_sum` (for information). `val_test_days_ineligible` lists val/test game days that are not eligible, and the build prints a warning for them. The split assignment itself does not change. |
+| last hour | A game with a gap in `[kickoff - 1 h, kickoff]` gets `last_hour_gap`. Its segments that have decision rows in `1h-30m` / `30-5m` / `5-0m` get `excluded_from_eval_last_hour`, flag **65536 EVAL_EXCL_LAST_HOUR**, and `eval_excluded_buckets` (those buckets). They stay in the build. Splits and evaluators must keep them out of val/test (for bucket reports, only the listed buckets). Lists: `meta.gaps.games_last_hour_gap`, `meta.gaps.segments_excluded_from_eval_last_hour`. |
+| `meta.gaps.recorder_events` | Every recorder-level event, including those of 15 s or less (`len_s`, `above_threshold`, `source`, `utc`). |
+| caveat | For up to 120 rows after a gap, the lagged features (flow, mret, dgap) still look back over the forward-filled pre-gap book. No row inside a gap is ever in an episode. |
+| verify | No segment overlaps a gap of its game. The flags match `cut_reason` / `start_reason` / `excluded_from_eval_last_hour`. A post-gap piece starts on a fresh two-sided book (`open_ts - book_age >= gap end`). `prev_sid` / `next_sid` are symmetric. The one-AT_CUT-per-game check skips games with gaps. |
+
+Tests run (2026-10-16, sports-3):
+- `--selftest` passes, including adapt3, env3, the stock env and env_sports. The new D16 part:
+  - Setup: synthetic coverage crash and restart (60 s, inside game 3's last hour); GAPS.txt entries of 20 s (game 4), 10 s (game 0, below threshold) and 40 min (2026-10-02); a 4 s clean restart in recorder.log.
+  - Game 3 splits into `[-1000, -600]` (GAP_CUT, settle == the raw last pre-gap mid) and `[-538, 0]` (AFTER_GAP, on a fresh book), linked by `prev_sid` / `next_sid`.
+  - Game 4's 100 s pre-gap piece is dropped (`--min-window-s 300`). Game 0 is not split.
+  - Day totals: 10-02 2400 s (ineligible), 10-04 60 s (not logged), 10-05 20 s.
+  - `last_hour_gap` is set on games 3 and 4.
+  - `--seg 300` drops the 2 tiles that span a gap. `--bucket-segments` passes verify.
+  - adapt3 accepts the gap build.
+- Real build (`rec_out`, `--seg 0 --max-hours 24`): 69 episodes from 25 games, verify passes.
+  - Recorder events: restarts 21:13:47-21:13:52 (5 s) and 22:17:09-22:17:10 (1 s); the 00:44 container restart (GAPS.txt 00:44:13-00:45:58, plus the crash restart found in recorder.log).
+  - Per market, the two short restarts leave the market not live for 23-39 s (up to 72 s): resubscribing takes that long. So they are gaps > 15 s and split the games recorded across them: 44 gap cuts, 10 games with `last_hour_gap`, 20 episodes excluded from last-hour eval.
+  - Day totals: 10-15 62 s (not in GAPS.txt), 10-16 152 s; both eligible.
+  - adapt3 accepts the build, and env3 runs all 69 episodes to `n_rows - 1` and settles each at `settle_price`.
+- `baseline_pregame.py` (real mode, `--slugs ^nhl- --fill-models central`): runs. 10 of 11 tiles of 4 h are dropped because they span a restart gap.
+
 ## sports-2 changes (2026-10-15, for v3env / ENV3.md proposals S1-S3, D14/D15)
 
 | item | sports-2 |

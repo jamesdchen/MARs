@@ -57,7 +57,7 @@ sys.path.insert(0, str(PM / "data"))
 sys.path.insert(0, str(PM / "recorder"))
 import build as B  # noqa: E402  data/build.py (read-only use: COLS, MARKET_DTYPE, ladder_topk, merged_snapshots)
 
-BUILD_VERSION = "sports-2"     # adapt3.py detects "sports*"
+BUILD_VERSION = "sports-3"     # adapt3.py detects "sports*" (sports-3 = sports-2 + D16 gap fields)
 NLEV = 5
 SEG_LENS = (300, 900, 14400)                      # mm.h mm_len_bit: other lengths are never sampled
 SPLIT_NAMES = {0: "train", 1: "val", 2: "test", 3: "purged"}
@@ -80,6 +80,9 @@ FLAG_TRADES_TRUNC = 1024     # data-api history capped: the oldest pre-game legs
 FLAG_IN_PROGRAM = 2048       # in a liquidity-reward program at some row of the episode
 FLAG_RW_LATER_SNAPSHOT = 4096  # some row's program comes from a snapshot taken after that row's day
 FLAG_EARLY_START = 8192      # kickoff_watch saw the game live before the scheduled kickoff (in-play rows)
+FLAG_GAP_CUT = 16384         # D16: episode ends at a recording gap > 15 s (settles at the last pre-gap mid)
+FLAG_AFTER_GAP = 32768       # D16: episode starts after a recording gap (inventory carried in from the previous piece)
+FLAG_EVAL_EXCL_LAST_HOUR = 65536  # D16: game has a gap in its last pre-kickoff hour and this episode has last-hour rows
 
 # D14/D15 time-to-kickoff buckets: (name, lower bound s, upper bound s); a row belongs by its seconds to kickoff
 BUCKETS = [(">24h", 86400, None), ("6-24h", 21600, 86400), ("1-6h", 3600, 21600), ("1h-30m", 1800, 3600),
@@ -216,7 +219,8 @@ def _files(root: Path, name: str) -> list[Path]:
     return []
 
 
-def load_books(recs: list[Path], slug_rx: re.Pattern | None) -> pa.Table | None:
+def load_books(recs: list[Path], slug_rx: re.Pattern | None, src: dict | None = None) -> pa.Table | None:
+    """All book rows of the --rec dirs; `src` (optional) collects {rec dir: set of slugs it holds}."""
     cols = ["market_slug", "token_id", "outcome", "market_end_at", "captured_at", "bid_prices", "bid_sizes",
             "ask_prices", "ask_sizes", "crossed"]
     parts = []
@@ -235,9 +239,16 @@ def load_books(recs: list[Path], slug_rx: re.Pattern | None) -> pa.Table | None:
                 t = t.filter(pa.array(keep))
             if t.num_rows:
                 parts.append(t.cast(pa.schema([t.schema.field(c) for c in cols])))
+                if src is not None:
+                    src.setdefault(str(r), set()).update(pc_unique(t.column("market_slug")))
     if not parts:
         return None
     return pa.concat_tables(parts, promote_options="permissive")
+
+
+def pc_unique(col) -> list:
+    import pyarrow.compute as pc
+    return [x for x in pc.unique(col.cast(pa.string())).to_pylist() if x is not None]
 
 
 def load_rec_tables(recs: list[Path], name: str) -> pd.DataFrame:
@@ -263,6 +274,220 @@ def load_coverage(recs: list[Path]) -> dict:
     for r in recs:
         ev.extend(cov.read_events(Path(r)))
     return cov.live_intervals(ev) if ev else {}
+
+
+# ----------------------------------------------------------------------------- recording gaps (D16)
+GAP_S = 15.0                 # D16: a gap longer than this splits an episode
+DAY_GAP_MAX_S = 1800.0       # D16: a day with more gap time than this is excluded from val / test
+LAST_HOUR_S = 3600           # D16: a gap within [kickoff - 1 h, kickoff] excludes the game's last-hour buckets
+LAST_HOUR_BUCKETS = ("1h-30m", "30-5m", "5-0m")
+_HMS = r"(\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?)"
+_ISO = r"(\d{4}-\d{2}-\d{2}[T ]\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?)Z?"
+
+
+def merge_iv(iv) -> list:
+    out = []
+    for a, b in sorted(iv):
+        if out and a <= out[-1][1]:
+            out[-1] = (out[-1][0], max(out[-1][1], b))
+        else:
+            out.append((a, b))
+    return out
+
+
+def uncovered(iv, lo: float, hi: float) -> list:
+    """Sub-intervals of [lo, hi] outside the merged, sorted intervals iv."""
+    g, cur = [], lo
+    for a, b in iv:
+        if b <= cur:
+            continue
+        if a >= hi:
+            break
+        if a > cur:
+            g.append((cur, a))
+        cur = max(cur, b)
+        if cur >= hi:
+            break
+    if cur < hi:
+        g.append((cur, hi))
+    return [x for x in g if x[1] > x[0]]
+
+
+def parse_gaps_txt(path: Path) -> tuple[list, list]:
+    """The human GAPS log (free text, one entry per line). A line counts when it names the recorder and a
+    time range: '<day> ... recorder down HH:MM:SS-HH:MM:SS UTC' (end < start: the next day), or two ISO
+    timestamps. Returns ([(t0, t1, line)], [unparsed lines that mention the recorder])."""
+    out, bad = [], []
+    if not path.exists():
+        return out, bad
+    for ln in path.read_text().splitlines():
+        s = ln.strip()
+        if not s or s.startswith("#") or "recorder" not in s.lower():
+            continue
+        iso = re.findall(_ISO + r"\s*(?:-|–|to|\.\.)\s*" + _ISO, s)
+        got = [(to_ts(a), to_ts(b)) for a, b in iso]
+        if not got:
+            d = re.search(r"(\d{4}-\d{2}-\d{2})", s)
+            m = re.search(r"recorder\s+(?:was\s+)?(?:down|gap|stopped|off|restart\w*)\D{0,20}?" + _HMS
+                          + r"\s*(?:-|–|to|\.\.)\s*" + _HMS, s, re.I)
+            if d and m:
+                a, b = to_ts(f"{d.group(1)}T{m.group(1)}"), to_ts(f"{d.group(1)}T{m.group(2)}")
+                if a is not None and b is not None and b < a:
+                    b += 86400
+                got = [(a, b)]
+        got = [(float(a), float(b)) for a, b in got if a is not None and b is not None and b > a]
+        if got:
+            out += [(a, b, s) for a, b in got]
+        else:
+            bad.append(s)
+    return out, bad
+
+
+def parse_recorder_log(path: Path) -> list:
+    """Process restarts in recorder.log: a 'polyrec <ver> run <id>' line after an earlier run. The gap runs
+    from the previous run's 'stopped:' line (clean stop) or its last log line (crash / kill) to the new
+    run's start (the run id's timestamp, else the line's). Returns [(t0, t1, kind, detail)]."""
+    out = []
+    if not path.exists():
+        return out
+    rx_t = re.compile(r"^(\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2})")
+    rx_run = re.compile(r"polyrec \S+ run (\S+)")
+    last_t, stop_t, have_run = None, None, False
+    with open(path, errors="replace") as fh:
+        for ln in fh:
+            m = rx_t.match(ln)
+            if not m:
+                continue
+            t = float(to_ts(m.group(1)))
+            r = rx_run.search(ln)
+            if r:
+                rid = r.group(1)
+                mm = re.match(r"(\d{8}T\d{6})", rid)
+                start = float(to_ts(pd.Timestamp(mm.group(1)).isoformat())) if mm else t
+                if have_run and last_t is not None:
+                    a = stop_t if stop_t is not None else last_t
+                    out.append((a, max(start, a), "restart" if stop_t is not None else "crash_restart",
+                                f"run {rid}"))
+                have_run, stop_t = True, None
+            elif "polyrec: stopped:" in ln:
+                stop_t = t
+            last_t = t
+    return out
+
+
+def recorder_gaps(recs: list[Path], gap_s: float) -> dict:
+    """Recorder-level (track) outages per --rec dir, from (a) recorder.log process restarts, (b) the human
+    GAPS.txt, (c) the coverage log: heartbeat silences > gap_s inside a run, the dead time between runs,
+    and spans where no market was live. (a), (b) and the run-level parts of (c) apply to every market the
+    dir recorded ('global'); (c)'s no-market-live spans count only for the per-day totals (markets with a
+    coverage log get them from their own live intervals). Every detected event is listed, also those
+    <= gap_s."""
+    try:
+        from polyrec import coverage as cov
+    except ImportError:
+        cov = None
+    res = {"global": {}, "track": [], "events": [], "gaps_txt_unparsed": [], "logged": []}
+    for r in recs:
+        r = Path(r)
+        glob_ = []
+        for a, b, line in parse_gaps_txt(r / "GAPS.txt")[0]:
+            glob_.append((a, b))
+            res["logged"].append((a, b))
+            res["events"].append({"rec": str(r), "source": "GAPS.txt", "t0": a, "t1": b, "detail": line})
+        res["gaps_txt_unparsed"] += parse_gaps_txt(r / "GAPS.txt")[1]
+        for a, b, kind, det in parse_recorder_log(r / "recorder.log"):
+            glob_.append((a, b))
+            res["events"].append({"rec": str(r), "source": f"recorder.log {kind}", "t0": a, "t1": b, "detail": det})
+        ev = sorted(cov.read_events(r), key=lambda e: e["t"]) if cov is not None and (r / "coverage").is_dir() else []
+        track = []
+        if ev:
+            runs = {}
+            for e in ev:
+                runs.setdefault(e["run"], []).append(e["t"])
+            spans = sorted((min(v), max(v), k) for k, v in runs.items())
+            for k, (a, b, rid) in enumerate(spans):
+                ts = np.array(sorted(runs[rid]))
+                d = np.diff(ts)
+                for i in np.flatnonzero(d > gap_s):
+                    glob_.append((float(ts[i]), float(ts[i + 1])))
+                    res["events"].append({"rec": str(r), "source": "coverage heartbeat silence", "t0": float(ts[i]),
+                                          "t1": float(ts[i + 1]), "detail": f"run {rid}"})
+                if k + 1 < len(spans) and spans[k + 1][0] > b:
+                    glob_.append((b, spans[k + 1][0]))
+                    res["events"].append({"rec": str(r), "source": "coverage run change", "t0": b,
+                                          "t1": spans[k + 1][0], "detail": f"{rid} -> {spans[k + 1][2]}"})
+            live = merge_iv([x for v in cov.live_intervals(ev).values() for x in v])
+            # from the first live market on (the startup before it is not a gap)
+            for a, b in (uncovered(live, live[0][0], ev[-1]["t"]) if live else []):
+                track.append((a, b))
+                res["events"].append({"rec": str(r), "source": "coverage no market live", "t0": a, "t1": b,
+                                      "detail": ""})
+        res["global"][str(r)] = merge_iv(glob_)
+        res["track"] += glob_ + track
+    res["track"] = merge_iv(res["track"])
+    res["logged"] = merge_iv(res["logged"])
+    for e in res["events"]:
+        e["len_s"] = round(e["t1"] - e["t0"], 3)
+        e["above_threshold"] = bool(e["len_s"] > gap_s)
+        e["utc"] = (f"{pd.Timestamp(e['t0'], unit='s', tz='UTC'):%Y-%m-%d %H:%M:%S}-"
+                    f"{pd.Timestamp(e['t1'], unit='s', tz='UTC'):%H:%M:%S}")
+    res["events"].sort(key=lambda e: e["t0"])
+    return res
+
+
+def market_gaps(cov_iv, glob_iv: list, lo: float, hi: float, gap_s: float) -> list:
+    """Gaps (> gap_s) of one market inside [lo, hi]: not live in its own coverage log (when it has one;
+    lo is then at least its first live time) or inside a recorder-level outage."""
+    g = list(uncovered(cov_iv, lo, hi)) if cov_iv else []
+    g += [(max(a, lo), min(b, hi)) for a, b in glob_iv if b > lo and a < hi]
+    return [(float(a), float(b)) for a, b in merge_iv(g) if b - a > gap_s]
+
+
+def day_gap_totals(track: list, days: list, gap_s: float, max_day_s: float, logged: list) -> dict:
+    """D16 per-day totals of recorder-level gaps > gap_s, split at UTC midnight."""
+    out = {d: {"n_gaps": 0, "total_gap_s": 0.0, "all_logged": True} for d in days}
+    for a, b in track:
+        if b - a <= gap_s:
+            continue
+        is_logged = any(la < b and lb > a for la, lb in logged)
+        t = a
+        while t < b:
+            d = pd.Timestamp(t, unit="s", tz="UTC")
+            nxt = min(b, (d.normalize() + pd.Timedelta(days=1)).timestamp())
+            x = out.setdefault(d.strftime("%Y-%m-%d"), {"n_gaps": 0, "total_gap_s": 0.0, "all_logged": True})
+            x["n_gaps"] += 1
+            x["total_gap_s"] += nxt - t
+            x["all_logged"] &= is_logged
+            t = nxt
+    for x in out.values():
+        x["total_gap_s"] = round(x["total_gap_s"], 3)
+        x["eligible"] = bool(x["total_gap_s"] <= max_day_s)
+    return dict(sorted(out.items()))
+
+
+def split_at_gaps(spans: list, t: np.ndarray, gaps: list, two: np.ndarray, snap_t: np.ndarray) -> list:
+    """Split row spans (a, b, start_reason, end_reason) at the gaps: the piece before a gap ends at the last
+    row with t <= gap start ('gap'); the piece after it starts at the first row with t >= gap end whose book
+    is a two-sided snapshot captured at or after the gap end (two & snap_t >= gap end). Returns
+    (a, b, start_reason, end_reason, gap_before, gap_after) per piece."""
+    out = []
+    for a, b, sr, er in spans:
+        cur, cur_sr, gb = a, sr, None
+        for g0, g1 in gaps:
+            if g1 <= t[cur] or g0 >= t[b]:
+                continue
+            r_pre = int(np.searchsorted(t, g0, side="right")) - 1
+            if r_pre > cur:
+                out.append((cur, r_pre, cur_sr, "gap", gb, (g0, g1)))
+            j = int(np.searchsorted(t, g1, side="left"))
+            k = np.flatnonzero(two[j:b + 1] & (snap_t[j:b + 1] >= g1))
+            if not len(k):
+                cur = None
+                break
+            cur, cur_sr, gb = j + int(k[0]), "gap", (g0, g1)
+        if cur is not None and b > cur:
+            out.append((cur, b, cur_sr, er, gb, None))
+    return out
 
 
 def gamma_market(slug: str, offline: bool) -> dict | None:
@@ -675,7 +900,8 @@ def build(args) -> dict:
     snaps = load_rewards_dir(args.rewards_dir)
     print(f"reward snapshots: {len(snaps)} day(s) from {args.rewards_dir or '-'}; actual-start labels: {len(actual)}")
 
-    books = load_books(recs, slug_rx)
+    book_src = {}
+    books = load_books(recs, slug_rx, book_src)
     if books is None:
         raise SystemExit("no book rows found under " + ", ".join(map(str, recs)))
     print(f"books: {books.num_rows} rows, {len(set(books.column('market_slug').to_pylist()))} markets "
@@ -706,6 +932,19 @@ def build(args) -> dict:
     if len(rec_tr):
         rec_tr["slug"] = rec_tr.slug.astype(str)
     cov_all = load_coverage(recs)
+    gap_s = float(args.gap_s)
+    rgaps = recorder_gaps(recs, gap_s)               # D16: recorder-level outages (log, GAPS.txt, coverage)
+    slug_glob = {}
+    for r_, sl_ in book_src.items():
+        for s_ in sl_:
+            slug_glob.setdefault(s_, []).extend(rgaps["global"].get(r_, []))
+    slug_glob = {k: merge_iv(v) for k, v in slug_glob.items()}
+    n_ev = sum(e["above_threshold"] for e in rgaps["events"])
+    if rgaps["events"]:
+        print(f"recording gaps: {len(rgaps['events'])} recorder-level events ({n_ev} > {gap_s:g} s): "
+          + "; ".join(f"{e['source']} {e['utc']} ({e['len_s']:.0f} s)" for e in rgaps["events"]
+                      if e["source"] != "coverage no market live")[:1500])
+    game_gaps = {}
 
     # ---- metadata, kickoff, eligibility
     rows, skipped = [], []
@@ -804,7 +1043,9 @@ def build(args) -> dict:
                        "segments_dropped_trades_truncated": 0, "segments_dropped_short": 0,
                        "txs_dropped_inconsistent": 0, "legs_after_kickoff_dropped": 0, "legs_before_window": 0,
                        "book_rows_after_kickoff_dropped": 0, "markets_trades_truncated": 0,
-                       "markets_without_trades": 0, "trade_source": {}}
+                       "markets_without_trades": 0, "trade_source": {}, "segments_dropped_gap": 0,
+                       "gap_pieces_dropped_short": 0, "gap_cuts": 0, "markets_with_gaps": 0,
+                       "games_last_hour_gap": 0}
     bgroups = {s: g for s, g in bk.groupby("slug", sort=False)}
     rec_tr_by = {}
     if len(rec_tr):
@@ -926,14 +1167,32 @@ def build(args) -> dict:
         feat, sf, book, x3 = features(t, X, sub_row, stale, args.p_model, seg, dt, ko, first_book, ex=ex, prog=prog,
                                       seed=market_seed(cond, slug), cov_known=cov_iv is not None)
         stats["markets"] += 1
-        # ---- segments: (first row, last row, segments before the cut, eval_only)
+        # ---- D16 recording gaps of this market (> gap_s): own coverage log + recorder-level outages
+        lo_g = float(t[0]) if not cov_iv else max(float(t[0]), float(cov_iv[0][0]))
+        mg = market_gaps(cov_iv, slug_glob.get(slug, []), lo_g, float(ko), gap_s) if lo_g < ko else []
+        lh_gap = any(b_ > ko - LAST_HOUR_S and a_ < ko for a_, b_ in mg)
+        game_gaps[slug] = {"n_gaps": len(mg), "total_gap_s": round(sum(b_ - a_ for a_, b_ in mg), 3),
+                           "last_hour_gap": bool(lh_gap), "gaps": [[round(a_, 3), round(b_, 3)] for a_, b_ in mg[:50]],
+                           "coverage_log": cov_iv is not None, "checked_from_ts": lo_g}
+        stats["markets_with_gaps"] += int(bool(mg))
+        stats["games_last_hour_gap"] += int(lh_gap)
+        two_all = (X[:, TC["book_valid"]] > 0) & (feat[:, CI["mark_is_fv"]] < 0.5)
+        snap_t = np.where(X[:, TC["book_valid"]] > 0, t - X[:, TC["book_age"]], -np.inf)
+        # ---- segments: (first row, last row, segments before the cut, start / end reason, gap before / after)
         to_ko = (ko - t).astype(np.int64)
         if seg:
-            spans = [(k * seg, (k + 1) * seg, nseg - 1 - k, False) for k in range(nseg)]
+            spans = []
+            for k in range(nseg):                              # fixed lengths: a tile spanning a gap is dropped
+                a_, b_ = k * seg, (k + 1) * seg
+                if any(g0 < t[b_] and g1 > t[a_] for g0, g1 in mg):
+                    stats["segments_dropped_gap"] += 1
+                    continue
+                spans.append((a_, b_, nseg - 1 - k, "tile", "cut" if b_ == e_idx else "tile", None, None))
         else:
-            a0 = 0
+            a0, sr0 = 0, "first_book"
             if earliest is not None and not args.keep_truncated and t[0] < earliest:
                 a0 = int(np.searchsorted(t, earliest))         # start where the (truncated) trade history starts
+                sr0 = "trades_truncated"
                 stats["segments_trimmed_trades_truncated"] = stats.get("segments_trimmed_trades_truncated", 0) + 1
             cuts = [a0]
             if args.bucket_segments:                           # split at the bucket boundaries
@@ -942,12 +1201,21 @@ def build(args) -> dict:
                     if cuts[-1] < p_ < e_idx:
                         cuts.append(p_)
             cuts.append(e_idx)
-            spans = [(cuts[j], cuts[j + 1], len(cuts) - 2 - j, False) for j in range(len(cuts) - 1)
-                     if cuts[j + 1] > cuts[j]]
+            spans = [(cuts[j], cuts[j + 1], sr0 if j == 0 else "bucket", "cut" if j == len(cuts) - 2 else "bucket")
+                     for j in range(len(cuts) - 1) if cuts[j + 1] > cuts[j]]
             if (e_idx - a0) * dt < args.min_window_s:          # the whole game window (before any bucket split)
                 stats["segments_dropped_short"] += 1
                 spans = []
-        for a, b, kk, _ in spans:
+            pieces = split_at_gaps(spans, t, mg, two_all, snap_t) if mg else [x + (None, None) for x in spans]
+            keep = []
+            for x in pieces:                                   # a piece cut by a gap must be >= --min-window-s
+                if (x[2] == "gap" or x[3] == "gap") and (x[1] - x[0]) * dt < args.min_window_s:
+                    stats["gap_pieces_dropped_short"] += 1
+                else:
+                    keep.append(x)
+            spans = [(a_, b_, len(keep) - 1 - j, sr, er, gb, ga) for j, (a_, b_, sr, er, gb, ga) in enumerate(keep)]
+        mseg = []                                              # this market's kept segments (gap links)
+        for a, b, kk, sr, er, gb, ga in spans:
             Ls = b - a                                         # episode rows - 1 (= contract_len_s)
             sl = slice(a, b + 1)
             covered = X[sl, TC["book_valid"]] > 0
@@ -995,6 +1263,8 @@ def build(args) -> dict:
                     lg = None
             sid = f"{slug}#k{kk}"                     # k0 = the segment ending at the cut (kickoff by default)
             bk_ = bucket_info(to_ko[a:b + 1])
+            at_cut = b == e_idx
+            excl_b = [x for x in LAST_HOUR_BUCKETS if x in bk_["bucket_rows"]] if lh_gap else []
             f = spool / f"{len(segs)}.npz"
             np.savez(f, X=Xs.astype(np.float32), feat=fs.astype(np.float32), sf=sfs.astype(np.float32), book=bks,
                      x3=xs.astype(np.float32), legs=lg if lg is not None else np.zeros(0, FILL_DTYPE))
@@ -1002,16 +1272,25 @@ def build(args) -> dict:
             later = bool((prog["later"][sl] > 0).any())
             flags = ((FLAG_SETTLE_PX if legacy_settle else 0) | (FLAG_HAS_TRADES if lg is not None else 0)
                      | (FLAG_TRADES_TRUNC if trunc else 0) | (FLAG_HEAD_PADDED if cover < 1 else 0)
-                     | (FLAG_AT_CUT if kk == 0 else 0) | (FLAG_KICKOFF_FALLBACK if m.kickoff_fallback else 0)
+                     | (FLAG_AT_CUT if at_cut else 0) | (FLAG_KICKOFF_FALLBACK if m.kickoff_fallback else 0)
                      | (FLAG_COVERAGE if cov_iv is not None else 0) | (FLAG_IN_PROGRAM if in_prog else 0)
-                     | (FLAG_RW_LATER_SNAPSHOT if later else 0) | (FLAG_EARLY_START if m.early_start else 0))
+                     | (FLAG_RW_LATER_SNAPSHOT if later else 0) | (FLAG_EARLY_START if m.early_start else 0)
+                     | (FLAG_GAP_CUT if er == "gap" else 0) | (FLAG_AFTER_GAP if sr == "gap" else 0)
+                     | (FLAG_EVAL_EXCL_LAST_HOUR if excl_b else 0))
+            giv = (lambda g_: None if g_ is None else {"t0": round(g_[0], 3), "t1": round(g_[1], 3),
+                                                        "len_s": round(g_[1] - g_[0], 3)})
             seg_meta = {
                 "sid": sid, "slug": slug, "condition_id": cond, "n_rows": Ls + 1,
                 "open_ts": int(t[a]), "end_ts": int(t[b]), "row_s": dt,
                 "kickoff_ts": int(ko), "cut_ts": int(t[e_idx]), "event_ts": int(t[b]),
                 "kickoff_scheduled_ts": int(m.kickoff_true), "kickoff_source": m.kickoff_source,
                 "kickoff_cut_open_TESTING": bool(args.allow_open and ko != m.kickoff_true),
-                "at_cut": bool(kk == 0), "segments_before_cut": int(kk),
+                "at_cut": bool(at_cut), "segments_before_cut": int(kk),
+                "cut_reason": er, "start_reason": sr,
+                "gap": {"gap_before": giv(gb), "gap_after": giv(ga), "prev_sid": None, "next_sid": None,
+                        "n_gaps_game": len(mg), "total_gap_s_game": game_gaps[slug]["total_gap_s"]},
+                "last_hour_gap": bool(lh_gap), "excluded_from_eval_last_hour": bool(excl_b),
+                "eval_excluded_buckets": excl_b,
                 "to_kickoff_start_s": int(to_ko[a]), "to_kickoff_end_s": int(to_ko[b]), **bk_,
                 "settle_mode": 1, "settle_price": settle,
                 "actual_start": m.actual if isinstance(m.actual, dict) else None, "early_start": bool(m.early_start),
@@ -1026,6 +1305,12 @@ def build(args) -> dict:
                              rw_min=float(xs[-1, 1]), rw_spread=float(xs[-1, 0]), meta=seg_meta,
                              n_legs=0 if lg is None else len(lg), two_frac=float(two.mean()), kickoff=ko))
             stats["segments_kept"] += 1
+            stats["gap_cuts"] += int(er == "gap")
+            mseg.append(segs[-1])
+        for p_, q_ in zip(mseg[:-1], mseg[1:]):              # inventory carried across a gap: link the pieces
+            gp, gq = p_["meta"]["gap"], q_["meta"]["gap"]
+            if p_["meta"]["cut_reason"] == "gap" and q_["meta"]["start_reason"] == "gap" and gp["gap_after"] == gq["gap_before"]:
+                gp["next_sid"], gq["prev_sid"] = q_["sid"], p_["sid"]
     if not segs:
         shutil.rmtree(spool, ignore_errors=True)
         raise SystemExit(f"no segment kept: {json.dumps(stats)}")
@@ -1086,6 +1371,47 @@ def build(args) -> dict:
     del ticks
     slugs = [s["sid"] for s in segs]
     write_atomic(out / "splits.json", json.dumps({s["sid"]: s["split"] for s in segs}, indent=0, sort_keys=True))
+    # ---- D16 gap summary: per UTC day (recorder-level gaps > gap_s), per game, per split day
+    days_all = set(mk.day)
+    for s in segs:
+        days_all |= set(pd.date_range(pd.Timestamp(s["open_ts"], unit="s", tz="UTC").normalize(),
+                                      pd.Timestamp(s["end_ts"], unit="s", tz="UTC"), freq="D").strftime("%Y-%m-%d"))
+    day_tot = day_gap_totals(rgaps["track"], sorted(days_all), gap_s, float(args.max_day_gap_s), rgaps["logged"])
+    for g_ in game_gaps.values():                          # market-level gap seconds per UTC day (info)
+        for a_, b_ in g_["gaps"]:
+            d_ = pd.Timestamp(a_, unit="s", tz="UTC").strftime("%Y-%m-%d")
+            x_ = day_tot.setdefault(d_, {"n_gaps": 0, "total_gap_s": 0.0, "all_logged": True, "eligible": True})
+            x_["market_gaps"] = x_.get("market_gaps", 0) + 1
+            x_["market_gap_s_sum"] = round(x_.get("market_gap_s_sum", 0.0) + b_ - a_, 3)
+    bad_eval_days = sorted(d for d, v in day_split.items() if v in (1, 2) and not day_tot.get(d, {}).get("eligible", True))
+    if bad_eval_days:
+        print(f"WARNING (D16): val/test days with > {args.max_day_gap_s:g} s of recording gaps: {bad_eval_days}")
+    lh_games = sorted(k for k, v in game_gaps.items() if v["last_hour_gap"])
+    gaps_meta = {
+        "rule": "DECISIONS.md D16: a recording gap > gap_s splits an episode (pre-gap piece ends at the last row with "
+                "t <= gap start, flag GAP_CUT, cut_reason 'gap', settles at its last-row mark = the last pre-gap mid; "
+                "the post-gap piece starts at the first row after the gap whose book is a two-sided snapshot "
+                "captured after it, flag AFTER_GAP, start_reason 'gap'); pieces touching a gap shorter than "
+                "--min-window-s are dropped; fixed --seg 300/900/14400 tiles that overlap a gap are dropped. "
+                "Inventory is carried across the gap (forced quote pull): gap.prev_sid / next_sid link the pieces "
+                "(next_sid null = no continuation in the build: flatten at settle_price). A UTC day is eligible "
+                "for val/test if its recorder-level gap total <= max_day_gap_s (and the gaps are in GAPS.txt: "
+                "all_logged). A game with a gap in [kickoff - 1 h, kickoff] keeps all its segments but those with "
+                "rows in the 1h-30m / 30-5m / 5-0m buckets get excluded_from_eval_last_hour (flag "
+                "EVAL_EXCL_LAST_HOUR) and eval_excluded_buckets: exclude them from val/test.",
+        "gap_s": gap_s, "max_day_gap_s": float(args.max_day_gap_s), "last_hour_s": LAST_HOUR_S,
+        "last_hour_buckets": list(LAST_HOUR_BUCKETS),
+        "sources": "per market: its coverage log (not live) within [max(first grid row, first live), kickoff], "
+                   "unioned with recorder-level outages of the --rec dir that recorded it: recorder.log process "
+                   "restarts (stopped/last line -> next run start), GAPS.txt 'recorder down' lines, coverage "
+                   "heartbeat silences > gap_s and dead time between runs. Day totals also count spans with no "
+                   "market live in the coverage log.",
+        "days": day_tot, "val_test_days_ineligible": bad_eval_days,
+        "recorder_events": rgaps["events"], "gaps_txt_unparsed": rgaps["gaps_txt_unparsed"],
+        "games": game_gaps, "games_last_hour_gap": lh_games,
+        "segments_excluded_from_eval_last_hour": [s["sid"] for s in segs if s["meta"]["excluded_from_eval_last_hour"]],
+        "note": "features of rows just after a gap still look back (lags <= 120 rows) over the forward-filled "
+                "pre-gap book; rows inside a gap are never in an episode."}
     layout = [{"name": n_, "offset": MARKET_DTYPE.fields[n_][1], "type": B.C_TYPES[MARKET_DTYPE.fields[n_][0].str],
                "size": MARKET_DTYPE.fields[n_][0].itemsize} for n_ in MARKET_DTYPE.names]
     seg_name = {300: "5m", 900: "15m", 14400: "4h", 0: "window"}[seg]
@@ -1105,7 +1431,9 @@ def build(args) -> dict:
                                     "HEAD_PADDED": FLAG_HEAD_PADDED, "AT_CUT": FLAG_AT_CUT,
                                     "KICKOFF_FALLBACK": FLAG_KICKOFF_FALLBACK, "COVERAGE": FLAG_COVERAGE,
                                     "TRADES_TRUNCATED": FLAG_TRADES_TRUNC, "IN_PROGRAM": FLAG_IN_PROGRAM,
-                                    "RW_LATER_SNAPSHOT": FLAG_RW_LATER_SNAPSHOT, "EARLY_START": FLAG_EARLY_START},
+                                    "RW_LATER_SNAPSHOT": FLAG_RW_LATER_SNAPSHOT, "EARLY_START": FLAG_EARLY_START,
+                                    "GAP_CUT": FLAG_GAP_CUT, "AFTER_GAP": FLAG_AFTER_GAP,
+                                    "EVAL_EXCL_LAST_HOUR": FLAG_EVAL_EXCL_LAST_HOUR},
                           "flags_note": "bit 32 is no longer used (TRADES_TRUNCATED moved to 1024, sports-2); bit 16 "
                                         "SETTLE_PX only while legacy settle is on (see settle_source)"},
         "coin_ids": league_id,
@@ -1125,6 +1453,7 @@ def build(args) -> dict:
             "event_ts": "segments[i].event_ts = end_ts: where the episode settles (AT_CUT episodes: cut_ts = "
                         "T - cut_before_kickoff_s = T by default)"},
         "segments": seg_meta,
+        "gaps": gaps_meta,
         "splits": {"ids": SPLIT_NAMES, "rule": split_rule + "; by game day (slug date, else kickoff UTC date); "
                    "every segment of a game takes the game's split", "day_split": day_split, "counts": counts},
         "market_order": "sorted by (split, end_ts, segment id); each split's rows are contiguous",
@@ -1285,10 +1614,11 @@ def verify(out: Path) -> None:
         games = [s.split("#")[0] for s in meta["slugs"]]
         at = [g_ for g_, f_ in zip(games, mk["flags"]) if f_ & FLAG_AT_CUT]
         assert len(at) == len(set(at)), "more than one AT_CUT episode per game"
-        if not sp.get("buckets", {}).get("bucket_segments"):     # (a bucket piece can be dropped, e.g. no book)
-            assert len(at) == len(set(games)), "one AT_CUT episode per game"
-        if not sp.get("buckets", {}).get("bucket_segments"):
-            assert len(set(games)) == len(games)
+        gapped = {g_ for g_, v_ in (meta.get("gaps") or {}).get("games", {}).items() if v_["n_gaps"]}
+        if not sp.get("buckets", {}).get("bucket_segments"):     # (a bucket piece can be dropped, e.g. no book;
+            ng = [g_ for g_ in games if g_ not in gapped]         #  a gap can split a window or drop its tail)
+            assert len({g_ for g_ in at if g_ not in gapped}) == len(set(ng)), "one AT_CUT episode per game"
+            assert len(set(ng)) == len(ng)
     assert (mk["end_ts"] - mk["open_ts"] == mk["contract_len_s"] * sp["dt_s"]).all()
     assert np.isfinite(feat).all() and np.abs(feat[:, :N_OBS]).max() <= CLIP
     last = mk["row_offset"] + mk["n_rows"] - 1
@@ -1322,6 +1652,27 @@ def verify(out: Path) -> None:
         assert not (book["flags"][r0] & BOOK_SAME)
         if idx[r0 + n] > idx[r0]:
             assert fills["row"][idx[r0]] >= r0 and fills["row"][idx[r0 + n] - 1] < r0 + n
+    gm = meta.get("gaps")                                     # D16 (sports-3)
+    if gm is not None:
+        by_sid = {x["sid"]: x for x in sm}
+        for x, f_ in zip(sm, mk["flags"]):
+            for g0, g1 in gm["games"].get(x["slug"], {}).get("gaps", []):
+                assert not (g0 < x["end_ts"] and g1 > x["open_ts"]), f"{x['sid']} spans a gap {g0}-{g1}"
+            assert bool(f_ & FLAG_GAP_CUT) == (x["cut_reason"] == "gap") == (x["gap"]["gap_after"] is not None)
+            assert bool(f_ & FLAG_AFTER_GAP) == (x["start_reason"] == "gap") == (x["gap"]["gap_before"] is not None)
+            assert bool(f_ & FLAG_EVAL_EXCL_LAST_HOUR) == x["excluded_from_eval_last_hour"] == bool(x["eval_excluded_buckets"])
+            assert not x["excluded_from_eval_last_hour"] or gm["games"][x["slug"]]["last_hour_gap"]
+            if x["gap"]["gap_before"] is not None:            # post-gap piece: fresh two-sided book at row 0
+                r0 = x["row_offset"]
+                assert ticks[r0, TC["book_valid"]] > 0 and feat[r0, CI["mark_is_fv"]] < 0.5
+                assert x["open_ts"] - ticks[r0, TC["book_age"]] >= x["gap"]["gap_before"]["t1"] - 1e-6
+                assert x["open_ts"] >= x["gap"]["gap_before"]["t1"]
+            if x["gap"]["gap_after"] is not None:
+                assert x["end_ts"] <= x["gap"]["gap_after"]["t0"]
+            if x["gap"]["next_sid"]:
+                assert by_sid[x["gap"]["next_sid"]]["gap"]["prev_sid"] == x["sid"]
+        for d_, v_ in gm["days"].items():
+            assert v_["eligible"] == (v_["total_gap_s"] <= gm["max_day_gap_s"]), d_
     vol = np.bincount(fills["row"], weights=fills["size"].astype(np.float64), minlength=meta["N"])
     tv = np.asarray(ticks[:, TC["buy_vol"]], np.float64) + np.asarray(ticks[:, TC["sell_vol"]], np.float64)
     err = np.abs(vol - tv)   # float32 ticks: relative tolerance for big rows (e.g. 0.031 sh on 730k)
@@ -1332,10 +1683,11 @@ def verify(out: Path) -> None:
 
 
 # ----------------------------------------------------------------------------- selftest
-def synth(root: Path, n_games: int = 5, seed: int = 0, lead_s: int = 1000):
+def synth(root: Path, n_games: int = 5, seed: int = 0, lead_s: int = 1000, holes: dict | None = None):
     """Synthetic recorder output (books / trades / markets in the recorder schemas): n_games binary
     games on n_games consecutive days; books every ~3 s from lead_s before kickoff to 300 s after;
-    trades with maker legs on both outcome tokens, some after kickoff. Game 1 is listed late."""
+    trades with maker legs on both outcome tokens, some after kickoff. Game 1 is listed late.
+    holes {game: [(a, b), ...]} (s relative to kickoff): no book rows / trades in (a, b) (a recorder outage)."""
     from polyrec.schema import BOOK_SCHEMA, TRADES_SCHEMA, MARKETS_SCHEMA
     rng = np.random.default_rng(seed)
     base = int(pd.Timestamp("2026-10-01T18:00:00Z").timestamp())
@@ -1349,6 +1701,8 @@ def synth(root: Path, n_games: int = 5, seed: int = 0, lead_s: int = 1000):
         mid = np.clip(0.45 + np.cumsum(rng.normal(0, 0.004, len(ts))), 0.05, 0.95)
         brows, trows = [], []
         for i, (t_, m_) in enumerate(zip(ts, mid)):
+            if any(ko + a_ < t_ < ko + b_ for a_, b_ in (holes or {}).get(gi, [])):
+                continue
             bb = np.floor(m_ * 100) / 100
             ba = bb + 0.01 * (1 + (i % 3 == 0))
             bids = [round(bb - 0.01 * k, 2) for k in range(8)]
@@ -1411,6 +1765,98 @@ def synth(root: Path, n_games: int = 5, seed: int = 0, lead_s: int = 1000):
                     fee_rate=0.05, fee_exponent=1.0, fee_rebate_rate=0.15, winner_up=1)
         (root / "markets" / day).mkdir(parents=True, exist_ok=True)
         pq.write_table(pa.Table.from_pylist([mrow], schema=MARKETS_SCHEMA), root / "markets" / day / f"markets_{day}T18.parquet")
+
+
+def synth_gap_logs(rec: Path, base_ko: int) -> dict:
+    """D16 test inputs next to synth(rec, holes=SELFTEST_HOLES): a coverage log for game 3 (run A crashes at
+    kickoff - 600 s, run B is live again at kickoff - 540 s: a 60 s market gap in its last hour), a GAPS.txt
+    (game 4: 20 s outage at kickoff - 900 s; game 0: a 10 s blip, below 15 s; 2026-10-02: 40 min, a day over
+    30 min) and a recorder.log with a clean 4 s restart."""
+    ko3 = base_ko + 3 * 86400
+    slug3 = f"nhl-aaa-bb3-{pd.Timestamp(ko3, unit='s'):%Y-%m-%d}"
+    ev = [{"t": ko3 - 1100.0, "run": "A", "ev": "start"}, {"t": ko3 - 1100.0, "run": "A", "ev": "live", "slug": slug3}]
+    ev += [{"t": float(x), "run": "A", "ev": "hb"} for x in range(ko3 - 1090, ko3 - 599, 10)]
+    ev += [{"t": ko3 - 545.0, "run": "B", "ev": "start"}, {"t": ko3 - 540.0, "run": "B", "ev": "live", "slug": slug3}]
+    ev += [{"t": float(x), "run": "B", "ev": "hb"} for x in range(ko3 - 535, ko3 + 300, 10)]
+    ev += [{"t": ko3 + 300.0, "run": "B", "ev": "stop"}]
+    (rec / "coverage").mkdir(parents=True, exist_ok=True)
+    (rec / "coverage" / f"coverage_{pd.Timestamp(ko3, unit='s'):%Y-%m-%d}.jsonl").write_text(
+        "".join(json.dumps(e) + "\n" for e in ev))
+    (rec / "GAPS.txt").write_text(
+        "2026-10-05 test outage: recorder down 17:45:00-17:45:20 UTC (synthetic)\n"
+        "2026-10-01 blip: recorder down 17:46:40-17:46:50 UTC\n"
+        "2026-10-02 long outage: recorder down 10:00:00-10:40:00 UTC\n"
+        "2026-10-02 kickoff_watch down 11:00-12:00 UTC (not the recorder: ignored)\n")
+    (rec / "recorder.log").write_text(
+        "2026-10-03T12:00:00 INFO polyrec: polyrec 1.0.0 run 20261003T120000-aaaaaa -> x\n"
+        "2026-10-03T12:30:00 INFO polyrec: stopped: rows=1 frames=1 reconcile=0 mismatch=0\n"
+        "2026-10-03T12:30:04 INFO polyrec: polyrec 1.0.0 run 20261003T123004-bbbbbb -> x\n")
+    return {"ko3": ko3, "slug3": slug3, "ko4": base_ko + 4 * 86400}
+
+
+SELFTEST_HOLES = {3: [(-600, -540)], 4: [(-900, -880)]}
+
+
+def selftest_gaps(base: dict, tmp: Path, v3: Path | None) -> None:
+    """D16: split at a synthetic gap, settle at the pre-gap mid, day totals, last-hour flag, seg 300 tiles."""
+    rec = tmp / "rec_gap"
+    synth(rec, holes=SELFTEST_HOLES)
+    info = synth_gap_logs(rec, int(pd.Timestamp("2026-10-01T18:00:00Z").timestamp()))
+    ko3, slug3 = info["ko3"], info["slug3"]
+    sv = tmp / "splits_val.json"
+    bg = {**base, "rec": [str(rec)], "splits": str(sv), "min_window_s": 300.0}
+    og = tmp / "build_gap"
+    mg = build(argparse.Namespace(**{**bg, "out": str(og), "seg": 0, "max_hours": None}))
+    verify(og)
+    gm = mg["gaps"]
+    s3 = sorted((x for x in mg["segments"] if x["slug"] == slug3), key=lambda x: x["open_ts"])
+    assert len(s3) == 2, [x["sid"] for x in s3]
+    pre, post = s3
+    assert pre["cut_reason"] == "gap" and pre["flags"] & FLAG_GAP_CUT and not pre["at_cut"]
+    assert pre["end_ts"] == ko3 - 600 and pre["gap"]["gap_after"]["t0"] == ko3 - 600
+    assert post["start_reason"] == "gap" and post["flags"] & FLAG_AFTER_GAP and post["at_cut"]
+    assert post["open_ts"] == ko3 - 538 and post["gap"]["gap_before"]["t1"] == ko3 - 540
+    assert pre["gap"]["next_sid"] == post["sid"] and post["gap"]["prev_sid"] == pre["sid"]
+    raw = pq.read_table(rec / "books").to_pandas()
+    raw = raw[(raw.market_slug == slug3) & (raw.outcome == "Bruins") & ~raw.crossed.astype(bool)]
+    ts_ = np.array([int(x.timestamp()) for x in raw.captured_at])
+    last = raw[ts_ <= ko3 - 600].iloc[-1]
+    mid = np.float32(0.5 * (last.bid_prices[0] + last.ask_prices[0]))
+    assert pre["settle_price"] == float(mid), (pre["settle_price"], mid)        # last pre-gap mid
+    g3 = gm["games"][slug3]
+    assert g3["last_hour_gap"] and g3["n_gaps"] == 1 and abs(g3["total_gap_s"] - 60) < 1e-6, g3
+    assert pre["excluded_from_eval_last_hour"] and post["excluded_from_eval_last_hour"]
+    assert pre["flags"] & FLAG_EVAL_EXCL_LAST_HOUR and set(post["eval_excluded_buckets"]) <= set(LAST_HOUR_BUCKETS)
+    s4 = [x for x in mg["segments"] if x["slug"].startswith("nhl-aaa-bb4")]
+    assert len(s4) == 1 and s4[0]["start_reason"] == "gap" and s4[0]["gap"]["prev_sid"] is None
+    assert s4[0]["open_ts"] >= info["ko4"] - 880 and mg["sports"]["stats"]["gap_pieces_dropped_short"] == 1
+    s0 = [x for x in mg["segments"] if x["slug"].startswith("nhl-aaa-bb0")]
+    assert len(s0) == 1 and not s0[0]["last_hour_gap"] and s0[0]["cut_reason"] == "cut"   # 10 s blip: no split
+    d = gm["days"]
+    assert d["2026-10-02"]["total_gap_s"] == 2400 and not d["2026-10-02"]["eligible"] and d["2026-10-02"]["all_logged"]
+    assert d["2026-10-04"]["n_gaps"] == 1 and abs(d["2026-10-04"]["total_gap_s"] - 60) < 1e-6
+    assert d["2026-10-04"]["eligible"] and not d["2026-10-04"]["all_logged"]          # not in GAPS.txt
+    assert d["2026-10-05"]["total_gap_s"] == 20 and d["2026-10-05"]["all_logged"] and d["2026-10-01"]["n_gaps"] == 0
+    assert "2026-10-02" in gm["val_test_days_ineligible"]
+    rs = [e for e in gm["recorder_events"] if e["source"].startswith("recorder.log")]
+    assert len(rs) == 1 and rs[0]["len_s"] == 4 and not rs[0]["above_threshold"]
+    assert sorted(gm["games_last_hour_gap"]) == sorted([slug3, s4[0]["slug"]])
+    print("D16 seg 0 gap build OK:", json.dumps({x["sid"]: [x["open_ts"] - ko3, x["end_ts"] - ko3, x["cut_reason"],
+                                                         x["settle_price"]] for x in s3}),
+          "days", json.dumps({k: [v["total_gap_s"], v["eligible"]] for k, v in d.items()}))
+    m3 = build(argparse.Namespace(**{**bg, "out": str(tmp / "build_gap_300"), "seg": 300, "max_hours": 900 / 3600}))
+    verify(tmp / "build_gap_300")
+    assert m3["sports"]["stats"]["segments_dropped_gap"] == 2, m3["sports"]["stats"]
+    mb = build(argparse.Namespace(**{**bg, "out": str(tmp / "build_gap_b"), "seg": 0, "max_hours": None,
+                                     "bucket_segments": True}))
+    verify(tmp / "build_gap_b")
+    print("D16 seg 300 (2 tiles over a gap dropped) and --bucket-segments gap builds OK:",
+          sorted((x["sid"], x["bucket"], x["cut_reason"]) for x in mb["segments"] if x["slug"] == slug3))
+    if v3 is not None and (v3 / "adapt3.py").exists():
+        r = subprocess.run([sys.executable, str(v3 / "adapt3.py"), str(og)], capture_output=True, text=True,
+                           cwd=str(v3), timeout=600)
+        assert r.returncode == 0, r.stderr[-3000:]
+        print("adapt3.py on the D16 gap build:", r.stdout.strip().splitlines()[-1])
 
 
 ENV_PROBE = r"""
@@ -1600,6 +2046,7 @@ def selftest(args) -> None:
                 "no_fetch_trades": True, "splits": None, "slugs": None, "allow_open": False, "now": None,
                 "max_markets": 0, "keep_truncated": False, "rewards_dir": str(tmp / "rewards"), "kickoff_csv": None,
                 "drop_early_starts": False, "no_legacy_settle": False, "min_window_s": 600.0,
+                "gap_s": GAP_S, "max_day_gap_s": DAY_GAP_MAX_S,
                 "cut_before_kickoff_s": 0, "bucket_segments": False}
         outs = {}
         for wu in ("a", "b"):
@@ -1669,6 +2116,7 @@ def selftest(args) -> None:
         assert len(bks) == 8 and all(x["bucket_pure"] for x in mb_["segments"]), bks
         assert {b_[1] for b_ in bks} == {"30-5m", "5-0m"} and all(b_[2] == 301 for b_ in bks if b_[1] == "5-0m")
         print("cut 300 s and --bucket-segments builds OK:", bks[:2])
+        selftest_gaps(base, tmp, Path(args.v3env).resolve() if args.v3env else None)
         if args.no_env:
             return
         # ---- v3env: adapt3.py (today's sports branch) + env3, and the proposed x3 = sports_x3.bin variant
@@ -1739,7 +2187,11 @@ def main(argv=None):
                     "one episode per game window, first valid book row .. kickoff, any length (v3env only)")
     ap.add_argument("--max-hours", type=float, default=None, help="window before the CUT (floored to whole "
                     "segments); default 24 for --seg > 0, no cap (first book row) for --seg 0")
-    ap.add_argument("--min-window-s", type=float, default=600.0, help="--seg 0: drop games with a shorter window")
+    ap.add_argument("--min-window-s", type=float, default=600.0, help="--seg 0: drop games with a shorter window, "
+                    "and pieces cut by a recording gap that are shorter")
+    ap.add_argument("--gap-s", type=float, default=GAP_S, help="D16: recording gaps longer than this split episodes")
+    ap.add_argument("--max-day-gap-s", type=float, default=DAY_GAP_MAX_S,
+                    help="D16: a UTC day with more recorder-level gap time is flagged ineligible for val/test")
     ap.add_argument("--cut-before-kickoff-s", type=int, default=0,
                     help="episodes end (and settle) this many s before the scheduled kickoff (default 0 = at kickoff, "
                          "D15; D14's 3600 was withdrawn)")
