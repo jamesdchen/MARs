@@ -245,6 +245,22 @@ def run_books_day(a, day: str) -> dict:
                     dictionary_cols=bp.BOOK_DICT)
     nrows, nread, nkept, src, trades_all = 0, 0, 0, set(), []
     rows_by_tok = defaultdict(list)
+    nrows_tok = defaultdict(int)
+
+    def flush_rows():
+        by_hour = defaultdict(list)
+        for tok, rows in rows_by_tok.items():
+            if not rows:
+                continue
+            t = book_rows_table(by_tok[tok], rows)
+            hrs = np.asarray([r[0] for r in rows]) // 3600
+            for hh in np.unique(hrs):
+                by_hour[int(hh)].append(t.take(pa.array(np.flatnonzero(hrs == hh))))
+            nrows_tok[tok] += len(rows)
+            rows.clear()
+        for hh, ts_ in by_hour.items():
+            hk = dt.datetime.fromtimestamp(hh * 3600, dt.timezone.utc).strftime("%Y-%m-%dT%H")
+            sink.write_part(hk, pa.concat_tables(ts_))
     hours = sorted(set(want) | set(range(lo, hi, 3600)), key=lambda x: (x is None, x))
     for h in hours:
         if h is not None and h not in present and lo <= h < hi:     # archive hour missing: books unknown
@@ -288,20 +304,11 @@ def run_books_day(a, day: str) -> dict:
             rp.replay_token(ev, books[tok], max(lo, m["ws"]), min(hi, m["we"]) + 1, rows_by_tok[tok], trades,
                             a.recover_matches)
             trades_all += [(m["slug"],) + tr for tr in trades]
+        del cols, aid
+        flush_rows()
+    flush_rows()
     sp.close(remove=not a.reuse_dl)
     t_read = time.time() - t0 - t_dl
-    by_hour = defaultdict(list)
-    for tok, rows in rows_by_tok.items():
-        if not rows:
-            continue
-        t = book_rows_table(by_tok[tok], rows)
-        hrs = np.asarray([r[0] for r in rows]) // 3600
-        for hh in np.unique(hrs):
-            by_hour[int(hh)].append(t.take(pa.array(np.flatnonzero(hrs == hh))))
-        nrows += len(rows)
-    for hh, ts_ in by_hour.items():
-        hk = dt.datetime.fromtimestamp(hh * 3600, dt.timezone.utc).strftime("%Y-%m-%dT%H")
-        sink.write_part(hk, pa.concat_tables(ts_))
     for hk in sink.part_hours():
         sink.compact(hk)
     # coverage: live while the replayed book is verified, inside the emit window [ws, we) of the day
@@ -327,7 +334,7 @@ def run_books_day(a, day: str) -> dict:
             cov.append({"t": float(x1), "run": f"hf-{day}", "ev": "down", "slug": m["slug"]})
         if ehi > elo:
             qc[m["slug"]] = {"n_book": tb.n_book, "pc_checked": tb.pc_checked, "pc_match": tb.pc_match,
-                             "ghosts": tb.ghosts, "recovered": tb.recovered, "rows": len(rows_by_tok.get(tok, [])),
+                             "ghosts": tb.ghosts, "recovered": tb.recovered, "rows": nrows_tok.get(tok, 0),
                              "live_s": round(sum(x1 - x0 for x0, x1 in live)), "window_s": ehi - elo,
                              "verified_end": tb.verified}
     cov.append({"t": float(hi), "run": f"hf-{day}", "ev": "stop"})
@@ -352,7 +359,7 @@ def run_books_day(a, day: str) -> dict:
     ws_ = sum(q["window_s"] for q in qc.values())
     absent = sorted(set(range(lo, hi, 3600)) - set(present))
     st = {"day": day, "status": "ok", "source_archive": sorted(src), "tracked": len(by_tok),
-          "in_window": len(qc), "rows": nrows, "rg_wanted": len(allwant), "rg_total": md.num_row_groups,
+          "in_window": len(qc), "rows": sum(nrows_tok.values()), "rg_wanted": len(allwant), "rg_total": md.num_row_groups,
           "requests": nreq, "mb_fetched": round(sp.bytes_fetched / 1e6, 1), "rows_read": nread, "rows_kept": nkept,
           "hours_absent": [dt.datetime.fromtimestamp(h, dt.timezone.utc).strftime("%H") for h in absent],
           "pc_checked": pcc, "pc_match_frac": round(pcm / pcc, 5) if pcc else None,
