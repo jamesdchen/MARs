@@ -120,9 +120,78 @@ These are open games via `build_sports --allow-open`: each game is cut at its la
   history is empty crashes `api_trades` (`'DataFrame' object has no attribute 'outcome_idx'`). Seen in a 12-market test run (`--max-markets 12`, the first slugs alphabetically).
   Real mode uses `--no-fetch-trades` and does not hit it.
 
-### Results (real kicked-off games)
+### Results (real kicked-off games, run 2026-10-16 00:41 UTC)
 
-To be filled from `baseline_out/summary.md` after the rerun.
+These are exploratory runs on recorder data. No split is fixed yet and nothing here is a test
+result. Full tables are in `baseline_out/summary.md`, and per-market rows in
+`baseline_out/per_market.csv`.
+
+**Sample.**
+- 16 markets / 16 games whose kickoff was at least 30 min in the past and whose trades the recorder
+  had finalized:
+  - 9 NHL;
+  - 3 CFB;
+  - 1 NBA;
+  - 3 outcome markets of one Argentine soccer game.
+- Each game has only 2.6–3.6 h of book, because the recorder started at 20:22 UTC. So every episode
+  falls in the **1–6 h** bucket. The finer buckets (1 h–30 m, 30–5 m, 5–0 m) are covered only
+  through the pull grid, inside these 4 h episodes.
+- Settings: central fills (headline), 1 s latency, Q 100.
+- "P&L flat" crosses any leftover inventory at the pull, at half the spread.
+
+**P&L flat, USD summed over the 16 markets, central fills:**
+
+| strategy | pull 0 | 300 s | 900 s | 1800 s | 3600 s |
+|---|---|---|---|---|---|
+| join, 10 sh | −5.92 | −6.06 | −6.70 | −3.27 | +0.25 |
+| inside, 10 sh | −5.51 | −5.65 | −6.30 | −2.96 | +0.24 |
+| join, 100 sh | −6.28 | −6.36 | −4.91 | −4.19 | +0.38 |
+| inside, 100 sh | −6.97 | −7.05 | −5.56 | −4.90 | −0.49 |
+| no_quote | 0 | | | | |
+
+**Reading.**
+- **No fixed quoter beats no-quote.** The pull-3600 variants come out at about $0, but only because
+  they barely trade: 2–3 fills per market, so they fail D1.3.
+- Every variant that passes D1.3 (≥ 5 fills per market) loses $5.5–7 in total.
+- **Edge per share.** Spread capture is 0.50 ¢ per share (the books are 1 tick wide almost all the
+  time). Adverse selection outweighs it: the markout is −0.4 to −0.5 ¢ at 30 s and −0.5 to −0.7 ¢
+  at 5 min. Rebates (about 0.9 / 4 USD at 10 / 100 shares) do not close the gap.
+- **The loss sits near kickoff.** The more of the last hour a strategy quotes, the more it loses:
+  pull 0 / 300 is worst and pull 3600 best.
+  - That is the opposite of the D15 claim that the last 30 min is the best bucket.
+  - It is one evening of 16 mostly NHL games, at the passive end of the queue (the env joins behind
+    the displayed size). Treat it as one noisy data point, not evidence against D15.
+- **By league:**
+  - NBA (1 game) has the volume: 40–49 fills per market, and it loses −2.6 to −5 USD.
+  - NHL fills about 1 per market.
+  - The soccer (arg) three-way market loses −1.6 to −2.5 USD, mostly from inventory.
+- **What would change the picture:** more days, and the > 24 h / 6–24 h buckets that D14/D15 rate
+  highest. The recorder's 7 d horizon collects these from now on; the PolyOrderBooks backfill
+  covers them historically.
+
+### Kickoff results (2026-10-16 00:45 UTC)
+
+From `kickoff/kickoffs.csv` and `kickoff/detect.csv`; their tracked copies are in `kickoff/snapshot/`.
+
+**Actual starts (sports websocket).**
+- No game started early. Every confidently timed start came **after** the scheduled
+  `gameStartTime`:
+  - cs2: +5 s / +5 s / +174 s;
+  - lol: +416 s;
+  - nhl: +318 s and +425 s;
+  - val: +496 s.
+- Most NHL, NBA and CFB games are only `upper_bound`: the websocket first reported them already in
+  progress, 4–14 min after the scheduled time.
+
+**Book wipe (`clearBookOnStart`).**
+- Found **at the scheduled time** for nba-tor-nyk (+0.4 s), nba-okc-hou (−8.8 s) and cfb-gas-old
+  (−7.7 s), as on Oct 15 at 21:00.
+- **No wipe within +10 min** for 7 NHL games, nfl-sea-den and two other CFB games.
+- **Outliers:**
+  - cs2-fly-offcho was wiped 602 s *before* its scheduled time;
+  - an MLB NRFI market was emptied 1,117 s after its scheduled time.
+- So the wipe is not a reliable kickoff signal for every league. The v3 rule (cut at the scheduled
+  `gameStartTime`) stands, and in this sample no early start needed excluding.
 
 ## Kickoff detection
 
