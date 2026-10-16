@@ -14,11 +14,15 @@ python build_elections.py --emit-tokens tokens.parquet    # token map for onchai
 
 | flag | default | meaning |
 |---|---|---|
-| `--window-s` | 86400 | Episode length. It must divide 86400, and windows are aligned to UTC midnight. The current env only accepts 300, 900 and 14400. |
+| `--window-s` | 14400 | Window length (D16: 4 h windows at 00/04/08/12/16/20 UTC). It must divide 86400. Episodes are cut further at gaps, the market end and the cutoff. |
+| `--min-episode-s` | 600 | Drops (sub-)episodes shorter than this. |
+| `--day-max-gap-s` | 1800 | A day is eligible for train/val/test only if its total gap time is at most this, both recorder-wide and for the episode's market. |
+| `--ineligible-day` | purged | `purged` moves ineligible days to split 3, with a warning. `train-only` keeps train and purges only val/test, which is D16's wording. |
+| `--gaps-only` | off | Writes `GAPS.md` and `gaps_per_day.csv` to `--gaps-dir` (default this directory) from `rec/coverage`, builds nothing, and needs no `--trades-source`. |
 | `--split-days` | none | JSON file or inline JSON, `{day: train / val / test / purged / exclude}`. A day that is not listed goes to split 3 (purged). Days marked `exclude` are not built. **No default assigns test.** |
 | `--cutoff` | 2026-11-03T00:00Z | Windows must end by this time. Election night is out of scope (D11). |
-| `--max-gap`, `--max-total-gap` | 5 s, 15 s | The coverage rule from `recorder/merge.py`. |
-| `--allow-partial` | off | Keeps windows whose recorder or fills coverage is partial, with flag PARTIAL or TRADES_INCOMPLETE. Use it only for smoke tests. |
+| `--max-gap` | 15 s | A coverage gap longer than this ends the episode, and a new one starts after the gap (D16). Shorter gaps are forward-filled. |
+| `--allow-partial` | off | Keeps episodes whose fills coverage is incomplete, with flag TRADES_INCOMPLETE. Use it only for smoke tests. |
 | `--top-n` / `--all` | 20 | Builds only the N markets with the highest `rate_per_day` in `sel/selection.json`. `--top-n 0` or `--all` builds every selected market. |
 | `--markets`, `--min-rate` | all | Further market filters, applied before `--top-n`. |
 | `--trades-source` | required | `onchain` reads `onchain/extract.py` output (`--trades-path`); this is the census source. `data-api` uses `/trades?market=<condition id>` and is cached. `file` reads a trades.parquet in the `data/raw` schema. `none` builds without fills. |
@@ -30,12 +34,29 @@ python build_elections.py --emit-tokens tokens.parquet    # token map for onchai
 - **One episode is one market in one window** (`markets.bin` row). The window is
   `[open, open + window_s]`, giving `window_s + 1` one-second rows, as in `data/build.py`.
   `seconds_to_close` counts down to the end of the window, not to resolution.
-- **A window is kept only if all of these hold:**
-  - The recorder's coverage log covers it: no single gap over 5 s, total gaps under 15 s, and the
-    coverage segment that holds the open began at or before the open. This is `merge.py`'s rule.
-  - It ends before both the market's `end_date` and `--cutoff`.
-  - Its day is not excluded.
-  - The fills source is complete over the window.
+- **Episodes are cut at gaps (D16).** Each 4 h window is intersected with the market's coverage
+  segments from `rec/coverage` (`polyrec.coverage.live_intervals`, gaps of 15 s or less bridged), and
+  further cut at the market's `end_date` and at `--cutoff`.
+  - Each resulting piece becomes an episode `[start, end]` with `end - start + 1` rows. Its
+    `contract_len_s` is `end - start`, so episode lengths vary.
+  - Pieces shorter than `--min-episode-s` are dropped.
+  - No row inside a gap longer than 15 s is ever synthesised.
+- **Reasons and links.** `markets_meta.parquet` records each episode's `start_reason` and its
+  `end_reason`; `split_reason` is the `end_reason`. The values are `window_boundary`, `gap`,
+  `market_end`, `cutoff`, `coverage_start` (the market's first recorded segment) and `coverage_end`
+  (the recording so far ends there).
+  - Two consecutive kept segments of one market separated by a gap are linked through
+    `prev_segment_id` and `next_segment_id`.
+  - `gap_before_s` is the time from the previous kept segment's end; it includes any dropped short
+    segment in between. A v3 env can use the link to carry inventory across the gap, as D16
+    requires (the pre-gap mark is that segment's last row).
+- **Day eligibility (D16).** A day is eligible for train/val/test only if its total gap seconds are
+  at most `--day-max-gap-s` (1800), both recorder-wide and for the episode's own market on that day.
+  Otherwise the assigned split becomes purged (3) and a warning is printed.
+  - D16's text allows such days in train; `--ineligible-day train-only` does that.
+  - Every build writes `GAPS.md` and `gaps_per_day.csv` next to the binaries (see "Gap report").
+- **Fills.** The fills source must be complete over the episode; otherwise the episode needs
+  `--allow-partial`.
 - **Books.** The script uses `data/build.py`'s own functions (`ladder_topk`, `merged_snapshots`,
   `to_up_frame`, `mirror_stats`):
   - It keeps one snapshot per token and captured second (the last one).
@@ -59,7 +80,7 @@ python build_elections.py --emit-tokens tokens.parquet    # token map for onchai
 | field | election value |
 |---|---|
 | open_ts, end_ts, n_rows | the window; n_rows = window_s + 1 |
-| contract_len_s | window_s. The env's length bit and the len_* one-hot only know 300, 900 and 14400. |
+| contract_len_s | end - start of the episode (the full window, or less when the episode is cut at a gap, the market end or the cutoff). The current env's length bit only knows 300, 900 and 14400. |
 | coin_id | -1 (no underlying) |
 | winner_up | **-1**: unresolved at build time, never a label |
 | split | from `--split-days` |
@@ -172,8 +193,16 @@ values at that minute's sample second, which is the row where the env's hook pay
 | condition_id, slug, question | market |
 | episode_id | `"<slug>@<open ISO>"` (= `meta.slugs`, `splits.json` key) |
 | day | UTC day of the window open |
-| window_start_ts, window_end_ts | unix seconds |
-| window_start_utc, window_end_utc | UTC timestamps |
+| window_start_ts, window_end_ts | unix seconds of the 4 h window the episode belongs to |
+| window_start_utc, window_end_utc | UTC timestamps of that window |
+| episode_start_ts, episode_end_ts | unix seconds: the episode's actual first and last row (= `markets.bin` open_ts, end_ts) |
+| episode_start_utc, episode_end_utc | UTC timestamps of the same |
+| start_reason, end_reason | window_boundary / gap / market_end / cutoff / coverage_start / coverage_end |
+| split_reason | = end_reason (why the episode stops here) |
+| prev_segment_id, next_segment_id | episode_id of the same market's segment across a gap ("" if none) |
+| gap_before_s | seconds from the previous linked segment's end (0 if none) |
+| split_assigned | the day's split from `--split-days` before the eligibility rule |
+| day_eligible | the D16 day rule held (recorder-wide and this market) |
 | market_end_ts | the market's `end_date` |
 | split, split_name | 0 train, 1 val, 2 test, 3 purged |
 | row_offset, n_rows | where the episode sits in the row-major binaries |
@@ -209,29 +238,70 @@ of 500 raw snapshots it matches `reward_terms.adjusted_mid` and `side_scores`.
 - **Per-sample payout:** `pi = daily_rate / 1440` (one sample per minute, `sample_period_s = 60`).
 - **Reward at a sample** (`reward_terms.reward_accrual`): `pi * Q_ours / (Q_ours + comp_q_min)`.
 
+## Gap report (`GAPS.md`, `gaps_per_day.csv`)
+
+Both files are written by every build into its build directory, and by `--gaps-only` into this
+directory. Gaps come from `rec/coverage/coverage_<day>.jsonl` and are measured per UTC day.
+
+- **Recorder-wide gaps** are times when no recorder run was up.
+  - A run counts from its `start` event to its `stop` event. If the run died, it counts to its last
+    event; heartbeats are every 10 s, so a crash gap can be overstated by up to 10 s. For example,
+    the 2026-10-16 restart appears as 02:03:16–02:04:16.
+  - The day span starts at the first recorder start, and ends at the day's end or the last event.
+- **Market gaps** are times a selected market was not live, measured from its first `live` event.
+  They include the recorder-wide gaps, plus the re-subscription time after each restart (about
+  20–60 s for every market) and WS reconnects.
+
+`gaps_per_day.csv` has one row per (scope, day), plus one row per market-day for `scope = market`:
+
+| column | meaning |
+|---|---|
+| scope | `recorder` or `market` |
+| day | UTC day |
+| slug, condition_id | the market ("" for recorder rows) |
+| span_start_utc, span_end_utc, span_s | the measured span |
+| total_gap_s | sum of all gaps in the span |
+| n_gaps | number of gaps |
+| n_gaps_gt_max | number of gaps longer than `--max-gap` |
+| total_gap_gt_max_s | total seconds of those gaps |
+| longest_gap_s, longest_gap_start_utc | the longest gap and its start |
+| eligible | total_gap_s <= `--day-max-gap-s` |
+| day_complete | the span reaches the end of the day |
+
+`GAPS.md` shows the recorder-wide per-day table, a per-day summary across markets, and a list of
+every recorder-wide gap.
+
 ## Size
 
 Each row takes 580 B, so one market-day (86,401 rows) is about 50 MB. The default 20 markets come to
 about 1.0 GB per recorded day; all 276 recorded markets come to about 14 GB per day. The disk has
 27 GB free.
 
-## Smoke test (2026-10-15 about 20:22 to 20:55 UTC recorded, `build_smoke/`)
+## Smoke test (D16 version, 2026-10-16 about 02:10 UTC; recorded 2026-10-15 20:21 to now, `build_smoke/w4h`)
 
-| build | episodes | rows | fill legs | size on disk | rewards_ts rows (covered) | load.verify | C env |
-|---|---|---|---|---|---|---|---|
-| `w4h` (default top 20, `--allow-partial`, 4 h) | 20 | 288,020 | 29 | 167 MB | 4,800 (486) | OK | steps with len_mask 4 |
-| `day` (default top 20, `--allow-partial`, 1 day) | 20 | 1,728,020 | 1,386 | 1.0 GB | 28,800 (484) | OK | refused: no length bit for 86400 |
-| `w300` (all markets, 5 min, full coverage, first version) | 580 | 174,580 | 16 | | | OK | steps with len_mask 1; the liquidity hook pays with size_mult 10 |
-| `w300_wide` (top 10, first version) | 24 | 7,224 | 5 | | | OK | refused: MM_G = 44, by design |
+Run with `--allow-partial --split-days '{"2026-10-15": "train", "2026-10-16": "val"}' --trades-source
+data-api` and the defaults (top 20, 4 h windows, 15 s gap split, 600 s minimum):
 
-"First version" means these builds predate the side tables and the top-20 default.
+- **Episodes:** 78, with 394,630 rows and 283 fill legs; the build is 229 MB and `load.verify` passes.
+  - By split: 58 train on 10-15, 20 val on 10-16.
+  - By (start, end) reason: (gap, gap) 36, (gap, window_boundary) 20, (window_boundary, gap) 20,
+    (coverage_start, gap) 2.
+  - Lengths: median 7,397 rows, minimum 830. 38 episodes are linked to a previous segment across a
+    gap.
+  - 96 sub-episodes shorter than 600 s were dropped. These are the 20:21–20:24 run, the
+    21:00:36–21:07 run, and the segment after the 02:04 restart, which was still under 10 min.
+- **Gaps:** both days are eligible; see `GAPS.md`.
+- **Env:** the current env refuses most of these episodes because their lengths vary (no length
+  bit). mm3.h is meant to accept any length.
+
+Earlier smoke builds (`w300`, `day`, `w300_wide`) predate D16.
 
 ## What P/v3env/mm3.h should read
 
 The v3 env is being built centrally as `P/v3env/mm3.h`. This script does not build an env copy; it
 only keeps the binaries compatible.
 
-- **`markets.bin`** (88 B, `MmMarket` unchanged):
+- **`markets.bin`** (88 B, `MmMarket` unchanged; under D16, episode lengths vary and gaps cut episodes):
   - row_offset, n_rows, open_ts, end_ts and contract_len_s, which can take any value. Episode
     selection must not depend on the 300/900/14400 length bits.
   - split, flags. UNRESOLVED (32) means: settle and mark post-end markouts at the last row's
