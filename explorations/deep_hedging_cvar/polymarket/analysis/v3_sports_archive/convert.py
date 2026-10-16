@@ -42,6 +42,7 @@ from pathlib import Path
 
 import numpy as np
 import pyarrow as pa
+pa.set_memory_pool(pa.system_memory_pool())
 import pyarrow.compute as pc
 import pyarrow.parquet as pq
 
@@ -215,7 +216,7 @@ def run_books_day(a, day: str) -> dict:
         atomic_json(done, st)
         log.info("books %s: archive day absent", day)
         return st
-    sp = hfpq.SparseParquet(f"orderbook/date={day}/data_0.parquet", str(a.dl / f"{day}.parquet"))
+    sp = hfpq.SparseParquet(f"orderbook/date={day}/data_0.parquet", str(a.dl / f"{day}.parquet"), reuse=a.reuse_dl)
     md = sp.meta
     rgs = rg_hour_stats(sp)
     present = sorted({h for h, _, _ in rgs if h is not None and lo <= h < hi})
@@ -251,20 +252,22 @@ def run_books_day(a, day: str) -> dict:
                 tb.set_verified(False, h)
             continue
         parts = []
-        idx = want.get(h, [])
-        for k in range(0, len(idx), RG_BATCH):
-            tab = pf.read_row_groups(idx[k:k + RG_BATCH], columns=COLS + ["source_archive"])
-            nread += tab.num_rows
-            pos = pc.index_in(tab["asset_id"], value_set=toks)
-            tab = tab.append_column("_pos", pos).filter(pc.is_valid(pos))
-            if tab.num_rows == 0:
+        for i in want.get(h, []):
+            key = pf.read_row_group(i, columns=["asset_id", "event_ts_ms"])
+            nread += key.num_rows
+            pos = pc.index_in(key["asset_id"], value_set=toks)
+            ok = pc.is_valid(pos)
+            if not pc.any(ok).as_py():
                 continue
-            p = tab["_pos"]
-            keep = pc.and_(pc.less(tab["event_ts_ms"].cast(pa.int64()), pc.take(we_ms, p)),
-                           pc.greater_equal(tab["event_ts_ms"].cast(pa.int64()), pc.take(t0_ms, p)))
-            tab = tab.filter(keep)
+            ts_ = key["event_ts_ms"].cast(pa.int64())
+            pz = pc.fill_null(pos, 0)
+            ok = pc.and_(ok, pc.and_(pc.less(ts_, pc.take(we_ms, pz)), pc.greater_equal(ts_, pc.take(t0_ms, pz))))
+            if not pc.any(ok).as_py():
+                continue
+            tab = pf.read_row_group(i, columns=COLS + ["source_archive"]).filter(ok)
             src.update(x for x in pc.unique(tab["source_archive"]).to_pylist() if x)
-            parts.append(tab.drop_columns(["source_archive", "_pos", "condition_id"]))
+            parts.append(tab.drop_columns(["source_archive", "condition_id"]))
+            del key, tab
         if not parts:
             continue
         tab = pa.concat_tables(parts)
@@ -285,7 +288,7 @@ def run_books_day(a, day: str) -> dict:
             rp.replay_token(ev, books[tok], max(lo, m["ws"]), min(hi, m["we"]) + 1, rows_by_tok[tok], trades,
                             a.recover_matches)
             trades_all += [(m["slug"],) + tr for tr in trades]
-    sp.close()
+    sp.close(remove=not a.reuse_dl)
     t_read = time.time() - t0 - t_dl
     by_hour = defaultdict(list)
     for tok, rows in rows_by_tok.items():
@@ -431,6 +434,7 @@ def main():
     ap.add_argument("--workers", type=int, default=8)
     ap.add_argument("--meta-workers", type=int, default=3)
     ap.add_argument("--min-free-gb", type=float, default=12)
+    ap.add_argument("--reuse-dl", action="store_true", help="dev: reuse a complete local sparse file, keep it")
     ap.add_argument("--keep-raw", action="store_true", help="run: keep raw_hf books after export")
     a = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s",
