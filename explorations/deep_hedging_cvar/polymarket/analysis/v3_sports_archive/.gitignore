@@ -4,3 +4,4 @@ dl/
 build*/
 __pycache__/
 *.log
+raw_hf_test/

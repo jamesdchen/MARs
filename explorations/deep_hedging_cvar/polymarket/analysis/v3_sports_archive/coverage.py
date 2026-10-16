@@ -84,7 +84,7 @@ def measured(a) -> tuple[dict, Counter]:
     return cells, lg
 
 
-def table(cells, lg, have, ncol=16) -> list[str]:
+def table(cells, lg, have, ncol=26) -> list[str]:
     cols = [l for l, _ in lg.most_common(ncol)]
     out = ["| day | era | archive h | " + " | ".join(cols) + " | other | total |",
            "|" + "---|" * (len(cols) + 5)]
@@ -133,6 +133,10 @@ def main():
              "in that UTC day's file (24 = complete). 2026-08-10 is partial.", "",
              "The planned count does not yet require the replayed book to be anchored (see README: books are "
              "replayed from listing or re-anchored by a full `book` snapshot); the measured table below does.", "",
+             "Archive hours: the parquet footers show 24 h for every day except 02-24 (22), 04-04 (22), 05-22 (23), "
+             "05-25 (9), 06-05 (9), 06-11 (4), 06-23 (13) and 08-10 (1, partial day); the dataset card's 5-15 % "
+             "missing hours are mostly not visible as whole empty hours here (an hour can still be thin). The ingest "
+             "logs per-day `hours_absent` and marks books unverified across them.", "",
              "## Planned (pre-registration basis)", ""]
     lines += table(cells, lg, have)
     if a.measured:

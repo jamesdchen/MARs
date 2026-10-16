@@ -266,7 +266,37 @@ def track_window(m: dict, a) -> tuple[int, int, bool]:
     return floor, m["we"], False
 
 
-def run_books_day(a, day: str) -> dict:
+def prepare_day(a, day: str) -> dict:
+    """Footer + row-group choice + download of one archive day (no book state needed: runs ahead in a thread)."""
+    t0 = time.time()
+    lo, hi = d0(day), d0(day) + 86400
+    ms = targets_for_day(a, day)
+    tw = {m["tokens"][0]: track_window(m, a) for m in ms}
+    by_tok = {m["tokens"][0]: m for m in ms if tw[m["tokens"][0]][0] < hi}
+    sp = hfpq.SparseParquet(f"orderbook/date={day}/data_0.parquet", str(a.dl / f"{day}.parquet"), reuse=a.reuse_dl)
+    rgs = rg_hour_stats(sp)
+    present = sorted({h for h, _, _ in rgs if h is not None and lo <= h < hi})
+    win = sorted((by_tok[t]["cond"], tw[t][0], tw[t][1]) for t in by_tok)
+    conds_sorted = [w[0] for w in win]
+    want = defaultdict(list)
+    for i, (h, t, c) in enumerate(rgs):
+        if t is None or c is None:
+            want[h].append(i)
+            continue
+        k = bisect.bisect_left(conds_sorted, c[0])
+        while k < len(win) and win[k][0] <= c[1]:
+            if win[k][1] <= t[1] and win[k][2] > t[0]:
+                want[h].append(i)
+                break
+            k += 1
+    allwant = [i for v in want.values() for i in v]
+    nreq = sp.fetch(allwant, workers=a.workers)
+    t_dl = time.time() - t0
+    return {"sp": sp, "rgs": rgs, "present": present, "want": want, "allwant": allwant, "nreq": nreq,
+            "t_dl": time.time() - t0}
+
+
+def run_books_day(a, day: str, prep=None) -> dict:
     out = a.raw
     done = out / "_state" / "books" / f"{day}.json"
     if done.exists():
@@ -302,26 +332,11 @@ def run_books_day(a, day: str) -> dict:
         atomic_json(done, st)
         log.info("books %s: archive day absent", day)
         return st
-    sp = hfpq.SparseParquet(f"orderbook/date={day}/data_0.parquet", str(a.dl / f"{day}.parquet"), reuse=a.reuse_dl)
+    prep = prep if prep is not None else prepare_day(a, day)
+    sp, rgs, present, want, allwant, nreq = (prep[k] for k in ("sp", "rgs", "present", "want", "allwant", "nreq"))
     md = sp.meta
-    rgs = rg_hour_stats(sp)
-    present = sorted({h for h, _, _ in rgs if h is not None and lo <= h < hi})
-    win = sorted((by_tok[t]["cond"], tw[t][0], tw[t][1]) for t in by_tok)
-    conds_sorted = [w[0] for w in win]
-    want = defaultdict(list)
-    for i, (h, t, c) in enumerate(rgs):
-        if t is None or c is None:
-            want[h].append(i)
-            continue
-        k = bisect.bisect_left(conds_sorted, c[0])
-        while k < len(win) and win[k][0] <= c[1]:
-            if win[k][1] <= t[1] and win[k][2] > t[0]:
-                want[h].append(i)
-                break
-            k += 1
-    allwant = [i for v in want.values() for i in v]
-    nreq = sp.fetch(allwant, workers=a.workers)
-    t_dl = time.time() - t0
+    t_dl = prep["t_dl"]
+    t0 = time.time() - t_dl
     toks_sorted = sorted(by_tok)
     toks = pa.array(toks_sorted)
     we_ms = pa.array([tw[t][1] * 1000 for t in toks_sorted], pa.int64())
@@ -564,7 +579,8 @@ def main():
     ap.add_argument("--meta-workers", type=int, default=3)
     ap.add_argument("--min-free-gb", type=float, default=12)
     ap.add_argument("--reuse-dl", action="store_true", help="dev: reuse a complete local sparse file, keep it")
-    ap.add_argument("--keep-raw", action="store_true", help="run: keep raw_hf books after export")
+    ap.add_argument("--keep-raw", action="store_true", help="run: keep raw_hf/books/<day> (full depth) after export")
+    ap.add_argument("--no-prefetch", action="store_true", help="run: do not download day d+1 while d is processed")
     a = ap.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s",
                         datefmt="%Y-%m-%dT%H:%M:%SZ")
@@ -585,15 +601,51 @@ def main():
         for d in days(a.start, a.end):
             log.info("export %s: %s", d, export_day(a, d))
     elif a.stage == "run":
-        for d in days(a.start, a.end):
+        import threading
+        ds = list(days(a.start, a.end))
+
+        def needs_dl(d):
+            return not (a.raw / "_state" / "books" / f"{d}.json").exists() and d not in ARCHIVE_MISSING and \
+                ARCHIVE_FIRST <= d <= ARCHIVE_LAST
+        pre = {}
+
+        def start_prefetch(d):
+            box = {}
+
+            def work():
+                try:
+                    box["prep"] = prepare_day(a, d)
+                    run_meta_days(a, d, d)
+                    box["meta"] = True
+                except Exception as e:  # noqa: BLE001
+                    box["err"] = e
+            th = threading.Thread(target=work, daemon=True)
+            th.start()
+            pre[d] = (th, box)
+        for i, d in enumerate(ds):
             free = shutil.disk_usage(a.raw).free / 1e9
             if free < a.min_free_gb:
                 raise SystemExit(f"only {free:.1f} GB free (< --min-free-gb {a.min_free_gb}); stopping before {d}")
-            st = run_books_day(a, d)
-            if st.get("status") != "ok":
-                continue
-            run_meta_days(a, d, d)
-            export_day(a, d)
+            if d not in pre and needs_dl(d):
+                start_prefetch(d)
+            nxt = ds[i + 1] if i + 1 < len(ds) else None
+            prep, meta_done = None, False
+            if d in pre:
+                th, box = pre.pop(d)
+                th.join()
+                if "err" in box:
+                    log.warning("prefetch %s failed (%s); retrying inline", d, box["err"])
+                prep = box.get("prep")
+                meta_done = bool(box.get("meta"))
+            if nxt and needs_dl(nxt) and not a.no_prefetch:
+                start_prefetch(nxt)
+            st = run_books_day(a, d, prep)
+            if st.get("status") == "ok":
+                if not meta_done:
+                    run_meta_days(a, d, d)
+                export_day(a, d)
+                if not a.keep_raw:
+                    shutil.rmtree(a.raw / "books" / d, ignore_errors=True)
     elif a.stage == "status":
         for f in sorted((a.raw / "_state" / "books").glob("*.json")):
             s = read_json(f)
