@@ -26,6 +26,13 @@
  *     first 50 are v2's.
  *  6. Fee / rebate coefficients per category (fee_rate_<cat>, rebate_rate_<cat>), and per market
  *     in markets3.bin; the fill models, latency, match delay and rebate formula are unchanged.
+ *  7. DECISIONS.md D16 recording gaps: markets3.bin links the pieces of an episode cut at a
+ *     recording gap (gap_next / gap_prev) and flags them (flags3 GAP_CUT / AFTER_GAP / ...). A
+ *     piece with a continuation settles at its last pre-gap mid without the flattening cost;
+ *     with gap_chain = 1 its end inventory and cash become the starting state of the next piece
+ *     (a forced quote pull across the gap), so a chain's P&L is that of one continuous episode.
+ *     obs 78 (gap_recent) flags the 120 rows after a gap, whose lagged features still look back
+ *     over the forward-filled pre-gap book. Without links and flags nothing changes.
  *
  * Data: the five v2 files (markets.bin, feat.bin, book.bin, fills.bin, fill_index.bin) plus two
  * optional v3 side files written by adapt3.py: markets3.bin (64 B per market, Mm3Market) and
@@ -47,9 +54,10 @@
 #include <unistd.h>
 
 #define M3_OBS_V2 50       // v2 observation (obs 0..49, obs 49 = 1)
-#define M3_NX 28           // extra slots written at obs 50.. when obs_size > 50
+#define M3_NX 29           // extra slots written at obs 50.. when obs_size > 50
 #define M3_OBS_MAX 128     // largest obs_size accepted (slots past 50 + M3_NX are 0)
-#define M3_OBS_FULL 80     // recommended width: 50 + 28 extras + 2 zero pads (multiple of 8)
+#define M3_OBS_FULL 80     // recommended width: 50 + 29 extras + 1 zero pad (multiple of 8)
+#define M3_GAP_ROWS 120    // D16: lagged / rolling features look back at most this many rows
 #define M3_NUM_ATNS 3
 #define M3_ACT_SIZES {7, 7, 3}
 #define M3_G 44            // feat.bin columns
@@ -79,7 +87,12 @@ enum { M3_CAT_CRYPTO = 0, M3_CAT_SPORTS = 1, M3_CAT_ELECTIONS = 2, M3_CAT_OTHER 
 // x3.bin columns (float32 [N, M3_X]); when present they replace the per-market reward program and
 // feat.bin's liq_mid / liq_comp / liq_pi.
 enum { M3_X_V = 0, M3_X_MIN, M3_X_RATE, M3_X_PROG, M3_X_LIQ_MID, M3_X_LIQ_COMP, M3_X_LIQ_PI, M3_X_PAD };
-#define M3_FLAG3_LEGACY 1  // Mm3Market.flags3: synthesised for v2 data (no markets3.bin)
+#define M3_FLAG3_LEGACY 1  // Mm3Ext.flags3: synthesised for v2 data (no markets3.bin)
+// D16 (adapt3.py from build_sports sports-3 / build_elections gap fields)
+#define M3_FLAG3_GAP_CUT 2           // the piece ends at a recording gap (settles at its last pre-gap mid)
+#define M3_FLAG3_AFTER_GAP 4         // the piece starts after a recording gap
+#define M3_FLAG3_EVAL_EXCL 8         // sports: last-hour gap in the game; excluded from val/test scoring
+#define M3_FLAG3_DAY_INELIGIBLE 16   // a UTC day the piece spans has > 30 min of gaps: train only
 
 typedef struct {
     int64_t row_offset, open_ts, end_ts;
@@ -101,7 +114,8 @@ typedef struct {
     float rw_rate_day;       // reward pool USD/day (observation; the paid pool is liq_pi)
     float fee_rate, fee_exp, rebate_rate;    // < 0: markets.bin
     int32_t flags3;
-    int32_t pad[2];
+    int32_t gap_next;        // D16: index + 1 of the piece after the gap (0 = none); was pad[0]
+    int32_t gap_prev;        // D16: index + 1 of the piece before the gap (0 = none); was pad[1]
 } Mm3Ext;                                        // 64 bytes, markets3.bin
 
 typedef struct {
@@ -206,6 +220,7 @@ typedef struct {
     double settle_mode, flat_c, pull_s, close_inv_coef, close_ramp, close_ramp_s;
     double fee_rate_crypto, rebate_rate_crypto, fee_rate_sports, rebate_rate_sports,
         fee_rate_elections, rebate_rate_elections;
+    double gap_chain;
 } Mm3Params;
 
 static const char* M3_PARAM_NAMES[] = {
@@ -219,6 +234,7 @@ static const char* M3_PARAM_NAMES[] = {
     "settle_mode", "flat_c", "pull_s", "close_inv_coef", "close_ramp", "close_ramp_s",
     "fee_rate_crypto", "rebate_rate_crypto", "fee_rate_sports", "rebate_rate_sports",
     "fee_rate_elections", "rebate_rate_elections",
+    "gap_chain",
 };
 #define M3_NUM_PARAMS (int)(sizeof(M3_PARAM_NAMES) / sizeof(M3_PARAM_NAMES[0]))
 
@@ -233,6 +249,7 @@ static const double M3_DEFAULTS[] = {
     -1, 0, 0, 0, 0.2, 0,
     -1, -1, -1, -1,
     -1, -1,
+    0,
 };
 
 typedef char m3_param_check[(sizeof(Mm3Params) == sizeof(M3_DEFAULTS)
@@ -392,6 +409,14 @@ static int m3_data_open(const char* dir, char* err, int n) {
                 m3_unmap_all(&d);
                 return -1;
             }
+            int nx = e->gap_next, pv = e->gap_prev;
+            if (nx < 0 || nx > d.n_markets || pv < 0 || pv > d.n_markets || nx == i + 1 || pv == i + 1
+                    || (nx > 0 && d.ext[nx - 1].gap_prev != i + 1) || (pv > 0 && d.ext[pv - 1].gap_next != i + 1)) {
+                snprintf(err, n, "mm3: markets3.bin record %d has invalid gap links (next %d, prev %d; 1-based, "
+                    "must be mutual)", i, nx, pv);
+                m3_unmap_all(&d);
+                return -1;
+            }
         }
     } else {                     // v2 data: synthesise the legacy per-market records
         Mm3Ext* e = (Mm3Ext*)calloc((size_t)d.n_markets, sizeof(Mm3Ext));
@@ -440,7 +465,7 @@ typedef struct {
 typedef struct {
     int split, model, L, D, dt_len[4], mark_mode, reward_mode, tick_rule, liq_on, cycle_stride;
     int fixed_market, fixed_start, n_list, markout_h;
-    int dt_far, obs_size, size_mode, settle_mode, pad;
+    int dt_far, obs_size, size_mode, settle_mode, gap_chain, len_mask, cat_mask;
     const int* list;
     double Q, inv_penalty, reward_scale, size_mult, part_cap, fee_rate, rebate_rate, liq_moas,
         start_frac;
@@ -470,6 +495,12 @@ typedef struct {
     double gross, notional;                 // D15 diagnostics: filled shares and notional (Log only)
     float rw_samples, rw_scored;
     int category, legacy;
+    // D16 gap chains
+    double w0;                              // wealth carried in at the piece start (0 unless chained)
+    double gross_chain;                     // filled shares of the chain's earlier pieces
+    int chained;                            // this piece continues a chain (carried inventory and cash)
+    int cont;                               // set while logging a piece whose chain continues
+    int gap_cut, after_gap;                 // flags3 GAP_CUT / AFTER_GAP of the piece
 } Mm3;
 
 #define M3_MAX_CFG 256
@@ -691,7 +722,10 @@ static int m3_config(Mm3Cfg* c, const Mm3Params* p, char* err, int n) {
     c->reb_cat[1] = p->rebate_rate_sports;
     c->reb_cat[2] = p->rebate_rate_elections;
     c->reb_cat[3] = -1.0;
+    c->gap_chain = (int)p->gap_chain;
     int mask = (int)p->len_mask, cmask = (int)p->cat_mask;
+    c->len_mask = mask;
+    c->cat_mask = cmask;
     if (c->Q <= 0 || c->size_mult <= 0 || mask < 1 || mask > 15 || cmask < 1 || cmask > 15 || c->mark_mode < 0
             || c->mark_mode > 2 || c->reward_mode < 0 || c->reward_mode > 2 || c->tick_rule < 0 || c->tick_rule > 1
             || c->start_frac < 0 || c->start_frac >= 1 || c->markout_h < 0) {
@@ -702,9 +736,10 @@ static int m3_config(Mm3Cfg* c, const Mm3Params* p, char* err, int n) {
     if (c->dt_far < 0 || c->obs_size < M3_OBS_V2 || c->obs_size > M3_OBS_MAX || c->size_mode < 0 || c->size_mode > 1
             || !(c->size_rel[0] > 0 && c->size_rel[1] > 0 && c->size_rel[2] > 0) || c->settle_mode < -1
             || c->settle_mode > 2 || c->flat_c < 0 || c->pull_s < 0 || c->close_inv_coef < 0
-            || (c->close_inv_coef > 0 && c->close_ramp_s <= 0 && c->close_ramp <= 0)) {
+            || (c->close_inv_coef > 0 && c->close_ramp_s <= 0 && c->close_ramp <= 0)
+            || c->gap_chain < 0 || c->gap_chain > 1) {
         snprintf(err, n, "mm3: bad dt_far / obs_size (50..%d) / size_mode / size_rel* / settle_mode / flat_c / pull_s"
-            " / close_inv_coef / close_ramp", M3_OBS_MAX);
+            " / close_inv_coef / close_ramp / gap_chain (0/1)", M3_OBS_MAX);
         return -1;
     }
     const Mm3List* l = m3_list(c->split, mask, cmask);
@@ -760,7 +795,8 @@ static inline void m3_begin(Mm3* m, int mk, int off) {
     if (mode == M3_SETTLE_PRICE && (E->flags3 & M3_FLAG3_LEGACY)) mode = M3_SETTLE_LAST_MARK;  // no price stored
     m->settle = mode == M3_SETTLE_WINNER ? (double)M->winner_up
               : (mode == M3_SETTLE_PRICE ? E->settle_price : (double)m3_feat(m->r_end)[M3_F_MARK]);
-    m->flat = mode == M3_SETTLE_WINNER ? 0.0 : c->flat_c / 100.0;
+    // D16: a piece with a continuation (gap_next) settles at its last pre-gap mid, never flattened
+    m->flat = (mode == M3_SETTLE_WINNER || E->gap_next > 0) ? 0.0 : c->flat_c / 100.0;
     m->row_s = E->row_s;
     m->ev_off = (double)((E->event_ts > 0 ? E->event_ts : M->end_ts) - M->open_ts);
     m->rw_v = E->rw_v_c;
@@ -782,6 +818,37 @@ static inline void m3_begin(Mm3* m, int mk, int off) {
     m->close_pen = m->flat_cost = m->rw_share = 0.0;
     m->gross = m->notional = 0.0;
     m->rw_samples = m->rw_scored = 0.0f;
+    m->w0 = m->gross_chain = 0.0;
+    m->chained = m->cont = 0;
+    m->gap_cut = (E->flags3 & M3_FLAG3_GAP_CUT) != 0;
+    m->after_gap = (E->flags3 & M3_FLAG3_AFTER_GAP) != 0;
+}
+
+// D16: the piece the current one continues into with gap_chain = 1 (its gap_next, when that market
+// is in this config's market list: same split, len_mask and cat_mask), else -1.
+static inline int m3_chain_next(const Mm3* m) {
+    const Mm3Cfg* c = m->cfg;
+    if (!c->gap_chain) return -1;
+    int nx = M3_DATA.ext[m->market].gap_next - 1;
+    if (nx < 0) return -1;
+    const Mm3Market* M = &M3_DATA.markets[nx];
+    if (M->split != c->split || !(m3_len_bit(M->n_rows - 1) & c->len_mask)
+            || !((1 << M3_DATA.ext[nx].category) & c->cat_mask)) {
+        return -1;
+    }
+    return nx;
+}
+
+// Fraction of the episode left at row t: rows to the piece end / piece rows, except for a piece cut
+// at a recording gap (GAP_CUT), where it is the time to the event over the time from the piece
+// start, so neither obs 51 nor the close ramp announces the gap (the event is the kickoff, or the
+// end of the chain for elections).
+static inline double m3_left_frac(const Mm3* m, int t) {
+    if (m->gap_cut && m->ev_off > 0.0) {
+        double f = (m->ev_off - (double)(t - m->r0) * m->row_s) / m->ev_off;
+        return f > 0.0 ? f : 0.0;
+    }
+    return (double)(m->r_end - t) / (double)m->len;
 }
 
 static inline void m3_new_episode(Mm3* m) {
@@ -1141,11 +1208,15 @@ static inline void m3_write_extra(const Mm3* m, float* e) {
     int t = m->t;
     double sec = m3_to_event(m, t);
     e[0] = (float)m3_clip(log1p(sec > 0.0 ? sec : 0.0) / log1p(86400.0), 0.0, 5.0);
-    e[1] = (float)((double)(m->r_end - t) / (double)m->len);
+    e[1] = m->gap_cut ? (float)m3_left_frac(m, t) : (float)((double)(m->r_end - t) / (double)m->len);
     e[2] = (float)(m->category == M3_CAT_CRYPTO);
     e[3] = (float)(m->category == M3_CAT_SPORTS);
     e[4] = (float)(m->category == M3_CAT_ELECTIONS);
     for (int k = 5; k < M3_NX; k++) e[k] = 0.0f;
+    if (m->after_gap) {         // obs 78 gap_recent: 1 at the first row after a gap, 0 from M3_GAP_ROWS on
+        int r = t - m->r0;
+        e[28] = r < M3_GAP_ROWS ? (float)(1.0 - (double)r / M3_GAP_ROWS) : 0.0f;
+    }
     if (!c->liq_on || !m3_in_program(m, t)) return;
     double v = m3_rw_v(m, t), minsz = m3_rw_min(m, t), mid = m3_liq_mid(t), comp = m3_liq_comp(t);
     double rate = m3_rw_rate(m, t);
@@ -1263,6 +1334,7 @@ static inline void m3_prefetch_legs(const Mm3* m) {
 
 static inline void m3_log_episode(Mm3* m, Mm3Log* log, double pnl) {
     double trading = m->cash + m->inv * m->settle - m->flat_cost;
+    if (m->chained) trading -= m->w0;           // D16: P&L lines are the piece's increment
     log->score += (float)pnl;
     log->perf += pnl > 0.0 ? 1.0f : 0.0f;
     log->episode_return += m->ret;
@@ -1303,11 +1375,14 @@ static inline void m3_log_episode(Mm3* m, Mm3Log* log, double pnl) {
     double end_inv = fabs(m->inv);
     log->net_gross_sh += (float)m->gross;
     log->net_notional += (float)m->notional;
-    log->net_end_inv += (float)end_inv;
-    if (m->gross > 0.0) {
-        double ns = 1.0 - end_inv / m->gross;
-        log->net_share += (float)(ns > 0.0 ? ns : 0.0);
-        log->net_eps += 1.0f;
+    if (!m->cont) {         // D16: a piece whose inventory carries into the next one has no end inventory
+        double g = m->chained ? m->gross_chain + m->gross : m->gross;     // the chain's filled shares
+        log->net_end_inv += (float)end_inv;
+        if (g > 0.0) {
+            double ns = 1.0 - end_inv / g;
+            log->net_share += (float)(ns > 0.0 ? ns : 0.0);
+            log->net_eps += 1.0f;
+        }
     }
     log->net_flat_drag += (float)m->flat_cost;
     log->n += 1.0f;
@@ -1327,7 +1402,7 @@ static inline void m3_step(Mm3* m, const int* act, float* obs, float* rew, float
         if (c->pull_s > 0.0 && sec <= c->pull_s) bid = ask = 0;      // quotes forced off near the event
         if (c->close_inv_coef > 0.0) {          // close-inventory shaping, on the state the action sees
             double left = c->close_ramp_s > 0.0 ? sec / c->close_ramp_s
-                                                : (double)(m->r_end - t) / (double)m->len / c->close_ramp;
+                        : (m->gap_cut ? m3_left_frac(m, t) : (double)(m->r_end - t) / (double)m->len) / c->close_ramp;
             if (left < 1.0) cpen = c->close_inv_coef * fabs(m->inv) / c->Q * (1.0 - (left > 0.0 ? left : 0.0));
         }
     }
@@ -1375,8 +1450,22 @@ static inline void m3_step(Mm3* m, const int* act, float* obs, float* rew, float
     m->ret += rf;
     m->steps += 1.0f;
     if (done) {
-        m3_log_episode(m, log, w);
-        m3_new_episode(m);
+        int nx = m3_chain_next(m);
+        if (nx < 0) {
+            m3_log_episode(m, log, m->chained ? w - m->w0 : w);
+            m3_new_episode(m);
+        } else {        // D16 gap chain: the next piece starts with this piece's inventory and cash
+            m->cont = 1;
+            m3_log_episode(m, log, m->chained ? w - m->w0 : w);
+            double inv = m->inv, cash = m->cash + m->rebates + m->liq, gc = m->gross_chain + m->gross;
+            m3_begin(m, nx, 0);         // orders and pending cancelled: the gap is a forced quote pull
+            m->inv = inv;
+            m->cash = cash;
+            m->wealth = m->w0 = w;      // marked at the last pre-gap mid (this piece's settle)
+            m->gross_chain = gc;
+            m->chained = 1;
+            m->max_inv = (float)fabs(inv);
+        }
         *term = 1.0f;
     } else {
         *term = 0.0f;
