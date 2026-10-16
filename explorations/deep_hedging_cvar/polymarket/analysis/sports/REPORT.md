@@ -32,8 +32,10 @@ But external exchanges cannot protect anyone in-play: Smarkets suspends on goals
 Polymarket.
 
 **Where it is promising:**
-1. In-play two-sided quoting, with a sub-second score feed and automatic pulls on events. This is where the
-   incumbents make money, and the 1 s taker delay helps exactly this maker.
+1. In-play two-sided quoting, with a fast score feed and automatic pulls on events. This is where the incumbents
+   make money, and the 1 s taker delay helps exactly this maker. But Polymarket's own public score WebSocket arrives
+   a median **74 s after the book has moved** (21/21 NHL/NFL/esports scores tonight). So the feed has to be a
+   commercial low-latency one, or the pull rule has to react to the book itself.
 2. Pre-game quoting from listing to T−1 h (the D14 window) against a Pinnacle/Smarkets anchor. The edge is small:
    0 to +30 bps at +30 min in the 1–24 h buckets, and +250 bps (CI from 0) above 24 h on thin volume. The rebate
    adds ~25 bps. Tennis and esports are the most consistently positive leagues; NFL is flat.
@@ -433,8 +435,9 @@ Suggested sequence:
      cancel instantly.
    - The risk is concentrated at scoring events: 10% of in-play maker volume, −1.4¢ at 1 min.
    - To play, a maker needs:
-     - a score/event feed faster than the takers' (Polymarket's sports WS is public and shared, so it is not enough
-       alone);
+     - a score/event feed faster than the takers'. Polymarket's public sports WS lags the book by 25–140 s, a median
+       of 74 s, so it is useless for this. Alternatively, a book-reactive rule that pulls on touch/mid moves inside the
+       1 s taker delay;
      - automatic pulls on events;
      - inventory control into resolution.
 3. **Pre-game is the most tractable but thinnest opportunity:**
@@ -469,6 +472,10 @@ Suggested sequence:
    on-chain fills (or Marketlens at $39 for history). Model the game-start wipe, the 1 s taker delay and per-market
    fees.
 2. Pre-game: test a fair-value quoter anchored to the no-vig external price.
-3. In-play: the question to answer first is **how fast our event detection would be relative to the takers'**.
-   Measure the lag of the Polymarket sports WS and ESPN against the book's own jump times in the recorded data.
-   Without an edge there, in-play quoting copies the losing one-sided population, not the pros.
+3. In-play: the free score feed is ~1 min late (§4), so the remaining options are:
+   - a paid low-latency feed (OpticOdds, GRID, PandaScore, Sportradar), or
+   - a book-reactive pull rule tested in the replay: cancel when the opposite touch is swept or the mid jumps, and
+     re-quote after a cool-down.
+
+   The replay must model the 1 s taker delay exactly, since it is this maker's whole margin. Without one of the two,
+   in-play quoting copies the losing one-sided population, not the pros.
