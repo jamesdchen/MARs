@@ -170,6 +170,36 @@ def rg_hour_stats(sp):
     return out
 
 
+_W = {}
+
+
+def _winit(local, toks, we_ms, t0_ms):
+    _W.update(pf=pq.ParquetFile(local), toks=pa.array(toks), we=pa.array(we_ms, pa.int64()),
+              t0=pa.array(t0_ms, pa.int64()))
+
+
+def _filter_hour(idx):
+    """Worker: rows of the target tokens inside their replay windows, from row groups idx (one archive hour)."""
+    pf, toks, we_ms, t0_ms = _W["pf"], _W["toks"], _W["we"], _W["t0"]
+    parts, nread, src = [], 0, set()
+    for i in idx:
+        key = pf.read_row_group(i, columns=["asset_id", "event_ts_ms"])
+        nread += key.num_rows
+        pos = pc.index_in(key["asset_id"], value_set=toks)
+        ok = pc.is_valid(pos)
+        if not pc.any(ok).as_py():
+            continue
+        ts_ = key["event_ts_ms"].cast(pa.int64())
+        pz = pc.fill_null(pos, 0)
+        ok = pc.and_(ok, pc.and_(pc.less(ts_, pc.take(we_ms, pz)), pc.greater_equal(ts_, pc.take(t0_ms, pz))))
+        if not pc.any(ok).as_py():
+            continue
+        tab = pf.read_row_group(i, columns=COLS + ["source_archive"]).filter(ok)
+        src.update(x for x in pc.unique(tab["source_archive"]).to_pylist() if x)
+        parts.append(tab.drop_columns(["source_archive", "condition_id"]))
+    return (pa.concat_tables(parts) if parts else None), nread, src
+
+
 def track_window(m: dict, a) -> tuple[int, int, bool]:
     """[t0, we) over which a market's book is replayed, and whether t0 is its listing (book empty at t0)."""
     g = m["g"]
@@ -262,32 +292,23 @@ def run_books_day(a, day: str) -> dict:
             hk = dt.datetime.fromtimestamp(hh * 3600, dt.timezone.utc).strftime("%Y-%m-%dT%H")
             sink.write_part(hk, pa.concat_tables(ts_))
     hours = sorted(set(want) | set(range(lo, hi, 3600)), key=lambda x: (x is None, x))
-    for h in hours:
+    import multiprocessing as mp
+    pool = mp.get_context("fork").Pool(a.procs, initializer=_winit,
+                                       initargs=(sp.local, toks_sorted, [tw[t][1] * 1000 for t in toks_sorted],
+                                                 [tw[t][0] * 1000 for t in toks_sorted]))
+    jobs = [(h, pool.apply_async(_filter_hour, (want.get(h, []),)) if want.get(h) else None) for h in hours]
+    for h, job in jobs:
         if h is not None and h not in present and lo <= h < hi:     # archive hour missing: books unknown
             for tb in books.values():
                 tb.set_verified(False, h)
             continue
-        parts = []
-        for i in want.get(h, []):
-            key = pf.read_row_group(i, columns=["asset_id", "event_ts_ms"])
-            nread += key.num_rows
-            pos = pc.index_in(key["asset_id"], value_set=toks)
-            ok = pc.is_valid(pos)
-            if not pc.any(ok).as_py():
-                continue
-            ts_ = key["event_ts_ms"].cast(pa.int64())
-            pz = pc.fill_null(pos, 0)
-            ok = pc.and_(ok, pc.and_(pc.less(ts_, pc.take(we_ms, pz)), pc.greater_equal(ts_, pc.take(t0_ms, pz))))
-            if not pc.any(ok).as_py():
-                continue
-            tab = pf.read_row_group(i, columns=COLS + ["source_archive"]).filter(ok)
-            src.update(x for x in pc.unique(tab["source_archive"]).to_pylist() if x)
-            parts.append(tab.drop_columns(["source_archive", "condition_id"]))
-            del key, tab
-        if not parts:
+        if job is None:
             continue
-        tab = pa.concat_tables(parts)
-        del parts
+        tab, nr, sr = job.get()
+        nread += nr
+        src |= sr
+        if tab is None:
+            continue
         nkept += tab.num_rows
         tab = tab.take(pc.sort_indices(tab, [("asset_id", "ascending"), ("event_ts_ms", "ascending")]))
         aid = tab["asset_id"].to_numpy(zero_copy_only=False)
@@ -307,6 +328,8 @@ def run_books_day(a, day: str) -> dict:
         del cols, aid
         flush_rows()
     flush_rows()
+    pool.close()
+    pool.join()
     sp.close(remove=not a.reuse_dl)
     t_read = time.time() - t0 - t_dl
     for hk in sink.part_hours():
@@ -337,6 +360,9 @@ def run_books_day(a, day: str) -> dict:
                              "ghosts": tb.ghosts, "recovered": tb.recovered, "rows": nrows_tok.get(tok, 0),
                              "live_s": round(sum(x1 - x0 for x0, x1 in live)), "window_s": ehi - elo,
                              "verified_end": tb.verified}
+    for h in present:                                  # archive heartbeat: silent over missing archive hours
+        for t in range(max(h, lo), min(h + 3600, hi), 10):
+            cov.append({"t": float(t), "run": f"hf-{day}", "ev": "hb"})
     cov.append({"t": float(hi), "run": f"hf-{day}", "ev": "stop"})
     cov.sort(key=lambda e: e["t"])
     cp = out / "coverage" / f"coverage_{day}.jsonl"
@@ -382,22 +408,47 @@ def run_meta_days(a, start: str, end: str) -> dict:
 
 
 # ------------------------------------------------------------------------------------------- export
+def export_volumes(a, day: str) -> dict:
+    vol = {}
+    for k in range(-1, int(a.hours_before // 24) + 3):
+        kd = (dt.date.fromisoformat(day) + dt.timedelta(days=k)).isoformat()
+        p = a.cache / "selection" / f"{kd}.json.gz"
+        if p.exists():
+            vol.update({m["slug"]: m["volume"] for m in read_json(p, gz=True)})
+    return vol
+
+
 def export_day(a, day: str) -> dict:
     od = a.daily / day
     od.mkdir(parents=True, exist_ok=True)
     s = {}
     bf = sorted((a.raw / "books" / day).glob("*.parquet"))
     if bf:
-        t = pa.concat_tables([pq.read_table(f) for f in bf])
-        df = t.to_pandas()
-        for c in ("bid_prices", "bid_sizes", "ask_prices", "ask_sizes"):
-            df[c] = df[c].map(lambda x: list(x[:a.levels]) if x is not None else x)
-        df = df.sort_values(["market_slug", "captured_at"]).reset_index(drop=True)
-        df["reconciled"] = False
+        tabs = []
+        for f in bf:
+            t = pq.read_table(f)
+            for col in ("bid_prices", "bid_sizes", "ask_prices", "ask_sizes"):
+                i = t.schema.get_field_index(col)
+                t = t.set_column(i, col, pc.list_slice(t[col], 0, a.levels))
+            tabs.append(t)
+        t = pa.concat_tables(tabs)
+        del tabs
+        vol = export_volumes(a, day)
+        keep_slugs = pa.array(sorted(s_ for s_, v in vol.items() if v >= a.export_min_volume))
+        t = t.filter(pc.is_in(pc.cast(t["market_slug"], pa.string()), value_set=keep_slugs))
+        t = t.take(pc.sort_indices(t, [("market_slug", "ascending"), ("captured_at", "ascending")]))
+        # rows whose top --levels ladder equals the previous row of the same market carry no information here
+        sig = pc.binary_join_element_wise(
+            pc.cast(t["market_slug"], pa.string()),
+            *[pc.binary_join(pc.cast(t[c_], pa.list_(pa.string())), ",") for c_ in
+              ("bid_prices", "bid_sizes", "ask_prices", "ask_sizes")], "|").to_numpy(zero_copy_only=False)
+        t = t.filter(pa.array(np.r_[True, sig[1:] != sig[:-1]] if len(sig) else np.zeros(0, bool)))
+        del sig
+        t = t.append_column("reconciled", pa.array(np.zeros(t.num_rows, bool)))
         p = od / f"books_{day}.parquet"
-        pq.write_table(pa.Table.from_pandas(df, preserve_index=False), p, compression="zstd", compression_level=19)
-        s["books_rows"] = len(df)
-        s["books_markets"] = int(df.market_slug.nunique())
+        pq.write_table(t, p, compression="zstd", compression_level=19, row_group_size=256 * 1024)
+        s["books_rows"] = t.num_rows
+        s["books_markets"] = len(pc.unique(t["market_slug"]))
         s["books_mb"] = round(p.stat().st_size / 1e6, 2)
     for kind in ("trades", "markets"):
         files = sorted((a.raw / kind / day).glob("*.parquet"))
@@ -436,9 +487,11 @@ def main():
     ap.add_argument("--hours-before", type=float, default=48)
     ap.add_argument("--post-min", type=float, default=5)
     ap.add_argument("--levels", type=int, default=10)
+    ap.add_argument("--export-min-volume", type=float, default=50000, help="daily/ export: gamma volume floor")
     ap.add_argument("--track-days", type=float, default=7, help="replay from listing, at most this long before ws")
     ap.add_argument("--recover-matches", type=int, default=rp.RECOVER_MATCHES)
     ap.add_argument("--workers", type=int, default=8)
+    ap.add_argument("--procs", type=int, default=3, help="row-group filter processes")
     ap.add_argument("--meta-workers", type=int, default=3)
     ap.add_argument("--min-free-gb", type=float, default=12)
     ap.add_argument("--reuse-dl", action="store_true", help="dev: reuse a complete local sparse file, keep it")
