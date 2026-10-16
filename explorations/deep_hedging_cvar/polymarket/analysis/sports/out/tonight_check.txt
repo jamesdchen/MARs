@@ -6,17 +6,17 @@ markets polyrec recorded. Markouts use the recorded outcome-0 book mid at (block
 market pairs are classed two-/one-sided as in maker_econ.py. Cents/share, size-weighted; market-clustered SE.
 Usage: tonight_check.py <rec_out_dir> slug [slug ...]
 
-markets: 11, maker legs: 15772
-group              live     pre  mixed/live  mixed/pre  one-sided/live  one-sided/pre  two-sided/live
-markets           11.00    3.00       11.00       2.00           11.00           3.00            8.00
-maker_shares_k  3972.60  166.43      509.55      45.51         2260.48         120.93         1202.57
-sc                 0.65    0.47        0.92       0.50            0.58           0.46            0.63
-sc_se              0.09    0.05        0.24       0.01            0.09           0.06            0.05
-mo_10s             0.02    0.35       -0.01       0.49           -0.01           0.30            0.08
-mo_10s_se          0.13    0.05        0.28       0.01            0.09           0.07            0.15
-mo_1m              0.25    0.31        0.16       0.49           -0.07           0.24            0.75
-mo_1m_se           0.16    0.05        0.29       0.01            0.06           0.09            0.40
-mo_5m             -0.03    0.10        0.70       0.21           -0.88           0.06            1.00
-mo_5m_se           0.82    0.14        0.95       0.00            0.84           0.21            0.68
-mo_res            -4.15     NaN       -2.10        NaN           -7.40            NaN           -0.83
-mo_res_se          4.78     NaN        6.75        NaN            4.91            NaN            3.99
+markets: 18, maker legs: 21040
+group              live      pre  mixed/live  mixed/pre  one-sided/live  one-sided/pre  two-sided/live  two-sided/pre
+markets           17.00    10.00       17.00       8.00           17.00          10.00           14.00           5.00
+maker_shares_k  5023.31  2087.85      715.59      95.77         2857.26        1802.93         1450.45         189.15
+sc                 0.60     0.29        0.81       0.46            0.55           0.27            0.56           0.41
+sc_se              0.09     0.06        0.19       0.07            0.08           0.07            0.07           0.05
+mo_10s            -0.02     0.24       -0.09       0.28           -0.04           0.23            0.06           0.30
+mo_10s_se          0.10     0.04        0.22       0.13            0.09           0.05            0.12           0.07
+mo_1m             -0.05     0.42       -0.13       0.25           -0.42           0.43            0.55           0.42
+mo_1m_se           0.21     0.06        0.29       0.16            0.24           0.06            0.33           0.10
+mo_5m             -0.30     2.60       -0.16       0.45           -1.04           2.76            0.83           2.21
+mo_5m_se           0.59     0.92        0.78       0.46            0.65           0.93            0.51           0.56
+mo_res            -1.60      NaN       -1.86        NaN           -2.02            NaN           -0.69            NaN
+mo_res_se          2.91      NaN        3.89        NaN            3.67            NaN            2.02            NaN

@@ -18,6 +18,8 @@ Two features of sports change the picture:
 - **In-play two-sided wallets earn +1.6¢/share to resolution** including rebates (SE 0.6, 96M shares). That is about
   $1.5M in 13 days on 235 markets, the only maker segment with a significantly positive result.
 - **One-sided "limit-order bettors" pay for it:** −3.4¢/share in-play (SE 1.2).
+- Tonight's 18 recorded games, scored against true book mids, confirm the split at short horizons: two-sided in-play
+  +0.8¢ at 5 min vs one-sided −1.0¢. Too few markets have resolved to recheck the resolution figure (§2.5).
 
 The pick-off happens at scoring events. Maker fills followed within 60 s by a ≥8¢ move are 10% of in-play maker
 shares, and they lose 1.1/1.4/1.7¢ at 10 s/1 min/5 min.
@@ -28,12 +30,14 @@ Structurally, sports offers what crypto lacks:
   ~0.5¢;
 - about 30× more maker volume per market.
 
-But external exchanges cannot protect anyone in-play: Smarkets suspends on goals and reprices ~60 s after
+But external exchanges cannot protect anyone in-play: Smarkets suspends on goals and reprices a median 42 s after
 Polymarket.
 
 **Where it is promising:**
-1. In-play two-sided quoting, with a sub-second score feed and automatic pulls on events. This is where the
-   incumbents make money, and the 1 s taker delay helps exactly this maker.
+1. In-play two-sided quoting, with a fast score feed and automatic pulls on events. This is where the incumbents
+   make money, and the 1 s taker delay helps exactly this maker. But Polymarket's own public score WebSocket arrives
+   a median **74 s after the book has moved** (21/21 NHL/NFL/esports scores tonight). So the feed has to be a
+   commercial low-latency one, or the pull rule has to react to the book itself.
 2. Pre-game quoting from listing to T−1 h (the D14 window) against a Pinnacle/Smarkets anchor. The edge is small:
    0 to +30 bps at +30 min in the 1–24 h buckets, and +250 bps (CI from 0) above 24 h on thin volume. The rebate
    adds ~25 bps. Tennis and esports are the most consistently positive leagues; NFL is flat.
@@ -266,6 +270,25 @@ pick-off:
   159; 0x5268… +$0.08M on 103.
 - Aggregate maker legs net −$2.3M to resolution, about −0.6¢/share, within ~1 SE of zero.
 
+### 2.5 Out-of-sample recheck on tonight's games (true book mids; `scripts/tonight_check.py`, `out/tonight_check.txt`)
+
+**Setup:**
+- Data-api maker legs (which carry wallets) for the 18 recorded markets.
+- Markouts against the recorded book mid at block time − 3 s + h.
+- 21k maker legs, 5.0M in-play and 2.1M pre-game maker shares. Pre-game covers only the last ~5 h.
+
+| ¢/share (SE) | spread capture | +10 s | +1 min | +5 min | resolution (resolved markets only) |
+|---|---|---|---|---|---|
+| in-play, two-sided (14 markets) | 0.56 (0.07) | 0.06 (0.12) | **+0.55 (0.33)** | **+0.83 (0.51)** | −0.7 (2.0) |
+| in-play, one-sided (17) | 0.55 (0.08) | −0.04 (0.09) | **−0.42 (0.24)** | **−1.04 (0.65)** | −2.0 (3.7) |
+| pre-game, all (10) | 0.29 (0.06) | 0.24 (0.04) | 0.42 (0.06) | 2.6 (0.9) | — |
+
+**What it confirms:**
+- On true mids and new games, two-sided in-play makers again beat one-sided ones: +1.9¢ at 5 min.
+- Pre-game makers again keep a significant short-horizon edge.
+
+**What it cannot confirm:** the +1.5¢ to resolution. Only 6–8 markets had resolved by 01:00 UTC, so that SE is 2–4¢.
+
 ## 3. Fair value: is there a Binance for sports?
 
 **Pre-game: yes, and it is free.** The sources below were tested keylessly; details in `out/sources_notes.md`:
@@ -284,10 +307,11 @@ pick-off:
   - NBA preseason: Smarkets spreads are 2.6–4¢, and its mid fell outside Polymarket's touch 50–75% of the time.
   - Polymarket is the tighter, more liquid venue. The external price is an anchor for drift and for sanity, not a
     leading signal at the 1 s scale.
-- **In-play (5 UEL matches, 3 NHL games):** Polymarket moved first on large moves.
-  - Smarkets suspends on goals. Where it caught up, its half-move came a median **~48 s** after Polymarket's
-    (12 of 26 big Polymarket moves matched; in the other 14 Smarkets never caught up within 90 s; range −90 to +180 s).
-  - Its in-play spreads were 2–9¢ against Polymarket's 1¢.
+- **In-play (5 UEL matches, 3 NHL games, 2 NBA games, NFL first ~40 min):** Polymarket moved first on large moves.
+  - Smarkets suspends on goals. On the 43 of 61 big Polymarket moves (≥4¢ in 30 s) where Smarkets caught up within
+    90 s, its half-move came a median **42 s** after Polymarket's (Polymarket first in 36/43; range −225 to +180 s).
+    In the other 18 it had not caught up.
+  - Its in-play spreads were 1.5–9¢ (NHL 7–9¢) against Polymarket's 1¢.
   - Cross-correlations of 3 s mid changes are about 0 at every lag from −60 to +60 s. Polling every 3 s plus
     suspensions make the exchange useless as an in-play reference.
   - An external exchange cannot serve as a fast in-play reference. Only a low-latency score/data feed can. Polymarket
@@ -308,30 +332,36 @@ Recorded from 19:42 to 01:20 UTC (~5.6 h). 18 markets:
 The recorder ran with 0.01–0.08% REST-reconcile mismatches and 9/9 connections; 38 reconnects were recovered. Rows
 come at 1 Hz, on change. Tables are in `out/live_books.txt`.
 
-| | pre-game (median over markets) | in-play (median) |
+| | pre-game (median over markets) | in-play (median, books with mid in [0.03, 0.97]) |
 |---|---|---|
-| spread | 1¢ (one tick) 100% of the time | 1¢; one tick 92% of the time |
-| depth within 1¢ of mid, both sides | 150k shares (NFL moneyline 3.0M, NFL spread 1.8M, NHL 50–210k, NBA 3.7–3.9k) | 9.7k shares (NHL 5–14k, CS2 3.8k, LoL 2.6k) |
-| depth within 5¢ | 680k (NFL 10M) | 80k |
-| mid changes per minute | **0.005** (NFL: none in 3.6 h; NHL ~0.01) | **5.6** (NHL 1.3–2.6, CS2/LoL 4.7–4.9) |
+| spread | 1¢ (one tick) 100% of the time | 1¢; one tick 90% of the time |
+| depth within 1¢ of mid, both sides | 168k shares (NFL moneyline 3.0M, NFL spread 1.8M, NHL 50–210k, NBA ~4k) | 11k shares (NHL 5–14k, CS2 3.8k, LoL 2.6k) |
+| depth within 5¢ | 770k (NFL 10M) | 73k |
+| mid changes per minute | **0.007** (NFL: none in 4.4 h; NHL ~0.01) | **5.5** (NHL 1.3–2.6, CS2/LoL ~4.8) |
 
-**Game start (NHL ×3, 23:00:00):** the `clearBookOnStart` wipe shows up to the second.
+**Game start:** the `clearBookOnStart` wipe shows up to the second. Total resting shares, both sides:
 
-| time from start | resting shares, both sides (BUF@TOR / NYI@OTT / NYR@NJ) |
-|---|---|
-| −60 s | 785k / 680k / 802k |
-| −1 s | 702k / 597k / 678k |
-| **+1 s** | **92k / 106k / 115k** (−85%) |
-| +5 s | 269k / 231k / 198k |
-| +60 s | 555k / 282k / 273k |
-| +5 min | 574k / 317k / 438k |
-| +15 min | 226k / 222k / 224k |
+| market (start) | −60 s | −1 s | **+1 s** | +5 s | +60 s | +5 min |
+|---|---|---|---|---|---|---|
+| NHL BUF@TOR (23:00) | 785k | 702k | **92k** | 269k | 555k | 574k |
+| NHL NYI@OTT (23:00) | 680k | 597k | **106k** | 231k | 282k | 317k |
+| NHL NYR@NJ (23:00) | 802k | 678k | **115k** | 198k | 273k | 438k |
+| NBA TOR@NYK (23:30) | 1,619k | 665k | **185k** | 373k | 440k | 644k |
+| NBA OKC@HOU (00:30) | 1,618k | 678k | **171k** | 422k | 503k | 683k |
+| CFB GAS@ODU (23:30) | 1,405k | 1,331k | **530k** | 573k | 862k | 1,070k |
+| NFL SEA@DEN moneyline (00:15) | 9.1M | 8.0M | **2.2M** | 2.4M | 1.7M | 1.7M |
+| NFL spread 2.5 | 4.0M | 4.0M | **0.9M** | 1.2M | 0.55M | 0.77M |
+| NFL total 40.5 | 2.9M | 2.9M | 2.9M (**0.7M at +2 s**) | 0.84M | 0.51M | 0.74M |
 
-- The spread never left 1¢. In-play makers re-quote within a second of the wipe, so the touch is not left empty for
-  takers.
-- A maker that relied on the wipe instead of pulling its own quotes was protected exactly at the official start.
+- Depth falls 60–87% within 1–2 s of the official start.
+- In the NBA books, makers pulled ~60% of their size *in the minute before* the start.
+- The NFL total was wiped one second late.
+- The spread stayed at 1¢ throughout, except NBA TOR@NYK at 3¢ for a few seconds. In-play makers re-quote within a
+  second, so the touch is never left empty for takers.
+- A maker that relied on the wipe instead of pulling its own quotes was protected at the official start, give or take
+  a second.
 
-**In-play jumps (|Δmid| ≥ 5¢ in 30 s): 73 in the recorded in-play hours.**
+**In-play jumps (|Δmid| ≥ 5¢ in 30 s): 117 in the recorded in-play hours.**
 - The median spread stays 1¢ before and after a jump.
 - The maximum spread within 60 s after a jump is typically 2–5¢; the widest was 31¢ on a UEL goal.
 - Depth within 2¢ typically falls by 30–90% for about a minute. On the 20¢ Hoffenheim goal it went from 26k to 58
@@ -340,10 +370,18 @@ come at 1 Hz, on change. Tables are in `out/live_books.txt`.
 
 **Score feed vs book (`scripts/score_latency.py`, `out/score_latency.txt`).** Polymarket's public sports WebSocket
 was logged with receive times.
-- For every score change matched to a recorded game, the book had already done half of its move:
-  - **NHL goals:** 27–59 s before the feed;
-  - **esports map wins:** 96–140 s before the feed.
-- **The book moved first in 8/8 cases (median 87 s).**
+- For every discrete score change matched to a recorded game, the book had already done half of its move before
+  the feed reported it:
+
+  | event | n | lag (s): median [min, max] |
+  |---|---|---|
+  | NHL goals, incl. 2 goals that were reported then reversed | 16 | **65** [25, 94] |
+  | NFL score (SEA@DEN) | 1 | 73 |
+  | esports map wins | 4 | 96–140 |
+
+- **In 21 of 21 cases the book moved first (median 74 s).**
+- NBA baskets come every ~20 s and cannot be matched to single book moves: 47 matched, median +19 s, the book first
+  60% of the time.
 - The public score feed is far too slow to protect in-play quotes. Takers who pick off makers get scores from faster
   sources (broadcast/data feeds, which are themselves seconds behind the venue).
 - An in-play maker needs a commercial low-latency feed, or a book-reactive rule: pull or widen when the mid or the
@@ -399,8 +437,9 @@ Suggested sequence:
      cancel instantly.
    - The risk is concentrated at scoring events: 10% of in-play maker volume, −1.4¢ at 1 min.
    - To play, a maker needs:
-     - a score/event feed faster than the takers' (Polymarket's sports WS is public and shared, so it is not enough
-       alone);
+     - a score/event feed faster than the takers'. Polymarket's public sports WS lags the book by 25–140 s, a median
+       of 74 s, so it is useless for this. Alternatively, a book-reactive rule that pulls on touch/mid moves inside the
+       1 s taker delay;
      - automatic pulls on events;
      - inventory control into resolution.
 3. **Pre-game is the most tractable but thinnest opportunity:**
@@ -435,6 +474,10 @@ Suggested sequence:
    on-chain fills (or Marketlens at $39 for history). Model the game-start wipe, the 1 s taker delay and per-market
    fees.
 2. Pre-game: test a fair-value quoter anchored to the no-vig external price.
-3. In-play: the question to answer first is **how fast our event detection would be relative to the takers'**.
-   Measure the lag of the Polymarket sports WS and ESPN against the book's own jump times in the recorded data.
-   Without an edge there, in-play quoting copies the losing one-sided population, not the pros.
+3. In-play: the free score feed is ~1 min late (§4), so the remaining options are:
+   - a paid low-latency feed (OpticOdds, GRID, PandaScore, Sportradar), or
+   - a book-reactive pull rule tested in the replay: cancel when the opposite touch is swept or the mid jumps, and
+     re-quote after a cool-down.
+
+   The replay must model the 1 s taker delay exactly, since it is this maker's whole margin. Without one of the two,
+   in-play quoting copies the losing one-sided population, not the pros.

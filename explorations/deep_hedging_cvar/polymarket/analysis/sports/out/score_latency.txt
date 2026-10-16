@@ -8,14 +8,85 @@ Only score changes followed by a book move >= 2 cents are counted (others did no
 Usage: score_latency.py <rec_out_dir> <sports_ws.jsonl>
 
                     slug       feed_t score period  move_c  moved  lag_s
+  nfl-sea-den-2026-10-16 1.792111e+09   3-0     Q1    -5.0   True   73.4
+   nhl-nyr-nj-2026-10-15 1.792108e+09   0-1     P1   -18.0   True   27.8
+   nhl-nyr-nj-2026-10-15 1.792109e+09   0-2     P2   -13.5   True   63.1
+   nhl-nyr-nj-2026-10-15 1.792109e+09   0-3     P2   -10.5   True   77.0
+   nhl-nyr-nj-2026-10-15 1.792110e+09   0-4     P2    -3.0   True   92.0
+   nhl-nyr-nj-2026-10-15 1.792111e+09   0-5    NaN    -0.2  False    NaN
   nhl-nyi-ott-2026-10-15 1.792106e+09   0-1     P1    14.5   True   26.8
   nhl-nyi-ott-2026-10-15 1.792106e+09   0-0     P1    14.5   True   77.3
+  nhl-nyi-ott-2026-10-15 1.792107e+09   0-1     P1    15.5   True   32.9
+  nhl-nyi-ott-2026-10-15 1.792107e+09   0-0     P1   -15.0   True   79.9
+  nhl-nyi-ott-2026-10-15 1.792108e+09   1-0     P1   -19.0   True   25.0
+  nhl-nyi-ott-2026-10-15 1.792111e+09   1-1     P2    24.0   True   50.3
   nhl-buf-tor-2026-10-15 1.792106e+09   0-1     P1    13.0   True   59.1
   nhl-buf-tor-2026-10-15 1.792106e+09   1-1     P1   -13.0   True   36.5
+  nhl-buf-tor-2026-10-15 1.792108e+09   1-2     P1    14.0   True   66.9
+  nhl-buf-tor-2026-10-15 1.792110e+09   2-2     P2   -16.5   True   93.6
+  nhl-buf-tor-2026-10-15 1.792110e+09   2-3     P2    20.0   True   73.8
+  nhl-buf-tor-2026-10-15 1.792111e+09   2-4     P2    17.0   True   90.0
+  nba-okc-hou-2026-10-15 1.792111e+09   0-2     Q1     6.5   True  -65.9
+  nba-okc-hou-2026-10-15 1.792112e+09   4-4     Q1     6.5   True   54.9
+  nba-okc-hou-2026-10-15 1.792112e+09   6-6     Q1     6.5   True  115.1
+  nba-okc-hou-2026-10-15 1.792112e+09   8-8     Q1   -10.0   True  -50.9
+  nba-okc-hou-2026-10-15 1.792112e+09  8-12     Q1   -10.0   True    9.3
+  nba-okc-hou-2026-10-15 1.792112e+09  8-14     Q1   -10.0   True   70.2
+  nba-tor-nyk-2026-10-15 1.792108e+09   0-2     Q1     3.0   True   52.1
+  nba-tor-nyk-2026-10-15 1.792108e+09   2-2     Q1     3.0   True   57.1
+  nba-tor-nyk-2026-10-15 1.792108e+09   4-5     Q1     3.0   True   92.3
+  nba-tor-nyk-2026-10-15 1.792108e+09   9-5     Q1    -9.5   True  -29.0
+  nba-tor-nyk-2026-10-15 1.792108e+09   9-7     Q1    -9.5   True  -23.9
+  nba-tor-nyk-2026-10-15 1.792108e+09   9-9     Q1    -9.5   True  -18.9
+  nba-tor-nyk-2026-10-15 1.792108e+09  12-9     Q1    -9.5   True   -3.7
+  nba-tor-nyk-2026-10-15 1.792108e+09  15-9     Q1    -9.5   True   21.4
+  nba-tor-nyk-2026-10-15 1.792108e+09 15-11     Q1    -9.5   True   31.5
+  nba-tor-nyk-2026-10-15 1.792108e+09 15-12     Q1    -9.5   True   56.7
+  nba-tor-nyk-2026-10-15 1.792108e+09 15-15     Q1    -9.5   True  102.0
+  nba-tor-nyk-2026-10-15 1.792108e+09 17-15     Q1     6.0   True   75.4
+  nba-tor-nyk-2026-10-15 1.792108e+09 17-17     Q1    -4.5   True -116.4
+  nba-tor-nyk-2026-10-15 1.792108e+09 17-19     Q1    -6.0   True  -86.3
+  nba-tor-nyk-2026-10-15 1.792109e+09 18-19     Q1    -6.0   True  -56.0
+  nba-tor-nyk-2026-10-15 1.792109e+09 19-19     Q1    -6.0   True  -25.7
+  nba-tor-nyk-2026-10-15 1.792109e+09 19-22     Q1    -6.0   True    4.5
+  nba-tor-nyk-2026-10-15 1.792109e+09 21-22     Q1    -6.0   True   29.7
+  nba-tor-nyk-2026-10-15 1.792109e+09 21-24     Q1     7.0   True   18.9
+  nba-tor-nyk-2026-10-15 1.792109e+09 21-26     Q1     7.0   True  121.8
+  nba-tor-nyk-2026-10-15 1.792109e+09 24-29     Q1     9.0   True   -9.0
+  nba-tor-nyk-2026-10-15 1.792109e+09 27-35     Q1     9.0   True   51.2
+  nba-tor-nyk-2026-10-15 1.792109e+09 30-35     Q1    -5.0   True   -8.3
+  nba-tor-nyk-2026-10-15 1.792110e+09 32-35     Q1    -5.0   True  111.9
+  nba-tor-nyk-2026-10-15 1.792110e+09 32-37     Q2    -4.5   True  -73.8
+  nba-tor-nyk-2026-10-15 1.792110e+09 34-39     Q2    -4.5   True  -13.5
+  nba-tor-nyk-2026-10-15 1.792110e+09 37-39     Q2    -4.5   True   46.7
+  nba-tor-nyk-2026-10-15 1.792110e+09 37-42     Q2    -4.5   True  106.9
+  nba-tor-nyk-2026-10-15 1.792110e+09 37-44     Q2     7.5   True   71.7
+  nba-tor-nyk-2026-10-15 1.792110e+09 37-47     Q2     7.5   True  132.0
+  nba-tor-nyk-2026-10-15 1.792110e+09 39-47     Q2    -5.5   True  -94.8
+  nba-tor-nyk-2026-10-15 1.792110e+09 42-49     Q2    -5.5   True   25.6
+  nba-tor-nyk-2026-10-15 1.792111e+09 42-51     Q2    -7.0   True  -45.0
+  nba-tor-nyk-2026-10-15 1.792111e+09 45-51     Q2    -9.0   True  -12.5
+  nba-tor-nyk-2026-10-15 1.792111e+09 48-53     Q2    -9.0   True   47.7
+  nba-tor-nyk-2026-10-15 1.792111e+09 50-55     Q2     3.5   True  -15.3
+  nba-tor-nyk-2026-10-15 1.792111e+09 52-57     Q2     3.5   True   44.9
+  nba-tor-nyk-2026-10-15 1.792111e+09 54-57     Q2    -5.0   True  -92.9
+  nba-tor-nyk-2026-10-15 1.792111e+09 54-58     Q2     7.5   True  -92.7
+  nba-tor-nyk-2026-10-15 1.792111e+09 56-60     Q2     7.5   True  -32.2
+  nba-tor-nyk-2026-10-15 1.792111e+09 58-63     HT     7.5   True   28.1
     lol-c9-kc-2026-10-15 1.792098e+09   2-1    4/5    -3.5   True   96.1
     lol-c9-kc-2026-10-15 1.792101e+09   2-2    5/5     7.5   True  140.0
     lol-c9-kc-2026-10-15 1.792105e+09   2-3    5/5    10.0   True  125.3
 cs2-lgc-furia-2026-10-15 1.792102e+09   1-2    3/3   -12.8   True  105.0
 
-score changes matched: 8, with a >=2c book move: 8
-lag (feed - book half-move), s: median 86.7, mean 83.3, share with book first 1.00
+score changes matched: 69, with a >=2c book move: 68
+lag (feed - book half-move), s: median 40.7, mean 31.2, share with book first 0.69
+
+## by league (NBA baskets come every ~20 s, so a single book move cannot be attributed; excluded below)
+     size  median    min    max  book_first
+lg                                         
+cs2     1   105.0  105.0  105.0         1.0
+lol     3   125.3   96.1  140.0         1.0
+nba    47    18.9 -116.4  132.0         0.6
+nfl     1    73.4   73.4   73.4         1.0
+nhl    16    65.0   25.0   93.6         1.0
+discrete-score sports (NHL goals, NFL scores, esports maps): n=21, median lag 73.8 s, book first in 100%
