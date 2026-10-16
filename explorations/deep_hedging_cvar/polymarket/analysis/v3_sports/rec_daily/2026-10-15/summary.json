@@ -1,5 +1,9 @@
 {
- "books_rows": 289024,
- "books_markets": 739,
- "books_mb": 4.03
+ "books_rows": 396306,
+ "books_markets": 743,
+ "books_mb": 5.13,
+ "trades_rows": 5476,
+ "trades_mb": 0.11,
+ "markets_rows": 8,
+ "markets_mb": 0.02
 }
