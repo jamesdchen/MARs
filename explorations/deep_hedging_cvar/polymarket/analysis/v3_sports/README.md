@@ -196,6 +196,24 @@ result. Full tables are in `baseline_out/summary.md`, and per-market rows in
 - The pull-3600 positives come from about 1 fill per market and vanish under pessimistic fills.
 - Rebates of about +1.9 USD (sym_touch at pull 0) do not cover the trading loss of −3.8 USD.
 
+### Future baseline runs (D16, agreed with the coordinator 2026-10-16 02:30 UTC)
+
+Under D16, recording gaps split episodes. `baseline_pregame.py` cannot follow that because it
+runs on `env_sports/` (the v2 core), which only accepts 300/900/14400-row episodes, so every
+4 h tile that spans a gap is dropped. On the 2026-10-16 NHL data that was 10 of 11 tiles.
+
+Future pre-game baselines therefore use env3 with whole-window episodes:
+```
+python build_sports.py --rec rec_out --out B --seg 0 --max-hours 24 --min-cover 0.05 --no-fetch-trades --splits S --verify
+python ../../v3env/adapt3.py B
+cd ../../train3 && python evaluator3.py comparators --data-dir ../analysis/v3_sports/B --split-map S3 \
+    --env3-kw obs_size=80 liq_rewards=1 size_mode=1 Q=1000 flat_c=0.5 dt_other=1 --variants central_1s pess_1s \
+    --pull-grid --ledger ../analysis/v3_sports/trials.jsonl --tag w1_<name>
+```
+`evaluator3` chains gap pieces, carrying inventory across a gap as a forced pull, and applies the
+D16 val/test exclusions. `baseline_pregame.py` stays as the 4 h-tile, env_sports reference for the
+2026-10-16 run above.
+
 ### Kickoff results (2026-10-16 00:45 UTC)
 
 From `kickoff/kickoffs.csv` and `kickoff/detect.csv`; their tracked copies are in `kickoff/snapshot/`.

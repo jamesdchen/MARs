@@ -29,8 +29,19 @@
     net_flat_drag) against fill_vol / final_abs_inv / flat_cost, per-episode netted share, a
     never-quoting policy, and env3.netting's pooled share and drag in bps. (b) compares every one
     of them with reference3 too.
+(g) D16 recording gaps (fixtures3 sports3_gaps / sports3_nogap / elections_gaps): adapt3 carries the
+    sports-3 and elections gap links / flags / per-day summary into markets3.bin and meta3.json
+    (elections links from markets_meta.parquet == the builder's rule == explicit meta fields); mm3
+    refuses links that are not mutual; a gap chain played in C (gap_chain 1) has the same rewards
+    as one continuous episode over the same rows with the quotes forced off at the gap
+    (ContinuousGap3, an independent reference) and its pieces' P&Ls sum to that episode's;
+    flattening only at the chain's end; gap_chain 0 pieces; obs 78 / 51; C == reference on the gap
+    fixtures (chains, carried state, the chained piece's Log); train3 evaluator3 plays chains as one
+    handle, excludes the D16 items from val scoring and reports the gaps; split3 records the
+    per-day gaps and keeps ineligible days out of val / test.
 Plus: parameter tables (mm3.h == Config3, first 27 == v2), split guard, PufferLib 3.0 binding ==
-core (crypto and a v3 fixture, in subprocesses; vec_log carries every Log field).
+core (crypto, a v3 fixture and the sports-3 gap build with gap_chain 1, in subprocesses; vec_log
+carries every Log field).
 """
 from __future__ import annotations
 
@@ -53,7 +64,7 @@ import numpy as np
 HERE = Path(__file__).resolve().parent
 PM = HERE.parent
 sys.path.insert(0, str(HERE))
-from reference3 import Config3, Data3, Episode3, MARKET_DTYPE, X_COLS  # noqa: E402
+from reference3 import Config3, Data3, Episode3, EXT_DTYPE, MARKET_DTYPE, Order, X_COLS  # noqa: E402
 import adapt3  # noqa: E402
 import fixtures3  # noqa: E402
 
@@ -93,14 +104,16 @@ class Harness:
         assert self.lib.m3_h_open(d.encode(), err, 512) == 0, err.value
         self.dir = d
 
-    def run(self, cfg: Config3, markets, starts, actions, seed=0):
+    def run(self, cfg: Config3, markets, starts, actions, seed=0, nlogs=1):
+        """... the Log of each env's first terminal ({field: [n]}), or with nlogs > 1 of its first nlogs
+        terminals ({field: [nlogs, n]}; a D16 gap chain logs one terminal per piece)."""
         T, n = actions.shape[:2]
         W = int(cfg.obs_size)
         obs = np.zeros((T + 1, n, W), np.float32)
         rew = np.zeros((T, n), np.float32)
         term = np.zeros((T, n), np.float32)
         state = np.zeros((T + 1, n, NSTATE))
-        logs = np.zeros((n, len(LOG_FIELDS)), np.float32)
+        logs = np.zeros((nlogs, n, len(LOG_FIELDS)), np.float32)
         err = ctypes.create_string_buffer(512)
         p = lambda a: a.ctypes.data_as(ctypes.c_void_p)
         vals = cfg.values()
@@ -108,10 +121,12 @@ class Harness:
         st = np.ascontiguousarray(starts, np.int32)
         act = np.ascontiguousarray(actions, np.int32)
         rc = self.lib.m3_h_run(p(vals), n, T, p(mk), p(st), p(act), ctypes.c_uint64(seed), p(obs), p(rew), p(term),
-                               p(state), p(logs), err, 512)
+                               p(state), p(logs), nlogs, err, 512)
         if rc != 0:
             raise ValueError(err.value.decode())
-        return obs, rew, term, state, dict(zip(LOG_FIELDS, logs.T))
+        if nlogs == 1:
+            return obs, rew, term, state, dict(zip(LOG_FIELDS, logs[0].T))
+        return obs, rew, term, state, {f: logs[:, :, j] for j, f in enumerate(LOG_FIELDS)}
 
 
 class Checks:
@@ -232,8 +247,13 @@ def equivalence(h, data, checks, cfg: Config3, markets, starts, rng, tag, extra=
     h.open(data.dir)
     steps = [max_steps(data, cfg, m, s) for m, s in zip(markets, starts)]
     T = max(steps) + extra
+    if cfg.gap_chain:                    # D16: the auto-reset episode is the chained piece; run it to its end
+        more = [max_steps(data, cfg, int(data.ext["gap_next"][m]) - 1, 0) if data.ext["gap_next"][m] > 0 else 0
+                for m in markets]
+        T = max(T, max(s + e for s, e in zip(steps, more)) + extra)
     actions = random_actions(rng, T, len(markets), p_off)
-    obs, rew, term, state, log = h.run(cfg, markets, starts, actions, seed=seed)
+    obs, rew, term, state, log2 = h.run(cfg, markets, starts, actions, seed=seed, nlogs=2)
+    log = {f: v[0] for f, v in log2.items()}
     W = int(cfg.obs_size)
     checks.add("(b) observations finite, |obs| <= 5, obs 49 == 1",
                0 if (np.isfinite(obs).all() and np.abs(obs).max() <= 5 and (obs[..., 49] == 1).all()) else 1, 0)
@@ -267,12 +287,24 @@ def equivalence(h, data, checks, cfg: Config3, markets, starts, rng, tag, extra=
             checks.add("(b) reward_mode 2 identity ($)", abs(np.sum(np.asarray(rew[:k + 1, i], np.float64)) / scale
                        + ep.penalty + ep.close_pen / scale - (ep.credit_total + ep.rebates + ep.liq)), 2e-4)
         nm, ns = int(state[k + 1, i, 1]), int(state[k + 1, i, 2])
-        nxt = Episode3(data, cfg, nm, ns - int(data.markets["row_offset"][nm]))
+        chained = ep.cont                       # D16: the next piece starts with the carried inventory / cash
+        checks.add("(b) gap chain: C continues into gap_next exactly when the reference does (1 = not)",
+                   float(chained != (ep.next_market() is not None) or (chained and nm != ep.next_market())), 0)
+        nxt = Episode3(data, cfg, nm, ns - int(data.markets["row_offset"][nm]), carry=ep.carry_out() if chained else None)
         checks.add("(b) auto-reset: new episode's first observation", np.abs(obs[k + 1, i] - nxt.obs()).max(), 1e-6)
+        if chained:
+            st, ref = state[k + 1, i], nxt.state()
+            checks.add("(g) gap chain: carried state at the hop (inv, cash, wealth) == reference (rel)",
+                       max(rel(st[j], ref[j]) for j in (3, 4, 7)), 1e-9)
         for kk in range(k + 1, T):
             o, r, done = nxt.step(actions[kk, i])
             checks.add("(b) auto-reset episode: reward", abs(rew[kk, i] - r), 1e-7)
             if done:
+                if chained:
+                    rl2 = nxt.log()
+                    for f in LOG_FIELDS:
+                        checks.add(f"(g) chained piece Log {f} (rel)", rel(log2[f][1, i], rl2[f]),
+                                   2e-4 if f == "episode_return" else 1e-4)
                 break
             checks.add("(b) auto-reset episode: observation", np.abs(obs[kk + 1, i] - o).max(), 1e-6)
         n_fills += ref_log["fills"]
@@ -353,7 +385,32 @@ def fixture_equivalence(h, root, checks, results, builders_dir=None):
             st = np.array([int(rng.integers(0, 50)) for _ in ok])
             out[tag] = equivalence(h, data, checks, cfg, ok, st, np.random.default_rng(500 + i), tag)
             print(f"(b) {tag:40s} {json.dumps(out[tag])}", flush=True)
+    # D16 gap fixtures: chains (gap_chain 1, per split) and independent pieces (gap_chain 0)
+    for name, cfgs in (("sports3_gaps", GAP_EQ_CONFIGS), ("elections_gaps", GAP_EQ_CONFIGS_E)):
+        data = Data3(root / name)
+        for i, (tag, kw) in enumerate(cfgs):
+            for sp in (0, 1):
+                markets = np.flatnonzero(data.markets["split"] == sp)
+                rng = np.random.default_rng(800 + i)
+                starts = np.array([int(rng.integers(0, int(0.2 * (data.markets["n_rows"][m] - 1)) + 1)) for m in markets])
+                cfg = replace(Config3(split=sp), **kw)
+                key = f"{tag}/split{sp}"
+                out[key] = equivalence(h, data, checks, cfg, markets, starts, np.random.default_rng(900 + i), key)
+                print(f"(b) {key:40s} {json.dumps(out[key])}", flush=True)
     results["reference_equivalence"] = out
+
+
+GAP_EQ_CONFIGS = [
+    ("gaps-chain-obs80-liq-flat-pull-ramp", dict(gap_chain=1, obs_size=80, liq_rewards=1, size_mode=1, Q=1000, flat_c=0.5,
+                                                 pull_s=300, close_inv_coef=0.05, close_ramp=0.3, inv_penalty=0.01)),
+    ("gaps-pieces-obs80-flat-ramp_s", dict(gap_chain=0, obs_size=80, flat_c=0.5, close_inv_coef=0.05, close_ramp_s=1800)),
+    ("gaps-chain-pess-L2-dtfar", dict(gap_chain=1, fill_model=2, latency=2, dt_far=10, far_s=4500, obs_size=80)),
+]
+GAP_EQ_CONFIGS_E = [
+    ("egaps-chain-obs80-liq", dict(gap_chain=1, obs_size=80, liq_rewards=1, size_mode=1, Q=1000, flat_c=0.5,
+                                   close_inv_coef=0.05, close_ramp=0.3)),
+    ("egaps-pieces-obs80-liq-pull", dict(gap_chain=0, obs_size=80, liq_rewards=1, size_mode=1, Q=1000, pull_s=600)),
+]
 
 
 class _Rows:
@@ -640,6 +697,319 @@ def netting_checks(h, root, checks, results):
                               flat_drag_bps=nt["flat_drag_bps"], gross=g.tolist(), end_inv=end.tolist())
 
 
+# ------------------------------------------------------------------ (g) D16 recording gaps
+
+class ContinuousGap3(Episode3):
+    """ONE continuous episode over a market whose rows skip a recording gap at row `gap_row` (the first
+    post-gap row; the clock jumps `gap_s` seconds there). The decision grid stops at the last pre-gap row,
+    where the quotes are forced off (live orders and the pending FIFO cancelled) and the wealth is marked
+    at that row's mid; it restarts at gap_row. Minutes and the time to the event follow the real clock.
+    Inventory, cash, rebates and rewards simply continue: no carry, no Log split, no chain mechanics."""
+
+    def __init__(self, data, cfg, market, start, gap_row, gap_s):
+        super().__init__(data, cfg, market, start)
+        self.gap_row, self.gap_s = self.r0 + gap_row, gap_s
+
+    def ts(self, u):
+        return self.open_ts + (u - self.r0) + (self.gap_s if u >= self.gap_row else 0)
+
+    def to_event(self, t):
+        return self.ev_off - (self.ts(t) - self.open_ts) * self.row_s
+
+    def next_row(self, t, dt):
+        tn = min(t + dt, self.r_end)
+        return min(tn, self.gap_row - 1) if t < self.gap_row - 1 else tn
+
+    def after_step(self, done):
+        if not done and self.t == self.gap_row - 1:          # the gap: a forced quote pull
+            self.orders = [Order(), Order()]
+            self.pending = []
+            self.t = self.gap_row
+
+
+GAP_CHAIN_CONFIGS = [
+    ("chain-central", dict()),
+    ("chain-obs80-liq-size1-flat-pull-ramp_s-dtfar", dict(obs_size=80, liq_rewards=1, size_mode=1, Q=1000, flat_c=0.5,
+                                                          pull_s=300, close_inv_coef=0.05, close_ramp_s=1800,
+                                                          dt_far=10, far_s=4500)),
+    ("chain-pess-L2", dict(fill_model=2, latency=2, flat_c=1.0)),
+    ("chain-opt-L0-cap", dict(fill_model=0, latency=0, part_cap=0.25)),
+]
+
+
+def gap_adapt(h, root, tmp, checks, results):
+    """adapt3 on the sports-3 and elections gap schemas; mm3's link validation; old builds unchanged."""
+    gd = root / "sports3_gaps"
+    data = Data3(gd)
+    meta = json.loads((gd / "meta.json").read_text())
+    segs = meta["segments"]
+    g = json.loads((gd / "meta3.json").read_text())["gaps"]
+    ext, mk = data.ext, data.markets
+    sid = {x["sid"]: i for i, x in enumerate(segs)}
+    want_n = np.array([sid[x["gap"]["next_sid"]] + 1 if x["gap"]["next_sid"] else 0 for x in segs])
+    want_p = np.array([sid[x["gap"]["prev_sid"]] + 1 if x["gap"]["prev_sid"] else 0 for x in segs])
+    checks.add("(g) adapt3 sports-3: gap_next / gap_prev == segments gap.next_sid / prev_sid (1 = not)",
+               float(not (np.array_equal(ext["gap_next"], want_n) and np.array_equal(ext["gap_prev"], want_p))), 0)
+    f3 = ext["flags3"]
+    fl = mk["flags"]
+    checks.add("(g) adapt3 sports-3: flags3 GAP_CUT / AFTER_GAP / EVAL_EXCL == markets flags 16384 / 32768 / 65536",
+               float(np.any(((f3 & 2) > 0) != ((fl & 16384) > 0)) + np.any(((f3 & 4) > 0) != ((fl & 32768) > 0))
+                     + np.any(((f3 & 8) > 0) != ((fl & 65536) > 0))), 0)
+    bad_day = [i for i, x in enumerate(segs) if x["slug"].startswith("nhl-ccc-dd3-")]
+    checks.add("(g) adapt3 sports-3: DAY_INELIGIBLE exactly on the game of the 40-min-gap day (1 = not)",
+               float(np.flatnonzero(f3 & 16).tolist() != bad_day or g["days_ineligible"] != ["2026-10-06"]), 0)
+    lone = [i for i in range(len(mk)) if f3[i] & 2 and ext["gap_next"][i] == 0]
+    checks.add("(g) adapt3 sports-3: one GAP_CUT piece without continuation (post-gap piece dropped) (1 = not)",
+               float(len(lone) != 1 or not segs[lone[0]]["slug"].startswith("nhl-ccc-dd2-")), 0)
+    checks.add("(g) adapt3 sports-3: meta3 gaps eval_excluded_buckets == segments' (1 = not)",
+               float(g["eval_excluded_buckets"] != {str(i): x["eval_excluded_buckets"] for i, x in enumerate(segs)
+                                                    if x["eval_excluded_buckets"]}), 0)
+    checks.add("(g) adapt3 sports-3: per-day gap counts / seconds carried (1 = not)",
+               float(any(g["days"][d]["n_gaps"] != k or g["days"][d]["total_gap_s"] != t
+                         for d, (k, t) in fixtures3.SPORTS3_DAYS.items())), 0)
+    old = 0
+    for d in ("sports", "sports1", "sports2_nolegacy", "sports2_buckets", "elections"):
+        e = np.fromfile(root / d / "markets3.bin", EXT_DTYPE)
+        old += int((e["gap_next"] != 0).any() or (e["gap_prev"] != 0).any() or (e["flags3"] != 0).any())
+    checks.add("(g) builds without gap fields: markets3.bin gap words and flags3 stay 0 (count of builds not)", old, 0)
+    # mm3 refuses links that are not mutual; adapt3 refuses a prev_sid that disagrees
+    bad = Path(tmp) / "bad_links"
+    shutil.copytree(gd, bad)
+    e = np.fromfile(bad / "markets3.bin", EXT_DTYPE)
+    e["gap_prev"][int(np.flatnonzero(e["gap_prev"])[0])] = 0
+    e.tofile(bad / "markets3.bin")
+    h.lib.m3_h_release()
+    h.dir = None
+    err = ctypes.create_string_buffer(512)
+    rc = h.lib.m3_h_open(str(bad).encode(), err, 512)
+    checks.add("(g) mm3 refuses markets3.bin gap links that are not mutual (1 = not)",
+               float(rc == 0 or b"gap links" not in err.value), 0)
+    h.lib.m3_h_release()
+    m2 = json.loads((bad / "meta.json").read_text())
+    j = next(i for i, x in enumerate(m2["segments"]) if x["gap"]["prev_sid"])
+    m2["segments"][j]["gap"]["prev_sid"] = None
+    (bad / "meta.json").write_text(json.dumps(m2))
+    try:
+        adapt3.main([str(bad), "--check"])
+        refused = 0.0
+    except SystemExit:
+        refused = 1.0
+    checks.add("(g) adapt3 refuses segments whose prev_sid disagrees with next_sid (1 = not)", 1 - refused, 0)
+    # elections: links from markets_meta.parquet == the builder's rule (no parquet) == explicit meta fields
+    ed = root / "elections_gaps"
+    e1 = (ed / "markets3.bin").read_bytes()
+    g1 = json.loads((ed / "meta3.json").read_text())["gaps"]
+    alt = Path(tmp) / "elections_rule"
+    shutil.copytree(ed, alt)
+    (alt / "markets_meta.parquet").unlink()
+    adapt3.main([str(alt)])
+    g2 = json.loads((alt / "meta3.json").read_text())["gaps"]
+    alt2 = Path(tmp) / "elections_explicit"
+    shutil.copytree(alt, alt2)
+    m3 = json.loads((alt2 / "meta.json").read_text())
+    nx = {x["id"]: "" for x in m3["episodes"]}
+    pv = dict(nx)
+    for c in g1["chains"]:
+        for p_, q_ in zip(c[:-1], c[1:]):
+            nx[m3["episodes"][p_]["id"]], pv[m3["episodes"][q_]["id"]] = m3["episodes"][q_]["id"], m3["episodes"][p_]["id"]
+    for x in m3["episodes"]:
+        x["prev_segment_id"], x["next_segment_id"] = pv[x["id"]], nx[x["id"]]
+    (alt2 / "meta.json").write_text(json.dumps(m3))
+    adapt3.main([str(alt2)])
+    g3 = json.loads((alt2 / "meta3.json").read_text())["gaps"]
+    checks.add("(g) adapt3 elections: links from markets_meta.parquet == builder rule == meta episodes fields (1 = not)",
+               float(not (e1 == (alt / "markets3.bin").read_bytes() == (alt2 / "markets3.bin").read_bytes())
+                     or g1["links_source"] != "markets_meta.parquet" or not g2["links_source"].startswith("builder")
+                     or not g3["links_source"].startswith("meta.json") or len(g1["chains"]) != 2), 0)
+    edata = Data3(ed)
+    em, ee = edata.markets, edata.ext
+    checks.add("(g) adapt3 elections: a chain's event_ts == its last piece's end (time to event ignores the gap)",
+               float(max(abs(int(ee["event_ts"][i]) - int(em["end_ts"][c[-1]])) for c in g1["chains"] for i in c)), 0)
+    epm = json.loads((ed / "meta.json").read_text())["episodes"]
+    checks.add("(g) adapt3 elections: DAY_INELIGIBLE == not episodes.day_eligible, csv day ineligible (1 = not)",
+               float(np.flatnonzero(ee["flags3"] & 16).tolist() != [i for i, x in enumerate(epm) if not x["day_eligible"]]
+                     or g1["days_ineligible"] != ["2026-10-18"] or g1["days"]["2026-10-16"]["n_gaps"] != 2), 0)
+    results["gap_adapt"] = dict(sports_chains=g["chains"], elections_chains=g1["chains"],
+                                sports_days_ineligible=g["days_ineligible"])
+
+
+def gap_chains(h, root, checks, results):
+    """(g) a chain's P&L == one continuous episode; flat at a gap; independent pieces; obs 78 / obs 51."""
+    gd, nd = root / "sports3_gaps", root / "sports3_nogap"
+    data, cdata = Data3(gd), Data3(nd)
+    g = json.loads((gd / "meta3.json").read_text())["gaps"]
+    segs = json.loads((gd / "meta.json").read_text())["segments"]
+    a, b = next(c for c in g["chains"] if segs[c[0]]["slug"].startswith("nhl-ccc-dd0-"))   # sports3_nogap's game
+    mk = data.markets
+    gap_row = int(mk["n_rows"][a])
+    gap_s = int(mk["open_ts"][b] - mk["end_ts"][a] - 1)
+    out = {}
+    carried = 0.0
+    for ci, (tag, kw) in enumerate(GAP_CHAIN_CONFIGS):
+        base = replace(Config3(split=1, inv_penalty=0.0, Q=500, dt_other=3), **kw)
+        cfg = replace(base, gap_chain=1)
+        T = max_steps(data, cfg, a, 0) + max_steps(data, cfg, b, 0) + 5
+        acts = random_actions(np.random.default_rng(600 + ci), T, 1, p_off=0.05)
+        h.open(gd)
+        obs, rew, term, state, lg = h.run(cfg, np.array([a]), np.array([0]), acts, seed=3, nlogs=2)
+        ce = ContinuousGap3(cdata, base, 0, 0, gap_row, gap_s)
+        cr, done = [], False
+        while not done:
+            _, r, done = ce.step(acts[len(cr), 0])
+            cr.append(r)
+        k = len(cr)
+        tt = np.flatnonzero(term[:, 0])
+        checks.add("(g) chain: a terminal at the gap and at the chain's end, same steps as the continuous episode "
+                   "(1 = not)", float(len(tt) < 2 or tt[1] != k - 1), 0)
+        checks.add("(g) chain rewards (C) == the continuous episode's, step by step", np.abs(rew[:k, 0] - cr).max(), 1e-6)
+        ea = Episode3(data, cfg, a, 0)
+        ra, done, j = [], False, 0
+        while not done:
+            _, r, done = ea.step(acts[j, 0])
+            ra.append(r)
+            j += 1
+        eb = Episode3(data, cfg, b, 0, carry=ea.carry_out())
+        done = False
+        while not done:
+            _, r, done = eb.step(acts[j, 0])
+            ra.append(r)
+            j += 1
+        chain_ref = ea.log()["pnl"] + eb.log()["pnl"]
+        chain_c = float(lg["pnl"][0, 0]) + float(lg["pnl"][1, 0])
+        checks.add("(g) chained P&L (reference, pieces summed, double) == one continuous episode ($)",
+                   abs(chain_ref - ce.pnl()), 1e-9)
+        checks.add("(g) chained P&L (C Log, pieces summed, float32) == one continuous episode (rel)",
+                   rel(chain_c, ce.pnl()), 1e-5)
+        checks.add("(g) chain: reference chain rewards == continuous episode rewards", np.abs(np.array(ra) - cr).max(), 1e-7)
+        checks.add("(g) chain: the pre-gap piece pays no flattening cost; the chain's end pays |inv| x flat_c",
+                   float(lg["flat_cost"][0, 0]) + abs(float(lg["flat_cost"][1, 0]) - float(lg["final_abs_inv"][1, 0])
+                                                       * cfg.flat_c / 100), 1e-6)
+        gross = float(lg["net_gross_sh"][0, 0]) + float(lg["net_gross_sh"][1, 0])
+        end = float(lg["net_end_inv"][1, 0])
+        checks.add("(g) chain netting: no end inventory at the gap; the end's netted share uses the chain's gross",
+                   float(lg["net_end_inv"][0, 0]) + float(lg["net_eps"][0, 0])
+                   + (abs(float(lg["net_share"][1, 0]) - max(1 - end / gross, 0)) if gross > 0 else 0), 1e-5)
+        carried = max(carried, abs(ea.inv))
+        out[tag] = dict(pnl_continuous=ce.pnl(), pnl_chain_c=chain_c, inv_at_gap=ea.inv, steps=k)
+        print(f"(g) {tag:44s} {json.dumps(out[tag])}", flush=True)
+    checks.add("(g) chain tests carried inventory across the gap (1 = never)", float(carried == 0), 0)
+    # gap_chain = 0 (training default): independent pieces, the pre-gap one marked at its mid without flat
+    cfg0 = Config3(split=1, Q=500, dt_other=3, flat_c=0.5)
+    T = max(max_steps(data, cfg0, a, 0), max_steps(data, cfg0, b, 0)) + 3
+    acts = random_actions(np.random.default_rng(700), T, 2, p_off=0.0)
+    h.open(gd)
+    _, _, _, state, lg = h.run(cfg0, np.array([a, b]), np.array([0, 0]), acts, seed=5)
+    ea = Episode3(data, cfg0, a, 0)
+    j, done = 0, False
+    while not done:
+        _, _, done = ea.step(acts[j, 0])
+        j += 1
+    last = float(data.feat[int(mk["row_offset"][a] + mk["n_rows"][a] - 1), data.col["mark"]])
+    checks.add("(g) gap_chain 0: the pre-gap piece settles at its last pre-gap mid, no flattening cost ($)",
+               abs(float(lg["pnl"][0]) - (ea.cash + ea.rebates + ea.liq + ea.inv * last)) / (1 + abs(ea.cash))
+               + float(lg["flat_cost"][0]) + float(ea.inv == 0), 1e-6)
+    checks.add("(g) gap_chain 0: the post-gap piece starts flat (inventory 0)", abs(state[0, 1, 3]), 0)
+    # a GAP_CUT piece without continuation is flattened at settle_price with flat_c
+    lone = [i for i in range(len(mk)) if data.ext["flags3"][i] & 2 and data.ext["gap_next"][i] == 0][0]
+    acts = random_actions(np.random.default_rng(701), max_steps(data, cfg0, lone, 0) + 3, 1, p_off=0.0)
+    acts[:, :, 2] = 2
+    lgl = h.run(replace(cfg0, split=int(mk["split"][lone]), gap_chain=1), np.array([lone]), np.array([0]), acts)[4]
+    checks.add("(g) a GAP_CUT piece without continuation pays |inv| x flat_c at its settle (1 = no inventory)",
+               abs(float(lgl["flat_cost"][0]) - float(lgl["final_abs_inv"][0]) * 0.005) + float(lgl["final_abs_inv"][0] == 0),
+               1e-6)
+    # obs 78 gap_recent (AFTER_GAP) and obs 51 for a GAP_CUT piece (time to kickoff, not to the gap)
+    cfgo = Config3(split=1, obs_size=80, dt_other=1)
+    n = 200
+    h.open(gd)
+    obs = h.run(cfgo, np.array([a, b]), np.array([0, 0]), np.zeros((n, 2, 3), np.int32))[0]
+    want = np.maximum(0, 1 - np.arange(n + 1) / 120.0)
+    ev_off = float(data.ext["event_ts"][a] - mk["open_ts"][a])
+    checks.add("(g) obs 78 gap_recent: 1 - rows since the gap / 120 after a gap, 0 elsewhere",
+               float(np.abs(obs[:, 1, 78] - want).max() + np.abs(obs[:, 0, 78]).max()), 1e-6)
+    checks.add("(g) obs 51 of a GAP_CUT piece: time to kickoff / its value at the piece start (no gap announced)",
+               float(np.abs(obs[:, 0, 51] - (ev_off - np.arange(n + 1)) / ev_off).max()), 1e-6)
+    results["gap_chains"] = out
+
+
+EVAL_CHILD = r"""
+import sys, json, numpy as np
+sys.path.insert(0, %(train3)r)
+import envs3, evaluator3, split3
+ad = envs3.V3Adapter()
+name, data, comp = %(name)r, %(data)r, %(comp)r
+kw = dict(data_dir=data, obs_size=80, Q=1000, dt_other=5, liq_rewards=1, size_mode=1, flat_c=0.5)
+fn = evaluator3.make_baseline(comp, None, kw)
+res, recs = evaluator3.evaluate(fn, ad, split=1, env_kw=kw, return_records=True, with_markets=True)
+res0, recs0 = evaluator3.evaluate(fn, ad, split=1, env_kw={**kw, 'gap_chain': 0}, return_records=True)
+out = dict(res={k: v for k, v in res.items() if not isinstance(v, float) or np.isfinite(v)}, recs=recs,
+           res0={k: v for k, v in res0.items() if not isinstance(v, float) or np.isfinite(v)}, recs0=recs0,
+           split=split3.make_split(data, name, min_pre_hours=0))
+json.dump(out, open(%(out)r, 'w'), default=str)
+"""
+
+
+def gap_eval(tmp, root, checks, results):
+    """(g) train3/evaluator3 on the gap fixtures (in a subprocess: binding3 opens one directory per
+    process): chains played as one episode, the D16 exclusions, the gap report, split3's day records."""
+    if not glob.glob(str(HERE / "binding3*.so")):
+        print("binding3 not built; (g) evaluator checks skipped")
+        return
+    z = {}
+    for name, d, comp in (("sports", "sports3_gaps", "sym_touch"), ("elections", "elections_gaps", "reward_farmer")):
+        op = Path(tmp) / f"gap_eval_{name}.json"
+        code = EVAL_CHILD % dict(train3=str(PM / "train3"), name=name, data=str(root / d), comp=comp, out=str(op))
+        r = subprocess.run([sys.executable, "-c", code], capture_output=True, text=True, cwd=str(tmp))
+        assert r.returncode == 0, r.stderr[-4000:]
+        z[name] = json.loads(op.read_text())
+    s, e = z["sports"], z["elections"]
+    res, recs = s["res"], s["recs"]
+    by = {x["slug"]: x for x in recs}
+    meta = json.loads((root / "sports3_gaps" / "meta.json").read_text())
+    sl = lambda gi, k: next(x["sid"] for x in meta["segments"] if x["slug"].startswith(f"nhl-ccc-dd{gi}-")  # noqa: E731
+                            and x["sid"].endswith(f"#k{k}"))
+    g0 = [by[sl(0, 1)], by[sl(0, 0)]]
+    checks.add("(g) evaluator3: 6 val pieces played, 2 scored (game 0's chain), 3 last-hour + 1 day excluded (1 = not)",
+               float(res["excl/n_played"] != 6 or res["n_markets"] != 2 or res["excl/last_hour"] != 3
+                     or res["excl/day_ineligible"] != 1 or res["excl/total"] != 4), 0)
+    checks.add("(g) evaluator3: a chain is one handle: pieces 0 / 1 of one chain_id, the head not its end (1 = not)",
+               float(g0[0]["chain_id"] != g0[1]["chain_id"] or g0[0]["chain_pos"] != 0 or g0[1]["chain_pos"] != 1
+                     or g0[0]["chain_end"] or not g0[1]["chain_end"] or res["chain/n_chains"] != 2), 0)
+    checks.add("(g) evaluator3: scored P&L == the chain's pieces summed ($)",
+               abs(res["pnl_total"] - g0[0]["pnl"] - g0[1]["pnl"]), 1e-9)
+    tkn = ["gt24h", "6_24h", "1_6h", "1h_30m", "30_5m", "5_0m"]
+    checks.add("(g) evaluator3: every piece's time buckets add up to its P&L (chained pieces too) ($)",
+               max(abs(sum(x[f"tk_pnl_{b}"] for b in tkn) - x["pnl"]) for x in recs), 1e-6)
+    g1a = by[sl(1, 1)]
+    st = lambda b, rs: sum(x[f"tk_steps_{b}"] for x in rs)  # noqa: E731
+    checks.add("(g) evaluator3: a last-hour-excluded piece keeps its earlier buckets in tk/*, not the excluded ones",
+               abs(res["tk/1_6h/steps"] - st("1_6h", g0) - g1a["tk_steps_1_6h"]) + float(g1a["tk_steps_1_6h"] == 0)
+               + abs(res["tk/30_5m/steps"] - st("30_5m", g0)) + abs(res["tk/1h_30m/steps"] - st("1h_30m", g0)), 0)
+    gp = res["gaps"]
+    checks.add("(g) evaluator3: result carries the per-day gaps (counts, seconds, eligibility) (1 = not)",
+               float(gp.get("source") != "sports-3" or gp["days"]["2026-10-01"]["n_gaps"] != 1
+                     or gp["days"]["2026-10-01"]["total_gap_s"] != 120 or gp["days"]["2026-10-06"]["eligible"]
+                     or "2026-10-01" not in gp["evaluated_days"]), 0)
+    b0 = {x["slug"]: x for x in s["recs0"]}
+    checks.add("(g) evaluator3 gap_chain 0: every piece its own episode, the post-gap piece starts flat (1 = not)",
+               float(s["res0"]["chain/n_chains"] != 0 or b0[sl(0, 0)]["chain_len"] != 1), 0)
+    sp = s["split"]
+    checks.add("(g) split3: per-day gaps recorded; the ineligible day (test by D11) is dropped, train only (1 = not)",
+               float(sp["_gaps_per_day"]["2026-10-06"]["eligible"] is not False or sp["days"]["2026-10-06"] != "exclude"
+                     or "D16" not in sp["_dropped"].get("2026-10-06", "") or sp["_gaps_per_day"]["2026-10-01"]["n_gaps"] != 1
+                     or sp["_d16_markets_day_ineligible"] != {"2026-10-06": 1}), 0)
+    er = e["res"]
+    checks.add("(g) evaluator3 elections: 2 chains of 2 pieces scored, gaps from gaps_per_day.csv (1 = not)",
+               float(er["chain/n_chains"] != 2 or er["n_markets"] != 4 or er["excl/total"] != 0
+                     or er["gaps"]["source"] != "elections" or er["gaps"]["days"]["2026-10-18"]["eligible"]), 0)
+    esp = e["split"]
+    checks.add("(g) split3 elections: ineligible day 2026-10-18 not in val / test (1 = not)",
+               float(esp.get("2026-10-18") not in ("train", "exclude") or esp["_gaps_per_day"]["2026-10-18"]["eligible"]
+                     is not False), 0)
+    results["gap_eval"] = dict(sports={k: res[k] for k in ("n_markets", "pnl_total", "excl/total", "chain/n_chains")},
+                               elections={k: er[k] for k in ("n_markets", "pnl_total", "chain/n_chains")},
+                               split_days=sp["days"])
+
+
 # ------------------------------------------------------------------ (d) reward hook
 
 def reward_hook(h, root, checks, results):
@@ -785,8 +1155,12 @@ def binding_matches_core(h, tmp, checks, data_dir, kw, tag, n=32, T=600, seed=3)
     lg = json.loads(str(z["log"]))
     missing = [f for f in LOG_FIELDS if f not in lg]
     checks.add("binding3 vec_log carries every Log field incl. the D15 net_* fields (missing count)", len(missing), 0)
-    ok = (lg.get("net_eps", 0) == 0 or 0 <= lg["netted_share"] <= 1) and lg["end_abs_inv"] == lg["final_abs_inv"]
-    checks.add("binding3 / env3.netting: netted_share in [0, 1], end_abs_inv == final_abs_inv (1 = not)", float(not ok), 0)
+    # with gap_chain 1 a piece that continues a chain has no end inventory (D16): end <= final there
+    same = (lg["end_abs_inv"] <= lg["final_abs_inv"] * (1 + 1e-6) + 1e-6) if kw.get("gap_chain") else \
+        lg["end_abs_inv"] == lg["final_abs_inv"]
+    ok = (lg.get("net_eps", 0) == 0 or 0 <= lg["netted_share"] <= 1) and same
+    checks.add("binding3 / env3.netting: netted_share in [0, 1], end_abs_inv == final_abs_inv (<= in gap chains) "
+               "(1 = not)", float(not ok), 0)
 
 
 def builders_selftest(tmp):
@@ -837,11 +1211,16 @@ def main():
         settlement(h, root, tmp, checks, results)
         adapt_schemas(h, root, tmp, checks, results)
         netting_checks(h, root, checks, results)
+        gap_adapt(h, root, tmp, checks, results)
+        gap_chains(h, root, checks, results)
+        gap_eval(tmp, root, checks, results)
         reward_hook(h, root, checks, results)
         split_guard(h, checks)
         binding_matches_core(h, tmp, checks, V2_DATA, dict(obs_size=80, liq_rewards=1, size_mult=10, Q=300), "crypto")
         binding_matches_core(h, tmp, checks, root / "elections",
                              dict(obs_size=80, liq_rewards=1, size_mode=1, Q=2000, pull_s=300, flat_c=0.5), "elections")
+        binding_matches_core(h, tmp, checks, root / "sports3_gaps",
+                             dict(obs_size=80, liq_rewards=1, size_mode=1, Q=1000, flat_c=0.5, gap_chain=1), "sports3-gaps")
         v2_bitexact(tmp, checks, args.quick, results)
     bad = checks.report()
     results["checks"] = {k: dict(value=v, tol=t, ok=ok) for k, (v, t, ok) in checks.rows.items()}

@@ -30,6 +30,16 @@ per market (cycle_stride = n, seed j -> list[j]), as train/envs.py MarketSetEnv.
 episode is checked against its market: `episode_rows == n_rows - 1` and the decision count
 (dt per length class, dt_far / far_s cadence), and the category one-hot of the first observation
 (obs_size >= 55).
+
+D16 recording gaps (v3env/ENV3.md section 11a): the eval env plays gap chains by default
+(`gap_chain=1`): one handle per chain head; when a gap-cut piece ends, mm3 starts its linked
+continuation with the carried inventory and cash (quotes forced off across the gap), and the
+handle stays active until the chain's last piece ends. Every piece is still one record (its own
+P&L increment), so a chain's records sum to one continuous episode. Training (`make_train`) keeps
+the env default `gap_chain=0`: each piece is its own episode, settled at its last pre-gap mid with
+no flattening cost. `market_table` carries the D16 flags (gap_cut, after_gap, gap_next / gap_prev,
+eval_excl_last_hour + eval_excluded_buckets, day_eligible) from markets3.bin / meta3.json, and
+`gap_summary` the per-day gap totals.
 """
 
 import datetime as _dt
@@ -60,7 +70,7 @@ CAT_NAMES = ('crypto', 'sports', 'elections', 'other')
 EXT_DTYPE = np.dtype([('settle_price', '<f8'), ('event_ts', '<i8'), ('settle_mode', '<i4'), ('category', '<i4'),
                       ('row_s', '<f4'), ('rw_v_c', '<f4'), ('rw_min_size', '<f4'), ('rw_rate_day', '<f4'),
                       ('fee_rate', '<f4'), ('fee_exp', '<f4'), ('rebate_rate', '<f4'), ('flags3', '<i4'),
-                      ('pad', '<i4', 2)])
+                      ('gap_next', '<i4'), ('gap_prev', '<i4')])          # D16 links: index + 1, 0 = none
 assert EXT_DTYPE.itemsize == 64
 DATA_FILES = ('markets.bin', 'feat.bin', 'book.bin', 'fills.bin', 'fill_index.bin', 'markets3.bin', 'x3.bin',
               'meta.json', 'feat_meta.json', 'meta3.json')
@@ -72,6 +82,8 @@ OBS_EV = 50             # ev_log = log1p(seconds to event) / log1p(86400)
 BUCKETS = (('gt24h', 86400, '>24h'), ('6_24h', 21600, '6-24h'), ('1_6h', 3600, '1-6h'), ('1h_30m', 1800, '1h-30m'),
            ('30_5m', 300, '30-5m'), ('5_0m', 0, '5-0m'))
 BUCKET_FROM_BUILD = {b: n for n, _, b in BUCKETS}
+# markets3.bin flags3 bits (v3env/mm3.h M3_FLAG3_*; D16)
+FLAG3_GAP_CUT, FLAG3_AFTER_GAP, FLAG3_EVAL_EXCL, FLAG3_DAY_INELIGIBLE = 2, 4, 8, 16
 
 
 def episode_bucket(lead_s, n_rows, row_s=1.0):
@@ -157,6 +169,44 @@ def _utc_day(ts):
     return _dt.datetime.fromtimestamp(int(ts), _dt.timezone.utc).strftime('%Y-%m-%d')
 
 
+def _utc_days(t0, t1):
+    d, end = _dt.datetime.fromtimestamp(int(t0), _dt.timezone.utc).date(), \
+        _dt.datetime.fromtimestamp(int(t1), _dt.timezone.utc).date()
+    out = []
+    while d <= end:
+        out.append(d.isoformat())
+        d += _dt.timedelta(days=1)
+    return out
+
+
+def gap_summary(build):
+    """D16: the build's recording-gap summary ({'days': {day: {n_gaps, total_gap_s, eligible, ...}}, the
+    chains, the flagged markets, ...}) from meta3.json (written by v3env/adapt3.py), else computed from the
+    builder's own fields (adapt3.sports_gaps / election_gaps on a scratch copy of markets3), else None."""
+    p = os.path.join(build, 'meta3.json')
+    if os.path.exists(p):
+        g = json.load(open(p)).get('gaps')
+        if g is not None:
+            return g
+    meta_p = os.path.join(build, 'meta.json')
+    if not os.path.exists(meta_p):
+        return None
+    meta = json.load(open(meta_p))
+    try:
+        import adapt3                                   # v3env/ (on sys.path)
+        from pathlib import Path
+        mk = np.fromfile(os.path.join(build, 'markets.bin'), MARKET_DTYPE)
+        ext = np.zeros(len(mk), EXT_DTYPE)
+        kind = detect_kind(build)
+        if kind == 'sports' and meta.get('segments') is not None:
+            return adapt3.sports_gaps(meta, mk, meta['segments'], ext)
+        if kind == 'elections':
+            return adapt3.election_gaps(Path(build), meta, mk, ext)
+    except SystemExit as e:
+        raise ValueError(f'{build}: inconsistent gap fields: {e}')
+    return None
+
+
 def market_table(build):
     """Per-market facts of a build (markets.bin + markets3.bin + meta.json), in market order:
     idx, split (the build's), n_rows, open_ts, end_ts, event_ts, contract_len_s, category, league,
@@ -169,6 +219,10 @@ def market_table(build):
     if ext is not None and len(ext) != len(mk):
         raise ValueError(f'{p3}: {len(ext)} records for {len(mk)} markets (rerun adapt3.py)')
     meta = json.load(open(os.path.join(build, 'meta.json')))
+    m3p = os.path.join(build, 'meta3.json')
+    gaps = (json.load(open(m3p)).get('gaps') if os.path.exists(m3p) else None) or {}
+    gap_days = gaps.get('days') or {}
+    excl_b = gaps.get('eval_excluded_buckets') or {}
     slugs = meta.get('slugs') or [f'm{i}' for i in range(len(mk))]
     segs = meta.get('segments')                     # build_sports sports-2: one record per market
     if segs is not None and len(segs) != len(mk):
@@ -208,8 +262,23 @@ def market_table(build):
                      'row_s': float(e['row_s']) if e is not None else 1.0,
                      'rw_rate_day': float(e['rw_rate_day']) if e is not None else 0.0,
                      'rw_min_size': float(e['rw_min_size']) if e is not None else 0.0,
-                     'min_order_size': float(m['min_order_size'])})
+                     'min_order_size': float(m['min_order_size']), **_gap_fields(i, m, e, gap_days, excl_b)})
     return rows
+
+
+def _gap_fields(i, m, e, gap_days, excl_b):
+    """D16 per-market fields: links (market indices or None), flags, the eval-excluded time buckets (tk
+    names) and day eligibility (flag DAY_INELIGIBLE, or any spanned UTC day ineligible in meta3 gaps)."""
+    f3 = int(e['flags3']) if e is not None else 0
+    nx = int(e['gap_next']) - 1 if e is not None else -1
+    pv = int(e['gap_prev']) - 1 if e is not None else -1
+    days = _utc_days(m['open_ts'], m['end_ts'])
+    elig = not (f3 & FLAG3_DAY_INELIGIBLE) and all((gap_days.get(d) or {}).get('eligible', True) for d in days)
+    return {'gap_next': nx if nx >= 0 else None, 'gap_prev': pv if pv >= 0 else None,
+            'gap_cut': bool(f3 & FLAG3_GAP_CUT), 'after_gap': bool(f3 & FLAG3_AFTER_GAP),
+            'eval_excl_last_hour': bool(f3 & FLAG3_EVAL_EXCL),
+            'eval_excluded_buckets': [BUCKET_FROM_BUILD.get(b, b) for b in excl_b.get(str(i), [])],
+            'day_eligible': bool(elig), 'utc_days': days}
 
 
 # ----------------------------------------------------------------------------- split map
@@ -316,11 +385,30 @@ def len_bit(L):
 
 
 class MarketSetEnv3:
-    """Every market of a split once, from row 0 (train/envs.py MarketSetEnv for mm3)."""
+    """Every market of a split once, from row 0 (train/envs.py MarketSetEnv for mm3). With gap_chain = 1
+    (D16) one handle plays a whole gap chain: its head from row 0, then each linked piece from row 0 with
+    the carried inventory and cash; `active` drops when the chain's last piece ends."""
 
     def __init__(self, mod, markets, split, seed=0, **kw):
         import gymnasium
-        n = len(markets)
+        chain = int(kw.get('gap_chain', mod.DEFAULTS.get('gap_chain', 0)))
+        pos = {m['idx']: j for j, m in enumerate(markets)}
+        nxt = {}
+        if chain:                    # mm3 continues into gap_next when it is in the same market list
+            for j, m in enumerate(markets):
+                if m.get('gap_next') is not None and m['gap_next'] in pos:
+                    nxt[j] = pos[m['gap_next']]
+        cont = set(nxt.values())
+        self.chains = []
+        for j in range(len(markets)):
+            if j in cont:
+                continue
+            c = [j]
+            while c[-1] in nxt:
+                c.append(nxt[c[-1]])
+            self.chains.append(c)
+        assert sorted(j for c in self.chains for j in c) == list(range(len(markets))), 'gap chains do not cover the list'
+        n = len(self.chains)
         obs_size = int(kw.get('obs_size', mod.DEFAULTS['obs_size']))
         self.obs_size = obs_size
         self.num_agents = n
@@ -334,15 +422,16 @@ class MarketSetEnv3:
         self.masks = np.ones(n, bool)
         self.markets = markets
         self.envs = []
-        for j in range(n):
-            buf = {k: getattr(self, k)[j:j + 1] for k in
+        for h, c in enumerate(self.chains):          # handle h starts on list[c[0]] (cycle_pos = seed)
+            buf = {k: getattr(self, k)[h:h + 1] for k in
                    ('observations', 'actions', 'rewards', 'terminals', 'truncations', 'masks')}
-            self.envs.append(mod.MmEnv3(num_envs=1, seed=j, split=split, cycle_stride=n, fixed_start=0,
-                                        buf=buf, **kw))
+            self.envs.append(mod.MmEnv3(num_envs=1, seed=c[0], split=split, cycle_stride=len(markets),
+                                        fixed_start=0, buf=buf, **kw))
         p = self.envs[0].params
         self.expected = np.array([expected_steps(m, p) for m in markets])
         self.binding = self.envs[0]._binding
         self.active = np.ones(n, bool)
+        self.cur = np.zeros(n, np.int64)             # position of the playing piece in its chain
         self.records = []
 
     def reset(self, seed=0):
@@ -350,9 +439,10 @@ class MarketSetEnv3:
             self.binding.vec_reset(e.c_envs, j)
         if self.obs_size >= OBS_CAT + 3:
             got = np.argmax(self.observations[:, OBS_CAT:OBS_CAT + 3], 1)
-            want = np.array([m['category'] for m in self.markets])
+            want = np.array([self.markets[c[0]]['category'] for c in self.chains])
             assert np.array_equal(got, np.minimum(want, 2)), 'eval env: market order differs from mm3 list'
         self.active[:] = True
+        self.cur[:] = 0
         self.records = []
         return self.observations, []
 
@@ -365,15 +455,25 @@ class MarketSetEnv3:
         for i in np.flatnonzero(self.active & self.terminals):
             log = b.vec_log(self.envs[i].c_envs)
             assert log.get('n') == 1.0, log
-            m = self.markets[i]
-            assert int(round(log['episode_rows'])) == m['n_rows'] - 1, (i, log['episode_rows'], m['n_rows'])
-            assert int(round(log['episode_length'])) == self.expected[i], (i, log['episode_length'], self.expected[i])
+            c = self.chains[i]
+            j = c[self.cur[i]]
+            m = self.markets[j]
+            assert int(round(log['episode_rows'])) == m['n_rows'] - 1, (j, log['episode_rows'], m['n_rows'])
+            assert int(round(log['episode_length'])) == self.expected[j], (j, log['episode_length'], self.expected[j])
+            last = self.cur[i] == len(c) - 1
             self.records.append({'env': int(i), 'market': int(m['idx']),
                                  **{k: m[k] for k in ('contract_len_s', 'open_ts', 'end_ts', 'event_ts', 'category',
                                                       'category_name', 'league', 'group', 'date', 'slug',
                                                       'n_rows', 'rw_rate_day', 'bucket')},
+                                 **{k: m.get(k) for k in ('gap_cut', 'after_gap', 'eval_excl_last_hour',
+                                                          'eval_excluded_buckets', 'day_eligible')},
+                                 'chain_id': str(self.markets[c[0]]['idx']), 'chain_pos': int(self.cur[i]),
+                                 'chain_len': len(c), 'chain_end': bool(last),
                                  **{k: float(v) for k, v in log.items() if k != 'n'}})
-            self.active[i] = False
+            if last:
+                self.active[i] = False
+            else:
+                self.cur[i] += 1
         return self.observations, self.rewards, self.terminals, self.truncations, []
 
     def close(self):
@@ -478,6 +578,7 @@ class V3Adapter:
             kw.pop(k, None)
         kw, d, _ = self.resolve(kw)
         self._guard(split, kw)
+        kw.setdefault('gap_chain', 1)                # D16: eval plays gap chains as continuous episodes
         mk = self.split_markets(split, d, kw)
         if not mk:
             raise ValueError(f'no markets of split {split} in {d}')

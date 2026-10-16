@@ -40,10 +40,30 @@ Schema mapping (ENV3.md section 11 has the full tables):
     liq_comp, liq_pi.
   crypto (data/build): nothing is needed (mm3 synthesises the legacy records); --kind crypto
     writes them explicitly.
+
+D16 recording gaps (ENV3.md section 11a). The gap links go into markets3.bin itself, in the two int32
+words that were padding: `gap_next` / `gap_prev` = index + 1 of the linked piece (0 = none), plus
+flags3 bits GAP_CUT 2, AFTER_GAP 4, EVAL_EXCL 8 (sports: last-hour gap, excluded from val/test
+scoring) and DAY_INELIGIBLE 16 (a UTC day the piece spans has more than max_day_gap_s of gaps:
+train only). Builds without gap fields write zeros there, as before, so mm3 stays v2 bit for bit.
+The per-day gap summary, the eval-excluded buckets and the chains go into meta3.json `gaps`.
+  sports-3 (build_sports.py, meta.json segments[i].gap.prev_sid / next_sid, markets.bin flags
+    GAP_CUT 16384 / AFTER_GAP 32768 / EVAL_EXCL_LAST_HOUR 65536, segments[i].eval_excluded_buckets,
+    meta.gaps.days {day: {n_gaps, total_gap_s, eligible}}): links by sid; DAY_INELIGIBLE when any
+    UTC day of [open_ts, end_ts] is not eligible.
+  elections (build_elections.py): links from meta.json episodes[i].prev_segment_id / next_segment_id
+    when present, else markets_meta.parquet (prev_segment_id / next_segment_id), else the builder's
+    own rule (consecutive episodes of a market, end_reason 'gap' -> start_reason 'gap');
+    DAY_INELIGIBLE = not episodes[i].day_eligible, or the recorder-wide day of gaps_per_day.csv is
+    not eligible; per-day totals from gaps_per_day.csv (scope recorder). A linked piece's event_ts is
+    the end of its chain's last piece (the window episode the gaps cut), so time to event (obs 50,
+    pull_s) never announces a gap.
 """
 from __future__ import annotations
 
 import argparse
+import csv
+import datetime as _dt
 import hashlib
 import json
 import os
@@ -53,12 +73,16 @@ from pathlib import Path
 
 import numpy as np
 
-from reference3 import (BOOK_DTYPE, CAT_CRYPTO, CAT_ELECTIONS, CAT_SPORTS, EXT_DTYPE, MARKET_DTYPE, SETTLE_LAST_MARK,
+from reference3 import (BOOK_DTYPE, CAT_CRYPTO, CAT_ELECTIONS, CAT_SPORTS, EXT_DTYPE, FLAG3_AFTER_GAP,
+                        FLAG3_DAY_INELIGIBLE, FLAG3_EVAL_EXCL, FLAG3_GAP_CUT, MARKET_DTYPE, SETTLE_LAST_MARK,
                         SETTLE_PRICE, X_COLS, legacy_ext)
 
 SPORTS_FLAG_SETTLE_PX = 16      # legacy settle marker (sports-1 always; sports-2 unless --no-legacy-settle)
 SPORTS1_FLAG_TRUNC = 32         # sports-1 TRADES_TRUNCATED (32 is UNRESOLVED in elections; unused in sports-2)
 SPORTS2_FLAG_TRUNC = 1024       # sports-2 TRADES_TRUNCATED
+SPORTS3_FLAG_GAP_CUT = 16384    # sports-3 (D16): the segment ends at a recording gap
+SPORTS3_FLAG_AFTER_GAP = 32768  # sports-3 (D16): the segment starts after a recording gap
+SPORTS3_FLAG_EVAL_EXCL = 65536  # sports-3 (D16): last-hour gap in the game, excluded from val/test
 SPORTS_COLS = ["seconds_to_kickoff", "seconds_to_seg_end", "microprice", "hours_since_first_book"]
 CHUNK = 1 << 20
 REWARD_SEED = 20261016
@@ -153,6 +177,199 @@ def sports_x3_top5(book, mk, ext, dt_s):
     return x3
 
 
+# ----------------------------------------------------------------------------- D16 recording gaps
+def utc_days(t0, t1):
+    """UTC days ('YYYY-MM-DD') touched by [t0, t1] (unix s)."""
+    d = _dt.datetime.fromtimestamp(int(t0), _dt.timezone.utc).date()
+    end = _dt.datetime.fromtimestamp(int(t1), _dt.timezone.utc).date()
+    out = []
+    while d <= end:
+        out.append(d.isoformat())
+        d += _dt.timedelta(days=1)
+    return out
+
+
+def _link(ext, i, j):
+    ext["gap_next"][i], ext["gap_prev"][j] = j + 1, i + 1
+
+
+def check_links(ext, mk, key=None):
+    """Links are mutual, go forward in time, join a GAP_CUT piece to an AFTER_GAP piece of the same
+    market (key) and split; returns the chains (lists of market indices, head first, >= 2 pieces)."""
+    n = len(ext)
+    nx, pv = ext["gap_next"].astype(np.int64) - 1, ext["gap_prev"].astype(np.int64) - 1
+    for i in range(n):
+        j = nx[i]
+        if j < 0:
+            continue
+        if pv[j] != i:
+            raise SystemExit(f"gap link {i} -> {j} is not mutual")
+        if not (ext["flags3"][i] & FLAG3_GAP_CUT and ext["flags3"][j] & FLAG3_AFTER_GAP):
+            raise SystemExit(f"gap link {i} -> {j}: not a GAP_CUT piece followed by an AFTER_GAP piece")
+        if not int(mk["end_ts"][i]) < int(mk["open_ts"][j]):
+            raise SystemExit(f"gap link {i} -> {j}: the next piece does not start after the gap")
+        if int(mk["split"][i]) != int(mk["split"][j]):
+            raise SystemExit(f"gap link {i} -> {j} crosses splits ({mk['split'][i]} -> {mk['split'][j]})")
+        if key is not None and key[i] != key[j]:
+            raise SystemExit(f"gap link {i} -> {j} joins different markets ({key[i]} / {key[j]})")
+    chains = []
+    for i in range(n):
+        if pv[i] < 0 and nx[i] >= 0:
+            c = [i]
+            while nx[c[-1]] >= 0:
+                c.append(int(nx[c[-1]]))
+                if len(c) > n:
+                    raise SystemExit("gap links form a cycle")
+            chains.append(c)
+    return chains
+
+
+def gaps_info(ext, mk, chains, days, schema, extra=None, excluded_buckets=None):
+    """meta3.json `gaps`: the per-day summary, the chains and the per-market D16 flags."""
+    f3 = ext["flags3"]
+    pick = lambda b: np.flatnonzero(f3 & b).tolist()  # noqa: E731
+    days = {d: {k: v for k, v in x.items()} for d, x in sorted((days or {}).items())}
+    return {"schema": schema, "days": days,
+            "days_ineligible": sorted(d for d, x in days.items() if not x.get("eligible", True)),
+            "n_gaps_total": int(sum(int(x.get("n_gaps", 0)) for x in days.values())),
+            "total_gap_s": round(float(sum(float(x.get("total_gap_s", 0.0)) for x in days.values())), 3),
+            "n_links": int((ext["gap_next"] > 0).sum()), "chains": chains,
+            "gap_cut": pick(FLAG3_GAP_CUT), "after_gap": pick(FLAG3_AFTER_GAP),
+            "eval_excl_last_hour": pick(FLAG3_EVAL_EXCL), "day_ineligible": pick(FLAG3_DAY_INELIGIBLE),
+            "eval_excluded_buckets": {str(i): b for i, b in sorted((excluded_buckets or {}).items()) if b},
+            **(extra or {})}
+
+
+def sports_gaps(meta, mk, segs, ext):
+    """sports-3 (D16): gap links by sid, flags, eval exclusions and day eligibility (from meta.gaps)."""
+    gm = meta.get("gaps") or {}
+    days = gm.get("days") or {}           # the builder's eligibility (total <= max_day_gap_s) is authoritative
+    idx = {x["sid"]: i for i, x in enumerate(segs)}
+    excl = {}
+    for i, x in enumerate(segs):
+        fl = int(mk["flags"][i])
+        g = x.get("gap") or {}
+        f3 = 0
+        if fl & SPORTS3_FLAG_GAP_CUT or x.get("cut_reason") == "gap":
+            f3 |= FLAG3_GAP_CUT
+        if fl & SPORTS3_FLAG_AFTER_GAP or x.get("start_reason") == "gap":
+            f3 |= FLAG3_AFTER_GAP
+        if fl & SPORTS3_FLAG_EVAL_EXCL or x.get("excluded_from_eval_last_hour"):
+            f3 |= FLAG3_EVAL_EXCL
+        if any(not (days.get(d) or {}).get("eligible", True) for d in utc_days(mk["open_ts"][i], mk["end_ts"][i])):
+            f3 |= FLAG3_DAY_INELIGIBLE
+        ext["flags3"][i] |= f3
+        excl[i] = list(x.get("eval_excluded_buckets") or [])
+        if f3 & FLAG3_EVAL_EXCL and not excl[i]:
+            excl[i] = list(gm.get("last_hour_buckets") or ["1h-30m", "30-5m", "5-0m"])
+        if g.get("next_sid"):
+            if g["next_sid"] not in idx:
+                raise SystemExit(f"segments[{i}].gap.next_sid {g['next_sid']!r} is not a segment of this build")
+            _link(ext, i, idx[g["next_sid"]])
+    for i, x in enumerate(segs):               # prev_sid must agree with the next_sid links
+        ps = (x.get("gap") or {}).get("prev_sid")
+        if (ps is not None and (ps not in idx or int(ext["gap_prev"][i]) != idx[ps] + 1)) or \
+                (ps is None and int(ext["gap_prev"][i]) != 0):
+            raise SystemExit(f"segments[{i}].gap.prev_sid {ps!r} disagrees with the next_sid links")
+    chains = check_links(ext, mk, [x.get("slug") for x in segs])
+    return gaps_info(ext, mk, chains, days, "sports-3" if gm else None,
+                     {**{k: gm.get(k) for k in ("gap_s", "max_day_gap_s", "last_hour_s", "games_last_hour_gap",
+                                                 "val_test_days_ineligible") if k in gm},
+                      "days_not_all_logged": sorted(d for d, x in days.items() if not x.get("all_logged", True))},
+                     excl)
+
+
+def read_gaps_per_day(build: Path):
+    """build_elections gaps_per_day.csv, scope 'recorder': {day: {n_gaps, total_gap_s, eligible, ...}},
+    and per day the count of ineligible market-days (scope 'market')."""
+    p = build / "gaps_per_day.csv"
+    if not p.exists():
+        return {}
+    out, mkt = {}, {}
+    with open(p, newline="") as f:
+        for r in csv.DictReader(f):
+            elig = str(r.get("eligible", "True")).strip().lower() in ("true", "1")
+            if r.get("scope") == "recorder":
+                out[r["day"]] = {"n_gaps": int(float(r.get("n_gaps") or 0)),
+                                 "total_gap_s": float(r.get("total_gap_s") or 0.0), "eligible": elig,
+                                 "n_gaps_gt_max": int(float(r.get("n_gaps_gt_max") or 0)),
+                                 "total_gap_gt_max_s": float(r.get("total_gap_gt_max_s") or 0.0),
+                                 "longest_gap_s": float(r.get("longest_gap_s") or 0.0)}
+            elif r.get("scope") == "market":
+                m = mkt.setdefault(r["day"], [0, 0])
+                m[0] += 1
+                m[1] += int(not elig)
+    for d, (n, bad) in mkt.items():
+        out.setdefault(d, {"n_gaps": 0, "total_gap_s": 0.0, "eligible": True})
+        out[d]["market_days"], out[d]["market_days_ineligible"] = n, bad
+    return out
+
+
+def election_links(build: Path, eps):
+    """(prev, next) episode ids per episode: meta.json episodes fields, else markets_meta.parquet, else the
+    builder's rule (consecutive episodes of a market, end_reason gap -> start_reason gap)."""
+    for a, b in (("prev_segment_id", "next_segment_id"), ("prev_id", "next_id")):
+        if any(b in x or a in x for x in eps):
+            return [(x.get(a) or None, x.get(b) or None) for x in eps], f"meta.json episodes {a} / {b}"
+    pq = build / "markets_meta.parquet"
+    if pq.exists():
+        try:
+            import pandas as pd
+            t = pd.read_parquet(pq, columns=["episode_id", "prev_segment_id", "next_segment_id"])
+            m = {r.episode_id: (r.prev_segment_id or None, r.next_segment_id or None) for r in t.itertuples()}
+            if all(x["id"] in m for x in eps):
+                return [m[x["id"]] for x in eps], "markets_meta.parquet"
+        except Exception as e:                       # noqa: BLE001  (no pyarrow: fall back to the rule)
+            print(f"adapt3: markets_meta.parquet unreadable ({e}); links from the builder's rule", file=sys.stderr)
+    out = [[None, None] for _ in eps]
+    by = {}
+    for i, x in enumerate(eps):
+        by.setdefault(x["slug"], []).append(i)
+    for lst in by.values():
+        lst.sort(key=lambda i: int(eps[i]["open_ts"]))
+        for p, q in zip(lst[:-1], lst[1:]):
+            if eps[p].get("end_reason") == "gap" and eps[q].get("start_reason") == "gap":
+                out[q][0], out[p][1] = eps[p]["id"], eps[q]["id"]
+    return [tuple(x) for x in out], "builder rule (episodes start/end reasons)"
+
+
+def election_gaps(build: Path, meta, mk, ext):
+    eps = meta.get("episodes")
+    days = read_gaps_per_day(build)
+    if not eps or len(eps) != len(mk):
+        return gaps_info(ext, mk, [], days, "elections" if days else None, {"links_source": None})
+    ids = [x["id"] for x in eps]
+    if meta.get("slugs") is not None and list(meta["slugs"]) != ids:
+        raise SystemExit("meta.json episodes[*].id differs from meta.slugs (episodes not in market order?)")
+    links, src = election_links(build, eps)
+    idx = {x: i for i, x in enumerate(ids)}
+    for i, x in enumerate(eps):
+        f3 = 0
+        if x.get("end_reason") == "gap":
+            f3 |= FLAG3_GAP_CUT
+        if x.get("start_reason") == "gap":
+            f3 |= FLAG3_AFTER_GAP
+        if not x.get("day_eligible", True) or any(not (days.get(d) or {}).get("eligible", True)
+                                                 for d in utc_days(mk["open_ts"][i], mk["end_ts"][i])):
+            f3 |= FLAG3_DAY_INELIGIBLE
+        ext["flags3"][i] |= f3
+    for i, (pv, nx) in enumerate(links):
+        if nx:
+            if nx not in idx:
+                raise SystemExit(f"episode {ids[i]}: next segment {nx!r} is not in this build")
+            _link(ext, i, idx[nx])
+    for i, (pv, nx) in enumerate(links):
+        if (pv or None) != (ids[int(ext["gap_prev"][i]) - 1] if ext["gap_prev"][i] else None):
+            raise SystemExit(f"episode {ids[i]}: prev segment {pv!r} disagrees with the next links")
+    chains = check_links(ext, mk, [x["slug"] for x in eps])
+    for c in chains:                       # time to event = to the end of the window episode the gaps cut
+        ext["event_ts"][c] = int(mk["end_ts"][c[-1]])
+    return gaps_info(ext, mk, chains, days, "elections",
+                     {"links_source": src, "max_gap_s": (meta.get("gaps") or {}).get("max_gap_s"),
+                      "day_max_gap_s": (meta.get("gaps") or {}).get("day_max_gap_s"),
+                      "ineligible_day": (meta.get("gaps") or {}).get("ineligible_day")})
+
+
 def sports(build: Path, args):
     meta = json.loads((build / "meta.json").read_text())
     if meta.get("segments") is not None:
@@ -197,6 +414,7 @@ def sports2(build: Path, args, meta):
     if (ext["event_ts"] < mk["end_ts"]).any():
         raise SystemExit("segments[*].kickoff_ts before the episode end (an episode past kickoff?)")
     trunc = (mk["flags"] & SPORTS2_FLAG_TRUNC) > 0
+    gaps = sports_gaps(meta, mk, segs, ext)
     src = build / "sports_x3.bin"
     x3, how = None, "none"
     if src.exists():
@@ -224,7 +442,7 @@ def sports2(build: Path, args, meta):
                      "bucket_segments": bool((sp.get("buckets") or {}).get("bucket_segments", False)),
                      "cut_before_kickoff_s": sp.get("cut_before_kickoff_s"),
                      "trades_truncated": int(trunc.sum()), "trades_truncated_markets": np.flatnonzero(trunc).tolist(),
-                     "trades_truncated_flag": SPORTS2_FLAG_TRUNC}
+                     "trades_truncated_flag": SPORTS2_FLAG_TRUNC, "gaps": gaps}
 
 
 def sports1(build: Path, args, meta):
@@ -277,8 +495,9 @@ def elections(build: Path, args):
     ext["rw_min_size"] = fx[first, xi["rw_min_size"]]
     ext["rw_rate_day"] = fx[first, xi["rw_daily_rate"]]
     ext["fee_rate"] = ext["fee_exp"] = ext["rebate_rate"] = -1.0
+    gaps = election_gaps(build, json.loads((build / "meta.json").read_text()), mk, ext)
     if args.check:
-        return ext, None, {"x3_rows": N}
+        return ext, None, {"x3_rows": N, "gaps": gaps}
     out = Path(args.out or build)
     out.mkdir(parents=True, exist_ok=True)
     tmp = out / f".x3.bin.tmp{os.getpid()}"              # streamed: an election build can hold 10^7+ rows
@@ -291,7 +510,7 @@ def elections(build: Path, args):
             x3[lo:hi, j] = arr[lo:hi, (xi if arr is fx else ci)[name]]
     x3.flush()
     del x3
-    return ext, tmp, {"x3_rows": N}
+    return ext, tmp, {"x3_rows": N, "gaps": gaps}
 
 
 def main(argv=None):
@@ -312,7 +531,11 @@ def main(argv=None):
         ext, x3, info = elections(build, args)
     else:
         ext, x3, info = legacy_ext(np.fromfile(build / "markets.bin", MARKET_DTYPE)), None, {}
-    per_market = {k: info.pop(k) for k in ("trades_truncated_markets",) if k in info}
+    per_market = {k: info.pop(k) for k in ("trades_truncated_markets", "gaps") if k in info}
+    g = per_market.get("gaps") or {}
+    info.update({"gap_links": int(g.get("n_links", 0)), "gap_days_ineligible": len(g.get("days_ineligible", [])),
+                 "gap_eval_excl_last_hour": len(g.get("eval_excl_last_hour", [])),
+                 "gap_day_ineligible_markets": len(g.get("day_ineligible", []))})
     summary = {"kind": kind, "markets": int(len(ext)), "x3": x3 is not None or info.get("x3_source", "none") != "none",
                "settle_mode": np.unique(ext["settle_mode"]).tolist(), "row_s": np.unique(ext["row_s"]).tolist(),
                "rw_programs": int((ext["rw_rate_day"] > 0).sum()), **info}

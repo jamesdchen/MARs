@@ -42,12 +42,17 @@ def size_of(url):
 
 
 class SparseParquet:
-    def __init__(self, relpath: str, local: str):
+    def __init__(self, relpath: str, local: str, reuse: bool = False):
+        """reuse (dev only): keep an existing local sparse file of the right size and skip fetch()."""
         self.url = REPO + relpath
         self.local = local
         self.size, self.etag = size_of(self.url)
         self.bytes_fetched = 0
+        self.reused = reuse and os.path.exists(local) and os.path.getsize(local) == self.size
         os.makedirs(os.path.dirname(local), exist_ok=True)
+        if self.reused:
+            self.meta = pq.read_metadata(local)
+            return
         with open(local, "wb") as f:
             f.truncate(self.size)
         tail, _ = _get(self.url, self.size - 8, self.size - 1)
@@ -83,6 +88,8 @@ class SparseParquet:
         return out
 
     def fetch(self, rgs, workers=8, max_gap=1 << 20, max_chunk=64 << 20):
+        if self.reused:
+            return 0
         spans = sorted(self.rg_span(i) for i in rgs)
         merged = []
         for a, b in spans:                       # coalesce nearby ranges into fewer requests
