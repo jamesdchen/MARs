@@ -1128,6 +1128,7 @@ def main(argv=None):
         print(pd.DataFrame(eps)[["id", "open_ts", "end_ts", "start_reason", "end_reason", "split"]].to_string(max_rows=60))
         return 0
     trades = trades.copy()
+    trades["is_taker"] = trades["is_taker"].astype(bool)  # empty frames are object-dtype: ~ would select columns
     trades["px_up"] = np.where(trades.outcome_idx == 0, trades.price.astype(np.float64), 1.0 - trades.price.astype(np.float64))
     has_maker = trades[~trades.is_taker].groupby("tx").size()
     trades["use"] = ~trades.is_taker | ~trades.tx.isin(has_maker.index)
@@ -1320,9 +1321,16 @@ def main(argv=None):
         "slugs": ids,
         "episodes": [{k: x[k] for k in ("id", "slug", "condition_id", "day", "open_ts", "end_ts", "start_reason",
                                          "end_reason", "split", "split_assigned", "day_eligible",
-                                         "cov_total_gap", "cov_max_gap", "trades_complete")} for x in eps],
+                                         "cov_total_gap", "cov_max_gap", "trades_complete")}
+                     | {"window_end_ts": int(x["window_end_ts"]), "prev_segment_id": x.get("prev_id", ""),
+                        "next_segment_id": x.get("next_id", ""), "gap_before_s": float(x.get("gap_before_s", 0.0))}
+                     for x in eps],
         "gaps": {"max_gap_s": a.max_gap, "day_max_gap_s": a.day_max_gap_s, "ineligible_day": a.ineligible_day,
-                 "files": ["GAPS.md", "gaps_per_day.csv"]},
+                 "files": ["GAPS.md", "gaps_per_day.csv"],
+                 # recorder-wide rows of gaps_per_day.csv (scope = recorder), for adapt3 / evaluator3
+                 "days": {str(r.day): {"n_gaps": int(r.n_gaps), "total_gap_s": float(r.total_gap_s),
+                                       "eligible": bool(r.eligible)}
+                          for r in gp["days"][gp["days"].scope == "recorder"].itertuples()}},
         "test_rows": {"row_lo": lo, "row_hi": hi, "sha256": test_sha},
         "normalisation_train_only": {},
         "sentinels": {"empty_bid_px": 0.0, "empty_ask_px": 1.0, "empty_size": 0.0, "no_trade_vwap_maxmin": 0.0,
