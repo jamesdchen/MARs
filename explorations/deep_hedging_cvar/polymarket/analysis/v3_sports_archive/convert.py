@@ -352,8 +352,16 @@ def run_books_day(a, day: str) -> dict:
     pool = mp.get_context("fork").Pool(a.procs, initializer=_winit,
                                        initargs=(sp.local, toks_sorted, [tw[t][1] * 1000 for t in toks_sorted],
                                                  [tw[t][0] * 1000 for t in toks_sorted]))
-    jobs = [(h, pool.apply_async(_filter_hour, (want.get(h, []),)) if want.get(h) else None) for h in hours]
-    for h, job in jobs:
+    jobs, inflight = {}, a.procs + 1                  # bounded look-ahead: results are held by this process
+
+    def submit(k):
+        if k < len(hours) and want.get(hours[k]):
+            jobs[k] = pool.apply_async(_filter_hour, (want[hours[k]],))
+    for k in range(inflight):
+        submit(k)
+    for k, h in enumerate(hours):
+        submit(k + inflight)
+        job = jobs.pop(k, None)
         if h is not None and h not in present and lo <= h < hi:     # archive hour missing: books unknown
             for tb in books.values():
                 tb.set_verified(False, h)
