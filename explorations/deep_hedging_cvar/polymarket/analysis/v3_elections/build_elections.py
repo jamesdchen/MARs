@@ -164,7 +164,7 @@ def load_selection(path: Path, args) -> tuple[pd.DataFrame, str]:
     for m in sel["selected"]:
         assert len(m["tokens"]) == 2, m["slug"]
         rows.append(dict(slug=m["slug"], condition_id=m["condition_id"], tok0=str(m["tokens"][0]),
-                         tok1=str(m["tokens"][1]), outcomes=list(m["outcomes"]), end_ts=utc_ts(m["end_date"]),
+                         tok1=str(m["tokens"][1]), outcomes=list(m["outcomes"]), end_ts=utc_ts(m["end_date"]) if m.get("end_date") else 2**31 - 1,  # no gamma endDate: open-ended (cutoff still applies)
                          rate_per_day=float(m.get("rate_per_day") or 0.0),
                          rewards_min_size=float(m.get("rewards_min_size") or 0.0),
                          rewards_max_spread=float(m.get("rewards_max_spread") or 0.0),

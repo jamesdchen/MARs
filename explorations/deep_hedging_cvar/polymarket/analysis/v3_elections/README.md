@@ -41,6 +41,15 @@ Hourly reward-config snapshots go alongside them. These recordings are the only 
   breaks a full Oct 16 day window. Windows that don't contain 02:03–02:05 (for example 4 h windows) are
   unaffected. A container restart can't be prevented from inside the session; only the hand restart time can
   be kept short.
+- **2026-10-16 05:37:00 to 2026-10-21 19:25:59 UTC: down for about 5.6 days.** The session hit the weekly usage
+  limit at about 05:32, and the container was reclaimed. The last hourly push was 05:07Z; the books for 05:07–05:37
+  were compacted from leftover parts on restart and pushed afterwards. Under D16 the days Oct 16–21 are ineligible
+  (total gap > 30 min/day), so they default to train-only. Oct 22 is the next possible full day.
+- **2026-10-21 19:24: market list refreshed** with `select_markets.py --top 300 --min-rate 20` (same rule). The
+  midterm reward pool is now $32.0k/day across 2,801 markets, and the selected 300 carry $22.7k/day. 207 markets
+  overlap with the Oct 15 selection; 93 are new and 93 were dropped. The previous selection and config are kept as
+  `sel/selection_20261015.json` / `sel/polyrec_20261015.toml`. The reconcile/health overrides (ring 256, RSS cap
+  6 GB, reconcile 120 s) were re-applied to the new config.
 - `rec/coverage/` records every gap, and builds apply `merge.py`'s coverage rule.
 
 ## Operations
