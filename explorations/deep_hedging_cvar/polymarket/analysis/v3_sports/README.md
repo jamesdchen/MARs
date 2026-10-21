@@ -8,6 +8,15 @@
 | Reward programs | `rewards_snapshot.py` → `rewards/rewards_<day>.json` (git-tracked, small) | Daily CLOB `/rewards/markets/current` snapshot of the recorded markets (rate/day, max spread, min size); `build_sports.py --rewards-dir` turns it into per-row reward columns (feat `liq_*`, `sports_x3.bin`). First run 2026-10-15 21:24 UTC: 5 of 313 recorded markets in a program. Run it once a day. |
 | Historical backfill | `backfill_pob.py`, `README_backfill.md`, `pob_openapi.json` | Ready for `POLYORDERBOOKS_API_KEY`. Run `--probe` first, then e.g. `--start 2026-09-16 --end 2026-10-14 --mirror --min-volume 50000`. It is resumable and writes `raw_pob/` in the recorder layout. Trades come from data-api, keyless (`--stage meta` works now). |
 
+## Recorder outage 2026-10-16 04:51 → 2026-10-21 19:25 UTC (D16)
+
+The session hit its weekly usage limit, so the recorder (and kickoff_watch) stopped at
+2026-10-16T04:51:11Z (04:49:21Z for the watcher). They were restarted at 2026-10-21T19:25:58Z.
+The outage is logged in `rec_out/GAPS.txt` (tracked copy: `kickoff/snapshot/RECORDER_GAPS.txt`),
+so `build_sports.py` splits episodes there. Oct 16–21 have no or partial data and are ineligible
+for val/test under D16. Since the restart the horizon is **14 d**: about 1,280 markets with
+kickoff 0–14 days ahead (it was 7 d / 700).
+
 ## v3 data rule: episode cut (recorded 2026-10-15 ~21:15 UTC, before any v3 result)
 
 - **The episode cut is the scheduled `gameStartTime`** (gamma). Polymarket's `clearBookOnStart` wipe

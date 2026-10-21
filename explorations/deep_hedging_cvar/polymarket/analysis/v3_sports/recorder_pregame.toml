@@ -12,8 +12,8 @@ params = { tag_id = "100639" }
 slug_regex = '^(nfl|cfb|nba|nhl|mlb|wnba|epl|lal|ucl|uel|uecl|bun|sea|fl1|ere|por|mls|arg|bra|unl|fif|atp|wta)-[a-z0-9]+-[a-z0-9]+-\d{4}-\d{2}-\d{2}(-[a-z0-9]+)?$'
 exclude_regex = '-(game\d+|map\d+|total|spread|btts|pt5|1h|2h|ht|overtime|safety)\b'
 window = "end_date"
-horizon_s = 604800               # D14: 7 days (edge sits > 1 h before kickoff; > 24 h windows wanted)
-pre_open_s = 604800
+horizon_s = 1209600              # 14 d (2026-10-21 restart: games 2-14 days ahead)
+pre_open_s = 1209600
 post_close_s = 300
 linger_s = 600
 max_pages = 200
@@ -27,8 +27,8 @@ params = { tag_id = "100639" }
 slug_regex = '^(cs2|lol|dota2|val)-[a-z0-9]+-[a-z0-9]+-\d{4}-\d{2}-\d{2}(-[a-z0-9]+)?$'
 exclude_regex = '-(game\d+|map\d+|total|spread|btts|pt5|1h|2h|ht|overtime|safety)\b'
 window = "end_date"
-horizon_s = 626400               # endDate within 7 d + 6 h = start within 7 d (D14)
-pre_open_s = 626400
+horizon_s = 1231200              # endDate within 14 d + 6 h = start within 14 d
+pre_open_s = 1231200
 post_close_s = -21300            # endDate - 6 h + 5 min
 linger_s = -21000                # endDate - 6 h + 10 min (also the discovery lower bound)
 max_pages = 200
