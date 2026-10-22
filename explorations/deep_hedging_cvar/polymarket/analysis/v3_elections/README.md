@@ -50,6 +50,11 @@ Hourly reward-config snapshots go alongside them. These recordings are the only 
   overlap with the Oct 15 selection; 93 are new and 93 were dropped. The previous selection and config are kept as
   `sel/selection_20261015.json` / `sel/polyrec_20261015.toml`. The reconcile/health overrides (ring 256, RSS cap
   6 GB, reconcile 120 s) were re-applied to the new config.
+- 2026-10-21 23:05: 21 of the refreshed selection were short-lived "Will Trump say X during his midterm rally in
+  South Carolina" mention markets ($1.2k/day in rewards together). They carry midterm tags and ended at 23:05.
+  polyrec stopped recording them at their end (`awaiting_finalize`), as designed, and 278 markets are recorded
+  from then on. A future refresh should exclude mention markets (slug `will-trump-say-*`), or top up the selection
+  when markets end.
 - `rec/coverage/` records every gap, and builds apply `merge.py`'s coverage rule.
 
 ## Operations
