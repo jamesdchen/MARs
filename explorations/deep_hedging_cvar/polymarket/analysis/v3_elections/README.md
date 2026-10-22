@@ -55,6 +55,9 @@ Hourly reward-config snapshots go alongside them. These recordings are the only 
   polyrec stopped recording them at their end (`awaiting_finalize`), as designed, and 278 markets are recorded
   from then on. A future refresh should exclude mention markets (slug `will-trump-say-*`), or top up the selection
   when markets end.
+- **2026-10-22 02:37:37 to 02:38:15: container restart** (platform-side), a gap of about 40 s. The disk survived,
+  and supervise.sh, the reward logger and autopush were restarted by hand at 02:38. Oct 22 stays eligible under D16
+  (total gap well under 30 min).
 - `rec/coverage/` records every gap, and builds apply `merge.py`'s coverage rule.
 
 ## Operations
