@@ -86,6 +86,8 @@ def main():
     p.add_argument('--day', action='append', help='UTC day(s); default the last --recent days present')
     p.add_argument('--recent', type=int, default=2, help='default: re-export only the newest N days')
     p.add_argument('--levels', type=int, default=10)
+    p.add_argument('--no-books', action='store_true',
+                   help='hourly heartbeat: skip the books parquet (keep its counts from the last summary)')
     a = p.parse_args()
     days = a.day or sorted(set(days_of(a.rec, 'books')) | set(days_of(a.rec, 'trades')))[-a.recent:]
     summary = {}
@@ -94,7 +96,14 @@ def main():
         os.makedirs(od, exist_ok=True)
         s = {}
         bp = os.path.join(od, f'books_{day}.parquet')
-        r = export_books_day(a.rec, day, a.levels, bp)
+        sp = os.path.join(od, 'summary.json')
+        if a.no_books:
+            old = json.load(open(sp)) if os.path.exists(sp) else {}
+            s.update({k: v for k, v in old.items() if k.startswith('books_')})
+            r = None
+        else:
+            r = export_books_day(a.rec, day, a.levels, bp)
+            s['books_exported_at'] = pd.Timestamp.now('UTC').strftime('%Y-%m-%dT%H:%MZ')
         if r:
             s['books_rows'], s['books_markets'] = r
             s['books_mb'] = round(os.path.getsize(bp) / 1e6, 2)
