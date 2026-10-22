@@ -3,3 +3,4 @@
 2026-10-15 recorder restart (config change: 7 d horizon): recorder down 22:17:09-22:17:10 UTC; per-market not-live 22:17:08-22:17:47 (up to ~72 s while resubscribing)
 2026-10-16..21 session usage limit / container idle: recorder down 2026-10-16T04:51:11Z - 2026-10-21T19:25Z restart; kickoff_watch down 2026-10-16T04:49:21Z - restart (D16: episodes split here; 10-16 to 10-21 days ineligible)
 2026-10-22 container restart: recorder down 2026-10-22T04:17:17Z - 2026-10-22T04:19:26Z; kickoff_watch down 04:17:03Z - restart
+2026-10-22 container restarts: recorder down 2026-10-22T08:17:32Z - 2026-10-22T08:18:13Z (restarted by supervisor) and 2026-10-22T08:19:44Z - 2026-10-22T09:36:43Z; kickoff_watch down ~08:19:44Z - 09:35:58Z
