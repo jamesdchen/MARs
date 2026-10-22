@@ -5,3 +5,4 @@
 2026-10-22 container restart: recorder down 2026-10-22T04:17:17Z - 2026-10-22T04:19:26Z; kickoff_watch down 04:17:03Z - restart
 2026-10-22 container restarts: recorder down 2026-10-22T08:17:32Z - 2026-10-22T08:18:13Z (restarted by supervisor) and 2026-10-22T08:19:44Z - 2026-10-22T09:36:43Z; kickoff_watch down ~08:19:44Z - 09:35:58Z
 2026-10-22: the 08:19:44-09:36:43Z gap is > 30 min, so 2026-10-22 is an INELIGIBLE sports day under D16 (train-only)
+2026-10-22 container restart: recorder down 2026-10-22T11:57:49Z - 2026-10-22T11:59:27Z
