@@ -58,6 +58,10 @@ Hourly reward-config snapshots go alongside them. These recordings are the only 
 - **2026-10-22 02:37:37 to 02:38:15: container restart** (platform-side), a gap of about 40 s. The disk survived,
   and supervise.sh, the reward logger and autopush were restarted by hand at 02:38. Oct 22 stays eligible under D16
   (total gap well under 30 min).
+- **2026-10-22 11:34:23 to 12:33:35: container restart, a gap of about 59 min.** The restart was only noticed at
+  12:33, when the session was next woken. Oct 22's total gap is now about 60 min, more than D16's 30 min, so
+  **Oct 22 is ineligible (train-only)**. 274 markets are live after the restart; 4 more of the refreshed
+  selection ended in the meantime.
 - `rec/coverage/` records every gap, and builds apply `merge.py`'s coverage rule.
 
 ## Operations
