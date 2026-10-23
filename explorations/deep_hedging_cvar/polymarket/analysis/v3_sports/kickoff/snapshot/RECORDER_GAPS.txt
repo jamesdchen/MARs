@@ -8,3 +8,4 @@
 2026-10-22 container restart: recorder down 2026-10-22T11:57:49Z - 2026-10-22T11:59:27Z
 2026-10-23 recorder RSS limit restart (3000 MB, exit 76): recorder down 2026-10-23T03:00:08Z - 2026-10-23T03:01:02Z (limit raised to 6000 MB)
 2026-10-23 supervisor timeout killed its child recorder (process group), then a manual move to a detached session: recorder down 2026-10-23T04:00:59Z - 2026-10-23T04:01:47Z (supervisor now launches with setsid)
+2026-10-23 container restart: recorder down 2026-10-23T04:10:47Z - 2026-10-23T04:12:49Z
