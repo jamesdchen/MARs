@@ -6,3 +6,5 @@
 2026-10-22 container restarts: recorder down 2026-10-22T08:17:32Z - 2026-10-22T08:18:13Z (restarted by supervisor) and 2026-10-22T08:19:44Z - 2026-10-22T09:36:43Z; kickoff_watch down ~08:19:44Z - 09:35:58Z
 2026-10-22: the 08:19:44-09:36:43Z gap is > 30 min, so 2026-10-22 is an INELIGIBLE sports day under D16 (train-only)
 2026-10-22 container restart: recorder down 2026-10-22T11:57:49Z - 2026-10-22T11:59:27Z
+2026-10-23 recorder RSS limit restart (3000 MB, exit 76): recorder down 2026-10-23T03:00:08Z - 2026-10-23T03:01:02Z (limit raised to 6000 MB)
+2026-10-23 supervisor timeout killed its child recorder (process group), then a manual move to a detached session: recorder down 2026-10-23T04:00:59Z - 2026-10-23T04:01:47Z (supervisor now launches with setsid)
