@@ -62,6 +62,8 @@ Hourly reward-config snapshots go alongside them. These recordings are the only 
   12:33, when the session was next woken. Oct 22's total gap is now about 60 min, more than D16's 30 min, so
   **Oct 22 is ineligible (train-only)**. 274 markets are live after the restart; 4 more of the refreshed
   selection ended in the meantime.
+- **2026-10-23 04:35:52 to 04:36:33: container restart**, a gap of about 40 s, restarted by hand within a minute.
+  Oct 23 stays eligible under D16.
 - `rec/coverage/` records every gap, and builds apply `merge.py`'s coverage rule.
 
 ## Operations
