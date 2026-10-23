@@ -47,4 +47,4 @@ raw_enabled = true
 raw_retention_days = 3
 
 [health]
-max_rss_mb = 3000                # ~700 markets; RSS was 600 MB at 293
+max_rss_mb = 6000                # 1,370 markets at 14 d grow ~2.5 GB/day (3000 hit 2026-10-23 03:00Z); 16 GB box
