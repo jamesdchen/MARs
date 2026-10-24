@@ -2,14 +2,14 @@
   "version": "1.0.0",
   "run_id": "w3e1023043633",
   "pid": 260,
-  "time": 1792876015.6767766,
-  "time_utc": "2026-10-24T21:06:55Z",
-  "uptime_s": 145809.6,
+  "time": 1792879616.7536325,
+  "time_utc": "2026-10-24T22:06:56Z",
+  "uptime_s": 149410.7,
   "process": {
-    "rss_mb": 1060.1,
-    "cpu_s": 38669.3,
+    "rss_mb": 1089.4,
+    "cpu_s": 39567.6,
     "cpu_pct_avg": 26.5,
-    "loop_lag_ms": 10.7
+    "loop_lag_ms": 9.4
   },
   "ws": {
     "shards": 28,
@@ -18,7 +18,7 @@
     "disconnects": 1129,
     "disconnects_unexpected": 1129,
     "last_frame_age_s": 0.0,
-    "max_server_lag_s": -0.605
+    "max_server_lag_s": 0.09
   },
   "markets": {
     "tracked": 276,
@@ -31,14 +31,14 @@
     "finalize_failed": 0
   },
   "rates_per_s": {
-    "frames": 321.64,
-    "bytes": 369582.77,
-    "price_change": 286.44,
-    "pc_items": 572.89,
+    "frames": 413.43,
+    "bytes": 684027.02,
+    "price_change": 257.65,
+    "pc_items": 515.31,
     "book": 0.0,
-    "best_bid_ask": 0.2,
+    "best_bid_ask": 1.0,
     "last_trade_price": 0.0,
-    "rows": 134.97,
+    "rows": 109.38,
     "reconcile": 0.0,
     "reconcile_mismatch": 0.0,
     "bba_mismatch": 0.0
@@ -46,25 +46,25 @@
   "totals": {
     "subscribed_markets": 278,
     "connects": 1157,
-    "frames": 46076292,
-    "bytes": 34447761194,
-    "book": 47776,
-    "price_change": 42662752,
-    "pc_items": 85325504,
-    "bba_checks": 85325504,
-    "rows": 17429749,
-    "mirror_checks": 8714926,
+    "frames": 47278457,
+    "bytes": 35423968602,
+    "book": 48370,
+    "price_change": 43750350,
+    "pc_items": 87500700,
+    "bba_checks": 87500700,
+    "rows": 17836415,
+    "mirror_checks": 8918259,
     "mirror_mismatch": 511,
-    "trade_rows_polled": 868743387,
-    "best_bid_ask": 652486,
-    "pong": 407123,
-    "reconcile": 282386,
+    "trade_rows_polled": 890502920,
+    "best_bid_ask": 667616,
+    "pong": 417203,
+    "reconcile": 288270,
     "reconcile_mismatch": 78,
-    "bba_mismatch": 15272,
-    "bba_pruned_levels": 15738,
-    "last_trade_price": 12472,
-    "new_market": 2315338,
-    "reconcile_error": 453597,
+    "bba_mismatch": 15800,
+    "bba_pruned_levels": 16272,
+    "last_trade_price": 12769,
+    "new_market": 2403804,
+    "reconcile_error": 466538,
     "disconnects": 1129,
     "disconnects_unexpected": 1129,
     "reconcile_seeded": 39,
@@ -76,42 +76,42 @@
     "trade_poll_errors": 2
   },
   "quality": {
-    "reconcile_checks": 282386,
+    "reconcile_checks": 288270,
     "reconcile_mismatch": 78,
-    "reconcile_mismatch_rate": 0.0002762176595156984,
+    "reconcile_mismatch_rate": 0.00027057966489749195,
     "reconcile_mismatch_top_of_book": 1,
-    "reconcile_errors": 453597,
-    "bba_checks": 85325504,
-    "bba_mismatch": 15272,
-    "bba_mismatch_rate": 0.00017898517188952087,
-    "bba_pruned_levels": 15738,
+    "reconcile_errors": 466538,
+    "bba_checks": 87500700,
+    "bba_mismatch": 15800,
+    "bba_mismatch_rate": 0.00018056998401155648,
+    "bba_pruned_levels": 16272,
     "bba_missing": 16,
-    "mirror_checks": 8714926,
-    "mirror_mismatch_rate": 0.0000586350360289921,
-    "rows": 17429749,
+    "mirror_checks": 8918259,
+    "mirror_mismatch_rate": 0.00005729817893828829,
+    "rows": 17836415,
     "rows_crossed_rate": 0.0,
     "parse_errors": 0
   },
   "output": {
-    "book_rows_written": 17422687,
-    "book_bytes_parts": 1745666876,
-    "raw_lines": 45975698,
-    "raw_bytes_in": 27819077732,
-    "raw_bytes_out": 1021272973,
+    "book_rows_written": 17829443,
+    "book_bytes_parts": 1786794199,
+    "raw_lines": 47173667,
+    "raw_bytes_in": 28623189349,
+    "raw_bytes_out": 1047431714,
     "raw_paused": false,
-    "buffered_rows": 7062
+    "buffered_rows": 6972
   },
   "disk": {
-    "free_mb": 20621,
+    "free_mb": 20578,
     "used_pct": 7.5
   },
   "discovery": {
-    "last_ok_age_s": 51.4,
+    "last_ok_age_s": 105.3,
     "errors": 0
   },
   "http": {
-    "requests": 3725801,
-    "errors": 910646
+    "requests": 3820163,
+    "errors": 936577
   },
   "last_error": ""
 }
