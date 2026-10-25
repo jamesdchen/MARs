@@ -1,14 +1,14 @@
 {
- "books_exported_at": "2026-10-25T06:17Z",
- "books_rows": 1100985,
- "books_markets": 1379,
+ "books_exported_at": "2026-10-25T12:18Z",
+ "books_rows": 2297646,
+ "books_markets": 1397,
  "books_blocks_written": [
-  0,
-  1
+  1,
+  2
  ],
- "books_mb": 19.34,
- "trades_rows": 147281,
- "trades_mb": 2.57,
- "markets_rows": 78,
+ "books_mb": 38.51,
+ "trades_rows": 151997,
+ "trades_mb": 2.65,
+ "markets_rows": 84,
  "markets_mb": 0.04
 }
