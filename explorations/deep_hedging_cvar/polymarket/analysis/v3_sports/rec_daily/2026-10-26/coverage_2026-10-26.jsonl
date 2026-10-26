@@ -24694,3 +24694,1710 @@
 {"t":1793017056.921,"run":"20261023T041236-9e94c8","ev":"hb"}
 {"t":1793017066.925,"run":"20261023T041236-9e94c8","ev":"hb"}
 {"t":1793017076.928,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017086.938,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017096.941,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017107.102,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017117.105,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017127.115,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017137.122,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017147.125,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017157.13,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017167.133,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017171.917,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-aur1-tl1-2026-11-02","why":"closed (no close frame received or sent)"}
+{"t":1793017171.917,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-pensio-xcity1-2026-10-21","why":"closed (no close frame received or sent)"}
+{"t":1793017171.917,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-9z-bb3-2026-11-02","why":"closed (no close frame received or sent)"}
+{"t":1793017171.917,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-b8-k271-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793017171.917,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-all-faze-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793017171.917,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-lg6-hotu-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793017171.917,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-prv-g2-2026-11-02","why":"closed (no close frame received or sent)"}
+{"t":1793017173.796,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-pensio-xcity1-2026-10-21"}
+{"t":1793017173.796,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-b8-k271-2026-10-27"}
+{"t":1793017173.796,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-aur1-tl1-2026-11-02"}
+{"t":1793017173.796,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-lg6-hotu-2026-10-27"}
+{"t":1793017173.796,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-9z-bb3-2026-11-02"}
+{"t":1793017173.796,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-all-faze-2026-10-27"}
+{"t":1793017173.796,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-prv-g2-2026-11-02"}
+{"t":1793017177.137,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017187.14,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017193.448,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-ts7-furia-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793017193.448,"run":"20261023T041236-9e94c8","ev":"down","slug":"nfl-la-was-2026-11-08","why":"closed (no close frame received or sent)"}
+{"t":1793017193.448,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-jasika-muller-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793017193.448,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-tl1-lgc-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793017193.448,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-mia-clt-2026-11-07-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017193.448,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-hou-stl-2026-11-07-hou","why":"closed (no close frame received or sent)"}
+{"t":1793017193.448,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-bb3-navi-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793017193.448,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-g2-dendel-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793017193.448,"run":"20261023T041236-9e94c8","ev":"down","slug":"wta-vergara-gomez-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793017193.448,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-mia-clt-2026-11-07-clt","why":"closed (no close frame received or sent)"}
+{"t":1793017193.753,"run":"20261023T041236-9e94c8","ev":"down","slug":"bra-cap-vas-2026-11-04-vas","why":"closed (no close frame received or sent)"}
+{"t":1793017193.753,"run":"20261023T041236-9e94c8","ev":"down","slug":"bra-sao-cor1-2026-11-04-cor1","why":"closed (no close frame received or sent)"}
+{"t":1793017193.753,"run":"20261023T041236-9e94c8","ev":"down","slug":"bra-fla-gre-2026-11-04-gre","why":"closed (no close frame received or sent)"}
+{"t":1793017193.753,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-spp-bou-2026-11-05-bou","why":"closed (no close frame received or sent)"}
+{"t":1793017193.753,"run":"20261023T041236-9e94c8","ev":"down","slug":"bra-fla-gre-2026-11-04-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017193.753,"run":"20261023T041236-9e94c8","ev":"down","slug":"bra-cap-vas-2026-11-04-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017193.753,"run":"20261023T041236-9e94c8","ev":"down","slug":"bra-cap-vas-2026-11-04-cap","why":"closed (no close frame received or sent)"}
+{"t":1793017193.753,"run":"20261023T041236-9e94c8","ev":"down","slug":"bra-sao-cor1-2026-11-04-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017193.753,"run":"20261023T041236-9e94c8","ev":"down","slug":"bra-fla-gre-2026-11-04-fla","why":"closed (no close frame received or sent)"}
+{"t":1793017193.753,"run":"20261023T041236-9e94c8","ev":"down","slug":"bra-sao-cor1-2026-11-04-sao","why":"closed (no close frame received or sent)"}
+{"t":1793017195.09,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-mia-clt-2026-11-07-clt"}
+{"t":1793017195.09,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-mia-clt-2026-11-07-draw"}
+{"t":1793017195.09,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-ts7-furia-2026-10-26"}
+{"t":1793017195.09,"run":"20261023T041236-9e94c8","ev":"live","slug":"nfl-la-was-2026-11-08"}
+{"t":1793017195.09,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-jasika-muller-2026-10-26"}
+{"t":1793017195.09,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-g2-dendel-2026-10-26"}
+{"t":1793017195.09,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-hou-stl-2026-11-07-hou"}
+{"t":1793017195.09,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-bb3-navi-2026-10-26"}
+{"t":1793017195.09,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-tl1-lgc-2026-10-26"}
+{"t":1793017195.09,"run":"20261023T041236-9e94c8","ev":"live","slug":"wta-vergara-gomez-2026-10-26"}
+{"t":1793017196.052,"run":"20261023T041236-9e94c8","ev":"live","slug":"bra-cap-vas-2026-11-04-vas"}
+{"t":1793017196.052,"run":"20261023T041236-9e94c8","ev":"live","slug":"bra-fla-gre-2026-11-04-fla"}
+{"t":1793017196.052,"run":"20261023T041236-9e94c8","ev":"live","slug":"bra-sao-cor1-2026-11-04-draw"}
+{"t":1793017196.052,"run":"20261023T041236-9e94c8","ev":"live","slug":"bra-sao-cor1-2026-11-04-sao"}
+{"t":1793017196.052,"run":"20261023T041236-9e94c8","ev":"live","slug":"bra-fla-gre-2026-11-04-gre"}
+{"t":1793017196.052,"run":"20261023T041236-9e94c8","ev":"live","slug":"bra-sao-cor1-2026-11-04-cor1"}
+{"t":1793017196.052,"run":"20261023T041236-9e94c8","ev":"live","slug":"bra-cap-vas-2026-11-04-draw"}
+{"t":1793017196.052,"run":"20261023T041236-9e94c8","ev":"live","slug":"bra-fla-gre-2026-11-04-draw"}
+{"t":1793017196.052,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-spp-bou-2026-11-05-bou"}
+{"t":1793017196.052,"run":"20261023T041236-9e94c8","ev":"live","slug":"bra-cap-vas-2026-11-04-cap"}
+{"t":1793017196.407,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-old1-hec-2026-10-20","why":"closed (no close frame received or sent)"}
+{"t":1793017196.407,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-bos-orl-2026-11-01","why":"closed (no close frame received or sent)"}
+{"t":1793017196.407,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-havu-ill4-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793017196.407,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-innerc-lavked-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793017196.407,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-bkn-ind-2026-11-01","why":"closed (no close frame received or sent)"}
+{"t":1793017196.407,"run":"20261023T041236-9e94c8","ev":"down","slug":"wta-montgom-pigato-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793017196.407,"run":"20261023T041236-9e94c8","ev":"down","slug":"wta-ristic-kubka-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793017196.407,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-pit-ana-2026-11-08","why":"closed (no close frame received or sent)"}
+{"t":1793017196.407,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-tb-wpg-2026-11-08","why":"closed (no close frame received or sent)"}
+{"t":1793017197.144,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017198.227,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-bos-orl-2026-11-01"}
+{"t":1793017198.227,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-old1-hec-2026-10-20"}
+{"t":1793017198.227,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-innerc-lavked-2026-10-27"}
+{"t":1793017198.227,"run":"20261023T041236-9e94c8","ev":"live","slug":"wta-ristic-kubka-2026-10-27"}
+{"t":1793017198.227,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-bkn-ind-2026-11-01"}
+{"t":1793017198.227,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-tb-wpg-2026-11-08"}
+{"t":1793017198.227,"run":"20261023T041236-9e94c8","ev":"live","slug":"wta-montgom-pigato-2026-10-27"}
+{"t":1793017198.227,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-pit-ana-2026-11-08"}
+{"t":1793017198.227,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-havu-ill4-2026-10-26"}
+{"t":1793017207.147,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017216.459,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-new-eve-2026-11-02-new","why":"closed (no close frame received or sent)"}
+{"t":1793017216.459,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-dep-osa-2026-11-02-dep","why":"closed (no close frame received or sent)"}
+{"t":1793017216.459,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-dep-osa-2026-11-02-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017216.459,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-atl-hou-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793017216.459,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-phx-okc-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793017216.459,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-ind-mil-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793017216.459,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-new-eve-2026-11-02-eve","why":"closed (no close frame received or sent)"}
+{"t":1793017216.459,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-new-eve-2026-11-02-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017216.459,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-chi-bos-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793017216.459,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-dal-mia-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793017217.272,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017218.965,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-new-eve-2026-11-02-new"}
+{"t":1793017218.965,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-phx-okc-2026-10-26"}
+{"t":1793017218.965,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-new-eve-2026-11-02-eve"}
+{"t":1793017218.965,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-dal-mia-2026-10-26"}
+{"t":1793017218.965,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-ind-mil-2026-10-26"}
+{"t":1793017218.965,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-dep-osa-2026-11-02-dep"}
+{"t":1793017218.965,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-new-eve-2026-11-02-draw"}
+{"t":1793017218.965,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-atl-hou-2026-10-26"}
+{"t":1793017218.965,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-chi-bos-2026-10-26"}
+{"t":1793017218.965,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-dep-osa-2026-11-02-draw"}
+{"t":1793017221.249,"run":"20261023T041236-9e94c8","ev":"down","slug":"fl1-str-aja-2026-11-01-draw","why":"closed 1001 server shutting down"}
+{"t":1793017221.249,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-altmaie-cerund-2026-10-26","why":"closed 1001 server shutting down"}
+{"t":1793017221.249,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-uni-koe-2026-11-01-uni","why":"closed 1001 server shutting down"}
+{"t":1793017221.249,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-uni-koe-2026-11-01-draw","why":"closed 1001 server shutting down"}
+{"t":1793017221.249,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-mensik-neumaye-2026-10-26","why":"closed 1001 server shutting down"}
+{"t":1793017221.249,"run":"20261023T041236-9e94c8","ev":"down","slug":"fl1-str-aja-2026-11-01-aja","why":"closed 1001 server shutting down"}
+{"t":1793017221.249,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-nj-tor-2026-11-08","why":"closed 1001 server shutting down"}
+{"t":1793017221.249,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-uni-koe-2026-11-01-koe","why":"closed 1001 server shutting down"}
+{"t":1793017221.249,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-brunold-borges-2026-10-26","why":"closed 1001 server shutting down"}
+{"t":1793017221.249,"run":"20261023T041236-9e94c8","ev":"down","slug":"fl1-str-aja-2026-11-01-str","why":"closed 1001 server shutting down"}
+{"t":1793017223.479,"run":"20261023T041236-9e94c8","ev":"live","slug":"fl1-str-aja-2026-11-01-str"}
+{"t":1793017223.479,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-altmaie-cerund-2026-10-26"}
+{"t":1793017223.479,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-brunold-borges-2026-10-26"}
+{"t":1793017223.479,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-nj-tor-2026-11-08"}
+{"t":1793017223.479,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-uni-koe-2026-11-01-uni"}
+{"t":1793017223.479,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-uni-koe-2026-11-01-draw"}
+{"t":1793017223.479,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-uni-koe-2026-11-01-koe"}
+{"t":1793017223.479,"run":"20261023T041236-9e94c8","ev":"live","slug":"fl1-str-aja-2026-11-01-draw"}
+{"t":1793017223.479,"run":"20261023T041236-9e94c8","ev":"live","slug":"fl1-str-aja-2026-11-01-aja"}
+{"t":1793017223.479,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-mensik-neumaye-2026-10-26"}
+{"t":1793017227.274,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017237.28,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017247.314,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017253.696,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-ips-bou-2026-11-08-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017253.696,"run":"20261023T041236-9e94c8","ev":"down","slug":"fl1-hac-lor-2026-11-08-lor","why":"closed (no close frame received or sent)"}
+{"t":1793017253.696,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-ips-bou-2026-11-08-ips","why":"closed (no close frame received or sent)"}
+{"t":1793017253.696,"run":"20261023T041236-9e94c8","ev":"down","slug":"fl1-lmf-asm-2026-11-08-lmf","why":"closed (no close frame received or sent)"}
+{"t":1793017253.696,"run":"20261023T041236-9e94c8","ev":"down","slug":"fl1-lmf-asm-2026-11-08-asm","why":"closed (no close frame received or sent)"}
+{"t":1793017253.696,"run":"20261023T041236-9e94c8","ev":"down","slug":"fl1-lmf-asm-2026-11-08-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017253.696,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-ips-bou-2026-11-08-bou","why":"closed (no close frame received or sent)"}
+{"t":1793017253.696,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-fre-uni-2026-11-08-uni","why":"closed (no close frame received or sent)"}
+{"t":1793017253.696,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-fre-uni-2026-11-08-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017253.696,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-fre-uni-2026-11-08-fre","why":"closed (no close frame received or sent)"}
+{"t":1793017254.02,"run":"20261023T041236-9e94c8","ev":"down","slug":"ere-her1-fey-2026-11-08-fey","why":"closed (no close frame received or sent)"}
+{"t":1793017254.02,"run":"20261023T041236-9e94c8","ev":"down","slug":"nfl-cin-atl-2026-11-08","why":"closed (no close frame received or sent)"}
+{"t":1793017254.02,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-chi-clb-2026-11-07-chi","why":"closed (no close frame received or sent)"}
+{"t":1793017254.02,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-ntr-unity-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793017254.02,"run":"20261023T041236-9e94c8","ev":"down","slug":"ere-her1-fey-2026-11-08-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017254.02,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-fokus-zerote-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793017254.02,"run":"20261023T041236-9e94c8","ev":"down","slug":"ere-her1-fey-2026-11-08-her1","why":"closed (no close frame received or sent)"}
+{"t":1793017254.02,"run":"20261023T041236-9e94c8","ev":"down","slug":"ere-exc-goa-2026-11-07-goa","why":"closed (no close frame received or sent)"}
+{"t":1793017254.02,"run":"20261023T041236-9e94c8","ev":"down","slug":"ere-exc-goa-2026-11-07-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017254.02,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-nyr-sea-2026-11-07","why":"closed (no close frame received or sent)"}
+{"t":1793017255.587,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-ips-bou-2026-11-08-bou"}
+{"t":1793017255.587,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-ips-bou-2026-11-08-draw"}
+{"t":1793017255.587,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-fre-uni-2026-11-08-fre"}
+{"t":1793017255.587,"run":"20261023T041236-9e94c8","ev":"live","slug":"fl1-lmf-asm-2026-11-08-lmf"}
+{"t":1793017255.587,"run":"20261023T041236-9e94c8","ev":"live","slug":"fl1-lmf-asm-2026-11-08-asm"}
+{"t":1793017255.587,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-fre-uni-2026-11-08-uni"}
+{"t":1793017255.587,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-ips-bou-2026-11-08-ips"}
+{"t":1793017255.587,"run":"20261023T041236-9e94c8","ev":"live","slug":"fl1-hac-lor-2026-11-08-lor"}
+{"t":1793017255.587,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-fre-uni-2026-11-08-draw"}
+{"t":1793017255.587,"run":"20261023T041236-9e94c8","ev":"live","slug":"fl1-lmf-asm-2026-11-08-draw"}
+{"t":1793017256.338,"run":"20261023T041236-9e94c8","ev":"live","slug":"ere-exc-goa-2026-11-07-goa"}
+{"t":1793017256.338,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-chi-clb-2026-11-07-chi"}
+{"t":1793017256.338,"run":"20261023T041236-9e94c8","ev":"live","slug":"ere-exc-goa-2026-11-07-draw"}
+{"t":1793017256.338,"run":"20261023T041236-9e94c8","ev":"live","slug":"nfl-cin-atl-2026-11-08"}
+{"t":1793017256.338,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-nyr-sea-2026-11-07"}
+{"t":1793017256.338,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-ntr-unity-2026-10-26"}
+{"t":1793017256.338,"run":"20261023T041236-9e94c8","ev":"live","slug":"ere-her1-fey-2026-11-08-fey"}
+{"t":1793017256.338,"run":"20261023T041236-9e94c8","ev":"live","slug":"ere-her1-fey-2026-11-08-her1"}
+{"t":1793017256.338,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-fokus-zerote-2026-10-26"}
+{"t":1793017256.338,"run":"20261023T041236-9e94c8","ev":"live","slug":"ere-her1-fey-2026-11-08-draw"}
+{"t":1793017257.446,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017267.57,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017277.574,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017283.358,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-hotu-the9-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793017283.358,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-cel-bes-2026-11-05-bes","why":"closed (no close frame received or sent)"}
+{"t":1793017283.358,"run":"20261023T041236-9e94c8","ev":"down","slug":"wta-kuderme-tjen-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793017283.358,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-ut-aa-2026-11-05-ut","why":"closed (no close frame received or sent)"}
+{"t":1793017285.502,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-hotu-the9-2026-10-31"}
+{"t":1793017285.502,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-cel-bes-2026-11-05-bes"}
+{"t":1793017285.502,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-ut-aa-2026-11-05-ut"}
+{"t":1793017285.502,"run":"20261023T041236-9e94c8","ev":"live","slug":"wta-kuderme-tjen-2026-10-26"}
+{"t":1793017287.579,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017297.592,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017307.595,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017313.753,"run":"20261023T041236-9e94c8","ev":"down","slug":"fl1-ang-ogc-2026-11-08-ogc","why":"closed (no close frame received or sent)"}
+{"t":1793017313.753,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-bri-bre-2026-11-08-bre","why":"closed (no close frame received or sent)"}
+{"t":1793017313.753,"run":"20261023T041236-9e94c8","ev":"down","slug":"fl1-rcl-olm-2026-11-08-rcl","why":"closed (no close frame received or sent)"}
+{"t":1793017313.753,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-mun-ast-2026-11-08-mun","why":"closed (no close frame received or sent)"}
+{"t":1793017313.753,"run":"20261023T041236-9e94c8","ev":"down","slug":"fl1-ang-ogc-2026-11-08-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017313.753,"run":"20261023T041236-9e94c8","ev":"down","slug":"fl1-ang-ogc-2026-11-08-ang","why":"closed (no close frame received or sent)"}
+{"t":1793017313.753,"run":"20261023T041236-9e94c8","ev":"down","slug":"fl1-rcl-olm-2026-11-08-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017313.753,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-mun-ast-2026-11-08-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017313.753,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-bri-bre-2026-11-08-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017313.753,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-mun-ast-2026-11-08-ast","why":"closed (no close frame received or sent)"}
+{"t":1793017315.322,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-bri-bre-2026-11-08-draw"}
+{"t":1793017315.322,"run":"20261023T041236-9e94c8","ev":"live","slug":"fl1-ang-ogc-2026-11-08-draw"}
+{"t":1793017315.322,"run":"20261023T041236-9e94c8","ev":"live","slug":"fl1-ang-ogc-2026-11-08-ogc"}
+{"t":1793017315.322,"run":"20261023T041236-9e94c8","ev":"live","slug":"fl1-ang-ogc-2026-11-08-ang"}
+{"t":1793017315.322,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-mun-ast-2026-11-08-draw"}
+{"t":1793017315.322,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-mun-ast-2026-11-08-ast"}
+{"t":1793017315.322,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-mun-ast-2026-11-08-mun"}
+{"t":1793017315.322,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-bri-bre-2026-11-08-bre"}
+{"t":1793017315.322,"run":"20261023T041236-9e94c8","ev":"live","slug":"fl1-rcl-olm-2026-11-08-rcl"}
+{"t":1793017315.322,"run":"20261023T041236-9e94c8","ev":"live","slug":"fl1-rcl-olm-2026-11-08-draw"}
+{"t":1793017317.598,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017327.601,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017338.912,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017346.111,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-spo-mor-2026-11-07-mor","why":"closed (no close frame received or sent)"}
+{"t":1793017346.111,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-spo-mor-2026-11-07-spo","why":"closed (no close frame received or sent)"}
+{"t":1793017346.111,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-spo-mor-2026-11-07-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017346.111,"run":"20261023T041236-9e94c8","ev":"down","slug":"nfl-gb-ne-2026-11-08","why":"closed (no close frame received or sent)"}
+{"t":1793017346.111,"run":"20261023T041236-9e94c8","ev":"down","slug":"ere-sit-tel-2026-11-07-sit","why":"closed (no close frame received or sent)"}
+{"t":1793017346.111,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-alv-cas-2026-11-07-alv","why":"closed (no close frame received or sent)"}
+{"t":1793017346.111,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-cds-gil-2026-11-08-cds","why":"closed (no close frame received or sent)"}
+{"t":1793017346.111,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-alv-cas-2026-11-07-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017346.111,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-alv-cas-2026-11-07-cas","why":"closed (no close frame received or sent)"}
+{"t":1793017348.714,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-spo-mor-2026-11-07-mor"}
+{"t":1793017348.714,"run":"20261023T041236-9e94c8","ev":"live","slug":"ere-sit-tel-2026-11-07-sit"}
+{"t":1793017348.714,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-spo-mor-2026-11-07-draw"}
+{"t":1793017348.714,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-alv-cas-2026-11-07-alv"}
+{"t":1793017348.714,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-cds-gil-2026-11-08-cds"}
+{"t":1793017348.714,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-alv-cas-2026-11-07-cas"}
+{"t":1793017348.714,"run":"20261023T041236-9e94c8","ev":"live","slug":"nfl-gb-ne-2026-11-08"}
+{"t":1793017348.714,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-alv-cas-2026-11-07-draw"}
+{"t":1793017348.714,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-spo-mor-2026-11-07-spo"}
+{"t":1793017348.915,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017358.918,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017368.923,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017378.926,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017381.201,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-mem-por-2026-10-29","why":"closed (no close frame received or sent)"}
+{"t":1793017381.201,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-quin-meiano-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793017381.201,"run":"20261023T041236-9e94c8","ev":"down","slug":"wta-siniako-tararud-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793017381.201,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-gotei5-underw-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793017382.652,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-mem-por-2026-10-29"}
+{"t":1793017382.652,"run":"20261023T041236-9e94c8","ev":"live","slug":"wta-siniako-tararud-2026-10-26"}
+{"t":1793017382.652,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-gotei5-underw-2026-10-26"}
+{"t":1793017382.652,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-quin-meiano-2026-10-26"}
+{"t":1793017388.929,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017398.932,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017408.94,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017418.944,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017428.946,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017438.949,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017448.952,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017458.957,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017468.983,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017479.013,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017489.036,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017499.04,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017509.043,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017519.046,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017529.055,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017531.45,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-clt-mim-2026-10-28-mim","why":"closed (no close frame received or sent)"}
+{"t":1793017531.45,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-clt-mim-2026-10-28-clt","why":"closed (no close frame received or sent)"}
+{"t":1793017531.45,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-tor-dcu-2026-10-28-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017531.45,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-clt-mim-2026-10-28-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017531.45,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-tor-dcu-2026-10-28-tor","why":"closed (no close frame received or sent)"}
+{"t":1793017531.45,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-ner-nyr-2026-10-28-nyr","why":"closed (no close frame received or sent)"}
+{"t":1793017531.45,"run":"20261023T041236-9e94c8","ev":"down","slug":"sea-mon-nap-2026-10-28-nap","why":"closed (no close frame received or sent)"}
+{"t":1793017531.45,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-tor-dcu-2026-10-28-dcu","why":"closed (no close frame received or sent)"}
+{"t":1793017531.45,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-ner-nyr-2026-10-28-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017531.45,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-ner-nyr-2026-10-28-ner","why":"closed (no close frame received or sent)"}
+{"t":1793017533.915,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-ner-nyr-2026-10-28-ner"}
+{"t":1793017533.915,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-tor-dcu-2026-10-28-tor"}
+{"t":1793017533.915,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-clt-mim-2026-10-28-draw"}
+{"t":1793017533.915,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-tor-dcu-2026-10-28-draw"}
+{"t":1793017533.915,"run":"20261023T041236-9e94c8","ev":"live","slug":"sea-mon-nap-2026-10-28-nap"}
+{"t":1793017533.915,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-clt-mim-2026-10-28-mim"}
+{"t":1793017533.915,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-tor-dcu-2026-10-28-dcu"}
+{"t":1793017533.915,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-ner-nyr-2026-10-28-draw"}
+{"t":1793017533.915,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-ner-nyr-2026-10-28-nyr"}
+{"t":1793017533.915,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-clt-mim-2026-10-28-clt"}
+{"t":1793017539.06,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017549.063,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017559.066,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017569.069,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017579.072,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017584.314,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-lal-gsw-2026-10-30","why":"closed (no close frame received or sent)"}
+{"t":1793017584.314,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-hardt-serna-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793017584.314,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-den-phx-2026-10-30","why":"closed (no close frame received or sent)"}
+{"t":1793017584.314,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-roncade-aboian-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793017584.314,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-sev-ala-2026-11-06-ala","why":"closed (no close frame received or sent)"}
+{"t":1793017584.314,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-dedurap-olivier-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793017584.314,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-aus-por-2026-11-07-por","why":"closed (no close frame received or sent)"}
+{"t":1793017584.314,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-dias-prado-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793017586.118,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-dedurap-olivier-2026-10-26"}
+{"t":1793017586.118,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-den-phx-2026-10-30"}
+{"t":1793017586.118,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-hardt-serna-2026-10-26"}
+{"t":1793017586.118,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-aus-por-2026-11-07-por"}
+{"t":1793017586.118,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-sev-ala-2026-11-06-ala"}
+{"t":1793017586.118,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-roncade-aboian-2026-10-26"}
+{"t":1793017586.118,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-lal-gsw-2026-10-30"}
+{"t":1793017586.118,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-dias-prado-2026-10-26"}
+{"t":1793017589.087,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017599.089,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017609.092,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017614.151,"run":"20261023T041236-9e94c8","ev":"down","slug":"wnba-atl-gsv-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793017614.151,"run":"20261023T041236-9e94c8","ev":"down","slug":"fl1-psg-tro-2026-11-07-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017614.151,"run":"20261023T041236-9e94c8","ev":"down","slug":"fl1-psg-tro-2026-11-07-psg","why":"closed (no close frame received or sent)"}
+{"t":1793017614.151,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-ars-hul-2026-11-07-hul","why":"closed (no close frame received or sent)"}
+{"t":1793017614.151,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-sev-osa-2026-10-26-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017614.151,"run":"20261023T041236-9e94c8","ev":"down","slug":"arg-uni-est-2026-10-26-uni","why":"closed (no close frame received or sent)"}
+{"t":1793017614.151,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-sev-osa-2026-10-26-osa","why":"closed (no close frame received or sent)"}
+{"t":1793017614.151,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-ars-hul-2026-11-07-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017614.151,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-sev-osa-2026-10-26-sev","why":"closed (no close frame received or sent)"}
+{"t":1793017614.151,"run":"20261023T041236-9e94c8","ev":"down","slug":"nfl-chi-sea-2026-11-03","why":"closed (no close frame received or sent)"}
+{"t":1793017616.502,"run":"20261023T041236-9e94c8","ev":"live","slug":"fl1-psg-tro-2026-11-07-draw"}
+{"t":1793017616.502,"run":"20261023T041236-9e94c8","ev":"live","slug":"nfl-chi-sea-2026-11-03"}
+{"t":1793017616.502,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-ars-hul-2026-11-07-hul"}
+{"t":1793017616.502,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-sev-osa-2026-10-26-sev"}
+{"t":1793017616.502,"run":"20261023T041236-9e94c8","ev":"live","slug":"arg-uni-est-2026-10-26-uni"}
+{"t":1793017616.502,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-ars-hul-2026-11-07-draw"}
+{"t":1793017616.502,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-sev-osa-2026-10-26-osa"}
+{"t":1793017616.502,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-sev-osa-2026-10-26-draw"}
+{"t":1793017616.502,"run":"20261023T041236-9e94c8","ev":"live","slug":"fl1-psg-tro-2026-11-07-psg"}
+{"t":1793017616.502,"run":"20261023T041236-9e94c8","ev":"live","slug":"wnba-atl-gsv-2026-10-26"}
+{"t":1793017619.749,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017629.965,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017639.968,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017649.971,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017659.987,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017669.995,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017679.998,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017690.029,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017700.21,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017701.229,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-wer-hof-2026-10-31-wer","why":"closed (no close frame received or sent)"}
+{"t":1793017701.229,"run":"20261023T041236-9e94c8","ev":"down","slug":"fl1-lyo-ang-2026-10-31-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017701.229,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-mac-bri-2026-10-31-bri","why":"closed (no close frame received or sent)"}
+{"t":1793017701.229,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-mac-bri-2026-10-31-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017701.229,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-mac-bri-2026-10-31-mac","why":"closed (no close frame received or sent)"}
+{"t":1793017701.229,"run":"20261023T041236-9e94c8","ev":"down","slug":"fl1-lyo-ang-2026-10-31-ang","why":"closed (no close frame received or sent)"}
+{"t":1793017701.229,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-wer-hof-2026-10-31-hof","why":"closed (no close frame received or sent)"}
+{"t":1793017701.229,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-wer-hof-2026-10-31-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017701.229,"run":"20261023T041236-9e94c8","ev":"down","slug":"fl1-tro-lmf-2026-10-31-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017701.229,"run":"20261023T041236-9e94c8","ev":"down","slug":"fl1-tro-lmf-2026-10-31-tro","why":"closed (no close frame received or sent)"}
+{"t":1793017703.306,"run":"20261023T041236-9e94c8","ev":"live","slug":"fl1-lyo-ang-2026-10-31-ang"}
+{"t":1793017703.306,"run":"20261023T041236-9e94c8","ev":"live","slug":"fl1-lyo-ang-2026-10-31-draw"}
+{"t":1793017703.306,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-wer-hof-2026-10-31-wer"}
+{"t":1793017703.306,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-mac-bri-2026-10-31-mac"}
+{"t":1793017703.306,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-mac-bri-2026-10-31-draw"}
+{"t":1793017703.306,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-wer-hof-2026-10-31-draw"}
+{"t":1793017703.306,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-mac-bri-2026-10-31-bri"}
+{"t":1793017703.306,"run":"20261023T041236-9e94c8","ev":"live","slug":"fl1-tro-lmf-2026-10-31-draw"}
+{"t":1793017703.306,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-wer-hof-2026-10-31-hof"}
+{"t":1793017703.306,"run":"20261023T041236-9e94c8","ev":"live","slug":"fl1-tro-lmf-2026-10-31-tro"}
+{"t":1793017710.214,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017714.086,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-dor-elv-2026-11-07-dor","why":"closed (no close frame received or sent)"}
+{"t":1793017714.086,"run":"20261023T041236-9e94c8","ev":"down","slug":"ere-fey-sit-2026-10-31-sit","why":"closed (no close frame received or sent)"}
+{"t":1793017714.086,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-bet-mala-2026-10-31-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017714.086,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-bar-ala-2026-10-31-ala","why":"closed (no close frame received or sent)"}
+{"t":1793017714.086,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-ful-new-2026-11-07-new","why":"closed (no close frame received or sent)"}
+{"t":1793017714.086,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-bar-ala-2026-10-31-bar","why":"closed (no close frame received or sent)"}
+{"t":1793017714.086,"run":"20261023T041236-9e94c8","ev":"down","slug":"ere-fey-sit-2026-10-31-fey","why":"closed (no close frame received or sent)"}
+{"t":1793017714.086,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-bet-mala-2026-10-31-mala","why":"closed (no close frame received or sent)"}
+{"t":1793017714.086,"run":"20261023T041236-9e94c8","ev":"down","slug":"ere-fey-sit-2026-10-31-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017714.086,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-bar-ala-2026-10-31-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017715.983,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-ful-new-2026-11-07-new"}
+{"t":1793017715.983,"run":"20261023T041236-9e94c8","ev":"live","slug":"ere-fey-sit-2026-10-31-draw"}
+{"t":1793017715.983,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-bar-ala-2026-10-31-bar"}
+{"t":1793017715.983,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-bar-ala-2026-10-31-draw"}
+{"t":1793017715.983,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-bet-mala-2026-10-31-mala"}
+{"t":1793017715.983,"run":"20261023T041236-9e94c8","ev":"live","slug":"ere-fey-sit-2026-10-31-fey"}
+{"t":1793017715.983,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-bet-mala-2026-10-31-draw"}
+{"t":1793017715.983,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-bar-ala-2026-10-31-ala"}
+{"t":1793017715.983,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-dor-elv-2026-11-07-dor"}
+{"t":1793017715.983,"run":"20261023T041236-9e94c8","ev":"live","slug":"ere-fey-sit-2026-10-31-sit"}
+{"t":1793017720.294,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017730.303,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017737.762,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-col-chi-2026-10-31-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017737.762,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-lag-aus-2026-10-31-aus","why":"closed (no close frame received or sent)"}
+{"t":1793017737.762,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-col-chi-2026-10-31-chi","why":"closed (no close frame received or sent)"}
+{"t":1793017737.762,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-sje-rsl-2026-10-31-rsl","why":"closed (no close frame received or sent)"}
+{"t":1793017737.762,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-sje-rsl-2026-10-31-sje","why":"closed (no close frame received or sent)"}
+{"t":1793017737.762,"run":"20261023T041236-9e94c8","ev":"down","slug":"arg-rie-tal-2026-10-31-rie","why":"closed (no close frame received or sent)"}
+{"t":1793017737.762,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-col-chi-2026-10-31-col","why":"closed (no close frame received or sent)"}
+{"t":1793017737.762,"run":"20261023T041236-9e94c8","ev":"down","slug":"arg-rie-tal-2026-10-31-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017737.762,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-lag-aus-2026-10-31-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017737.762,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-sje-rsl-2026-10-31-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017739.912,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-col-chi-2026-10-31-draw"}
+{"t":1793017739.912,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-sje-rsl-2026-10-31-draw"}
+{"t":1793017739.912,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-lag-aus-2026-10-31-draw"}
+{"t":1793017739.912,"run":"20261023T041236-9e94c8","ev":"live","slug":"arg-rie-tal-2026-10-31-rie"}
+{"t":1793017739.912,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-col-chi-2026-10-31-col"}
+{"t":1793017739.912,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-lag-aus-2026-10-31-aus"}
+{"t":1793017739.912,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-sje-rsl-2026-10-31-sje"}
+{"t":1793017739.912,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-sje-rsl-2026-10-31-rsl"}
+{"t":1793017739.912,"run":"20261023T041236-9e94c8","ev":"live","slug":"arg-rie-tal-2026-10-31-draw"}
+{"t":1793017739.912,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-col-chi-2026-10-31-chi"}
+{"t":1793017740.307,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017750.313,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017760.316,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017770.32,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017780.325,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017790.333,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017800.338,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017810.34,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017820.343,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017830.353,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017837.377,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-was-cha-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793017837.377,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-nill-unlv-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793017837.377,"run":"20261023T041236-9e94c8","ev":"down","slug":"sea-sas-fio-2026-11-02-fio","why":"closed (no close frame received or sent)"}
+{"t":1793017837.377,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-oregst-frest-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793017837.377,"run":"20261023T041236-9e94c8","ev":"down","slug":"sea-ata-par-2026-11-02-ata","why":"closed (no close frame received or sent)"}
+{"t":1793017837.377,"run":"20261023T041236-9e94c8","ev":"down","slug":"sea-ata-par-2026-11-02-par","why":"closed (no close frame received or sent)"}
+{"t":1793017837.377,"run":"20261023T041236-9e94c8","ev":"down","slug":"sea-sas-fio-2026-11-02-sas","why":"closed (no close frame received or sent)"}
+{"t":1793017837.377,"run":"20261023T041236-9e94c8","ev":"down","slug":"sea-ata-par-2026-11-02-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017837.377,"run":"20261023T041236-9e94c8","ev":"down","slug":"sea-sas-fio-2026-11-02-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017837.377,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-min-cle-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793017838.744,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-vil-get-2026-11-08-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017838.744,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-vil-get-2026-11-08-get","why":"closed (no close frame received or sent)"}
+{"t":1793017838.744,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-rso-ray-2026-11-08-ray","why":"closed (no close frame received or sent)"}
+{"t":1793017838.744,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-rso-ray-2026-11-08-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017838.744,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-cel-lev-2026-11-08-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017838.744,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-mad-bar-2026-11-08-mad","why":"closed (no close frame received or sent)"}
+{"t":1793017838.744,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-cel-lev-2026-11-08-lev","why":"closed (no close frame received or sent)"}
+{"t":1793017838.744,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-cel-lev-2026-11-08-cel","why":"closed (no close frame received or sent)"}
+{"t":1793017838.744,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-vil-get-2026-11-08-vil","why":"closed (no close frame received or sent)"}
+{"t":1793017838.744,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-rso-ray-2026-11-08-rso","why":"closed (no close frame received or sent)"}
+{"t":1793017838.894,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-was-cha-2026-10-26"}
+{"t":1793017838.894,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-oregst-frest-2026-10-31"}
+{"t":1793017838.894,"run":"20261023T041236-9e94c8","ev":"live","slug":"sea-sas-fio-2026-11-02-fio"}
+{"t":1793017838.894,"run":"20261023T041236-9e94c8","ev":"live","slug":"sea-sas-fio-2026-11-02-sas"}
+{"t":1793017838.894,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-nill-unlv-2026-10-31"}
+{"t":1793017838.894,"run":"20261023T041236-9e94c8","ev":"live","slug":"sea-ata-par-2026-11-02-par"}
+{"t":1793017838.894,"run":"20261023T041236-9e94c8","ev":"live","slug":"sea-ata-par-2026-11-02-ata"}
+{"t":1793017838.894,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-min-cle-2026-10-26"}
+{"t":1793017838.894,"run":"20261023T041236-9e94c8","ev":"live","slug":"sea-sas-fio-2026-11-02-draw"}
+{"t":1793017838.894,"run":"20261023T041236-9e94c8","ev":"live","slug":"sea-ata-par-2026-11-02-draw"}
+{"t":1793017840.356,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017840.417,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-ray-cel-2026-10-31-ray","why":"closed (no close frame received or sent)"}
+{"t":1793017840.417,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-ray-cel-2026-10-31-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017840.417,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-lev-mad-2026-10-31-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017840.417,"run":"20261023T041236-9e94c8","ev":"down","slug":"wnba-atl-gsv-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793017840.417,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-ast-ful-2026-10-31-ful","why":"closed (no close frame received or sent)"}
+{"t":1793017840.417,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-lev-mad-2026-10-31-mad","why":"closed (no close frame received or sent)"}
+{"t":1793017840.417,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-lev-mad-2026-10-31-lev","why":"closed (no close frame received or sent)"}
+{"t":1793017840.417,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-bet-mala-2026-10-31-bet","why":"closed (no close frame received or sent)"}
+{"t":1793017840.417,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-ray-cel-2026-10-31-cel","why":"closed (no close frame received or sent)"}
+{"t":1793017840.417,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-ast-ful-2026-10-31-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017840.61,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-rso-ray-2026-11-08-draw"}
+{"t":1793017840.61,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-cel-lev-2026-11-08-draw"}
+{"t":1793017840.61,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-vil-get-2026-11-08-vil"}
+{"t":1793017840.61,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-cel-lev-2026-11-08-lev"}
+{"t":1793017840.61,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-cel-lev-2026-11-08-cel"}
+{"t":1793017840.61,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-vil-get-2026-11-08-draw"}
+{"t":1793017840.61,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-rso-ray-2026-11-08-rso"}
+{"t":1793017840.61,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-vil-get-2026-11-08-get"}
+{"t":1793017840.61,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-rso-ray-2026-11-08-ray"}
+{"t":1793017840.61,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-mad-bar-2026-11-08-mad"}
+{"t":1793017842.359,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-ast-ful-2026-10-31-ful"}
+{"t":1793017842.359,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-lev-mad-2026-10-31-mad"}
+{"t":1793017842.359,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-bet-mala-2026-10-31-bet"}
+{"t":1793017842.359,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-ray-cel-2026-10-31-draw"}
+{"t":1793017842.359,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-lev-mad-2026-10-31-lev"}
+{"t":1793017842.359,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-lev-mad-2026-10-31-draw"}
+{"t":1793017842.359,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-ray-cel-2026-10-31-cel"}
+{"t":1793017842.359,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-ast-ful-2026-10-31-draw"}
+{"t":1793017842.359,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-ray-cel-2026-10-31-ray"}
+{"t":1793017842.359,"run":"20261023T041236-9e94c8","ev":"live","slug":"wnba-atl-gsv-2026-10-31"}
+{"t":1793017843.094,"run":"20261023T041236-9e94c8","ev":"down","slug":"nfl-nyg-phi-2026-11-08","why":"closed (no close frame received or sent)"}
+{"t":1793017843.094,"run":"20261023T041236-9e94c8","ev":"down","slug":"nfl-cle-no-2026-11-08","why":"closed (no close frame received or sent)"}
+{"t":1793017843.094,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-fcc-nas-2026-11-07-fcc","why":"closed (no close frame received or sent)"}
+{"t":1793017843.094,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-fcc-nas-2026-11-07-nas","why":"closed (no close frame received or sent)"}
+{"t":1793017843.094,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-fcc-nas-2026-11-07-draw","why":"closed (no close frame received or sent)"}
+{"t":1793017843.094,"run":"20261023T041236-9e94c8","ev":"down","slug":"nfl-det-mia-2026-11-08","why":"closed (no close frame received or sent)"}
+{"t":1793017843.094,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-phi-tor-2026-11-07-tor","why":"closed (no close frame received or sent)"}
+{"t":1793017843.094,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-mia-clt-2026-11-07-mia","why":"closed (no close frame received or sent)"}
+{"t":1793017843.094,"run":"20261023T041236-9e94c8","ev":"down","slug":"nfl-dal-ind-2026-11-08","why":"closed (no close frame received or sent)"}
+{"t":1793017843.094,"run":"20261023T041236-9e94c8","ev":"down","slug":"nfl-nyj-kc-2026-11-08","why":"closed (no close frame received or sent)"}
+{"t":1793017845.222,"run":"20261023T041236-9e94c8","ev":"live","slug":"nfl-det-mia-2026-11-08"}
+{"t":1793017845.222,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-phi-tor-2026-11-07-tor"}
+{"t":1793017845.222,"run":"20261023T041236-9e94c8","ev":"live","slug":"nfl-nyj-kc-2026-11-08"}
+{"t":1793017845.222,"run":"20261023T041236-9e94c8","ev":"live","slug":"nfl-nyg-phi-2026-11-08"}
+{"t":1793017845.222,"run":"20261023T041236-9e94c8","ev":"live","slug":"nfl-dal-ind-2026-11-08"}
+{"t":1793017845.222,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-fcc-nas-2026-11-07-fcc"}
+{"t":1793017845.222,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-mia-clt-2026-11-07-mia"}
+{"t":1793017845.222,"run":"20261023T041236-9e94c8","ev":"live","slug":"nfl-cle-no-2026-11-08"}
+{"t":1793017845.222,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-fcc-nas-2026-11-07-draw"}
+{"t":1793017845.222,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-fcc-nas-2026-11-07-nas"}
+{"t":1793017850.36,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017860.362,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017870.367,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017880.368,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017890.371,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017900.374,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017912.613,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017922.616,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017932.619,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017942.622,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017947.505,"run":"20261023T041236-9e94c8","ev":"down","slug":"nfl-dal-phi-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793017947.505,"run":"20261023T041236-9e94c8","ev":"down","slug":"nfl-hou-lac-2026-11-08","why":"closed (no close frame received or sent)"}
+{"t":1793017947.505,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-rustec-tsa-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793017949.706,"run":"20261023T041236-9e94c8","ev":"live","slug":"nfl-hou-lac-2026-11-08"}
+{"t":1793017949.706,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-rustec-tsa-2026-10-27"}
+{"t":1793017949.706,"run":"20261023T041236-9e94c8","ev":"live","slug":"nfl-dal-phi-2026-10-27"}
+{"t":1793017952.626,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017956.018,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-ribecai-kjaer-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793017956.018,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-montes-samuel-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793017956.018,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-grenier-kouame-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793017956.018,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-martin-virtane-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793017956.018,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-mochizu-cina-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793017956.018,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-diallo-basavar-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793017956.018,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-tabur-romano-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793017956.018,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-travagl-herbert-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793017956.018,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-piros-djere-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793017956.018,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-damm-gueymar-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793017958.095,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-montes-samuel-2026-10-27"}
+{"t":1793017958.095,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-tabur-romano-2026-10-27"}
+{"t":1793017958.095,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-mochizu-cina-2026-10-27"}
+{"t":1793017958.095,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-martin-virtane-2026-10-27"}
+{"t":1793017958.095,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-grenier-kouame-2026-10-27"}
+{"t":1793017958.095,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-piros-djere-2026-10-27"}
+{"t":1793017958.095,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-ribecai-kjaer-2026-10-27"}
+{"t":1793017958.095,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-diallo-basavar-2026-10-27"}
+{"t":1793017958.095,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-damm-gueymar-2026-10-27"}
+{"t":1793017958.095,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-travagl-herbert-2026-10-27"}
+{"t":1793017962.628,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017972.631,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017982.665,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793017992.668,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018002.673,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018012.724,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018022.727,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018032.742,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018036.645,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-wnt-maybe-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018036.645,"run":"20261023T041236-9e94c8","ev":"down","slug":"wta-monnet-jeanjea-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018036.645,"run":"20261023T041236-9e94c8","ev":"down","slug":"wta-zidanse-scott-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018036.645,"run":"20261023T041236-9e94c8","ev":"down","slug":"wta-hui-andrees-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018036.645,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-growth-hon1-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018036.645,"run":"20261023T041236-9e94c8","ev":"down","slug":"wta-reasco-cherubi-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018036.645,"run":"20261023T041236-9e94c8","ev":"down","slug":"wta-mair-zavatsk-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018036.645,"run":"20261023T041236-9e94c8","ev":"down","slug":"nfl-tb-chi-2026-11-09","why":"closed (no close frame received or sent)"}
+{"t":1793018036.645,"run":"20261023T041236-9e94c8","ev":"down","slug":"wta-blinkov-galfi-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018036.645,"run":"20261023T041236-9e94c8","ev":"down","slug":"wta-podoros-rame-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018038.863,"run":"20261023T041236-9e94c8","ev":"live","slug":"wta-mair-zavatsk-2026-10-27"}
+{"t":1793018038.863,"run":"20261023T041236-9e94c8","ev":"live","slug":"wta-hui-andrees-2026-10-26"}
+{"t":1793018038.863,"run":"20261023T041236-9e94c8","ev":"live","slug":"wta-reasco-cherubi-2026-10-26"}
+{"t":1793018038.863,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-growth-hon1-2026-10-26"}
+{"t":1793018038.863,"run":"20261023T041236-9e94c8","ev":"live","slug":"wta-zidanse-scott-2026-10-26"}
+{"t":1793018038.863,"run":"20261023T041236-9e94c8","ev":"live","slug":"wta-blinkov-galfi-2026-10-27"}
+{"t":1793018038.863,"run":"20261023T041236-9e94c8","ev":"live","slug":"nfl-tb-chi-2026-11-09"}
+{"t":1793018038.863,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-wnt-maybe-2026-10-26"}
+{"t":1793018038.863,"run":"20261023T041236-9e94c8","ev":"live","slug":"wta-podoros-rame-2026-10-26"}
+{"t":1793018038.863,"run":"20261023T041236-9e94c8","ev":"live","slug":"wta-monnet-jeanjea-2026-10-26"}
+{"t":1793018042.753,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018052.754,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018062.757,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018072.761,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018082.763,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018092.802,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018100.033,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-lgc-mglz-2026-11-02","why":"closed (no close frame received or sent)"}
+{"t":1793018100.033,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-bandac-notime-2026-10-20","why":"closed (no close frame received or sent)"}
+{"t":1793018100.033,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-furia-faze-2026-11-02","why":"closed (no close frame received or sent)"}
+{"t":1793018100.033,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-tcf1-ttgesp-2026-10-20","why":"closed (no close frame received or sent)"}
+{"t":1793018100.033,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-ben-lep-2026-11-05-ben","why":"closed (no close frame received or sent)"}
+{"t":1793018100.033,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-hero-b8-2026-11-02","why":"closed (no close frame received or sent)"}
+{"t":1793018100.033,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-mouz-tyloo-2026-11-02","why":"closed (no close frame received or sent)"}
+{"t":1793018100.033,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-old-ff-2026-10-20","why":"closed (no close frame received or sent)"}
+{"t":1793018100.033,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-fal-xcity1-2026-10-20","why":"closed (no close frame received or sent)"}
+{"t":1793018100.033,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-navi-fal2-2026-11-02","why":"closed (no close frame received or sent)"}
+{"t":1793018101.724,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-tcf1-ttgesp-2026-10-20"}
+{"t":1793018101.724,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-ben-lep-2026-11-05-ben"}
+{"t":1793018101.724,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-old-ff-2026-10-20"}
+{"t":1793018101.724,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-mouz-tyloo-2026-11-02"}
+{"t":1793018101.724,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-furia-faze-2026-11-02"}
+{"t":1793018101.724,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-navi-fal2-2026-11-02"}
+{"t":1793018101.724,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-lgc-mglz-2026-11-02"}
+{"t":1793018101.724,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-hero-b8-2026-11-02"}
+{"t":1793018101.724,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-bandac-notime-2026-10-20"}
+{"t":1793018101.724,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-fal-xcity1-2026-10-20"}
+{"t":1793018102.825,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018112.827,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018118.16,"run":"20261023T041236-9e94c8","ev":"down","slug":"mlb-tb-mil-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793018118.16,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-sun-din-2026-11-05-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018118.16,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-sun-din-2026-11-05-sun","why":"closed (no close frame received or sent)"}
+{"t":1793018118.16,"run":"20261023T041236-9e94c8","ev":"down","slug":"ere-wii-zwo-2026-11-06-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018118.16,"run":"20261023T041236-9e94c8","ev":"down","slug":"ere-wii-zwo-2026-11-06-zwo","why":"closed (no close frame received or sent)"}
+{"t":1793018118.16,"run":"20261023T041236-9e94c8","ev":"down","slug":"val-srg-kru-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018120.328,"run":"20261023T041236-9e94c8","ev":"live","slug":"val-srg-kru-2026-10-27"}
+{"t":1793018120.328,"run":"20261023T041236-9e94c8","ev":"live","slug":"ere-wii-zwo-2026-11-06-draw"}
+{"t":1793018120.328,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-sun-din-2026-11-05-sun"}
+{"t":1793018120.328,"run":"20261023T041236-9e94c8","ev":"live","slug":"mlb-tb-mil-2026-10-31"}
+{"t":1793018120.328,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-sun-din-2026-11-05-draw"}
+{"t":1793018120.328,"run":"20261023T041236-9e94c8","ev":"live","slug":"ere-wii-zwo-2026-11-06-zwo"}
+{"t":1793018122.83,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018124.973,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-berrett-etcheve-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018124.973,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-krueger-andrade-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018124.973,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-assche-tien-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018124.973,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-kozlov-cassone-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018124.973,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-zverev-landalu-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018124.973,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-musetti-tiafoe-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018124.973,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-gorzny-blanc-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018124.973,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-grieksp-nakashi-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018124.973,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-cobolli-dimitro-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018124.973,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-shick-rehberg-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018126.79,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-berrett-etcheve-2026-10-27"}
+{"t":1793018126.79,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-zverev-landalu-2026-10-27"}
+{"t":1793018126.79,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-gorzny-blanc-2026-10-26"}
+{"t":1793018126.79,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-shick-rehberg-2026-10-26"}
+{"t":1793018126.79,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-kozlov-cassone-2026-10-26"}
+{"t":1793018126.79,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-musetti-tiafoe-2026-10-27"}
+{"t":1793018126.79,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-cobolli-dimitro-2026-10-27"}
+{"t":1793018126.79,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-krueger-andrade-2026-10-26"}
+{"t":1793018126.79,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-assche-tien-2026-10-27"}
+{"t":1793018126.79,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-grieksp-nakashi-2026-10-27"}
+{"t":1793018132.833,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018145.206,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018155.209,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018165.211,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018168.62,"run":"20261023T041236-9e94c8","ev":"down","slug":"ere-twe-aja-2026-11-08-aja","why":"closed (no close frame received or sent)"}
+{"t":1793018168.62,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-dcu-nyc-2026-11-07-dcu","why":"closed (no close frame received or sent)"}
+{"t":1793018168.62,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-est-csm-2026-11-08-csm","why":"closed (no close frame received or sent)"}
+{"t":1793018168.62,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-orl-ner-2026-11-07-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018168.62,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-kachmaz-noguchi-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018168.62,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-zhukaye-wong-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018168.62,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-fla-bos-2026-11-08","why":"closed (no close frame received or sent)"}
+{"t":1793018168.62,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-orl-ner-2026-11-07-ner","why":"closed (no close frame received or sent)"}
+{"t":1793018168.62,"run":"20261023T041236-9e94c8","ev":"down","slug":"ere-twe-aja-2026-11-08-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018171.072,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-est-csm-2026-11-08-csm"}
+{"t":1793018171.072,"run":"20261023T041236-9e94c8","ev":"live","slug":"ere-twe-aja-2026-11-08-draw"}
+{"t":1793018171.072,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-orl-ner-2026-11-07-draw"}
+{"t":1793018171.072,"run":"20261023T041236-9e94c8","ev":"live","slug":"ere-twe-aja-2026-11-08-aja"}
+{"t":1793018171.072,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-orl-ner-2026-11-07-ner"}
+{"t":1793018171.072,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-zhukaye-wong-2026-10-27"}
+{"t":1793018171.072,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-kachmaz-noguchi-2026-10-27"}
+{"t":1793018171.072,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-dcu-nyc-2026-11-07-dcu"}
+{"t":1793018171.072,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-fla-bos-2026-11-08"}
+{"t":1793018175.215,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018185.22,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018195.223,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018205.226,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018215.229,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018225.231,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018235.242,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018245.257,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018255.271,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018265.274,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018275.278,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018282.912,"run":"20261023T041236-9e94c8","ev":"down","slug":"ere-twe-aja-2026-11-08-twe","why":"closed (no close frame received or sent)"}
+{"t":1793018282.912,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-chi-car-2026-11-07","why":"closed (no close frame received or sent)"}
+{"t":1793018282.912,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-atmane-matsuda-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018282.912,"run":"20261023T041236-9e94c8","ev":"down","slug":"wta-silva-papamic-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018282.912,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-tb-min-2026-11-07","why":"closed (no close frame received or sent)"}
+{"t":1793018282.912,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-sj-dal-2026-11-07","why":"closed (no close frame received or sent)"}
+{"t":1793018282.912,"run":"20261023T041236-9e94c8","ev":"down","slug":"wta-giovann-bronzet-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018282.912,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-okc-hou-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793018282.912,"run":"20261023T041236-9e94c8","ev":"down","slug":"lol-kc-blg-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018282.912,"run":"20261023T041236-9e94c8","ev":"down","slug":"lol-t1-cfo-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018285.282,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018285.396,"run":"20261023T041236-9e94c8","ev":"live","slug":"ere-twe-aja-2026-11-08-twe"}
+{"t":1793018285.396,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-atmane-matsuda-2026-10-27"}
+{"t":1793018285.396,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-tb-min-2026-11-07"}
+{"t":1793018285.396,"run":"20261023T041236-9e94c8","ev":"live","slug":"wta-giovann-bronzet-2026-10-26"}
+{"t":1793018285.396,"run":"20261023T041236-9e94c8","ev":"live","slug":"wta-silva-papamic-2026-10-26"}
+{"t":1793018285.396,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-chi-car-2026-11-07"}
+{"t":1793018285.396,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-sj-dal-2026-11-07"}
+{"t":1793018285.396,"run":"20261023T041236-9e94c8","ev":"live","slug":"lol-kc-blg-2026-10-26"}
+{"t":1793018285.396,"run":"20261023T041236-9e94c8","ev":"live","slug":"lol-t1-cfo-2026-10-26"}
+{"t":1793018285.396,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-okc-hou-2026-10-31"}
+{"t":1793018295.286,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018298.741,"run":"20261023T041236-9e94c8","ev":"down","slug":"sea-tor-lec-2026-11-07-lec","why":"closed (no close frame received or sent)"}
+{"t":1793018298.741,"run":"20261023T041236-9e94c8","ev":"down","slug":"sea-cag-fro-2026-11-07-fro","why":"closed (no close frame received or sent)"}
+{"t":1793018298.741,"run":"20261023T041236-9e94c8","ev":"down","slug":"nfl-ari-sea-2026-11-08","why":"closed (no close frame received or sent)"}
+{"t":1793018298.741,"run":"20261023T041236-9e94c8","ev":"down","slug":"sea-cag-fro-2026-11-07-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018298.741,"run":"20261023T041236-9e94c8","ev":"down","slug":"sea-tor-lec-2026-11-07-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018298.741,"run":"20261023T041236-9e94c8","ev":"down","slug":"wta-badosa-kraus-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018298.741,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-nj-nyi-2026-11-07","why":"closed (no close frame received or sent)"}
+{"t":1793018298.741,"run":"20261023T041236-9e94c8","ev":"down","slug":"sea-tor-lec-2026-11-07-tor","why":"closed (no close frame received or sent)"}
+{"t":1793018298.741,"run":"20261023T041236-9e94c8","ev":"down","slug":"sea-par-bol-2026-11-07-par","why":"closed (no close frame received or sent)"}
+{"t":1793018298.741,"run":"20261023T041236-9e94c8","ev":"down","slug":"sea-cag-fro-2026-11-07-cag","why":"closed (no close frame received or sent)"}
+{"t":1793018301.02,"run":"20261023T041236-9e94c8","ev":"live","slug":"sea-par-bol-2026-11-07-par"}
+{"t":1793018301.02,"run":"20261023T041236-9e94c8","ev":"live","slug":"nfl-ari-sea-2026-11-08"}
+{"t":1793018301.02,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-nj-nyi-2026-11-07"}
+{"t":1793018301.02,"run":"20261023T041236-9e94c8","ev":"live","slug":"sea-cag-fro-2026-11-07-cag"}
+{"t":1793018301.02,"run":"20261023T041236-9e94c8","ev":"live","slug":"sea-tor-lec-2026-11-07-draw"}
+{"t":1793018301.02,"run":"20261023T041236-9e94c8","ev":"live","slug":"wta-badosa-kraus-2026-10-27"}
+{"t":1793018301.02,"run":"20261023T041236-9e94c8","ev":"live","slug":"sea-cag-fro-2026-11-07-draw"}
+{"t":1793018301.02,"run":"20261023T041236-9e94c8","ev":"live","slug":"sea-cag-fro-2026-11-07-fro"}
+{"t":1793018301.02,"run":"20261023T041236-9e94c8","ev":"live","slug":"sea-tor-lec-2026-11-07-lec"}
+{"t":1793018301.02,"run":"20261023T041236-9e94c8","ev":"live","slug":"sea-tor-lec-2026-11-07-tor"}
+{"t":1793018305.289,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018315.424,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018325.426,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018335.429,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018344.731,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-utah-tor-2026-11-03","why":"closed (no close frame received or sent)"}
+{"t":1793018344.731,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-las-pit-2026-11-03","why":"closed (no close frame received or sent)"}
+{"t":1793018344.731,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-van-sj-2026-10-29","why":"closed (no close frame received or sent)"}
+{"t":1793018344.731,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-buf-ana-2026-10-29","why":"closed (no close frame received or sent)"}
+{"t":1793018344.731,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-min-phi-2026-11-03","why":"closed (no close frame received or sent)"}
+{"t":1793018344.731,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-det-tb-2026-11-03","why":"closed (no close frame received or sent)"}
+{"t":1793018344.731,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-ott-lak-2026-10-29","why":"closed (no close frame received or sent)"}
+{"t":1793018344.731,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-dal-wsh-2026-11-03","why":"closed (no close frame received or sent)"}
+{"t":1793018344.731,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-col-cbj-2026-11-03","why":"closed (no close frame received or sent)"}
+{"t":1793018344.731,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-stl-nyr-2026-11-03","why":"closed (no close frame received or sent)"}
+{"t":1793018345.433,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018346.854,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-utah-tor-2026-11-03"}
+{"t":1793018346.854,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-buf-ana-2026-10-29"}
+{"t":1793018346.854,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-dal-wsh-2026-11-03"}
+{"t":1793018346.854,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-ott-lak-2026-10-29"}
+{"t":1793018346.854,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-stl-nyr-2026-11-03"}
+{"t":1793018346.854,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-col-cbj-2026-11-03"}
+{"t":1793018346.854,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-min-phi-2026-11-03"}
+{"t":1793018346.854,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-det-tb-2026-11-03"}
+{"t":1793018346.854,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-las-pit-2026-11-03"}
+{"t":1793018346.854,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-van-sj-2026-10-29"}
+{"t":1793018355.437,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018358.212,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-ray-cel-2026-10-31-ray","why":"closed (no close frame received or sent)"}
+{"t":1793018358.212,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-ray-cel-2026-10-31-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018358.212,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-lev-mad-2026-10-31-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018358.212,"run":"20261023T041236-9e94c8","ev":"down","slug":"wnba-atl-gsv-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793018358.212,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-ast-ful-2026-10-31-ful","why":"closed (no close frame received or sent)"}
+{"t":1793018358.212,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-lev-mad-2026-10-31-mad","why":"closed (no close frame received or sent)"}
+{"t":1793018358.212,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-lev-mad-2026-10-31-lev","why":"closed (no close frame received or sent)"}
+{"t":1793018358.212,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-bet-mala-2026-10-31-bet","why":"closed (no close frame received or sent)"}
+{"t":1793018358.212,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-ray-cel-2026-10-31-cel","why":"closed (no close frame received or sent)"}
+{"t":1793018358.212,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-ast-ful-2026-10-31-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018359.594,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-lev-mad-2026-10-31-mad"}
+{"t":1793018359.594,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-ray-cel-2026-10-31-draw"}
+{"t":1793018359.594,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-ast-ful-2026-10-31-ful"}
+{"t":1793018359.594,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-ray-cel-2026-10-31-ray"}
+{"t":1793018359.594,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-ray-cel-2026-10-31-cel"}
+{"t":1793018359.594,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-lev-mad-2026-10-31-lev"}
+{"t":1793018359.594,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-bet-mala-2026-10-31-bet"}
+{"t":1793018359.594,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-ast-ful-2026-10-31-draw"}
+{"t":1793018359.594,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-lev-mad-2026-10-31-draw"}
+{"t":1793018359.594,"run":"20261023T041236-9e94c8","ev":"live","slug":"wnba-atl-gsv-2026-10-31"}
+{"t":1793018365.442,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018375.445,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018380.708,"run":"20261023T041236-9e94c8","ev":"down","slug":"fl1-psg-tro-2026-11-07-tro","why":"closed (no close frame received or sent)"}
+{"t":1793018380.708,"run":"20261023T041236-9e94c8","ev":"down","slug":"sea-mil-int-2026-10-31-int","why":"closed (no close frame received or sent)"}
+{"t":1793018380.708,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-lei-aug-2026-11-07-lei","why":"closed (no close frame received or sent)"}
+{"t":1793018380.708,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-ful-new-2026-11-07-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018380.708,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-moe-scp-2026-10-31-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018380.708,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-moe-scp-2026-10-31-moe","why":"closed (no close frame received or sent)"}
+{"t":1793018380.708,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-ful-new-2026-11-07-ful","why":"closed (no close frame received or sent)"}
+{"t":1793018380.708,"run":"20261023T041236-9e94c8","ev":"down","slug":"sea-mil-int-2026-10-31-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018380.708,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-lei-aug-2026-11-07-aug","why":"closed (no close frame received or sent)"}
+{"t":1793018380.708,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-lei-aug-2026-11-07-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018382.309,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-ful-new-2026-11-07-draw"}
+{"t":1793018382.309,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-lei-aug-2026-11-07-lei"}
+{"t":1793018382.309,"run":"20261023T041236-9e94c8","ev":"live","slug":"sea-mil-int-2026-10-31-draw"}
+{"t":1793018382.309,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-lei-aug-2026-11-07-draw"}
+{"t":1793018382.309,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-lei-aug-2026-11-07-aug"}
+{"t":1793018382.309,"run":"20261023T041236-9e94c8","ev":"live","slug":"sea-mil-int-2026-10-31-int"}
+{"t":1793018382.309,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-ful-new-2026-11-07-ful"}
+{"t":1793018382.309,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-moe-scp-2026-10-31-draw"}
+{"t":1793018382.309,"run":"20261023T041236-9e94c8","ev":"live","slug":"fl1-psg-tro-2026-11-07-tro"}
+{"t":1793018382.309,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-moe-scp-2026-10-31-moe"}
+{"t":1793018385.448,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018395.452,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018405.455,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018415.458,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018425.461,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018435.464,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018445.468,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018455.47,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018465.685,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018475.691,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018485.721,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018495.725,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018505.729,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018515.732,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018525.736,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018535.963,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018545.983,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018556.014,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018566.018,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018576.038,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018586.041,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018588.59,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-ecs-msc-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018588.59,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-masq-ecs-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018588.59,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-msc-str4-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018588.59,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-ssp1-biga-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018588.59,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-husk-pandar-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018588.59,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-eace-xi-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018588.59,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-r4g-ducks-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018589.08,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-phi-tor-2026-11-07-phi","why":"closed (no close frame received or sent)"}
+{"t":1793018589.08,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-blanche-ursu-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018589.08,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-nyr-atl-2026-11-07-atl","why":"closed (no close frame received or sent)"}
+{"t":1793018589.08,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-phi-tor-2026-11-07-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018589.08,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-geerts-mcdona-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018589.08,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-nyr-atl-2026-11-07-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018590.809,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-nyr-atl-2026-11-07-draw"}
+{"t":1793018590.809,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-phi-tor-2026-11-07-draw"}
+{"t":1793018590.809,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-nyr-atl-2026-11-07-atl"}
+{"t":1793018590.809,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-phi-tor-2026-11-07-phi"}
+{"t":1793018590.817,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-eace-xi-2026-10-26"}
+{"t":1793018590.817,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-ecs-msc-2026-10-26"}
+{"t":1793018590.817,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-masq-ecs-2026-10-26"}
+{"t":1793018590.817,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-r4g-ducks-2026-10-26"}
+{"t":1793018590.817,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-ssp1-biga-2026-10-26"}
+{"t":1793018590.817,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-msc-str4-2026-10-26"}
+{"t":1793018590.817,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-husk-pandar-2026-10-26"}
+{"t":1793018596.049,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018597.035,"run":"20261023T041236-9e94c8","ev":"down","slug":"nfl-car-gb-2026-10-30","why":"closed (no close frame received or sent)"}
+{"t":1793018597.035,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-sj-lak-2026-11-04","why":"closed (no close frame received or sent)"}
+{"t":1793018597.035,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-edm-nj-2026-11-03","why":"closed (no close frame received or sent)"}
+{"t":1793018597.035,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-ott-buf-2026-11-04","why":"closed (no close frame received or sent)"}
+{"t":1793018597.035,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-dal-cbj-2026-11-05","why":"closed (no close frame received or sent)"}
+{"t":1793018597.035,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-cal-sea-2026-11-04","why":"closed (no close frame received or sent)"}
+{"t":1793018597.035,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-chi-fla-2026-11-04","why":"closed (no close frame received or sent)"}
+{"t":1793018597.035,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-ana-van-2026-11-03","why":"closed (no close frame received or sent)"}
+{"t":1793018597.035,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-wpg-mon-2026-11-03","why":"closed (no close frame received or sent)"}
+{"t":1793018597.035,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-car-nsh-2026-11-03","why":"closed (no close frame received or sent)"}
+{"t":1793018597.561,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-scb-fam-2026-11-01-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018597.561,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-csm-cds-2026-11-01-cds","why":"closed (no close frame received or sent)"}
+{"t":1793018597.561,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-scb-fam-2026-11-01-scb","why":"closed (no close frame received or sent)"}
+{"t":1793018597.561,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-kenest-mtnst-2026-10-28","why":"closed (no close frame received or sent)"}
+{"t":1793018597.561,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-acv-rio-2026-11-01-acv","why":"closed (no close frame received or sent)"}
+{"t":1793018597.561,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-scb-fam-2026-11-01-fam","why":"closed (no close frame received or sent)"}
+{"t":1793018597.561,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-del-wkent-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018597.561,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-acv-rio-2026-11-01-rio","why":"closed (no close frame received or sent)"}
+{"t":1793018597.561,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-acv-rio-2026-11-01-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018597.561,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-smho-msrst-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018598.521,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-edm-nj-2026-11-03"}
+{"t":1793018598.521,"run":"20261023T041236-9e94c8","ev":"live","slug":"nfl-car-gb-2026-10-30"}
+{"t":1793018598.521,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-ott-buf-2026-11-04"}
+{"t":1793018598.521,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-dal-cbj-2026-11-05"}
+{"t":1793018598.521,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-sj-lak-2026-11-04"}
+{"t":1793018598.521,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-car-nsh-2026-11-03"}
+{"t":1793018598.521,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-wpg-mon-2026-11-03"}
+{"t":1793018598.521,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-cal-sea-2026-11-04"}
+{"t":1793018598.521,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-ana-van-2026-11-03"}
+{"t":1793018598.521,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-chi-fla-2026-11-04"}
+{"t":1793018599.886,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-csm-cds-2026-11-01-cds"}
+{"t":1793018599.886,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-acv-rio-2026-11-01-acv"}
+{"t":1793018599.886,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-scb-fam-2026-11-01-fam"}
+{"t":1793018599.886,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-kenest-mtnst-2026-10-28"}
+{"t":1793018599.886,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-smho-msrst-2026-10-27"}
+{"t":1793018599.886,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-acv-rio-2026-11-01-rio"}
+{"t":1793018599.886,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-scb-fam-2026-11-01-scb"}
+{"t":1793018599.886,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-scb-fam-2026-11-01-draw"}
+{"t":1793018599.886,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-del-wkent-2026-10-27"}
+{"t":1793018599.886,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-acv-rio-2026-11-01-draw"}
+{"t":1793018602.66,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-gardwb-semst-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793018602.66,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-nichls-mcnst-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793018602.66,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-fola-chs-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793018602.66,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-howrd-ncc-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793018602.66,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-uconn-airf-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793018602.66,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-wcar-furman-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793018602.66,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-delst-norfst-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793018602.66,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-ucdv-webst-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793018602.66,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-bcook-arpb-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793018602.66,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-templ-ecar-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793018604.727,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-gardwb-semst-2026-10-31"}
+{"t":1793018604.727,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-fola-chs-2026-10-31"}
+{"t":1793018604.727,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-howrd-ncc-2026-10-31"}
+{"t":1793018604.727,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-bcook-arpb-2026-10-31"}
+{"t":1793018604.727,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-delst-norfst-2026-10-31"}
+{"t":1793018604.727,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-uconn-airf-2026-10-31"}
+{"t":1793018604.727,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-ucdv-webst-2026-10-31"}
+{"t":1793018604.727,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-templ-ecar-2026-10-31"}
+{"t":1793018604.727,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-nichls-mcnst-2026-10-31"}
+{"t":1793018604.727,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-wcar-furman-2026-10-31"}
+{"t":1793018606.121,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018616.124,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018626.126,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018636.128,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018639.558,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-clb-dcu-2026-10-31-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018639.558,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-stl-sdg-2026-10-31-sdg","why":"closed (no close frame received or sent)"}
+{"t":1793018639.558,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-lag-aus-2026-10-31-lag","why":"closed (no close frame received or sent)"}
+{"t":1793018639.558,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-skc-dal-2026-10-31-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018639.558,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-stl-sdg-2026-10-31-stl","why":"closed (no close frame received or sent)"}
+{"t":1793018639.558,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-clb-dcu-2026-10-31-clb","why":"closed (no close frame received or sent)"}
+{"t":1793018639.558,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-skc-dal-2026-10-31-skc","why":"closed (no close frame received or sent)"}
+{"t":1793018639.558,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-clb-dcu-2026-10-31-dcu","why":"closed (no close frame received or sent)"}
+{"t":1793018639.558,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-stl-sdg-2026-10-31-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018639.558,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-skc-dal-2026-10-31-dal","why":"closed (no close frame received or sent)"}
+{"t":1793018641.192,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-stl-sdg-2026-10-31-stl"}
+{"t":1793018641.192,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-stl-sdg-2026-10-31-sdg"}
+{"t":1793018641.192,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-skc-dal-2026-10-31-draw"}
+{"t":1793018641.192,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-skc-dal-2026-10-31-dal"}
+{"t":1793018641.192,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-skc-dal-2026-10-31-skc"}
+{"t":1793018641.192,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-clb-dcu-2026-10-31-clb"}
+{"t":1793018641.192,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-clb-dcu-2026-10-31-draw"}
+{"t":1793018641.192,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-clb-dcu-2026-10-31-dcu"}
+{"t":1793018641.192,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-lag-aus-2026-10-31-lag"}
+{"t":1793018641.192,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-stl-sdg-2026-10-31-draw"}
+{"t":1793018646.134,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018656.137,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018663.406,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-get-sev-2026-11-01-sev","why":"closed (no close frame received or sent)"}
+{"t":1793018663.406,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-elc-val-2026-11-01-elc","why":"closed (no close frame received or sent)"}
+{"t":1793018663.406,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-rrc-rea-2026-11-01-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018663.406,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-get-sev-2026-11-01-get","why":"closed (no close frame received or sent)"}
+{"t":1793018663.406,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-rrc-rea-2026-11-01-rea","why":"closed (no close frame received or sent)"}
+{"t":1793018663.406,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-elc-val-2026-11-01-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018663.406,"run":"20261023T041236-9e94c8","ev":"down","slug":"fl1-olm-tou-2026-11-01-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018663.406,"run":"20261023T041236-9e94c8","ev":"down","slug":"fl1-olm-tou-2026-11-01-tou","why":"closed (no close frame received or sent)"}
+{"t":1793018663.406,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-get-sev-2026-11-01-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018663.406,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-rrc-rea-2026-11-01-rrc","why":"closed (no close frame received or sent)"}
+{"t":1793018665.342,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-get-sev-2026-11-01-sev"}
+{"t":1793018665.342,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-elc-val-2026-11-01-draw"}
+{"t":1793018665.342,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-elc-val-2026-11-01-elc"}
+{"t":1793018665.342,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-rrc-rea-2026-11-01-rrc"}
+{"t":1793018665.342,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-get-sev-2026-11-01-get"}
+{"t":1793018665.342,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-rrc-rea-2026-11-01-rea"}
+{"t":1793018665.342,"run":"20261023T041236-9e94c8","ev":"live","slug":"fl1-olm-tou-2026-11-01-draw"}
+{"t":1793018665.342,"run":"20261023T041236-9e94c8","ev":"live","slug":"fl1-olm-tou-2026-11-01-tou"}
+{"t":1793018665.342,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-rrc-rea-2026-11-01-draw"}
+{"t":1793018665.342,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-get-sev-2026-11-01-draw"}
+{"t":1793018666.14,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018676.143,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018686.146,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018696.152,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018697.018,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-atm-bay-2026-11-03-bay","why":"closed (no close frame received or sent)"}
+{"t":1793018697.018,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-bog-lil-2026-11-03-bog","why":"closed (no close frame received or sent)"}
+{"t":1793018697.018,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-atm-bay-2026-11-03-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018697.018,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-bog-lil-2026-11-03-lil","why":"closed (no close frame received or sent)"}
+{"t":1793018697.018,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-fcb-ast-2026-11-03-fcb","why":"closed (no close frame received or sent)"}
+{"t":1793018697.018,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-mnu-rom-2026-11-03-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018697.018,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-mnu-rom-2026-11-03-mnu","why":"closed (no close frame received or sent)"}
+{"t":1793018697.018,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-bog-lil-2026-11-03-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018697.018,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-atm-bay-2026-11-03-atm","why":"closed (no close frame received or sent)"}
+{"t":1793018697.018,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-mnu-rom-2026-11-03-rom","why":"closed (no close frame received or sent)"}
+{"t":1793018698.81,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-atm-bay-2026-11-03-bay"}
+{"t":1793018698.81,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-bog-lil-2026-11-03-bog"}
+{"t":1793018698.81,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-atm-bay-2026-11-03-atm"}
+{"t":1793018698.81,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-mnu-rom-2026-11-03-mnu"}
+{"t":1793018698.81,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-mnu-rom-2026-11-03-draw"}
+{"t":1793018698.81,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-fcb-ast-2026-11-03-fcb"}
+{"t":1793018698.81,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-atm-bay-2026-11-03-draw"}
+{"t":1793018698.81,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-bog-lil-2026-11-03-lil"}
+{"t":1793018698.81,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-bog-lil-2026-11-03-draw"}
+{"t":1793018698.81,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-mnu-rom-2026-11-03-rom"}
+{"t":1793018706.155,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018716.157,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018726.161,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018736.163,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018746.166,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018756.168,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018764.48,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-mil1-ftc-2026-11-05-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018764.48,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-ren1-oly-2026-11-05-ren1","why":"closed (no close frame received or sent)"}
+{"t":1793018764.48,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-rso-lyo-2026-11-05-rso","why":"closed (no close frame received or sent)"}
+{"t":1793018764.48,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-mil1-ftc-2026-11-05-ftc","why":"closed (no close frame received or sent)"}
+{"t":1793018764.48,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-ren1-oly-2026-11-05-oly","why":"closed (no close frame received or sent)"}
+{"t":1793018764.48,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-rso-lyo-2026-11-05-lyo","why":"closed (no close frame received or sent)"}
+{"t":1793018764.48,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-rso-lyo-2026-11-05-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018764.48,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-lil1-plz-2026-11-05-lil1","why":"closed (no close frame received or sent)"}
+{"t":1793018764.48,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-ren1-oly-2026-11-05-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018764.48,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-mil1-ftc-2026-11-05-mil1","why":"closed (no close frame received or sent)"}
+{"t":1793018764.633,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-mia-fcc-2026-10-28-fcc","why":"closed (no close frame received or sent)"}
+{"t":1793018764.633,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-min-skc-2026-10-28-min","why":"closed (no close frame received or sent)"}
+{"t":1793018764.633,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-nyc-atl-2026-10-28-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018764.633,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-min-skc-2026-10-28-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018764.633,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-mia-fcc-2026-10-28-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018764.633,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-mia-fcc-2026-10-28-mia","why":"closed (no close frame received or sent)"}
+{"t":1793018764.633,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-min-skc-2026-10-28-skc","why":"closed (no close frame received or sent)"}
+{"t":1793018764.633,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-chi-orl-2026-10-28-chi","why":"closed (no close frame received or sent)"}
+{"t":1793018764.633,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-nyc-atl-2026-10-28-nyc","why":"closed (no close frame received or sent)"}
+{"t":1793018764.633,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-nyc-atl-2026-10-28-atl","why":"closed (no close frame received or sent)"}
+{"t":1793018766.167,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-nyc-atl-2026-10-28-atl"}
+{"t":1793018766.167,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-mia-fcc-2026-10-28-draw"}
+{"t":1793018766.167,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-chi-orl-2026-10-28-chi"}
+{"t":1793018766.167,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-nyc-atl-2026-10-28-nyc"}
+{"t":1793018766.167,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-mia-fcc-2026-10-28-fcc"}
+{"t":1793018766.167,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-min-skc-2026-10-28-draw"}
+{"t":1793018766.167,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-min-skc-2026-10-28-skc"}
+{"t":1793018766.167,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-min-skc-2026-10-28-min"}
+{"t":1793018766.167,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-nyc-atl-2026-10-28-draw"}
+{"t":1793018766.167,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-mia-fcc-2026-10-28-mia"}
+{"t":1793018766.173,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018766.855,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-ren1-oly-2026-11-05-draw"}
+{"t":1793018766.855,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-rso-lyo-2026-11-05-draw"}
+{"t":1793018766.855,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-mil1-ftc-2026-11-05-draw"}
+{"t":1793018766.855,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-lil1-plz-2026-11-05-lil1"}
+{"t":1793018766.855,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-ren1-oly-2026-11-05-oly"}
+{"t":1793018766.855,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-mil1-ftc-2026-11-05-mil1"}
+{"t":1793018766.855,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-mil1-ftc-2026-11-05-ftc"}
+{"t":1793018766.855,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-rso-lyo-2026-11-05-rso"}
+{"t":1793018766.855,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-rso-lyo-2026-11-05-lyo"}
+{"t":1793018766.855,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-ren1-oly-2026-11-05-ren1"}
+{"t":1793018776.175,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018786.177,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018796.18,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018800.389,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-sev-ala-2026-11-06-sev","why":"closed (no close frame received or sent)"}
+{"t":1793018800.389,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-villanu-midon-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018800.389,"run":"20261023T041236-9e94c8","ev":"down","slug":"sea-gen-mil-2026-11-08-mil","why":"closed (no close frame received or sent)"}
+{"t":1793018800.389,"run":"20261023T041236-9e94c8","ev":"down","slug":"sea-mon-ata-2026-11-08-mon","why":"closed (no close frame received or sent)"}
+{"t":1793018800.389,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-sev-ala-2026-11-06-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018801.474,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-ymer-zhou-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018801.474,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-paul-rublev-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018801.474,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-su-matsuok-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018801.474,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-xiao-cui-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018801.474,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-darderi-arnaldi-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018801.474,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-aguilar-medvede-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018801.474,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-khachan-alcaraz-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018801.474,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-rodiono-basilas-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018801.474,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-schoolk-imamura-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018801.474,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-norrie-cerundo-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018801.984,"run":"20261023T041236-9e94c8","ev":"live","slug":"sea-mon-ata-2026-11-08-mon"}
+{"t":1793018801.984,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-sev-ala-2026-11-06-draw"}
+{"t":1793018801.984,"run":"20261023T041236-9e94c8","ev":"live","slug":"sea-gen-mil-2026-11-08-mil"}
+{"t":1793018801.984,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-villanu-midon-2026-10-26"}
+{"t":1793018801.984,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-sev-ala-2026-11-06-sev"}
+{"t":1793018803.765,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-su-matsuok-2026-10-26"}
+{"t":1793018803.765,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-aguilar-medvede-2026-10-27"}
+{"t":1793018803.765,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-rodiono-basilas-2026-10-27"}
+{"t":1793018803.765,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-ymer-zhou-2026-10-26"}
+{"t":1793018803.765,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-norrie-cerundo-2026-10-27"}
+{"t":1793018803.765,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-khachan-alcaraz-2026-10-27"}
+{"t":1793018803.765,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-paul-rublev-2026-10-27"}
+{"t":1793018803.765,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-schoolk-imamura-2026-10-26"}
+{"t":1793018803.765,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-darderi-arnaldi-2026-10-27"}
+{"t":1793018803.765,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-xiao-cui-2026-10-26"}
+{"t":1793018806.182,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018813.41,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-az-juv-2026-11-05-juv","why":"closed (no close frame received or sent)"}
+{"t":1793018813.41,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-az-juv-2026-11-05-az","why":"closed (no close frame received or sent)"}
+{"t":1793018813.41,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-lph-phanto-2026-10-20","why":"closed (no close frame received or sent)"}
+{"t":1793018813.41,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-stu-wer-2026-11-07-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018813.41,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-az-juv-2026-11-05-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018813.41,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-stu-wer-2026-11-07-wer","why":"closed (no close frame received or sent)"}
+{"t":1793018815.562,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-az-juv-2026-11-05-az"}
+{"t":1793018815.562,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-stu-wer-2026-11-07-wer"}
+{"t":1793018815.562,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-lph-phanto-2026-10-20"}
+{"t":1793018815.562,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-az-juv-2026-11-05-draw"}
+{"t":1793018815.562,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-az-juv-2026-11-05-juv"}
+{"t":1793018815.562,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-stu-wer-2026-11-07-draw"}
+{"t":1793018816.185,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018818.645,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-bos-car-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018818.645,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-lak-chi-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018818.645,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-min-utah-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018818.645,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-nj-col-2026-10-28","why":"closed (no close frame received or sent)"}
+{"t":1793018818.645,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-van-ana-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018818.645,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-buf-sj-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018818.645,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-tor-sea-2026-10-28","why":"closed (no close frame received or sent)"}
+{"t":1793018818.645,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-ott-las-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018818.645,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-phi-wsh-2026-10-28","why":"closed (no close frame received or sent)"}
+{"t":1793018818.645,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-cal-edm-2026-10-28","why":"closed (no close frame received or sent)"}
+{"t":1793018820.69,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-min-utah-2026-10-27"}
+{"t":1793018820.69,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-van-ana-2026-10-27"}
+{"t":1793018820.69,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-cal-edm-2026-10-28"}
+{"t":1793018820.69,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-tor-sea-2026-10-28"}
+{"t":1793018820.69,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-ott-las-2026-10-27"}
+{"t":1793018820.69,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-buf-sj-2026-10-27"}
+{"t":1793018820.69,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-nj-col-2026-10-28"}
+{"t":1793018820.69,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-phi-wsh-2026-10-28"}
+{"t":1793018820.69,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-bos-car-2026-10-27"}
+{"t":1793018820.69,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-lak-chi-2026-10-27"}
+{"t":1793018826.19,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018836.194,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018846.197,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018847.081,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-old1-hec-2026-10-20","why":"closed (no close frame received or sent)"}
+{"t":1793018847.081,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-bos-orl-2026-11-01","why":"closed (no close frame received or sent)"}
+{"t":1793018847.081,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-havu-ill4-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018847.081,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-innerc-lavked-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018847.081,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-bkn-ind-2026-11-01","why":"closed (no close frame received or sent)"}
+{"t":1793018847.081,"run":"20261023T041236-9e94c8","ev":"down","slug":"wta-montgom-pigato-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018847.081,"run":"20261023T041236-9e94c8","ev":"down","slug":"wta-ristic-kubka-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018847.081,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-pit-ana-2026-11-08","why":"closed (no close frame received or sent)"}
+{"t":1793018847.081,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-tb-wpg-2026-11-08","why":"closed (no close frame received or sent)"}
+{"t":1793018848.523,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-old1-hec-2026-10-20"}
+{"t":1793018848.523,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-havu-ill4-2026-10-26"}
+{"t":1793018848.523,"run":"20261023T041236-9e94c8","ev":"live","slug":"wta-montgom-pigato-2026-10-27"}
+{"t":1793018848.523,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-innerc-lavked-2026-10-27"}
+{"t":1793018848.523,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-bkn-ind-2026-11-01"}
+{"t":1793018848.523,"run":"20261023T041236-9e94c8","ev":"live","slug":"wta-ristic-kubka-2026-10-27"}
+{"t":1793018848.523,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-tb-wpg-2026-11-08"}
+{"t":1793018848.523,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-pit-ana-2026-11-08"}
+{"t":1793018848.523,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-bos-orl-2026-11-01"}
+{"t":1793018856.198,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018866.203,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018876.288,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018886.359,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018896.362,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018908.249,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018918.27,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018921.82,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-berrett-etcheve-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018921.82,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-krueger-andrade-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018921.82,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-assche-tien-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018921.82,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-kozlov-cassone-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018921.82,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-zverev-landalu-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018921.82,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-musetti-tiafoe-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018921.82,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-gorzny-blanc-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018921.82,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-grieksp-nakashi-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018921.82,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-cobolli-dimitro-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793018921.82,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-shick-rehberg-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793018924.445,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-musetti-tiafoe-2026-10-27"}
+{"t":1793018924.445,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-gorzny-blanc-2026-10-26"}
+{"t":1793018924.445,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-zverev-landalu-2026-10-27"}
+{"t":1793018924.445,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-grieksp-nakashi-2026-10-27"}
+{"t":1793018924.445,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-assche-tien-2026-10-27"}
+{"t":1793018924.445,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-kozlov-cassone-2026-10-26"}
+{"t":1793018924.445,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-berrett-etcheve-2026-10-27"}
+{"t":1793018924.445,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-krueger-andrade-2026-10-26"}
+{"t":1793018924.445,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-cobolli-dimitro-2026-10-27"}
+{"t":1793018924.445,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-shick-rehberg-2026-10-26"}
+{"t":1793018928.273,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018938.283,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018948.32,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018958.326,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018968.329,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018971.402,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-lin2-sba-2026-11-03-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018971.402,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-lin2-sba-2026-11-03-lin2","why":"closed (no close frame received or sent)"}
+{"t":1793018971.402,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-vil-psg-2026-11-03-psg","why":"closed (no close frame received or sent)"}
+{"t":1793018971.402,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-lin2-sba-2026-11-03-sba","why":"closed (no close frame received or sent)"}
+{"t":1793018971.402,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-fey-int-2026-11-03-fey","why":"closed (no close frame received or sent)"}
+{"t":1793018971.402,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-vil-psg-2026-11-03-vil","why":"closed (no close frame received or sent)"}
+{"t":1793018971.402,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-fey-int-2026-11-03-int","why":"closed (no close frame received or sent)"}
+{"t":1793018971.402,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-fey-int-2026-11-03-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018971.402,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-vil-psg-2026-11-03-draw","why":"closed (no close frame received or sent)"}
+{"t":1793018974.036,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-vil-psg-2026-11-03-vil"}
+{"t":1793018974.036,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-fey-int-2026-11-03-fey"}
+{"t":1793018974.036,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-lin2-sba-2026-11-03-sba"}
+{"t":1793018974.036,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-lin2-sba-2026-11-03-lin2"}
+{"t":1793018974.036,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-fey-int-2026-11-03-int"}
+{"t":1793018974.036,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-fey-int-2026-11-03-draw"}
+{"t":1793018974.036,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-vil-psg-2026-11-03-draw"}
+{"t":1793018974.036,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-vil-psg-2026-11-03-psg"}
+{"t":1793018974.036,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-lin2-sba-2026-11-03-draw"}
+{"t":1793018978.645,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018988.649,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793018998.651,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019008.654,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019018.657,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019028.659,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019038.665,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019048.669,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019058.673,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019068.679,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019068.749,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-bay-dor-2026-10-31-draw","why":"closed (no close frame received or sent)"}
+{"t":1793019068.749,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-bay-dor-2026-10-31-dor","why":"closed (no close frame received or sent)"}
+{"t":1793019068.749,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-bre-not-2026-10-31-not","why":"closed (no close frame received or sent)"}
+{"t":1793019068.749,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-tot-cry-2026-10-31-cry","why":"closed (no close frame received or sent)"}
+{"t":1793019068.749,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-bre-not-2026-10-31-bre","why":"closed (no close frame received or sent)"}
+{"t":1793019068.749,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-bre-not-2026-10-31-draw","why":"closed (no close frame received or sent)"}
+{"t":1793019068.749,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-tot-cry-2026-10-31-draw","why":"closed (no close frame received or sent)"}
+{"t":1793019068.749,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-tot-cry-2026-10-31-tot","why":"closed (no close frame received or sent)"}
+{"t":1793019068.749,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-ast-ful-2026-10-31-ast","why":"closed (no close frame received or sent)"}
+{"t":1793019068.749,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-bay-dor-2026-10-31-bay","why":"closed (no close frame received or sent)"}
+{"t":1793019070.633,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-bre-not-2026-10-31-bre"}
+{"t":1793019070.633,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-bre-not-2026-10-31-not"}
+{"t":1793019070.633,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-ast-ful-2026-10-31-ast"}
+{"t":1793019070.633,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-tot-cry-2026-10-31-draw"}
+{"t":1793019070.633,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-bay-dor-2026-10-31-draw"}
+{"t":1793019070.633,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-tot-cry-2026-10-31-tot"}
+{"t":1793019070.633,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-bay-dor-2026-10-31-bay"}
+{"t":1793019070.633,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-bre-not-2026-10-31-draw"}
+{"t":1793019070.633,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-bay-dor-2026-10-31-dor"}
+{"t":1793019070.633,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-tot-cry-2026-10-31-cry"}
+{"t":1793019078.682,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019088.685,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019098.687,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019108.693,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019118.698,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019128.701,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019138.704,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019142.598,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-lgc-mglz-2026-11-02","why":"closed (no close frame received or sent)"}
+{"t":1793019142.598,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-bandac-notime-2026-10-20","why":"closed (no close frame received or sent)"}
+{"t":1793019142.598,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-furia-faze-2026-11-02","why":"closed (no close frame received or sent)"}
+{"t":1793019142.598,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-tcf1-ttgesp-2026-10-20","why":"closed (no close frame received or sent)"}
+{"t":1793019142.598,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-ben-lep-2026-11-05-ben","why":"closed (no close frame received or sent)"}
+{"t":1793019142.598,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-hero-b8-2026-11-02","why":"closed (no close frame received or sent)"}
+{"t":1793019142.598,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-mouz-tyloo-2026-11-02","why":"closed (no close frame received or sent)"}
+{"t":1793019142.598,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-old-ff-2026-10-20","why":"closed (no close frame received or sent)"}
+{"t":1793019142.598,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-fal-xcity1-2026-10-20","why":"closed (no close frame received or sent)"}
+{"t":1793019142.598,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-navi-fal2-2026-11-02","why":"closed (no close frame received or sent)"}
+{"t":1793019144.857,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-furia-faze-2026-11-02"}
+{"t":1793019144.857,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-tcf1-ttgesp-2026-10-20"}
+{"t":1793019144.857,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-lgc-mglz-2026-11-02"}
+{"t":1793019144.857,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-ben-lep-2026-11-05-ben"}
+{"t":1793019144.857,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-old-ff-2026-10-20"}
+{"t":1793019144.857,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-mouz-tyloo-2026-11-02"}
+{"t":1793019144.857,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-bandac-notime-2026-10-20"}
+{"t":1793019144.857,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-fal-xcity1-2026-10-20"}
+{"t":1793019144.857,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-navi-fal2-2026-11-02"}
+{"t":1793019144.857,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-hero-b8-2026-11-02"}
+{"t":1793019148.706,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019158.718,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019168.721,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019178.724,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019188.732,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019198.736,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019208.753,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019218.769,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019228.776,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019229.613,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-uab-sfl-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793019229.613,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-kentst-sacst-2026-10-30","why":"closed (no close frame received or sent)"}
+{"t":1793019229.613,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-harv-dart-2026-10-30","why":"closed (no close frame received or sent)"}
+{"t":1793019229.613,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-bayl-ucf-2026-10-30","why":"closed (no close frame received or sent)"}
+{"t":1793019229.613,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-bowlgr-wmich-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793019229.613,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-tulane-charlt-2026-10-30","why":"closed (no close frame received or sent)"}
+{"t":1793019229.613,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-troy-jmad-2026-10-29","why":"closed (no close frame received or sent)"}
+{"t":1793019229.613,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-jaxst-nmxst-2026-10-28","why":"closed (no close frame received or sent)"}
+{"t":1793019229.613,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-scarst-morgst-2026-10-29","why":"closed (no close frame received or sent)"}
+{"t":1793019229.613,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-flatl-ntx-2026-10-29","why":"closed (no close frame received or sent)"}
+{"t":1793019231.251,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-flatl-ntx-2026-10-29"}
+{"t":1793019231.251,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-bayl-ucf-2026-10-30"}
+{"t":1793019231.251,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-uab-sfl-2026-10-31"}
+{"t":1793019231.251,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-bowlgr-wmich-2026-10-31"}
+{"t":1793019231.251,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-harv-dart-2026-10-30"}
+{"t":1793019231.251,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-tulane-charlt-2026-10-30"}
+{"t":1793019231.251,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-scarst-morgst-2026-10-29"}
+{"t":1793019231.251,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-kentst-sacst-2026-10-30"}
+{"t":1793019231.251,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-troy-jmad-2026-10-29"}
+{"t":1793019231.251,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-jaxst-nmxst-2026-10-28"}
+{"t":1793019238.791,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019248.797,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019258.826,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019268.84,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019278.843,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019286.777,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-bueno-barrena-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793019286.777,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-dietric-smith-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793019286.777,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-wolf-shelbay-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793019286.777,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-galarne-rottger-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793019286.777,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-varilla-pacheco-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793019286.777,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-jarry-dellien-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793019286.777,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-brooksb-nakash-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793019286.777,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-mayo-barton-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793019286.777,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-marti-bigun-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793019286.777,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-milavsk-wendelk-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793019288.997,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019289.118,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-stu1-cel2-2026-11-05-draw","why":"closed (no close frame received or sent)"}
+{"t":1793019289.118,"run":"20261023T041236-9e94c8","ev":"down","slug":"wta-parry-bucsa-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793019289.118,"run":"20261023T041236-9e94c8","ev":"down","slug":"wta-annli-alexand-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793019289.124,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-wolf-shelbay-2026-10-26"}
+{"t":1793019289.124,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-galarne-rottger-2026-10-26"}
+{"t":1793019289.124,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-marti-bigun-2026-10-26"}
+{"t":1793019289.124,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-jarry-dellien-2026-10-26"}
+{"t":1793019289.124,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-dietric-smith-2026-10-26"}
+{"t":1793019289.124,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-bueno-barrena-2026-10-26"}
+{"t":1793019289.124,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-varilla-pacheco-2026-10-26"}
+{"t":1793019289.124,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-milavsk-wendelk-2026-10-26"}
+{"t":1793019289.124,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-mayo-barton-2026-10-26"}
+{"t":1793019289.124,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-brooksb-nakash-2026-10-26"}
+{"t":1793019291.203,"run":"20261023T041236-9e94c8","ev":"live","slug":"wta-parry-bucsa-2026-10-26"}
+{"t":1793019291.203,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-stu1-cel2-2026-11-05-draw"}
+{"t":1793019291.203,"run":"20261023T041236-9e94c8","ev":"live","slug":"wta-annli-alexand-2026-10-26"}
+{"t":1793019299.001,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019309.016,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019319.099,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019325.848,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-lev-olm-2026-11-05-olm","why":"closed (no close frame received or sent)"}
+{"t":1793019325.848,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-cel1-usg-2026-11-05-draw","why":"closed (no close frame received or sent)"}
+{"t":1793019325.848,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-hbs-ofi-2026-11-05-draw","why":"closed (no close frame received or sent)"}
+{"t":1793019325.848,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-lev-olm-2026-11-05-draw","why":"closed (no close frame received or sent)"}
+{"t":1793019325.848,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-cel1-usg-2026-11-05-cel1","why":"closed (no close frame received or sent)"}
+{"t":1793019325.848,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-hbs-ofi-2026-11-05-ofi","why":"closed (no close frame received or sent)"}
+{"t":1793019325.848,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-cel1-usg-2026-11-05-usg","why":"closed (no close frame received or sent)"}
+{"t":1793019325.848,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-lev-olm-2026-11-05-lev","why":"closed (no close frame received or sent)"}
+{"t":1793019327.699,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-cel1-usg-2026-11-05-usg"}
+{"t":1793019327.699,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-hbs-ofi-2026-11-05-draw"}
+{"t":1793019327.699,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-cel1-usg-2026-11-05-draw"}
+{"t":1793019327.699,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-lev-olm-2026-11-05-olm"}
+{"t":1793019327.699,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-lev-olm-2026-11-05-lev"}
+{"t":1793019327.699,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-cel1-usg-2026-11-05-cel1"}
+{"t":1793019327.699,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-lev-olm-2026-11-05-draw"}
+{"t":1793019327.699,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-hbs-ofi-2026-11-05-ofi"}
+{"t":1793019328.425,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-revise-ep-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793019328.425,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-morrow-maybe-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793019328.425,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-ryvex-rgg-2026-10-28","why":"closed (no close frame received or sent)"}
+{"t":1793019329.188,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019330.759,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-revise-ep-2026-10-27"}
+{"t":1793019330.759,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-ryvex-rgg-2026-10-28"}
+{"t":1793019330.759,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-morrow-maybe-2026-10-27"}
+{"t":1793019339.191,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019349.246,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019359.279,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019369.77,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019379.773,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019389.776,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019399.779,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019409.782,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019419.784,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019429.786,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019439.789,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019445.193,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-mouzn-esb-2026-10-29","why":"closed (no close frame received or sent)"}
+{"t":1793019445.193,"run":"20261023T041236-9e94c8","ev":"down","slug":"sea-gen-mil-2026-11-08-draw","why":"closed (no close frame received or sent)"}
+{"t":1793019445.193,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-ut-aa-2026-11-05-draw","why":"closed (no close frame received or sent)"}
+{"t":1793019445.193,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-aus-por-2026-11-07-draw","why":"closed (no close frame received or sent)"}
+{"t":1793019445.193,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-ut-aa-2026-11-05-aa","why":"closed (no close frame received or sent)"}
+{"t":1793019445.193,"run":"20261023T041236-9e94c8","ev":"down","slug":"uel-hbs-ofi-2026-11-05-hbs","why":"closed (no close frame received or sent)"}
+{"t":1793019447.076,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-mouzn-esb-2026-10-29"}
+{"t":1793019447.076,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-ut-aa-2026-11-05-aa"}
+{"t":1793019447.076,"run":"20261023T041236-9e94c8","ev":"live","slug":"sea-gen-mil-2026-11-08-draw"}
+{"t":1793019447.076,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-ut-aa-2026-11-05-draw"}
+{"t":1793019447.076,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-aus-por-2026-11-07-draw"}
+{"t":1793019447.076,"run":"20261023T041236-9e94c8","ev":"live","slug":"uel-hbs-ofi-2026-11-05-hbs"}
+{"t":1793019449.8,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019459.803,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019469.806,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019479.809,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019489.812,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019499.817,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019509.821,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019519.835,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019529.839,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019539.841,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019546.27,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-vir-wake-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793019546.27,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-idaho-portst-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793019546.27,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-mont-ewash-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793019546.27,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-mrst-usd-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793019546.27,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-nmx-sjst-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793019546.27,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-utah-cin-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793019546.27,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-sdak-sdkst-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793019546.27,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-alast-alaam-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793019546.27,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-uwg-abchr-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793019546.27,"run":"20261023T041236-9e94c8","ev":"down","slug":"cfb-selou-txamc-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793019548.152,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-nmx-sjst-2026-10-31"}
+{"t":1793019548.152,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-uwg-abchr-2026-10-31"}
+{"t":1793019548.152,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-sdak-sdkst-2026-10-31"}
+{"t":1793019548.152,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-mrst-usd-2026-10-31"}
+{"t":1793019548.152,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-vir-wake-2026-10-31"}
+{"t":1793019548.152,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-alast-alaam-2026-10-31"}
+{"t":1793019548.152,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-idaho-portst-2026-10-31"}
+{"t":1793019548.152,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-selou-txamc-2026-10-31"}
+{"t":1793019548.152,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-mont-ewash-2026-10-31"}
+{"t":1793019548.152,"run":"20261023T041236-9e94c8","ev":"live","slug":"cfb-utah-cin-2026-10-31"}
+{"t":1793019549.857,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019559.86,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019569.242,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-mala-rrc-2026-11-07-mala","why":"closed (no close frame received or sent)"}
+{"t":1793019569.242,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-esp-dep-2026-11-07-esp","why":"closed (no close frame received or sent)"}
+{"t":1793019569.242,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-mala-rrc-2026-11-07-rrc","why":"closed (no close frame received or sent)"}
+{"t":1793019569.242,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-esp-dep-2026-11-07-draw","why":"closed (no close frame received or sent)"}
+{"t":1793019569.242,"run":"20261023T041236-9e94c8","ev":"down","slug":"lal-mala-rrc-2026-11-07-draw","why":"closed (no close frame received or sent)"}
+{"t":1793019569.862,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019570.811,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-esp-dep-2026-11-07-draw"}
+{"t":1793019570.811,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-mala-rrc-2026-11-07-mala"}
+{"t":1793019570.811,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-mala-rrc-2026-11-07-draw"}
+{"t":1793019570.811,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-esp-dep-2026-11-07-esp"}
+{"t":1793019570.811,"run":"20261023T041236-9e94c8","ev":"live","slug":"lal-mala-rrc-2026-11-07-rrc"}
+{"t":1793019579.865,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019589.869,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019599.872,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019609.88,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019619.9,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019629.915,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019631.605,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-stl-det-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793019631.605,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-nj-las-2026-10-30","why":"closed (no close frame received or sent)"}
+{"t":1793019631.605,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-chi-bos-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793019631.605,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-edm-nyi-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793019631.605,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-tb-nsh-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793019631.605,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-ott-sj-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793019631.605,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-buf-lak-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793019631.605,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-sea-cal-2026-10-30","why":"closed (no close frame received or sent)"}
+{"t":1793019631.605,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-wpg-fla-2026-10-30","why":"closed (no close frame received or sent)"}
+{"t":1793019631.605,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-tor-van-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793019633.272,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-ott-sj-2026-10-31"}
+{"t":1793019633.272,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-stl-det-2026-10-31"}
+{"t":1793019633.272,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-sea-cal-2026-10-30"}
+{"t":1793019633.272,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-nj-las-2026-10-30"}
+{"t":1793019633.272,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-chi-bos-2026-10-31"}
+{"t":1793019633.272,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-edm-nyi-2026-10-31"}
+{"t":1793019633.272,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-tb-nsh-2026-10-31"}
+{"t":1793019633.272,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-tor-van-2026-10-31"}
+{"t":1793019633.272,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-wpg-fla-2026-10-30"}
+{"t":1793019633.272,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-buf-lak-2026-10-31"}
+{"t":1793019639.92,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019649.939,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019659.943,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019669.952,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019679.956,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019689.96,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019699.964,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019705.87,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-chi-clb-2026-11-07-draw","why":"closed (no close frame received or sent)"}
+{"t":1793019705.87,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-mai-bay-2026-11-07-mai","why":"closed (no close frame received or sent)"}
+{"t":1793019705.87,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-orl-ner-2026-11-07-orl","why":"closed (no close frame received or sent)"}
+{"t":1793019705.87,"run":"20261023T041236-9e94c8","ev":"down","slug":"fl1-aja-pfc-2026-11-07-pfc","why":"closed (no close frame received or sent)"}
+{"t":1793019705.87,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-chi-clb-2026-11-07-clb","why":"closed (no close frame received or sent)"}
+{"t":1793019707.407,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-chi-clb-2026-11-07-clb"}
+{"t":1793019707.407,"run":"20261023T041236-9e94c8","ev":"live","slug":"fl1-aja-pfc-2026-11-07-pfc"}
+{"t":1793019707.407,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-orl-ner-2026-11-07-orl"}
+{"t":1793019707.407,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-mai-bay-2026-11-07-mai"}
+{"t":1793019707.407,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-chi-clb-2026-11-07-draw"}
+{"t":1793019709.967,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019718.384,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-ner-mia-2026-11-01-mia","why":"closed (no close frame received or sent)"}
+{"t":1793019718.384,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-nas-nyr-2026-11-01-nas","why":"closed (no close frame received or sent)"}
+{"t":1793019718.384,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-ner-mia-2026-11-01-ner","why":"closed (no close frame received or sent)"}
+{"t":1793019718.384,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-atl-tor-2026-11-01-draw","why":"closed (no close frame received or sent)"}
+{"t":1793019718.384,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-atl-tor-2026-11-01-tor","why":"closed (no close frame received or sent)"}
+{"t":1793019718.384,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-atl-tor-2026-11-01-atl","why":"closed (no close frame received or sent)"}
+{"t":1793019718.384,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-ner-mia-2026-11-01-draw","why":"closed (no close frame received or sent)"}
+{"t":1793019718.384,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-nas-nyr-2026-11-01-draw","why":"closed (no close frame received or sent)"}
+{"t":1793019718.384,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-vwh-sea-2026-11-01-sea","why":"closed (no close frame received or sent)"}
+{"t":1793019718.384,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-nas-nyr-2026-11-01-nyr","why":"closed (no close frame received or sent)"}
+{"t":1793019719.971,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019720.456,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-atl-tor-2026-11-01-atl"}
+{"t":1793019720.456,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-nas-nyr-2026-11-01-nyr"}
+{"t":1793019720.456,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-ner-mia-2026-11-01-ner"}
+{"t":1793019720.456,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-vwh-sea-2026-11-01-sea"}
+{"t":1793019720.456,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-atl-tor-2026-11-01-draw"}
+{"t":1793019720.456,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-nas-nyr-2026-11-01-nas"}
+{"t":1793019720.456,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-ner-mia-2026-11-01-mia"}
+{"t":1793019720.456,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-atl-tor-2026-11-01-tor"}
+{"t":1793019720.456,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-ner-mia-2026-11-01-draw"}
+{"t":1793019720.456,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-nas-nyr-2026-11-01-draw"}
+{"t":1793019729.972,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019739.975,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019750.034,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019760.189,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019770.203,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019780.208,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019790.212,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019800.213,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019810.216,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019820.276,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019830.298,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019840.304,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019846.848,"run":"20261023T041236-9e94c8","ev":"down","slug":"arg-cas-ros-2026-10-30-ros","why":"closed (no close frame received or sent)"}
+{"t":1793019846.848,"run":"20261023T041236-9e94c8","ev":"down","slug":"arg-rac-ald-2026-10-30-rac","why":"closed (no close frame received or sent)"}
+{"t":1793019846.848,"run":"20261023T041236-9e94c8","ev":"down","slug":"arg-rac-ald-2026-10-30-draw","why":"closed (no close frame received or sent)"}
+{"t":1793019846.848,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-cas-spo-2026-10-30-cas","why":"closed (no close frame received or sent)"}
+{"t":1793019846.848,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-cas-spo-2026-10-30-draw","why":"closed (no close frame received or sent)"}
+{"t":1793019846.848,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-mor-ama-2026-10-31-ama","why":"closed (no close frame received or sent)"}
+{"t":1793019846.848,"run":"20261023T041236-9e94c8","ev":"down","slug":"arg-rac-ald-2026-10-30-ald","why":"closed (no close frame received or sent)"}
+{"t":1793019846.848,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-cas-spo-2026-10-30-spo","why":"closed (no close frame received or sent)"}
+{"t":1793019846.848,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-mor-ama-2026-10-31-draw","why":"closed (no close frame received or sent)"}
+{"t":1793019846.848,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-mor-ama-2026-10-31-mor","why":"closed (no close frame received or sent)"}
+{"t":1793019848.815,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-mor-ama-2026-10-31-ama"}
+{"t":1793019848.815,"run":"20261023T041236-9e94c8","ev":"live","slug":"arg-cas-ros-2026-10-30-ros"}
+{"t":1793019848.815,"run":"20261023T041236-9e94c8","ev":"live","slug":"arg-rac-ald-2026-10-30-rac"}
+{"t":1793019848.815,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-mor-ama-2026-10-31-draw"}
+{"t":1793019848.815,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-cas-spo-2026-10-30-draw"}
+{"t":1793019848.815,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-cas-spo-2026-10-30-spo"}
+{"t":1793019848.815,"run":"20261023T041236-9e94c8","ev":"live","slug":"arg-rac-ald-2026-10-30-draw"}
+{"t":1793019848.815,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-mor-ama-2026-10-31-mor"}
+{"t":1793019848.815,"run":"20261023T041236-9e94c8","ev":"live","slug":"arg-rac-ald-2026-10-30-ald"}
+{"t":1793019848.815,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-cas-spo-2026-10-30-cas"}
+{"t":1793019850.339,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019860.343,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019870.346,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019880.349,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019890.352,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019900.355,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019910.36,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019920.363,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019930.367,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019940.393,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019950.396,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019960.398,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019970.401,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019975.348,"run":"20261023T041236-9e94c8","ev":"down","slug":"arg-bel-bar-2026-11-01-bel","why":"closed (no close frame received or sent)"}
+{"t":1793019975.348,"run":"20261023T041236-9e94c8","ev":"down","slug":"arg-bel-bar-2026-11-01-bar","why":"closed (no close frame received or sent)"}
+{"t":1793019975.348,"run":"20261023T041236-9e94c8","ev":"down","slug":"arg-lan-gye-2026-11-01-gye","why":"closed (no close frame received or sent)"}
+{"t":1793019975.348,"run":"20261023T041236-9e94c8","ev":"down","slug":"arg-lan-gye-2026-11-01-lan","why":"closed (no close frame received or sent)"}
+{"t":1793019975.348,"run":"20261023T041236-9e94c8","ev":"down","slug":"arg-bel-bar-2026-11-01-draw","why":"closed (no close frame received or sent)"}
+{"t":1793019975.348,"run":"20261023T041236-9e94c8","ev":"down","slug":"arg-new-uni-2026-11-01-uni","why":"closed (no close frame received or sent)"}
+{"t":1793019975.348,"run":"20261023T041236-9e94c8","ev":"down","slug":"arg-lan-gye-2026-11-01-draw","why":"closed (no close frame received or sent)"}
+{"t":1793019975.348,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-csm-cds-2026-11-01-csm","why":"closed (no close frame received or sent)"}
+{"t":1793019975.348,"run":"20261023T041236-9e94c8","ev":"down","slug":"arg-new-uni-2026-11-01-draw","why":"closed (no close frame received or sent)"}
+{"t":1793019975.348,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-csm-cds-2026-11-01-draw","why":"closed (no close frame received or sent)"}
+{"t":1793019976.929,"run":"20261023T041236-9e94c8","ev":"live","slug":"arg-new-uni-2026-11-01-draw"}
+{"t":1793019976.929,"run":"20261023T041236-9e94c8","ev":"live","slug":"arg-new-uni-2026-11-01-uni"}
+{"t":1793019976.929,"run":"20261023T041236-9e94c8","ev":"live","slug":"arg-bel-bar-2026-11-01-bar"}
+{"t":1793019976.929,"run":"20261023T041236-9e94c8","ev":"live","slug":"arg-lan-gye-2026-11-01-lan"}
+{"t":1793019976.929,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-csm-cds-2026-11-01-draw"}
+{"t":1793019976.929,"run":"20261023T041236-9e94c8","ev":"live","slug":"arg-lan-gye-2026-11-01-draw"}
+{"t":1793019976.929,"run":"20261023T041236-9e94c8","ev":"live","slug":"arg-bel-bar-2026-11-01-draw"}
+{"t":1793019976.929,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-csm-cds-2026-11-01-csm"}
+{"t":1793019976.929,"run":"20261023T041236-9e94c8","ev":"live","slug":"arg-lan-gye-2026-11-01-gye"}
+{"t":1793019976.929,"run":"20261023T041236-9e94c8","ev":"live","slug":"arg-bel-bar-2026-11-01-bel"}
+{"t":1793019980.403,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793019990.406,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020000.41,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020010.413,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020020.416,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020030.422,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020040.426,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020050.431,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020060.433,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020070.436,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020080.439,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020090.443,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020100.451,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020110.457,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020120.46,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020131.216,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020141.375,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020151.378,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020161.381,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020171.384,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020181.387,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020191.39,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020204.61,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020204.684,"run":"20261023T041236-9e94c8","ev":"down","slug":"sea-int-com-2026-11-08-int","why":"closed (no close frame received or sent)"}
+{"t":1793020204.684,"run":"20261023T041236-9e94c8","ev":"down","slug":"sea-fio-juv-2026-11-08-draw","why":"closed (no close frame received or sent)"}
+{"t":1793020204.684,"run":"20261023T041236-9e94c8","ev":"down","slug":"sea-mon-ata-2026-11-08-ata","why":"closed (no close frame received or sent)"}
+{"t":1793020204.684,"run":"20261023T041236-9e94c8","ev":"down","slug":"sea-fio-juv-2026-11-08-fio","why":"closed (no close frame received or sent)"}
+{"t":1793020204.684,"run":"20261023T041236-9e94c8","ev":"down","slug":"sea-fio-juv-2026-11-08-juv","why":"closed (no close frame received or sent)"}
+{"t":1793020204.684,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-bojong-yl-2026-10-23","why":"closed (no close frame received or sent)"}
+{"t":1793020204.684,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-mannari-buse-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793020204.684,"run":"20261023T041236-9e94c8","ev":"down","slug":"sea-int-com-2026-11-08-draw","why":"closed (no close frame received or sent)"}
+{"t":1793020204.684,"run":"20261023T041236-9e94c8","ev":"down","slug":"sea-int-com-2026-11-08-com","why":"closed (no close frame received or sent)"}
+{"t":1793020204.684,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-fery-fearnle-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793020206.482,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-mannari-buse-2026-10-27"}
+{"t":1793020206.482,"run":"20261023T041236-9e94c8","ev":"live","slug":"sea-mon-ata-2026-11-08-ata"}
+{"t":1793020206.482,"run":"20261023T041236-9e94c8","ev":"live","slug":"sea-int-com-2026-11-08-int"}
+{"t":1793020206.482,"run":"20261023T041236-9e94c8","ev":"live","slug":"sea-int-com-2026-11-08-draw"}
+{"t":1793020206.482,"run":"20261023T041236-9e94c8","ev":"live","slug":"sea-fio-juv-2026-11-08-fio"}
+{"t":1793020206.482,"run":"20261023T041236-9e94c8","ev":"live","slug":"sea-fio-juv-2026-11-08-draw"}
+{"t":1793020206.482,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-bojong-yl-2026-10-23"}
+{"t":1793020206.482,"run":"20261023T041236-9e94c8","ev":"live","slug":"sea-fio-juv-2026-11-08-juv"}
+{"t":1793020206.482,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-fery-fearnle-2026-10-26"}
+{"t":1793020206.482,"run":"20261023T041236-9e94c8","ev":"live","slug":"sea-int-com-2026-11-08-com"}
+{"t":1793020214.613,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020224.643,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020234.652,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020236.947,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-min-sas-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793020236.947,"run":"20261023T041236-9e94c8","ev":"down","slug":"dota2-bb4-legion1-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793020236.947,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-por-uta-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793020236.947,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-langmo-vukic-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793020236.947,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-cle-mil-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793020236.947,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-sac-mem-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793020236.947,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-phi-cha-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793020236.947,"run":"20261023T041236-9e94c8","ev":"down","slug":"wta-kovinic-akugue-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793020236.947,"run":"20261023T041236-9e94c8","ev":"down","slug":"dota2-ts8-pari-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793020236.947,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-atl-nop-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793020239.181,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-langmo-vukic-2026-10-26"}
+{"t":1793020239.181,"run":"20261023T041236-9e94c8","ev":"live","slug":"wta-kovinic-akugue-2026-10-26"}
+{"t":1793020239.181,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-cle-mil-2026-10-31"}
+{"t":1793020239.181,"run":"20261023T041236-9e94c8","ev":"live","slug":"dota2-ts8-pari-2026-10-26"}
+{"t":1793020239.181,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-por-uta-2026-10-31"}
+{"t":1793020239.181,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-sac-mem-2026-10-31"}
+{"t":1793020239.181,"run":"20261023T041236-9e94c8","ev":"live","slug":"dota2-bb4-legion1-2026-10-26"}
+{"t":1793020239.181,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-phi-cha-2026-10-31"}
+{"t":1793020239.181,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-atl-nop-2026-10-31"}
+{"t":1793020239.181,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-min-sas-2026-10-31"}
+{"t":1793020244.655,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020254.658,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020264.661,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020274.665,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020284.667,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020294.67,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020304.673,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020311.606,"run":"20261023T041236-9e94c8","ev":"down","slug":"fl1-hac-lor-2026-11-08-draw","why":"closed (no close frame received or sent)"}
+{"t":1793020311.606,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-cry-liv-2026-11-08-liv","why":"closed (no close frame received or sent)"}
+{"t":1793020311.606,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-koe-b04-2026-11-08-koe","why":"closed (no close frame received or sent)"}
+{"t":1793020311.606,"run":"20261023T041236-9e94c8","ev":"down","slug":"fl1-ren-lil-2026-11-08-lil","why":"closed (no close frame received or sent)"}
+{"t":1793020311.606,"run":"20261023T041236-9e94c8","ev":"down","slug":"nhl-phi-cal-2026-11-08","why":"closed (no close frame received or sent)"}
+{"t":1793020311.606,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-cry-liv-2026-11-08-draw","why":"closed (no close frame received or sent)"}
+{"t":1793020311.606,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-koe-b04-2026-11-08-b04","why":"closed (no close frame received or sent)"}
+{"t":1793020311.606,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-koe-b04-2026-11-08-draw","why":"closed (no close frame received or sent)"}
+{"t":1793020311.606,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-cry-liv-2026-11-08-cry","why":"closed (no close frame received or sent)"}
+{"t":1793020311.606,"run":"20261023T041236-9e94c8","ev":"down","slug":"fl1-hac-lor-2026-11-08-hac","why":"closed (no close frame received or sent)"}
+{"t":1793020314.037,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-koe-b04-2026-11-08-b04"}
+{"t":1793020314.037,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-cry-liv-2026-11-08-cry"}
+{"t":1793020314.037,"run":"20261023T041236-9e94c8","ev":"live","slug":"fl1-hac-lor-2026-11-08-draw"}
+{"t":1793020314.037,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-koe-b04-2026-11-08-draw"}
+{"t":1793020314.037,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-cry-liv-2026-11-08-draw"}
+{"t":1793020314.037,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-cry-liv-2026-11-08-liv"}
+{"t":1793020314.037,"run":"20261023T041236-9e94c8","ev":"live","slug":"nhl-phi-cal-2026-11-08"}
+{"t":1793020314.037,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-koe-b04-2026-11-08-koe"}
+{"t":1793020314.037,"run":"20261023T041236-9e94c8","ev":"live","slug":"fl1-ren-lil-2026-11-08-lil"}
+{"t":1793020314.037,"run":"20261023T041236-9e94c8","ev":"live","slug":"fl1-hac-lor-2026-11-08-hac"}
+{"t":1793020314.677,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020320.48,"run":"20261023T041236-9e94c8","ev":"down","slug":"arg-new-uni-2026-11-01-new","why":"closed (no close frame received or sent)"}
+{"t":1793020320.48,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-por-hou-2026-11-01-draw","why":"closed (no close frame received or sent)"}
+{"t":1793020320.48,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-por-hou-2026-11-01-hou","why":"closed (no close frame received or sent)"}
+{"t":1793020320.48,"run":"20261023T041236-9e94c8","ev":"down","slug":"arg-boc-riv-2026-11-01-riv","why":"closed (no close frame received or sent)"}
+{"t":1793020320.48,"run":"20261023T041236-9e94c8","ev":"down","slug":"arg-boc-riv-2026-11-01-draw","why":"closed (no close frame received or sent)"}
+{"t":1793020320.48,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-laf-min-2026-11-01-laf","why":"closed (no close frame received or sent)"}
+{"t":1793020320.48,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-laf-min-2026-11-01-draw","why":"closed (no close frame received or sent)"}
+{"t":1793020320.48,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-laf-min-2026-11-01-min","why":"closed (no close frame received or sent)"}
+{"t":1793020320.48,"run":"20261023T041236-9e94c8","ev":"down","slug":"mls-por-hou-2026-11-01-por","why":"closed (no close frame received or sent)"}
+{"t":1793020320.48,"run":"20261023T041236-9e94c8","ev":"down","slug":"arg-boc-riv-2026-11-01-boc","why":"closed (no close frame received or sent)"}
+{"t":1793020322.074,"run":"20261023T041236-9e94c8","ev":"live","slug":"arg-boc-riv-2026-11-01-riv"}
+{"t":1793020322.074,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-laf-min-2026-11-01-laf"}
+{"t":1793020322.074,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-laf-min-2026-11-01-min"}
+{"t":1793020322.074,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-por-hou-2026-11-01-hou"}
+{"t":1793020322.074,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-por-hou-2026-11-01-por"}
+{"t":1793020322.074,"run":"20261023T041236-9e94c8","ev":"live","slug":"arg-boc-riv-2026-11-01-draw"}
+{"t":1793020322.074,"run":"20261023T041236-9e94c8","ev":"live","slug":"arg-boc-riv-2026-11-01-boc"}
+{"t":1793020322.074,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-por-hou-2026-11-01-draw"}
+{"t":1793020322.074,"run":"20261023T041236-9e94c8","ev":"live","slug":"mls-laf-min-2026-11-01-draw"}
+{"t":1793020322.074,"run":"20261023T041236-9e94c8","ev":"live","slug":"arg-new-uni-2026-11-01-new"}
+{"t":1793020324.681,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020334.684,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020344.691,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020354.698,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020364.702,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020371.833,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-not-mac-2026-11-07-not","why":"closed (no close frame received or sent)"}
+{"t":1793020371.833,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-not-mac-2026-11-07-mac","why":"closed (no close frame received or sent)"}
+{"t":1793020371.833,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-not-mac-2026-11-07-draw","why":"closed (no close frame received or sent)"}
+{"t":1793020371.833,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-stu-wer-2026-11-07-stu","why":"closed (no close frame received or sent)"}
+{"t":1793020371.942,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-gil-gui-2026-11-02-draw","why":"closed (no close frame received or sent)"}
+{"t":1793020371.942,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-gal-stu-2026-11-03-draw","why":"closed (no close frame received or sent)"}
+{"t":1793020371.942,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-gil-gui-2026-11-02-gil","why":"closed (no close frame received or sent)"}
+{"t":1793020371.942,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-gal-stu-2026-11-03-gal","why":"closed (no close frame received or sent)"}
+{"t":1793020371.942,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-gal-stu-2026-11-03-stu","why":"closed (no close frame received or sent)"}
+{"t":1793020371.942,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-ben-alv-2026-11-02-ben","why":"closed (no close frame received or sent)"}
+{"t":1793020371.942,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-ben-alv-2026-11-02-draw","why":"closed (no close frame received or sent)"}
+{"t":1793020371.942,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-gil-gui-2026-11-02-gui","why":"closed (no close frame received or sent)"}
+{"t":1793020371.942,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-ben-alv-2026-11-02-alv","why":"closed (no close frame received or sent)"}
+{"t":1793020371.942,"run":"20261023T041236-9e94c8","ev":"down","slug":"arg-riv1-ban-2026-11-02-ban","why":"closed (no close frame received or sent)"}
+{"t":1793020374.103,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-ben-alv-2026-11-02-draw"}
+{"t":1793020374.103,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-gil-gui-2026-11-02-gui"}
+{"t":1793020374.103,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-gil-gui-2026-11-02-gil"}
+{"t":1793020374.103,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-gal-stu-2026-11-03-draw"}
+{"t":1793020374.103,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-ben-alv-2026-11-02-ben"}
+{"t":1793020374.103,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-ben-alv-2026-11-02-alv"}
+{"t":1793020374.103,"run":"20261023T041236-9e94c8","ev":"live","slug":"arg-riv1-ban-2026-11-02-ban"}
+{"t":1793020374.103,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-gil-gui-2026-11-02-draw"}
+{"t":1793020374.103,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-gal-stu-2026-11-03-stu"}
+{"t":1793020374.103,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-gal-stu-2026-11-03-gal"}
+{"t":1793020374.181,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-stu-wer-2026-11-07-stu"}
+{"t":1793020374.181,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-not-mac-2026-11-07-mac"}
+{"t":1793020374.181,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-not-mac-2026-11-07-draw"}
+{"t":1793020374.181,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-not-mac-2026-11-07-not"}
+{"t":1793020374.705,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020377.076,"run":"20261023T041236-9e94c8","ev":"down","slug":"ere-ado-spa-2026-11-07-spa","why":"closed (no close frame received or sent)"}
+{"t":1793020377.076,"run":"20261023T041236-9e94c8","ev":"down","slug":"ere-ado-spa-2026-11-07-draw","why":"closed (no close frame received or sent)"}
+{"t":1793020377.076,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-est-csm-2026-11-08-est","why":"closed (no close frame received or sent)"}
+{"t":1793020377.076,"run":"20261023T041236-9e94c8","ev":"down","slug":"cs2-1win-5s-2026-10-31","why":"closed (no close frame received or sent)"}
+{"t":1793020377.076,"run":"20261023T041236-9e94c8","ev":"down","slug":"ere-exc-goa-2026-11-07-exc","why":"closed (no close frame received or sent)"}
+{"t":1793020377.076,"run":"20261023T041236-9e94c8","ev":"down","slug":"wta-eala-gibson-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793020377.076,"run":"20261023T041236-9e94c8","ev":"down","slug":"por-est-csm-2026-11-08-draw","why":"closed (no close frame received or sent)"}
+{"t":1793020377.076,"run":"20261023T041236-9e94c8","ev":"down","slug":"wta-zakharo-linette-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793020379.54,"run":"20261023T041236-9e94c8","ev":"live","slug":"ere-ado-spa-2026-11-07-draw"}
+{"t":1793020379.54,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-est-csm-2026-11-08-est"}
+{"t":1793020379.54,"run":"20261023T041236-9e94c8","ev":"live","slug":"wta-eala-gibson-2026-10-27"}
+{"t":1793020379.54,"run":"20261023T041236-9e94c8","ev":"live","slug":"ere-exc-goa-2026-11-07-exc"}
+{"t":1793020379.54,"run":"20261023T041236-9e94c8","ev":"live","slug":"por-est-csm-2026-11-08-draw"}
+{"t":1793020379.54,"run":"20261023T041236-9e94c8","ev":"live","slug":"ere-ado-spa-2026-11-07-spa"}
+{"t":1793020379.54,"run":"20261023T041236-9e94c8","ev":"live","slug":"cs2-1win-5s-2026-10-31"}
+{"t":1793020379.54,"run":"20261023T041236-9e94c8","ev":"live","slug":"wta-zakharo-linette-2026-10-26"}
+{"t":1793020384.709,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020386.734,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-shimabu-kumstat-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793020386.734,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-kym-rinderk-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793020386.734,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-daniel-ilagan-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793020386.734,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-sakella-skatov-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793020386.734,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-hong-wu-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793020386.734,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-wawrink-lehecka-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793020386.734,"run":"20261023T041236-9e94c8","ev":"down","slug":"atp-holmgre-friend-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793020388.142,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-sakella-skatov-2026-10-26"}
+{"t":1793020388.142,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-kym-rinderk-2026-10-27"}
+{"t":1793020388.142,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-daniel-ilagan-2026-10-26"}
+{"t":1793020388.142,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-holmgre-friend-2026-10-26"}
+{"t":1793020388.142,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-wawrink-lehecka-2026-10-27"}
+{"t":1793020388.142,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-shimabu-kumstat-2026-10-26"}
+{"t":1793020388.142,"run":"20261023T041236-9e94c8","ev":"live","slug":"atp-hong-wu-2026-10-26"}
+{"t":1793020394.713,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020404.716,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020414.718,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020424.735,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020434.749,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020441.147,"run":"20261023T041236-9e94c8","ev":"down","slug":"lol-tl2-al-2026-10-26","why":"closed (no close frame received or sent)"}
+{"t":1793020441.147,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-mai-bay-2026-11-07-draw","why":"closed (no close frame received or sent)"}
+{"t":1793020441.147,"run":"20261023T041236-9e94c8","ev":"down","slug":"epl-ars-hul-2026-11-07-ars","why":"closed (no close frame received or sent)"}
+{"t":1793020441.147,"run":"20261023T041236-9e94c8","ev":"down","slug":"wta-pereira-kabbaj-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793020441.147,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-hsv-moe-2026-11-06-hsv","why":"closed (no close frame received or sent)"}
+{"t":1793020441.147,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-det-bkn-2026-10-30","why":"closed (no close frame received or sent)"}
+{"t":1793020441.147,"run":"20261023T041236-9e94c8","ev":"down","slug":"wta-gonzale-sierra-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793020441.147,"run":"20261023T041236-9e94c8","ev":"down","slug":"bun-mai-bay-2026-11-07-bay","why":"closed (no close frame received or sent)"}
+{"t":1793020441.147,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-nyk-phi-2026-10-30","why":"closed (no close frame received or sent)"}
+{"t":1793020441.147,"run":"20261023T041236-9e94c8","ev":"down","slug":"wta-carle-pigossi-2026-10-27","why":"closed (no close frame received or sent)"}
+{"t":1793020443.063,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-hsv-moe-2026-11-06-hsv"}
+{"t":1793020443.063,"run":"20261023T041236-9e94c8","ev":"live","slug":"wta-carle-pigossi-2026-10-27"}
+{"t":1793020443.063,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-nyk-phi-2026-10-30"}
+{"t":1793020443.063,"run":"20261023T041236-9e94c8","ev":"live","slug":"lol-tl2-al-2026-10-26"}
+{"t":1793020443.063,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-det-bkn-2026-10-30"}
+{"t":1793020443.063,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-mai-bay-2026-11-07-draw"}
+{"t":1793020443.063,"run":"20261023T041236-9e94c8","ev":"live","slug":"epl-ars-hul-2026-11-07-ars"}
+{"t":1793020443.063,"run":"20261023T041236-9e94c8","ev":"live","slug":"wta-gonzale-sierra-2026-10-27"}
+{"t":1793020443.063,"run":"20261023T041236-9e94c8","ev":"live","slug":"wta-pereira-kabbaj-2026-10-27"}
+{"t":1793020443.063,"run":"20261023T041236-9e94c8","ev":"live","slug":"bun-mai-bay-2026-11-07-bay"}
+{"t":1793020444.751,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020454.757,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020464.759,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020474.762,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020484.765,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020494.77,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020504.773,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020514.776,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020524.779,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020534.781,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020544.826,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020555.103,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020557.374,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-den-nop-2026-10-28","why":"closed (no close frame received or sent)"}
+{"t":1793020557.374,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-phi-ind-2026-10-28","why":"closed (no close frame received or sent)"}
+{"t":1793020557.374,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-hou-mil-2026-10-28","why":"closed (no close frame received or sent)"}
+{"t":1793020557.374,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-sas-uta-2026-10-28","why":"closed (no close frame received or sent)"}
+{"t":1793020557.374,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-nyk-chi-2026-10-28","why":"closed (no close frame received or sent)"}
+{"t":1793020557.374,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-cha-det-2026-10-28","why":"closed (no close frame received or sent)"}
+{"t":1793020557.374,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-gsw-min-2026-10-28","why":"closed (no close frame received or sent)"}
+{"t":1793020557.374,"run":"20261023T041236-9e94c8","ev":"down","slug":"nba-orl-tor-2026-10-28","why":"closed (no close frame received or sent)"}
+{"t":1793020559.511,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-cha-det-2026-10-28"}
+{"t":1793020559.511,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-den-nop-2026-10-28"}
+{"t":1793020559.511,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-nyk-chi-2026-10-28"}
+{"t":1793020559.511,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-orl-tor-2026-10-28"}
+{"t":1793020559.511,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-sas-uta-2026-10-28"}
+{"t":1793020559.511,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-phi-ind-2026-10-28"}
+{"t":1793020559.511,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-gsw-min-2026-10-28"}
+{"t":1793020559.511,"run":"20261023T041236-9e94c8","ev":"live","slug":"nba-hou-mil-2026-10-28"}
+{"t":1793020565.207,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020576.857,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020581.091,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-rcl-com-2026-11-04-draw","why":"closed (no close frame received or sent)"}
+{"t":1793020581.091,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-por-nap-2026-11-04-nap","why":"closed (no close frame received or sent)"}
+{"t":1793020581.091,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-por-nap-2026-11-04-draw","why":"closed (no close frame received or sent)"}
+{"t":1793020581.091,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-rcl-com-2026-11-04-rcl","why":"closed (no close frame received or sent)"}
+{"t":1793020581.091,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-rbl-mnc-2026-11-04-draw","why":"closed (no close frame received or sent)"}
+{"t":1793020581.091,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-rcl-com-2026-11-04-com","why":"closed (no close frame received or sent)"}
+{"t":1793020581.091,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-vf-sf-2026-11-04-vf","why":"closed (no close frame received or sent)"}
+{"t":1793020581.091,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-vf-sf-2026-11-04-sf","why":"closed (no close frame received or sent)"}
+{"t":1793020581.091,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-rbl-mnc-2026-11-04-rbl","why":"closed (no close frame received or sent)"}
+{"t":1793020581.091,"run":"20261023T041236-9e94c8","ev":"down","slug":"ucl-vf-sf-2026-11-04-draw","why":"closed (no close frame received or sent)"}
+{"t":1793020582.968,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-vf-sf-2026-11-04-vf"}
+{"t":1793020582.968,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-vf-sf-2026-11-04-sf"}
+{"t":1793020582.968,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-rcl-com-2026-11-04-rcl"}
+{"t":1793020582.968,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-rbl-mnc-2026-11-04-draw"}
+{"t":1793020582.968,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-rbl-mnc-2026-11-04-rbl"}
+{"t":1793020582.968,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-rcl-com-2026-11-04-draw"}
+{"t":1793020582.968,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-por-nap-2026-11-04-draw"}
+{"t":1793020582.968,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-vf-sf-2026-11-04-draw"}
+{"t":1793020582.968,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-por-nap-2026-11-04-nap"}
+{"t":1793020582.968,"run":"20261023T041236-9e94c8","ev":"live","slug":"ucl-rcl-com-2026-11-04-com"}
+{"t":1793020586.904,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020596.909,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020606.912,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020616.915,"run":"20261023T041236-9e94c8","ev":"hb"}
+{"t":1793020627.043,"run":"20261023T041236-9e94c8","ev":"hb"}
