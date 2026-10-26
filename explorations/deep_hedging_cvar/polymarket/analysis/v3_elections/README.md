@@ -64,6 +64,10 @@ Hourly reward-config snapshots go alongside them. These recordings are the only 
   selection ended in the meantime.
 - **2026-10-23 04:35:52 to 04:36:33: container restart**, a gap of about 40 s, restarted by hand within a minute.
   Oct 23 stays eligible under D16.
+- 2026-10-26 06:01: the combo market `will-flavio-bolsonaro-win-brazil-gadi-eizenkot-become-israeli-pm-and-democrats-win-the-us-senate`
+  went down after a routine reconnect and did not return. CLOB `/book` answers "No orderbook exists" and gamma no
+  longer lists it, so the exchange closed it, probably after the Oct 25 Brazil runoff. That leaves 275 live markets.
+  This is not a recorder fault.
 - `rec/coverage/` records every gap, and builds apply `merge.py`'s coverage rule.
 
 ## Operations
