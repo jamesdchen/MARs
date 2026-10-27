@@ -10,3 +10,4 @@
 2026-10-23 supervisor timeout killed its child recorder (process group), then a manual move to a detached session: recorder down 2026-10-23T04:00:59Z - 2026-10-23T04:01:47Z (supervisor now launches with setsid)
 2026-10-23 container restart: recorder down 2026-10-23T04:10:47Z - 2026-10-23T04:12:49Z
 2026-10-27 container restart: recorder down 2026-10-27T01:07:32Z - 2026-10-27T01:09:45Z
+2026-10-27 container restart: recorder down 2026-10-27T23:00:52Z - 2026-10-27T23:02:28Z
