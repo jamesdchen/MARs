@@ -68,6 +68,9 @@ Hourly reward-config snapshots go alongside them. These recordings are the only 
   went down after a routine reconnect and did not return. CLOB `/book` answers "No orderbook exists" and gamma no
   longer lists it, so the exchange closed it, probably after the Oct 25 Brazil runoff. That leaves 275 live markets.
   This is not a recorder fault.
+- **2026-10-27 about 00:54:27 to 00:56:48: container restart**, a gap of about 2.5 min (last status write to all
+  28 connections back). supervise.sh, the reward logger and autopush were restarted by hand at 00:55:46. The reward
+  logger's restart snapshot replaced the 00:36 file for hour T00. Oct 27 stays eligible under D16.
 - `rec/coverage/` records every gap, and builds apply `merge.py`'s coverage rule.
 
 ## Operations
