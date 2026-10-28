@@ -73,6 +73,8 @@ Hourly reward-config snapshots go alongside them. These recordings are the only 
   logger's restart snapshot replaced the 00:36 file for hour T00. Oct 27 stays eligible under D16.
 - **2026-10-27 about 01:17:18 to 01:18:55: container restart again**, a gap of about 1.5 min, restarted by hand at
   01:18:02. Oct 27's total gap is about 4 min, so it stays eligible under D16.
+- **2026-10-27 about 23:57:01 to 23:58:35: container restart**, a gap of about 1.5 min, restarted by hand at
+  23:57:41. Oct 27's total gap is about 5.5 min, so it stays eligible under D16.
 - `rec/coverage/` records every gap, and builds apply `merge.py`'s coverage rule.
 
 ## Operations
