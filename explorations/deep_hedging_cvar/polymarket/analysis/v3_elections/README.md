@@ -77,6 +77,8 @@ Hourly reward-config snapshots go alongside them. These recordings are the only 
   23:57:41. Oct 27's total gap is about 5.5 min, so it stays eligible under D16.
 - **2026-10-28 about 23:26:50 to 23:28:28: container restart**, a gap of about 1.5 min, restarted by hand at
   23:27:38. Oct 28 stays eligible under D16.
+- **2026-10-29 about 01:48:50 to 01:50:25: container restart**, a gap of about 1.5 min, restarted by hand at
+  01:49:31. 274 markets are live (one dropped from discovery at the Oct 28 23:27 restart). Oct 29 stays eligible.
 - `rec/coverage/` records every gap, and builds apply `merge.py`'s coverage rule.
 
 ## Operations
