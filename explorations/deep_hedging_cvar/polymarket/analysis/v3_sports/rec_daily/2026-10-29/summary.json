@@ -5,5 +5,9 @@
  "books_blocks_written": [
   0
  ],
- "books_mb": 2.51
+ "books_mb": 2.51,
+ "trades_rows": 18292,
+ "trades_mb": 0.32,
+ "markets_rows": 30,
+ "markets_mb": 0.03
 }
