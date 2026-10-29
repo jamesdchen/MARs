@@ -20636,3 +20636,763 @@
 {"t":1793286390.923,"run":"w3e1029014931","ev":"hb"}
 {"t":1793286400.925,"run":"w3e1029014931","ev":"hb"}
 {"t":1793286410.927,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286420.929,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286430.931,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286440.933,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286450.935,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286460.937,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286470.939,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286480.941,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286490.944,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286500.948,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286510.953,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286520.955,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286530.957,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286540.958,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286550.96,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286560.967,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286570.969,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286580.971,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286590.974,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286600.976,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286610.977,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286620.979,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286630.98,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286640.982,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286650.985,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286660.988,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286670.992,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286680.994,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286690.996,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286701.001,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286711.003,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286721.015,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286731.017,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286741.019,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286751.022,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286761.024,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286771.025,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286781.028,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286791.03,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286801.032,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286811.042,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286821.045,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286831.051,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286841.053,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286851.055,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286861.059,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286871.063,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286881.065,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286891.068,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286901.07,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286911.115,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286921.118,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286931.12,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286941.122,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286951.123,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286961.125,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286971.13,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286981.132,"run":"w3e1029014931","ev":"hb"}
+{"t":1793286991.135,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287001.139,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287011.141,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287021.141,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287031.144,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287041.147,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287051.149,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287061.151,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287071.152,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287081.155,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287091.157,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287101.158,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287111.161,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287121.162,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287131.164,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287141.165,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287151.169,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287161.172,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287171.174,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287181.174,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287191.176,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287201.182,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287211.189,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287221.211,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287231.214,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287241.216,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287251.218,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287261.221,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287271.224,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287281.226,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287291.232,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287301.237,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287311.24,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287321.241,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287331.243,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287341.245,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287351.254,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287361.256,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287371.259,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287381.263,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287391.265,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287401.267,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287411.27,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287421.272,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287431.274,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287441.276,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287451.279,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287461.281,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287471.283,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287481.297,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287491.3,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287501.302,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287511.304,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287521.307,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287531.31,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287541.312,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287551.315,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287561.318,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287571.321,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287581.323,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287591.325,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287601.327,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287611.329,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287621.331,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287631.333,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287641.335,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287651.338,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287661.34,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287671.346,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287681.348,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287691.35,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287701.352,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287711.354,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287721.357,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287731.359,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287741.362,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287751.364,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287761.373,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287771.376,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287781.379,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287791.381,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287801.384,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287811.386,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287821.388,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287831.39,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287841.393,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287851.395,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287861.398,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287871.4,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287881.403,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287891.405,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287901.407,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287911.409,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287921.411,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287931.43,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287941.431,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287951.432,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287961.434,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287971.436,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287981.439,"run":"w3e1029014931","ev":"hb"}
+{"t":1793287991.441,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288001.443,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288011.445,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288021.447,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288031.452,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288041.455,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288051.458,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288061.459,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288071.461,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288081.463,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288091.465,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288101.467,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288111.469,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288121.471,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288131.473,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288141.476,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288151.478,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288161.481,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288171.483,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288181.486,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288191.488,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288201.491,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288211.497,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288221.5,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288231.503,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288241.506,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288251.509,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288261.51,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288271.519,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288281.531,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288291.532,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288301.534,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288311.536,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288321.538,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288331.543,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288341.548,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288351.551,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288361.561,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288371.565,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288381.568,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288391.57,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288401.573,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288411.576,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288421.578,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288431.582,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288441.585,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288451.587,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288461.588,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288471.591,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288476.47,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-michigan-gubernatorial-election-by-9-12","why":"closed (no close frame received or sent)"}
+{"t":1793288476.47,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-candidate-win-the-2026-new-hampshire-gubernatorial-election-by-12-15","why":"closed (no close frame received or sent)"}
+{"t":1793288476.47,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-candidate-win-the-2026-new-hampshire-gubernatorial-election-by-9-12","why":"closed (no close frame received or sent)"}
+{"t":1793288476.47,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-candidate-win-the-2026-nevada-gubernatorial-election-by-0-3","why":"closed (no close frame received or sent)"}
+{"t":1793288476.47,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-candidate-win-the-2026-kansas-gubernatorial-election-by-0-3","why":"closed (no close frame received or sent)"}
+{"t":1793288476.47,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-nevada-gubernatorial-election-by-0-3","why":"closed (no close frame received or sent)"}
+{"t":1793288476.47,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-candidate-win-the-2026-nevada-gubernatorial-election-by-3-6","why":"closed (no close frame received or sent)"}
+{"t":1793288476.47,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-michigan-gubernatorial-election-by-12-15","why":"closed (no close frame received or sent)"}
+{"t":1793288476.47,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-minnesota-gubernatorial-election-by-10-15","why":"closed (no close frame received or sent)"}
+{"t":1793288476.47,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-michigan-gubernatorial-election-by-6-9","why":"closed (no close frame received or sent)"}
+{"t":1793288478.572,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-michigan-gubernatorial-election-by-6-9"}
+{"t":1793288478.572,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-candidate-win-the-2026-nevada-gubernatorial-election-by-3-6"}
+{"t":1793288478.572,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-michigan-gubernatorial-election-by-9-12"}
+{"t":1793288478.572,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-candidate-win-the-2026-new-hampshire-gubernatorial-election-by-12-15"}
+{"t":1793288478.572,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-candidate-win-the-2026-new-hampshire-gubernatorial-election-by-9-12"}
+{"t":1793288478.572,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-candidate-win-the-2026-kansas-gubernatorial-election-by-0-3"}
+{"t":1793288478.572,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-candidate-win-the-2026-nevada-gubernatorial-election-by-0-3"}
+{"t":1793288478.572,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-michigan-gubernatorial-election-by-12-15"}
+{"t":1793288478.572,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-nevada-gubernatorial-election-by-0-3"}
+{"t":1793288478.572,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-minnesota-gubernatorial-election-by-10-15"}
+{"t":1793288481.594,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288491.599,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288501.601,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288511.611,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288521.613,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288531.615,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288541.618,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288551.621,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288561.623,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288571.624,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288581.625,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288591.628,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288601.629,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288611.636,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288621.638,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288631.639,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288641.643,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288651.645,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288661.647,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288671.65,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288681.655,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288691.657,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288701.659,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288711.661,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288721.664,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288729.22,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-candidate-win-the-2026-tx-25-house-election-by-15-20","why":"closed (no close frame received or sent)"}
+{"t":1793288729.22,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-candidate-win-the-2026-tx-12-house-election-by-20-25","why":"closed (no close frame received or sent)"}
+{"t":1793288729.22,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-ri-01-house-election-by-40-45","why":"closed (no close frame received or sent)"}
+{"t":1793288729.22,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-ny-10-house-election-by-65-70","why":"closed (no close frame received or sent)"}
+{"t":1793288729.22,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-candidate-win-the-2026-tx-17-house-election-by-10-15","why":"closed (no close frame received or sent)"}
+{"t":1793288729.22,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-ny-03-house-election-by-15-20","why":"closed (no close frame received or sent)"}
+{"t":1793288729.22,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-oh-11-house-election-by-60-65","why":"closed (no close frame received or sent)"}
+{"t":1793288729.22,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-va-04-house-election-by-45-or-more","why":"closed (no close frame received or sent)"}
+{"t":1793288729.22,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-sc-06-house-election-by-30-35","why":"closed (no close frame received or sent)"}
+{"t":1793288729.22,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-oh-11-house-election-by-65-70","why":"closed (no close frame received or sent)"}
+{"t":1793288730.884,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-oh-11-house-election-by-65-70"}
+{"t":1793288730.884,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-candidate-win-the-2026-tx-12-house-election-by-20-25"}
+{"t":1793288730.884,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-oh-11-house-election-by-60-65"}
+{"t":1793288730.884,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-sc-06-house-election-by-30-35"}
+{"t":1793288730.884,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-va-04-house-election-by-45-or-more"}
+{"t":1793288730.884,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-ri-01-house-election-by-40-45"}
+{"t":1793288730.884,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-ny-10-house-election-by-65-70"}
+{"t":1793288730.884,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-ny-03-house-election-by-15-20"}
+{"t":1793288730.884,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-candidate-win-the-2026-tx-17-house-election-by-10-15"}
+{"t":1793288730.884,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-candidate-win-the-2026-tx-25-house-election-by-15-20"}
+{"t":1793288731.666,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288741.668,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288751.669,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288761.671,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288771.673,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288781.675,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288787.093,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-fl-14-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793288787.093,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-fl-22-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793288787.093,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-fl-27-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793288787.093,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-fl-09-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793288787.093,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-fl-14-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793288787.093,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-fl-07-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793288787.093,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-fl-22-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793288787.093,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-fl-27-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793288787.093,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-fl-07-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793288787.093,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-fl-09-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793288788.76,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-fl-14-house-seat"}
+{"t":1793288788.76,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-fl-27-house-seat"}
+{"t":1793288788.76,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-fl-22-house-seat"}
+{"t":1793288788.76,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-fl-22-house-seat"}
+{"t":1793288788.76,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-fl-14-house-seat"}
+{"t":1793288788.76,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-fl-09-house-seat"}
+{"t":1793288788.76,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-fl-09-house-seat"}
+{"t":1793288788.76,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-fl-07-house-seat"}
+{"t":1793288788.76,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-fl-27-house-seat"}
+{"t":1793288788.76,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-fl-07-house-seat"}
+{"t":1793288791.677,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288794.087,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-north-carolina-senate-election-by-12-15","why":"closed (no close frame received or sent)"}
+{"t":1793288794.087,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-ohio-senate-election-by-0-3","why":"closed (no close frame received or sent)"}
+{"t":1793288794.087,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-new-hampshire-senate-election-by-3-6","why":"closed (no close frame received or sent)"}
+{"t":1793288794.087,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-new-hampshire-senate-election-by-6-9","why":"closed (no close frame received or sent)"}
+{"t":1793288794.087,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-north-carolina-senate-election-by-9-12","why":"closed (no close frame received or sent)"}
+{"t":1793288794.087,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-candidate-win-the-2026-south-carolina-senate-election-by-5-10","why":"closed (no close frame received or sent)"}
+{"t":1793288794.087,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-candidate-win-the-2026-ohio-senate-election-by-0-3","why":"closed (no close frame received or sent)"}
+{"t":1793288794.087,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-ohio-senate-election-by-3-6","why":"closed (no close frame received or sent)"}
+{"t":1793288794.087,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-michigan-senate-election-by-3-6","why":"closed (no close frame received or sent)"}
+{"t":1793288794.087,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-new-hampshire-senate-election-by-9-12","why":"closed (no close frame received or sent)"}
+{"t":1793288795.761,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-new-hampshire-senate-election-by-3-6"}
+{"t":1793288795.761,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-candidate-win-the-2026-south-carolina-senate-election-by-5-10"}
+{"t":1793288795.761,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-new-hampshire-senate-election-by-6-9"}
+{"t":1793288795.761,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-north-carolina-senate-election-by-12-15"}
+{"t":1793288795.761,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-michigan-senate-election-by-3-6"}
+{"t":1793288795.761,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-ohio-senate-election-by-0-3"}
+{"t":1793288795.761,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-new-hampshire-senate-election-by-9-12"}
+{"t":1793288795.761,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-candidate-win-the-2026-ohio-senate-election-by-0-3"}
+{"t":1793288795.761,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-ohio-senate-election-by-3-6"}
+{"t":1793288795.761,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-north-carolina-senate-election-by-9-12"}
+{"t":1793288801.678,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288811.68,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288821.686,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288831.69,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288841.692,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288844.292,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-ny-17-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793288844.292,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-mi-07-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793288844.292,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-mt-01-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793288844.292,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-pa-01-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793288844.292,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-mi-10-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793288844.292,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-mt-01-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793288844.292,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-pa-01-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793288844.292,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-ny-17-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793288844.292,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-mi-10-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793288844.292,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-mi-07-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793288846.266,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-mi-07-house-seat"}
+{"t":1793288846.266,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-mi-07-house-seat"}
+{"t":1793288846.266,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-pa-01-house-seat"}
+{"t":1793288846.266,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-mt-01-house-seat"}
+{"t":1793288846.266,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-ny-17-house-seat"}
+{"t":1793288846.266,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-pa-01-house-seat"}
+{"t":1793288846.266,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-mi-10-house-seat"}
+{"t":1793288846.266,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-mi-10-house-seat"}
+{"t":1793288846.266,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-mt-01-house-seat"}
+{"t":1793288846.266,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-ny-17-house-seat"}
+{"t":1793288851.694,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288854.2,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-candidate-win-the-2026-nebraska-senate-election-by-6-9","why":"closed (no close frame received or sent)"}
+{"t":1793288854.2,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-texas-senate-election-by-0-3","why":"closed (no close frame received or sent)"}
+{"t":1793288854.2,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-candidate-win-the-2026-south-carolina-senate-election-by-0-5","why":"closed (no close frame received or sent)"}
+{"t":1793288854.2,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-candidate-win-the-2026-texas-senate-election-by-0-3","why":"closed (no close frame received or sent)"}
+{"t":1793288854.2,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-candidate-win-the-2026-nebraska-senate-election-by-0-3","why":"closed (no close frame received or sent)"}
+{"t":1793288854.2,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-candidate-win-the-2026-south-dakota-senate-election-by-0-10","why":"closed (no close frame received or sent)"}
+{"t":1793288854.2,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-candidate-win-the-2026-tennessee-senate-election-by-20-25","why":"closed (no close frame received or sent)"}
+{"t":1793288854.2,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-arizona-gubernatorial-election-by-6-9","why":"closed (no close frame received or sent)"}
+{"t":1793288854.2,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-arizona-gubernatorial-election-by-9-12","why":"closed (no close frame received or sent)"}
+{"t":1793288854.2,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-candidate-win-the-2026-nebraska-senate-election-by-3-6","why":"closed (no close frame received or sent)"}
+{"t":1793288855.866,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-texas-senate-election-by-0-3"}
+{"t":1793288855.866,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-candidate-win-the-2026-nebraska-senate-election-by-3-6"}
+{"t":1793288855.866,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-candidate-win-the-2026-south-carolina-senate-election-by-0-5"}
+{"t":1793288855.866,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-arizona-gubernatorial-election-by-6-9"}
+{"t":1793288855.866,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-arizona-gubernatorial-election-by-9-12"}
+{"t":1793288855.866,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-candidate-win-the-2026-south-dakota-senate-election-by-0-10"}
+{"t":1793288855.866,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-candidate-win-the-2026-tennessee-senate-election-by-20-25"}
+{"t":1793288855.866,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-candidate-win-the-2026-texas-senate-election-by-0-3"}
+{"t":1793288855.866,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-candidate-win-the-2026-nebraska-senate-election-by-0-3"}
+{"t":1793288855.866,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-candidate-win-the-2026-nebraska-senate-election-by-6-9"}
+{"t":1793288861.696,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288871.698,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288881.7,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288891.703,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288901.706,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288911.708,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288921.711,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288931.714,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288941.717,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288951.719,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288961.722,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288971.725,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288972.252,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-control-the-senate-after-the-2026-midterm-elections","why":"closed (no close frame received or sent)"}
+{"t":1793288972.252,"run":"w3e1029014931","ev":"down","slug":"2026-balance-of-power-r-senate-r-house-537","why":"closed (no close frame received or sent)"}
+{"t":1793288972.252,"run":"w3e1029014931","ev":"down","slug":"2026-balance-of-power-d-senate-d-house-949","why":"closed (no close frame received or sent)"}
+{"t":1793288972.252,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-control-the-house-after-the-2026-midterm-elections","why":"closed (no close frame received or sent)"}
+{"t":1793288972.252,"run":"w3e1029014931","ev":"down","slug":"will-the-democrats-win-the-florida-governor-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793288972.252,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-control-the-senate-after-the-2026-midterm-elections","why":"closed (no close frame received or sent)"}
+{"t":1793288972.252,"run":"w3e1029014931","ev":"down","slug":"2026-balance-of-power-r-senate-d-house-444","why":"closed (no close frame received or sent)"}
+{"t":1793288972.252,"run":"w3e1029014931","ev":"down","slug":"will-the-democrat-win-the-arizona-governor-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793288972.252,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-control-the-house-after-the-2026-midterm-elections","why":"closed (no close frame received or sent)"}
+{"t":1793288972.252,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-win-the-arizona-governor-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793288973.704,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-control-the-house-after-the-2026-midterm-elections"}
+{"t":1793288973.704,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-control-the-senate-after-the-2026-midterm-elections"}
+{"t":1793288973.704,"run":"w3e1029014931","ev":"live","slug":"2026-balance-of-power-r-senate-d-house-444"}
+{"t":1793288973.704,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-win-the-arizona-governor-race-in-2026"}
+{"t":1793288973.704,"run":"w3e1029014931","ev":"live","slug":"2026-balance-of-power-d-senate-d-house-949"}
+{"t":1793288973.704,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-control-the-house-after-the-2026-midterm-elections"}
+{"t":1793288973.704,"run":"w3e1029014931","ev":"live","slug":"2026-balance-of-power-r-senate-r-house-537"}
+{"t":1793288973.704,"run":"w3e1029014931","ev":"live","slug":"will-the-democrats-win-the-florida-governor-race-in-2026"}
+{"t":1793288973.704,"run":"w3e1029014931","ev":"live","slug":"will-the-democrat-win-the-arizona-governor-race-in-2026"}
+{"t":1793288973.704,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-control-the-senate-after-the-2026-midterm-elections"}
+{"t":1793288981.727,"run":"w3e1029014931","ev":"hb"}
+{"t":1793288991.729,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289001.731,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289007.991,"run":"w3e1029014931","ev":"down","slug":"oil-at-least-85-on-november-2-and-the-republicans-win-the-senate","why":"closed (no close frame received or sent)"}
+{"t":1793289007.991,"run":"w3e1029014931","ev":"down","slug":"jd-vance-2028-presidential-odds-leader-on-november-30","why":"closed (no close frame received or sent)"}
+{"t":1793289007.991,"run":"w3e1029014931","ev":"down","slug":"oil-below-85-on-november-2-and-the-democrats-win-the-senate","why":"closed (no close frame received or sent)"}
+{"t":1793289007.991,"run":"w3e1029014931","ev":"down","slug":"will-the-democrats-win-greenville-county-in-the-south-carolina-senate-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289007.991,"run":"w3e1029014931","ev":"down","slug":"will-the-republicans-win-sedgwick-county-in-the-kansas-senate-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289007.991,"run":"w3e1029014931","ev":"down","slug":"will-the-democrats-win-sedgwick-county-in-the-kansas-senate-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289007.991,"run":"w3e1029014931","ev":"down","slug":"oil-below-85-on-november-2-and-the-republicans-win-the-senate","why":"closed (no close frame received or sent)"}
+{"t":1793289007.991,"run":"w3e1029014931","ev":"down","slug":"oil-at-least-85-on-november-2-and-the-democrats-win-the-senate","why":"closed (no close frame received or sent)"}
+{"t":1793289007.991,"run":"w3e1029014931","ev":"down","slug":"turek-flips-hinson-for-iowa-senate-by-november-2","why":"closed (no close frame received or sent)"}
+{"t":1793289007.991,"run":"w3e1029014931","ev":"down","slug":"will-the-republicans-win-greenville-county-in-the-south-carolina-senate-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289009.479,"run":"w3e1029014931","ev":"live","slug":"oil-below-85-on-november-2-and-the-democrats-win-the-senate"}
+{"t":1793289009.479,"run":"w3e1029014931","ev":"live","slug":"jd-vance-2028-presidential-odds-leader-on-november-30"}
+{"t":1793289009.479,"run":"w3e1029014931","ev":"live","slug":"will-the-republicans-win-sedgwick-county-in-the-kansas-senate-race-in-2026"}
+{"t":1793289009.479,"run":"w3e1029014931","ev":"live","slug":"oil-below-85-on-november-2-and-the-republicans-win-the-senate"}
+{"t":1793289009.479,"run":"w3e1029014931","ev":"live","slug":"turek-flips-hinson-for-iowa-senate-by-november-2"}
+{"t":1793289009.479,"run":"w3e1029014931","ev":"live","slug":"will-the-democrats-win-greenville-county-in-the-south-carolina-senate-race-in-2026"}
+{"t":1793289009.479,"run":"w3e1029014931","ev":"live","slug":"will-the-democrats-win-sedgwick-county-in-the-kansas-senate-race-in-2026"}
+{"t":1793289009.479,"run":"w3e1029014931","ev":"live","slug":"oil-at-least-85-on-november-2-and-the-republicans-win-the-senate"}
+{"t":1793289009.479,"run":"w3e1029014931","ev":"live","slug":"oil-at-least-85-on-november-2-and-the-democrats-win-the-senate"}
+{"t":1793289009.479,"run":"w3e1029014931","ev":"live","slug":"will-the-republicans-win-greenville-county-in-the-south-carolina-senate-race-in-2026"}
+{"t":1793289011.733,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289013.534,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-ar-02-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289013.534,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-co-04-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289013.534,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-al-02-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289013.534,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-ar-02-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289013.534,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-fl-06-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289013.534,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-co-04-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289013.534,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-al-02-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289013.534,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-wi-01-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289013.534,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-fl-06-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289013.534,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-wi-01-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289014.772,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-al-02-house-seat"}
+{"t":1793289014.772,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-wi-01-house-seat"}
+{"t":1793289014.772,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-fl-06-house-seat"}
+{"t":1793289014.772,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-fl-06-house-seat"}
+{"t":1793289014.772,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-al-02-house-seat"}
+{"t":1793289014.772,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-ar-02-house-seat"}
+{"t":1793289014.772,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-ar-02-house-seat"}
+{"t":1793289014.772,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-wi-01-house-seat"}
+{"t":1793289014.772,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-co-04-house-seat"}
+{"t":1793289014.772,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-co-04-house-seat"}
+{"t":1793289018.227,"run":"w3e1029014931","ev":"down","slug":"will-the-republicans-win-the-florida-governor-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289018.227,"run":"w3e1029014931","ev":"down","slug":"will-the-republicans-win-the-kansas-governor-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289018.227,"run":"w3e1029014931","ev":"down","slug":"will-the-democrats-win-the-kansas-governor-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289018.227,"run":"w3e1029014931","ev":"down","slug":"will-the-republicans-win-the-iowa-governor-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289018.227,"run":"w3e1029014931","ev":"down","slug":"will-the-republicans-win-the-georgia-governor-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289018.227,"run":"w3e1029014931","ev":"down","slug":"will-the-democrats-win-the-georgia-governor-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289018.227,"run":"w3e1029014931","ev":"down","slug":"will-the-republicans-win-the-michigan-governor-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289018.227,"run":"w3e1029014931","ev":"down","slug":"will-the-democrats-win-the-michigan-governor-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289018.227,"run":"w3e1029014931","ev":"down","slug":"will-the-democrats-win-the-iowa-governor-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289018.227,"run":"w3e1029014931","ev":"down","slug":"will-the-democrats-win-the-nevada-governor-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289020.1,"run":"w3e1029014931","ev":"live","slug":"will-the-republicans-win-the-kansas-governor-race-in-2026"}
+{"t":1793289020.1,"run":"w3e1029014931","ev":"live","slug":"will-the-democrats-win-the-kansas-governor-race-in-2026"}
+{"t":1793289020.1,"run":"w3e1029014931","ev":"live","slug":"will-the-republicans-win-the-iowa-governor-race-in-2026"}
+{"t":1793289020.1,"run":"w3e1029014931","ev":"live","slug":"will-the-republicans-win-the-georgia-governor-race-in-2026"}
+{"t":1793289020.1,"run":"w3e1029014931","ev":"live","slug":"will-the-democrats-win-the-michigan-governor-race-in-2026"}
+{"t":1793289020.1,"run":"w3e1029014931","ev":"live","slug":"will-the-democrats-win-the-georgia-governor-race-in-2026"}
+{"t":1793289020.1,"run":"w3e1029014931","ev":"live","slug":"will-the-democrats-win-the-iowa-governor-race-in-2026"}
+{"t":1793289020.1,"run":"w3e1029014931","ev":"live","slug":"will-the-republicans-win-the-florida-governor-race-in-2026"}
+{"t":1793289020.1,"run":"w3e1029014931","ev":"live","slug":"will-the-republicans-win-the-michigan-governor-race-in-2026"}
+{"t":1793289020.1,"run":"w3e1029014931","ev":"live","slug":"will-the-democrats-win-the-nevada-governor-race-in-2026"}
+{"t":1793289021.735,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289031.737,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289041.739,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289051.741,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289061.745,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289071.748,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289081.75,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289091.754,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289101.756,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289111.757,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289121.759,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289128.253,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-tx-26-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289128.253,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-sc-01-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289128.253,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-tn-09-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289128.253,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-ok-05-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289128.253,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-tx-23-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289128.253,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-ok-05-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289128.253,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-tx-23-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289128.253,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-tn-09-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289128.253,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-va-05-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289128.253,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-sc-01-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289130.024,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-tn-09-house-seat"}
+{"t":1793289130.024,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-ok-05-house-seat"}
+{"t":1793289130.024,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-sc-01-house-seat"}
+{"t":1793289130.024,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-va-05-house-seat"}
+{"t":1793289130.024,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-tn-09-house-seat"}
+{"t":1793289130.024,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-tx-26-house-seat"}
+{"t":1793289130.024,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-sc-01-house-seat"}
+{"t":1793289130.024,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-ok-05-house-seat"}
+{"t":1793289130.024,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-tx-23-house-seat"}
+{"t":1793289130.024,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-tx-23-house-seat"}
+{"t":1793289131.761,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289141.762,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289151.772,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289161.774,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289171.776,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289181.778,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289191.78,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289201.782,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289211.785,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289221.789,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289231.791,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289241.794,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289251.796,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289261.798,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289271.8,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289281.802,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289291.804,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289301.806,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289311.809,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289321.81,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289331.813,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289338.119,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-co-03-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289338.119,"run":"w3e1029014931","ev":"down","slug":"will-bernadette-wilson-win-the-2026-alaska-governor-election","why":"closed (no close frame received or sent)"}
+{"t":1793289338.119,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-mi-04-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289338.119,"run":"w3e1029014931","ev":"down","slug":"will-jonathan-kreiss-tomkins-win-the-2026-alaska-governor-election","why":"closed (no close frame received or sent)"}
+{"t":1793289338.119,"run":"w3e1029014931","ev":"down","slug":"will-the-republicans-win-the-nebraska-senate-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289338.119,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-mi-04-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289338.119,"run":"w3e1029014931","ev":"down","slug":"will-an-independent-win-the-nebraska-senate-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289338.119,"run":"w3e1029014931","ev":"down","slug":"will-mary-peltola-win-the-alaska-senate-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289338.119,"run":"w3e1029014931","ev":"down","slug":"will-dan-sullivan-win-the-alaska-senate-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289338.119,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-co-03-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289340.081,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-co-03-house-seat"}
+{"t":1793289340.081,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-mi-04-house-seat"}
+{"t":1793289340.081,"run":"w3e1029014931","ev":"live","slug":"will-the-republicans-win-the-nebraska-senate-race-in-2026"}
+{"t":1793289340.081,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-co-03-house-seat"}
+{"t":1793289340.081,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-mi-04-house-seat"}
+{"t":1793289340.081,"run":"w3e1029014931","ev":"live","slug":"will-dan-sullivan-win-the-alaska-senate-race-in-2026"}
+{"t":1793289340.081,"run":"w3e1029014931","ev":"live","slug":"will-mary-peltola-win-the-alaska-senate-race-in-2026"}
+{"t":1793289340.081,"run":"w3e1029014931","ev":"live","slug":"will-bernadette-wilson-win-the-2026-alaska-governor-election"}
+{"t":1793289340.081,"run":"w3e1029014931","ev":"live","slug":"will-jonathan-kreiss-tomkins-win-the-2026-alaska-governor-election"}
+{"t":1793289340.081,"run":"w3e1029014931","ev":"live","slug":"will-an-independent-win-the-nebraska-senate-race-in-2026"}
+{"t":1793289340.268,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-candidate-win-the-2026-al-03-house-election-by-40-45","why":"closed (no close frame received or sent)"}
+{"t":1793289340.268,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-candidate-win-the-2026-al-04-house-election-by-60-65","why":"closed (no close frame received or sent)"}
+{"t":1793289340.268,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-candidate-win-the-2026-al-03-house-election-by-35-40","why":"closed (no close frame received or sent)"}
+{"t":1793289340.268,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-hi-02-house-election-by-30-35","why":"closed (no close frame received or sent)"}
+{"t":1793289340.268,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-candidate-win-the-2026-fl-01-house-election-by-20-25","why":"closed (no close frame received or sent)"}
+{"t":1793289340.268,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-ct-04-house-election-by-35-40","why":"closed (no close frame received or sent)"}
+{"t":1793289340.268,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-wisconsin-gubernatorial-election-by-6-9","why":"closed (no close frame received or sent)"}
+{"t":1793289340.268,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-wisconsin-gubernatorial-election-by-3-6","why":"closed (no close frame received or sent)"}
+{"t":1793289340.268,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-wisconsin-gubernatorial-election-by-0-3","why":"closed (no close frame received or sent)"}
+{"t":1793289340.268,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-candidate-win-the-2026-fl-15-house-election-by-15-20","why":"closed (no close frame received or sent)"}
+{"t":1793289341.815,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289342.615,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-candidate-win-the-2026-fl-01-house-election-by-20-25"}
+{"t":1793289342.615,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-ct-04-house-election-by-35-40"}
+{"t":1793289342.615,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-wisconsin-gubernatorial-election-by-0-3"}
+{"t":1793289342.615,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-hi-02-house-election-by-30-35"}
+{"t":1793289342.615,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-candidate-win-the-2026-fl-15-house-election-by-15-20"}
+{"t":1793289342.615,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-wisconsin-gubernatorial-election-by-3-6"}
+{"t":1793289342.615,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-wisconsin-gubernatorial-election-by-6-9"}
+{"t":1793289342.615,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-candidate-win-the-2026-al-03-house-election-by-35-40"}
+{"t":1793289342.615,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-candidate-win-the-2026-al-04-house-election-by-60-65"}
+{"t":1793289342.615,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-candidate-win-the-2026-al-03-house-election-by-40-45"}
+{"t":1793289351.821,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289360.052,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-candidate-win-the-2026-vermont-gubernatorial-election-by-0-5","why":"closed (no close frame received or sent)"}
+{"t":1793289360.052,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-new-york-gubernatorial-election-by-10-15","why":"closed (no close frame received or sent)"}
+{"t":1793289360.052,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-oregon-gubernatorial-election-by-6-9","why":"closed (no close frame received or sent)"}
+{"t":1793289360.052,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-ohio-gubernatorial-election-by-3-6","why":"closed (no close frame received or sent)"}
+{"t":1793289360.052,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-candidate-win-the-2026-vermont-gubernatorial-election-by-5-10","why":"closed (no close frame received or sent)"}
+{"t":1793289360.052,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-vermont-gubernatorial-election","why":"closed (no close frame received or sent)"}
+{"t":1793289360.052,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-oregon-gubernatorial-election-by-9-12","why":"closed (no close frame received or sent)"}
+{"t":1793289360.052,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-candidate-win-the-2026-texas-gubernatorial-election-by-0-3","why":"closed (no close frame received or sent)"}
+{"t":1793289360.052,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-candidate-win-the-2026-texas-gubernatorial-election-by-3-6","why":"closed (no close frame received or sent)"}
+{"t":1793289360.052,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-new-york-gubernatorial-election-by-15-20","why":"closed (no close frame received or sent)"}
+{"t":1793289361.823,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289362.28,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-oregon-gubernatorial-election-by-6-9"}
+{"t":1793289362.28,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-candidate-win-the-2026-vermont-gubernatorial-election-by-5-10"}
+{"t":1793289362.28,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-oregon-gubernatorial-election-by-9-12"}
+{"t":1793289362.28,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-candidate-win-the-2026-texas-gubernatorial-election-by-3-6"}
+{"t":1793289362.28,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-vermont-gubernatorial-election"}
+{"t":1793289362.28,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-new-york-gubernatorial-election-by-10-15"}
+{"t":1793289362.28,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-candidate-win-the-2026-vermont-gubernatorial-election-by-0-5"}
+{"t":1793289362.28,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-new-york-gubernatorial-election-by-15-20"}
+{"t":1793289362.28,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-ohio-gubernatorial-election-by-3-6"}
+{"t":1793289362.28,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-candidate-win-the-2026-texas-gubernatorial-election-by-0-3"}
+{"t":1793289371.825,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289381.827,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289391.829,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289401.832,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289411.834,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289421.738,"run":"w3e1029014931","ev":"down","slug":"republican-house-odds-hit-12-by-october-31","why":"closed (no close frame received or sent)"}
+{"t":1793289421.738,"run":"w3e1029014931","ev":"down","slug":"republican-house-odds-dip-to-5-by-october-31","why":"closed (no close frame received or sent)"}
+{"t":1793289421.738,"run":"w3e1029014931","ev":"down","slug":"will-mary-peltola-win-the-2026-alaska-senate-first-round-by-0-3","why":"closed (no close frame received or sent)"}
+{"t":1793289421.738,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-minnesota-senate-election-by-5-10","why":"closed (no close frame received or sent)"}
+{"t":1793289421.738,"run":"w3e1029014931","ev":"down","slug":"republican-senate-odds-dip-to-30-by-october-31","why":"closed (no close frame received or sent)"}
+{"t":1793289421.738,"run":"w3e1029014931","ev":"down","slug":"republican-senate-odds-hit-40-by-october-31","why":"closed (no close frame received or sent)"}
+{"t":1793289421.738,"run":"w3e1029014931","ev":"down","slug":"will-mary-peltola-win-the-2026-alaska-senate-first-round-by-3-6","why":"closed (no close frame received or sent)"}
+{"t":1793289421.738,"run":"w3e1029014931","ev":"down","slug":"republican-house-odds-dip-to-7-by-october-31","why":"closed (no close frame received or sent)"}
+{"t":1793289421.738,"run":"w3e1029014931","ev":"down","slug":"will-daniel-mullen-win-the-2026-charlottetown-mayoral-election","why":"closed (no close frame received or sent)"}
+{"t":1793289421.738,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-candidate-win-the-2026-minnesota-senate-election-by-0-5","why":"closed (no close frame received or sent)"}
+{"t":1793289421.836,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289423.59,"run":"w3e1029014931","ev":"live","slug":"republican-house-odds-hit-12-by-october-31"}
+{"t":1793289423.59,"run":"w3e1029014931","ev":"live","slug":"will-mary-peltola-win-the-2026-alaska-senate-first-round-by-0-3"}
+{"t":1793289423.59,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-minnesota-senate-election-by-5-10"}
+{"t":1793289423.59,"run":"w3e1029014931","ev":"live","slug":"will-mary-peltola-win-the-2026-alaska-senate-first-round-by-3-6"}
+{"t":1793289423.59,"run":"w3e1029014931","ev":"live","slug":"republican-house-odds-dip-to-5-by-october-31"}
+{"t":1793289423.59,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-candidate-win-the-2026-minnesota-senate-election-by-0-5"}
+{"t":1793289423.59,"run":"w3e1029014931","ev":"live","slug":"republican-senate-odds-dip-to-30-by-october-31"}
+{"t":1793289423.59,"run":"w3e1029014931","ev":"live","slug":"republican-senate-odds-hit-40-by-october-31"}
+{"t":1793289423.59,"run":"w3e1029014931","ev":"live","slug":"republican-house-odds-dip-to-7-by-october-31"}
+{"t":1793289423.59,"run":"w3e1029014931","ev":"live","slug":"will-daniel-mullen-win-the-2026-charlottetown-mayoral-election"}
+{"t":1793289431.837,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289441.84,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289451.843,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289461.845,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289463.981,"run":"w3e1029014931","ev":"down","slug":"will-the-democrats-win-the-new-hampshire-senate-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289463.981,"run":"w3e1029014931","ev":"down","slug":"will-the-republicans-win-the-south-carolina-senate-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289463.981,"run":"w3e1029014931","ev":"down","slug":"will-the-democrats-win-the-michigan-senate-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289463.981,"run":"w3e1029014931","ev":"down","slug":"will-the-democrats-win-the-south-carolina-senate-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289463.981,"run":"w3e1029014931","ev":"down","slug":"will-the-democrats-win-the-ohio-senate-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289463.981,"run":"w3e1029014931","ev":"down","slug":"will-the-republicans-win-the-new-hampshire-senate-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289463.981,"run":"w3e1029014931","ev":"down","slug":"will-the-republicans-win-the-michigan-senate-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289463.981,"run":"w3e1029014931","ev":"down","slug":"will-the-republicans-win-the-ohio-senate-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289463.981,"run":"w3e1029014931","ev":"down","slug":"will-the-democrats-win-the-texas-senate-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289463.981,"run":"w3e1029014931","ev":"down","slug":"will-the-republicans-win-the-texas-senate-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289465.735,"run":"w3e1029014931","ev":"live","slug":"will-the-republicans-win-the-south-carolina-senate-race-in-2026"}
+{"t":1793289465.735,"run":"w3e1029014931","ev":"live","slug":"will-the-republicans-win-the-michigan-senate-race-in-2026"}
+{"t":1793289465.735,"run":"w3e1029014931","ev":"live","slug":"will-the-republicans-win-the-texas-senate-race-in-2026"}
+{"t":1793289465.735,"run":"w3e1029014931","ev":"live","slug":"will-the-democrats-win-the-michigan-senate-race-in-2026"}
+{"t":1793289465.735,"run":"w3e1029014931","ev":"live","slug":"will-the-democrats-win-the-ohio-senate-race-in-2026"}
+{"t":1793289465.735,"run":"w3e1029014931","ev":"live","slug":"will-the-democrats-win-the-south-carolina-senate-race-in-2026"}
+{"t":1793289465.735,"run":"w3e1029014931","ev":"live","slug":"will-the-republicans-win-the-ohio-senate-race-in-2026"}
+{"t":1793289465.735,"run":"w3e1029014931","ev":"live","slug":"will-the-democrats-win-the-new-hampshire-senate-race-in-2026"}
+{"t":1793289465.735,"run":"w3e1029014931","ev":"live","slug":"will-the-democrats-win-the-texas-senate-race-in-2026"}
+{"t":1793289465.735,"run":"w3e1029014931","ev":"live","slug":"will-the-republicans-win-the-new-hampshire-senate-race-in-2026"}
+{"t":1793289471.847,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289481.849,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289491.851,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289501.562,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-va-02-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289501.562,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-pa-08-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289501.562,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-tx-15-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289501.562,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-pa-08-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289501.562,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-tx-35-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289501.562,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-tx-15-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289501.562,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-tx-35-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289501.562,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-tx-09-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289501.562,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-va-02-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289501.562,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-tx-09-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289501.853,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289503.616,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-tx-09-house-seat"}
+{"t":1793289503.616,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-pa-08-house-seat"}
+{"t":1793289503.616,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-tx-15-house-seat"}
+{"t":1793289503.616,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-pa-08-house-seat"}
+{"t":1793289503.616,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-tx-35-house-seat"}
+{"t":1793289503.616,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-tx-35-house-seat"}
+{"t":1793289503.616,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-va-02-house-seat"}
+{"t":1793289503.616,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-va-02-house-seat"}
+{"t":1793289503.616,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-tx-09-house-seat"}
+{"t":1793289503.616,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-tx-15-house-seat"}
+{"t":1793289511.855,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289521.857,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289531.859,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289541.864,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289551.866,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289561.869,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289571.871,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289581.88,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289591.882,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289601.883,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289610.265,"run":"w3e1029014931","ev":"down","slug":"will-total-votes-cast-in-the-2026-midterm-election-for-senator-from-montana-be-between-500000-and-550000","why":"closed (no close frame received or sent)"}
+{"t":1793289610.265,"run":"w3e1029014931","ev":"down","slug":"will-total-votes-cast-in-the-2026-midterm-election-for-senator-from-massachusetts-be-between-2800000-and-2950000","why":"closed (no close frame received or sent)"}
+{"t":1793289610.265,"run":"w3e1029014931","ev":"down","slug":"will-total-votes-cast-in-the-2026-midterm-election-for-governor-of-connecticut-be-between-1300000-and-1400000","why":"closed (no close frame received or sent)"}
+{"t":1793289610.265,"run":"w3e1029014931","ev":"down","slug":"will-total-votes-cast-in-the-2026-midterm-election-for-senator-from-south-carolina-be-between-1600000-and-1800000","why":"closed (no close frame received or sent)"}
+{"t":1793289610.265,"run":"w3e1029014931","ev":"down","slug":"will-total-votes-cast-in-the-2026-midterm-election-for-governor-of-new-york-be-between-6000000-and-6500000","why":"closed (no close frame received or sent)"}
+{"t":1793289610.265,"run":"w3e1029014931","ev":"down","slug":"will-total-votes-cast-in-the-2026-midterm-election-for-senator-from-rhode-island-be-between-350000-and-400000","why":"closed (no close frame received or sent)"}
+{"t":1793289610.265,"run":"w3e1029014931","ev":"down","slug":"will-total-votes-cast-in-the-2026-midterm-election-for-governor-of-nevada-be-between-1050000-and-1125000","why":"closed (no close frame received or sent)"}
+{"t":1793289610.265,"run":"w3e1029014931","ev":"down","slug":"will-total-votes-cast-in-the-first-round-of-the-2026-midterm-election-for-senator-from-mississippi-be-between-800000-and-900000","why":"closed (no close frame received or sent)"}
+{"t":1793289610.265,"run":"w3e1029014931","ev":"down","slug":"will-total-votes-cast-in-the-2026-midterm-election-for-senator-from-wyoming-be-between-190000-and-210000","why":"closed (no close frame received or sent)"}
+{"t":1793289610.265,"run":"w3e1029014931","ev":"down","slug":"will-total-votes-cast-in-the-2026-midterm-election-for-senator-from-kansas-be-between-1100000-and-1200000","why":"closed (no close frame received or sent)"}
+{"t":1793289611.885,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289612.086,"run":"w3e1029014931","ev":"live","slug":"will-total-votes-cast-in-the-2026-midterm-election-for-governor-of-nevada-be-between-1050000-and-1125000"}
+{"t":1793289612.086,"run":"w3e1029014931","ev":"live","slug":"will-total-votes-cast-in-the-2026-midterm-election-for-senator-from-rhode-island-be-between-350000-and-400000"}
+{"t":1793289612.086,"run":"w3e1029014931","ev":"live","slug":"will-total-votes-cast-in-the-2026-midterm-election-for-senator-from-kansas-be-between-1100000-and-1200000"}
+{"t":1793289612.086,"run":"w3e1029014931","ev":"live","slug":"will-total-votes-cast-in-the-2026-midterm-election-for-governor-of-connecticut-be-between-1300000-and-1400000"}
+{"t":1793289612.086,"run":"w3e1029014931","ev":"live","slug":"will-total-votes-cast-in-the-2026-midterm-election-for-governor-of-new-york-be-between-6000000-and-6500000"}
+{"t":1793289612.086,"run":"w3e1029014931","ev":"live","slug":"will-total-votes-cast-in-the-2026-midterm-election-for-senator-from-massachusetts-be-between-2800000-and-2950000"}
+{"t":1793289612.086,"run":"w3e1029014931","ev":"live","slug":"will-total-votes-cast-in-the-2026-midterm-election-for-senator-from-wyoming-be-between-190000-and-210000"}
+{"t":1793289612.086,"run":"w3e1029014931","ev":"live","slug":"will-total-votes-cast-in-the-2026-midterm-election-for-senator-from-south-carolina-be-between-1600000-and-1800000"}
+{"t":1793289612.086,"run":"w3e1029014931","ev":"live","slug":"will-total-votes-cast-in-the-first-round-of-the-2026-midterm-election-for-senator-from-mississippi-be-between-800000-and-900000"}
+{"t":1793289612.086,"run":"w3e1029014931","ev":"live","slug":"will-total-votes-cast-in-the-2026-midterm-election-for-senator-from-montana-be-between-500000-and-550000"}
+{"t":1793289621.887,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289631.889,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289641.89,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289651.893,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289653.806,"run":"w3e1029014931","ev":"down","slug":"will-the-democrats-win-the-ohio-governor-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289653.806,"run":"w3e1029014931","ev":"down","slug":"will-the-democrats-win-the-oregon-governor-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289653.806,"run":"w3e1029014931","ev":"down","slug":"will-the-republicans-win-the-nevada-governor-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289653.806,"run":"w3e1029014931","ev":"down","slug":"will-the-republicans-win-the-ohio-governor-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289653.806,"run":"w3e1029014931","ev":"down","slug":"will-the-democrats-win-the-texas-governor-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289653.806,"run":"w3e1029014931","ev":"down","slug":"will-the-republicans-win-the-new-hampshire-governor-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289653.806,"run":"w3e1029014931","ev":"down","slug":"will-the-republicans-win-the-new-mexico-governor-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289653.806,"run":"w3e1029014931","ev":"down","slug":"will-the-democrats-win-the-new-mexico-governor-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289653.806,"run":"w3e1029014931","ev":"down","slug":"will-the-republicans-win-the-oregon-governor-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289653.806,"run":"w3e1029014931","ev":"down","slug":"will-the-republicans-win-the-texas-governor-race-in-2026","why":"closed (no close frame received or sent)"}
+{"t":1793289655.498,"run":"w3e1029014931","ev":"live","slug":"will-the-republicans-win-the-new-mexico-governor-race-in-2026"}
+{"t":1793289655.498,"run":"w3e1029014931","ev":"live","slug":"will-the-democrats-win-the-texas-governor-race-in-2026"}
+{"t":1793289655.498,"run":"w3e1029014931","ev":"live","slug":"will-the-republicans-win-the-oregon-governor-race-in-2026"}
+{"t":1793289655.498,"run":"w3e1029014931","ev":"live","slug":"will-the-democrats-win-the-ohio-governor-race-in-2026"}
+{"t":1793289655.498,"run":"w3e1029014931","ev":"live","slug":"will-the-republicans-win-the-texas-governor-race-in-2026"}
+{"t":1793289655.498,"run":"w3e1029014931","ev":"live","slug":"will-the-democrats-win-the-new-mexico-governor-race-in-2026"}
+{"t":1793289655.498,"run":"w3e1029014931","ev":"live","slug":"will-the-republicans-win-the-nevada-governor-race-in-2026"}
+{"t":1793289655.498,"run":"w3e1029014931","ev":"live","slug":"will-the-republicans-win-the-new-hampshire-governor-race-in-2026"}
+{"t":1793289655.498,"run":"w3e1029014931","ev":"live","slug":"will-the-democrats-win-the-oregon-governor-race-in-2026"}
+{"t":1793289655.498,"run":"w3e1029014931","ev":"live","slug":"will-the-republicans-win-the-ohio-governor-race-in-2026"}
+{"t":1793289661.894,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289671.896,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289681.897,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289691.9,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289701.902,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289711.904,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289721.906,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289731.908,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289741.91,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289751.919,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289761.921,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289771.927,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289781.936,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289791.939,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289801.944,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289811.946,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289821.948,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289831.951,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289841.956,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289851.961,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289861.97,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289871.973,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289881.974,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289891.976,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289894.235,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-nc-13-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289894.235,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-nj-02-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289894.235,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-nc-13-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289894.235,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-nv-02-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289894.235,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-ny-21-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289894.235,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-nv-02-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289894.235,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-nj-02-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289894.235,"run":"w3e1029014931","ev":"down","slug":"will-the-republican-party-win-the-ny-01-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289894.235,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-ny-01-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289894.235,"run":"w3e1029014931","ev":"down","slug":"will-the-democratic-party-win-the-ny-21-house-seat","why":"closed (no close frame received or sent)"}
+{"t":1793289895.751,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-nc-13-house-seat"}
+{"t":1793289895.751,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-nv-02-house-seat"}
+{"t":1793289895.751,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-nc-13-house-seat"}
+{"t":1793289895.751,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-ny-21-house-seat"}
+{"t":1793289895.751,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-nj-02-house-seat"}
+{"t":1793289895.751,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-nv-02-house-seat"}
+{"t":1793289895.751,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-ny-21-house-seat"}
+{"t":1793289895.751,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-nj-02-house-seat"}
+{"t":1793289895.751,"run":"w3e1029014931","ev":"live","slug":"will-the-republican-party-win-the-ny-01-house-seat"}
+{"t":1793289895.751,"run":"w3e1029014931","ev":"live","slug":"will-the-democratic-party-win-the-ny-01-house-seat"}
+{"t":1793289901.977,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289911.979,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289921.981,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289931.983,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289941.984,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289951.986,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289961.988,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289971.99,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289981.992,"run":"w3e1029014931","ev":"hb"}
+{"t":1793289991.993,"run":"w3e1029014931","ev":"hb"}
+{"t":1793290001.995,"run":"w3e1029014931","ev":"hb"}
+{"t":1793290012.013,"run":"w3e1029014931","ev":"hb"}
