@@ -81,6 +81,9 @@ Hourly reward-config snapshots go alongside them. These recordings are the only 
   01:49:31. 274 markets are live (one dropped from discovery at the Oct 28 23:27 restart). Oct 29 stays eligible.
 - 2026-10-30 about 19:40-20:05: one subscribed market stopped being live (274 tracked, 273 live) with all 28
   connections up; probably an exchange-side close like the Oct 26 combo market. Not a recorder fault.
+- **2026-10-30 about 22:57:08 to 22:58:48: container restart**, a gap of about 1.5 min, restarted by hand at
+  22:58:02. Discovery now tracks 273 markets, which confirms the Oct 30 ~19:40 market was closed by the exchange.
+  Oct 30 stays eligible.
 - `rec/coverage/` records every gap, and builds apply `merge.py`'s coverage rule.
 
 ## Operations
