@@ -84,6 +84,9 @@ Hourly reward-config snapshots go alongside them. These recordings are the only 
 - **2026-10-30 about 22:57:08 to 22:58:48: container restart**, a gap of about 1.5 min, restarted by hand at
   22:58:02. Discovery now tracks 273 markets, which confirms the Oct 30 ~19:40 market was closed by the exchange.
   Oct 30 stays eligible.
+- 2026-10-31 about 00:00-00:25: another subscribed market stopped being live (exchange-side close).
+- **2026-10-31 about 01:28:14 to 01:30:06: container restart**, a gap of about 2 min, restarted by hand at
+  01:29:01. Discovery now tracks 272 markets, all live. Oct 31 stays eligible.
 - `rec/coverage/` records every gap, and builds apply `merge.py`'s coverage rule.
 
 ## Operations
